@@ -1,11 +1,26 @@
+import { useIsAuthenticated } from "jazz-tools/react";
+import { OnboardingRoute } from "./routes/onboarding";
+
 /**
  * App: top-level route shell.
  *
- * Placeholder content — will be replaced by onboarding and main UI in
- * Phase C2 / C3. The app is already wrapped in MessangerProvider (see
- * main.tsx), so Jazz context is available to all child components.
+ * Switches between the onboarding flow and the main application based on
+ * whether the user has a signed-in Jazz account.
+ *
+ * - Not authenticated → <OnboardingRoute /> (passphrase creation / restore)
+ * - Authenticated → main UI placeholder (home + settings implemented in C3)
+ *
+ * The component is always rendered inside <MessangerProvider> (see main.tsx),
+ * so `useIsAuthenticated` has access to the Jazz context.
  */
 function App() {
+  const isAuthenticated = useIsAuthenticated();
+
+  if (!isAuthenticated) {
+    return <OnboardingRoute />;
+  }
+
+  // Authenticated: placeholder for Phase C3 (home + settings UI)
   return (
     <div
       style={{
