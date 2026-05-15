@@ -1,5 +1,4 @@
-import { co, z } from "jazz-tools";
-import { MessangerProfile } from "./Profile";
+import { co, z, Group } from "jazz-tools";
 import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { Invitation } from "./Invitation";
@@ -37,4 +36,54 @@ export const JazzMessangerAccount = co.account({
     bio: z.string().optional(),
   }),
   root: JazzMessangerAccountRoot,
+}).withMigration(async (me, creationProps) => {
+  /**
+   * Migration: runs on every node startup (both new and existing accounts).
+   * All branches MUST be idempotent — guarded with me.$jazz.has() checks.
+   *
+   * Sequence:
+   * 1. Initialize profile with a publicly-readable Group so contacts can see
+   *    the user's display name. The Group is created and "everyone" granted
+   *    "reader" access before the profile is assigned.
+   * 2. Initialize root with account-private ownership (only `me` as owner).
+   *
+   * creationProps is `{ name: string }` on first creation (from signUp),
+   * and `undefined` on subsequent node startups.
+   */
+
+  // -- 1. Profile initialization --
+  if (!me.$jazz.has("profile")) {
+    const profileGroup = Group.create({ owner: me });
+    profileGroup.addMember("everyone", "reader");
+
+    const displayName = creationProps?.name ?? "Anonymous";
+
+    me.$jazz.set(
+      "profile",
+      co
+        .profile({
+          displayName: z.string(),
+          bio: z.string().optional(),
+        })
+        .create(
+          { name: displayName, displayName },
+          profileGroup,
+        ),
+    );
+  }
+
+  // -- 2. Root initialization --
+  if (!me.$jazz.has("root")) {
+    const contactBook = ContactBook.create([], { owner: me });
+    const devices = co.list(DeviceRecord).create([], { owner: me });
+    const invitesIssued = co.list(Invitation).create([], { owner: me });
+
+    me.$jazz.set(
+      "root",
+      JazzMessangerAccountRoot.create(
+        { contactBook, devices, invitesIssued },
+        { owner: me },
+      ),
+    );
+  }
 });
