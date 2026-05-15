@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useIsAuthenticated } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
 import { HomeRoute } from "./routes/home";
+import { SettingsRoute } from "./routes/settings";
 
 /**
  * Navigation strategy: Option A (state machine).
@@ -10,9 +11,6 @@ import { HomeRoute } from "./routes/home";
  * react-router-dom is installed; refreshing always returns to "home". This is
  * intentional for Slice 1 — a single deep route (/settings) doesn't justify
  * the extra dependency.
- *
- * SettingsRoute is lazily imported below (in the settings task) to keep this
- * file from bloating before Task 26 is wired up.
  */
 type AppView = "home" | "settings";
 
@@ -40,21 +38,7 @@ function App() {
     return <HomeRoute onNavigateToSettings={() => setView("settings")} />;
   }
 
-  // Settings: rendered lazily — placeholder until Task 26 wires it in.
-  // This branch will be replaced by <SettingsRoute> in Task 26.
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-center">
-        <p className="text-gray-500 mb-4">Settings (coming in Task 26)</p>
-        <button
-          className="text-sm text-blue-600 hover:underline"
-          onClick={() => setView("home")}
-        >
-          ← Home
-        </button>
-      </div>
-    </div>
-  );
+  return <SettingsRoute onNavigateToHome={() => setView("home")} />;
 }
 
 export default App;
