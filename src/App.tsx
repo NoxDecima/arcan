@@ -4,6 +4,9 @@ import { OnboardingRoute } from "./routes/onboarding";
 import { HomeRoute } from "./routes/home";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
+import { ContactAddRoute } from "./routes/contacts/add";
+import { ContactDetailRoute } from "./routes/contacts/detail";
+import { InviteRoute } from "./routes/invite";
 
 /**
  * App: top-level route shell.
@@ -33,6 +36,16 @@ function App() {
     );
   }
 
+  // Allow /invite regardless of auth state — the component handles the auth check
+  // internally (stashes fragment in sessionStorage and redirects to "/" if not authed).
+  if (location.pathname === "/invite") {
+    return (
+      <Routes>
+        <Route path="/invite" element={<InviteRoute />} />
+      </Routes>
+    );
+  }
+
   if (!isAuthenticated) {
     return <OnboardingRoute />;
   }
@@ -41,6 +54,8 @@ function App() {
     <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/settings/*" element={<SettingsRoute />} />
+      <Route path="/contacts/add" element={<ContactAddRoute />} />
+      <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
