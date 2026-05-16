@@ -672,3 +672,93 @@ The following items in the original Phase C plan need to be updated based on ver
 - **Error codes for invalid passphrase word count or checksum**: `logIn` throws a plain `Error` with message `"Invalid passphrase"` for any mnemonic parse failure. There is no structured error with a code distinguishing "wrong word" from "wrong length" from "bad checksum". ⚠️ All three map to the same error.
 - **Key rotation on `removeMember`**: The `removeMember` method calls `cojson`'s `raw.removeMember`. Whether this rotates encryption keys is a cojson-level detail not surfaced in jazz-tools types. ⚠️ unverified — check during implementation.
 - **`co.group()` schema definer**: `coGroupDefiner` exists (exported as `co.group`) but returns a `GroupSchema` with no `.create()` signature documented in the `.d.ts`. The imperative `Group.create()` class method is the verified path. ⚠️ Use `Group` from `"jazz-tools"`, not `co.group()`, for creating groups.
+
+---
+
+## 11. Pubkey Extraction (verified 2026-05-16, jazz-tools 0.20.18)
+
+### Finding
+
+There is no single `account.pubkeyHex` getter in jazz-tools. The Ed25519
+signing public key is accessible via the `ControlledAccountOrAgent` returned
+by `localNode.getCurrentAgent()`.
+
+### API path
+
+```ts
+import { base58 } from "@scure/base";
+import type { Account } from "jazz-tools";
+
+function getAccountPubkeyHex(account: Account): string {
+  const agent = account.$jazz.localNode.getCurrentAgent();
+  // SignerID format: "signer_z${base58_encoded_32_byte_ed25519_pubkey}"
+  const signerID = agent.currentSignerID();
+  const base58Part = signerID.slice("signer_z".length);
+  const pubkeyBytes = base58.decode(base58Part);
+  // Convert to 64-char lowercase hex
+  return Array.from(pubkeyBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+```
+
+### Key details
+
+- `me.$jazz.localNode` is exposed by `CoValueJazzApi` (base of `AccountJazzApi`).
+  Its getter is `get localNode(): LocalNode` returning `this.raw.core.node`.
+- `localNode.getCurrentAgent()` returns `ControlledAccountOrAgent` from cojson,
+  which always has `currentSignerID(): SignerID`.
+- `SignerID = signer_z${string}` where the suffix is base58-encoded raw bytes.
+- The underlying encoding uses `@scure/base`'s `base58` (NOT z-base32 — the `z`
+  prefix is just a naming convention in cojson).
+- Ed25519 public keys are exactly 32 bytes → 64 hex chars.
+- `@scure/base` is a transitive dependency of `jazz-tools` (via `cojson`) and
+  safe to import directly.
+
+### Why not use the account ID?
+
+`me.$jazz.id` (`co_z${base58}`) is the BLAKE3 hash of the initial agent
+secret — it is NOT the raw Ed25519 public key. Do not use it for pubkey
+derivation.
+
+---
+
+## 12. Session Fingerprint (verified 2026-05-16, jazz-tools 0.20.18)
+
+### Finding
+
+`me.$jazz.sessionID` is the stable session fingerprint. It is set in
+`AccountJazzApi` when `isLocalNodeOwner === true` (i.e. this is the signed-in
+user's account).
+
+### API path
+
+```ts
+import type { Account } from "jazz-tools";
+
+function getCurrentSessionFingerprint(account: Account): string {
+  const sessionID = account.$jazz.sessionID;
+  if (!sessionID) {
+    throw new Error("Not the local node owner");
+  }
+  return sessionID;
+}
+```
+
+### Key details
+
+- `SessionID` format (from cojson): `${RawAccountID}_session_z${base58_nonce}`
+  (active sessions) or `${RawAccountID}_session_d${base58_nonce}$` (deleted).
+- The session ID is created once per node startup and stored in localStorage
+  alongside account credentials. It is stable across page reloads for the
+  same device + account pair.
+- `me.$jazz.sessionID` is `SessionID | undefined` in the TypeScript type.
+  It is `undefined` only when `isLocalNodeOwner === false`, which never
+  happens for the signed-in `me` account.
+- Source: `AccountJazzApi` constructor in `chunk-MIPBSAS7.js`:
+  ```js
+  this.isLocalNodeOwner = this.raw.id === this.localNode.getCurrentAgent().id;
+  if (this.isLocalNodeOwner) {
+    this.sessionID = this.localNode.currentSessionID;
+  }
+  ```
