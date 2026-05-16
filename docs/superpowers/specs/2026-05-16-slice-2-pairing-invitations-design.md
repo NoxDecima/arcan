@@ -119,13 +119,12 @@ export const EphemeralPairing = co.map({
 
   // Responder-set fields (after persisting the secret)
   responderSessionFingerprint: z.string().optional(),
-
-  // Lifecycle
-  consumed: z.boolean(),
 });
 ```
 
 Owned by an ephemeral `pairingGroup` with `me = admin` and a fresh `pairingAgent = writerInvite` — same invite-agent pattern used for contact invites. The agent's secret is what the responder uses to authenticate.
+
+Lifecycle is bounded by the 5-minute `expiresAt` plus the initiator tombstoning the CoValue after `responderSessionFingerprint` appears. No separate `consumed` flag is needed.
 
 ### 4.2 Modified: `Contact`
 
@@ -160,7 +159,7 @@ Getter pattern is required because of the forward reference to `Conversation`.
 1. Generate ephemeral X25519 keypair `K_e` client-side.
 2. Generate ephemeral pairing-agent identity (Jazz agent with its own keypair).
 3. Create `pairingGroup`: `me = admin`, `pairingAgent = writerInvite`. Jazz auto-wraps the readKey for both.
-4. Create `EphemeralPairing` owned by `pairingGroup`, populated with `initiatorPubkey = K_e.pub`, `initiatorAccountID`, `initiatorDisplayName`, 5-minute expiry, `consumed: false`.
+4. Create `EphemeralPairing` owned by `pairingGroup`, populated with `initiatorPubkey = K_e.pub`, `initiatorAccountID`, `initiatorDisplayName`, 5-minute expiry.
 5. Build URL: `${origin}/pair#${base64url(pairingCoValueID || pairingAgentSecret || K_e.priv)}`.
 6. Render: QR of URL + URL text + "Copy link" button + "Waiting for new device..." status.
 7. Subscribe to `EphemeralPairing.responderPubkey`. When set:
@@ -185,7 +184,7 @@ Getter pattern is required because of the forward reference to `Conversation`.
 
 - Account secret never appears on the sync server in plaintext. The seal is to `K_n.pub`, which only the responder device possesses.
 - The pairing agent secret is in the URL fragment (browsers don't send fragments to the server).
-- 5-minute expiry plus one-shot `consumed` flag bound the attack window if the QR is photographed.
+- 5-minute `expiresAt` plus tombstone-on-completion bound the attack window if the QR is photographed.
 - Initiator approval gate prevents an attacker who somehow knows the URL from completing the pairing without the existing device's user clicking approve.
 
 ---
@@ -294,11 +293,14 @@ Two special URL behaviors:
 
 ### 8.4 Camera + paste UX on responder
 
-Single screen, two equal halves:
-- **Left/top half:** camera viewport showing webcam feed. If permission denied or unavailable: replace with "Camera unavailable — paste the link below instead" placeholder.
-- **Right/bottom half:** "Or paste link" textarea with submit button.
+Single screen showing both a camera viewport and a paste textarea simultaneously — no toggle.
 
-Both inputs feed the same URL parser. First valid URL wins.
+- **Camera viewport:** webcam feed via `qr-scanner`. If permission denied or unavailable: replace with "Camera unavailable — paste the link below instead" placeholder.
+- **Paste field:** "Or paste link" textarea with submit button.
+
+Both inputs feed the same URL parser; first valid URL wins.
+
+Layout orientation (side-by-side vs stacked) is the implementer's call, with the constraint that the page must be usable on both desktop and mobile viewports. A responsive layout (stacked on narrow viewports, side-by-side on wide) is the natural fit.
 
 ---
 
@@ -351,6 +353,8 @@ All of the following must be true to mark Slice 2 complete:
 2. **Pubkey extraction API.** Jazz 0.20.18 may not expose a clean accessor for the account's Ed25519 pubkey. If discovery turns up no public path, we may need to derive it from the accountID encoding or use a workaround. Document the workaround in `docs/jazz-api-notes.md`.
 
 3. **Session fingerprint API.** Same as above for the session's signing key. Worst case: continue using `crypto.randomUUID()` for now and document as a Slice 2.1 follow-up.
+
+**Mitigation for risks 1-3:** if Phase C / pairing implementation hits a wall on any of these APIs, dispatch a focused research subagent (same pattern as Slice 1's jazz-tools 0.20.18 API survey) to pin down the actual API surface before continuing. Update `docs/jazz-api-notes.md` with the findings. The Slice 1 survey is the template.
 
 4. **Camera permission UX cross-browser.** Firefox, Chrome, Safari all handle camera permission differently. The "permission denied → graceful fallback to paste" path must be tested in each browser used in e2e.
 
