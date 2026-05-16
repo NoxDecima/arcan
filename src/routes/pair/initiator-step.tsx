@@ -121,7 +121,7 @@ export function InitiatorStep() {
     try {
       const authCtx = getAuthContext();
       await wrapAccountSecretForResponder(
-        me as unknown as Account,
+        me as unknown as Account, // kept for API signature; not used internally
         invitation.pairing,
         invitation.ephemeralPrivkeyHex,
         authCtx,

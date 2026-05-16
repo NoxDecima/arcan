@@ -268,7 +268,7 @@ export async function createPairingInvite(
  * @param authContext - hook-supplied auth context to read secretSeed
  */
 export async function wrapAccountSecretForResponder(
-  account: Account,
+  _account: Account,
   pairing: ReturnType<typeof EphemeralPairing.create>,
   ephemeralPrivkeyHex: string,
   authContext: PairingAuthContext,
