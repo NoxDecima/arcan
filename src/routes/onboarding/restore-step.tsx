@@ -55,6 +55,12 @@ export function RestoreStep({ onBack }: RestoreStepProps) {
     setIsRestoring(true);
     try {
       await auth.logIn(trimmed);
+      // Check for a stashed /invite fragment from a pre-auth invite visit.
+      const pendingInviteFragment = sessionStorage.getItem("pending-invite-fragment");
+      if (pendingInviteFragment) {
+        sessionStorage.removeItem("pending-invite-fragment");
+        window.location.assign(`/invite${pendingInviteFragment}`);
+      }
       // Component will unmount as App's useIsAuthenticated flips to true.
     } catch (err) {
       setError(
