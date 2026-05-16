@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+type CopyState = "idle" | "copied" | "error";
+
 interface PassphraseDisplayStepProps {
   phrase: string;
   onBack: () => void;
@@ -20,7 +22,26 @@ export function PassphraseDisplayStep({
   onContinue,
 }: PassphraseDisplayStepProps) {
   const [acknowledged, setAcknowledged] = useState(false);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
   const words = phrase.trim().split(/\s+/);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(words.join(" "));
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    } catch {
+      setCopyState("error");
+      setTimeout(() => setCopyState("idle"), 3000);
+    }
+  }
+
+  const copyLabel =
+    copyState === "copied"
+      ? "Copied to clipboard"
+      : copyState === "error"
+        ? "Copy failed — copy manually"
+        : "Copy passphrase";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -52,6 +73,20 @@ export function PassphraseDisplayStep({
               <span className="font-mono text-sm">{word}</span>
             </div>
           ))}
+        </div>
+
+        {/* Copy-to-clipboard control */}
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="passphrase-copy-btn"
+            onClick={handleCopy}
+            aria-live="polite"
+          >
+            {copyLabel}
+          </Button>
         </div>
 
         {/* Acknowledge checkbox */}
