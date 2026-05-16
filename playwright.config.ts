@@ -14,7 +14,7 @@ export default defineConfig({
   webServer: [
     {
       command: "npm run sync",
-      url: "http://localhost:4200",
+      port: 4200,
       reuseExistingServer: !process.env.CI,
       stdout: "ignore",
       stderr: "pipe",

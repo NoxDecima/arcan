@@ -33,3 +33,7 @@ Thumbs.db
 *.sqlite-journal
 *.db
 .jazz-data/
+
+# Playwright
+test-results/
+playwright-report/
