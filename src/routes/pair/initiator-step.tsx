@@ -226,7 +226,7 @@ export function InitiatorStep() {
   return (
     <div className="flex flex-col items-center gap-6 p-6" data-testid="pair-waiting">
       <h2 className="text-base font-semibold">Scan on your new device</h2>
-      {invitation && <QRDisplay url={invitation.url} size={256} showText={false} />}
+      {invitation && <QRDisplay url={invitation.url} size={256} showText />}
       <div className="flex gap-2 w-full max-w-sm">
         <Button
           variant="outline"

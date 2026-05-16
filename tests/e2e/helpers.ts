@@ -1,6 +1,16 @@
 import { Page } from "@playwright/test";
 
 /**
+ * From a page that has a `qr-url-text` element (pairing initiator or contact
+ * add), extract the URL displayed in the QR code text.
+ */
+export async function getPairingUrl(page: Page): Promise<string> {
+  const url = await page.getByTestId("qr-url-text").textContent();
+  if (!url) throw new Error("Could not read pairing URL");
+  return url.trim();
+}
+
+/**
  * Captures the 24-word passphrase from the passphrase-display step.
  *
  * The grid (`data-testid="passphrase-grid"`) contains 24 child divs.
