@@ -20,8 +20,11 @@
     "clsx": "^2.1.1",
     "jazz-run": "0.20.18",
     "jazz-tools": "0.20.18",
+    "qr-scanner": "1.4.2",
+    "qrcode.react": "4.2.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-router-dom": "7.15.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
