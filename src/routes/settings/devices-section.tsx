@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { Button } from "@/components/ui/button";
 
 /**
  * DevicesSection: lists all registered devices for the account.
@@ -22,7 +24,12 @@ export function DevicesSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-800 mb-2">Devices</h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-base font-semibold text-gray-800">Devices</h2>
+        <Button asChild variant="outline" size="sm" data-testid="link-new-device-btn">
+          <Link to="/pair?role=initiator">Link new device</Link>
+        </Button>
+      </div>
       <ul
         data-testid="device-list"
         className="bg-white rounded border border-gray-200 divide-y divide-gray-100"
