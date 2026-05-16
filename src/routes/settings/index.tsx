@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { ProfileSection } from "./profile-section";
 import { DevicesSection } from "./devices-section";
 import { AccountSection } from "./account-section";
@@ -5,24 +6,20 @@ import { AccountSection } from "./account-section";
 /**
  * SettingsRoute: settings page with profile, devices, and account sections.
  *
- * Navigation strategy: Option A (state machine). Receives an
- * `onNavigateToHome` callback from App.tsx; rendered when view === "settings".
+ * Navigation strategy: react-router-dom. Back navigation is a <Link to="/">.
+ * No callback props.
  */
-interface SettingsRouteProps {
-  onNavigateToHome: () => void;
-}
-
-export function SettingsRoute({ onNavigateToHome }: SettingsRouteProps) {
+export function SettingsRoute() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-xl mx-auto px-4 py-6">
         {/* Back navigation */}
-        <button
-          onClick={onNavigateToHome}
-          className="text-sm text-blue-600 hover:underline mb-4 inline-block"
+        <Link
+          to="/"
+          className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
         >
           ← Home
-        </button>
+        </Link>
 
         <h1 className="text-xl font-bold text-gray-900 mb-6">Settings</h1>
 

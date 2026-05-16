@@ -5,17 +5,13 @@ import { EmptyState } from "@/components/empty-state";
  * HomeRoute: two-column layout with sidebar on the left and main content area
  * on the right.
  *
- * Navigation strategy: Option A (state machine). Receives an
- * `onNavigateToSettings` callback from App.tsx; passes it into Sidebar.
+ * Navigation strategy: react-router-dom. No callback props — Sidebar uses
+ * <Link to="/settings"> internally.
  */
-interface HomeRouteProps {
-  onNavigateToSettings: () => void;
-}
-
-export function HomeRoute({ onNavigateToSettings }: HomeRouteProps) {
+export function HomeRoute() {
   return (
     <div className="flex h-screen">
-      <Sidebar onNavigateToSettings={onNavigateToSettings} />
+      <Sidebar />
 
       <main
         data-testid="home-main"

@@ -1,17 +1,14 @@
+import { Link } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 
 /**
  * Sidebar component for the home screen.
  *
- * Navigation strategy: Option A (state machine). The "Settings" control is a
- * button that calls the `onNavigateToSettings` prop. No react-router-dom.
+ * Navigation strategy: react-router-dom. The "Settings" control is a <Link>
+ * to "/settings". No callback props.
  */
-interface SidebarProps {
-  onNavigateToSettings: () => void;
-}
-
-export function Sidebar({ onNavigateToSettings }: SidebarProps) {
+export function Sidebar() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
@@ -66,13 +63,13 @@ export function Sidebar({ onNavigateToSettings }: SidebarProps) {
 
       {/* Footer: Settings link */}
       <div className="p-4 border-t border-gray-200">
-        <button
+        <Link
+          to="/settings"
           data-testid="settings-link"
-          onClick={onNavigateToSettings}
-          className="text-sm text-gray-600 hover:text-gray-900 w-full text-left"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Settings
-        </button>
+        </Link>
       </div>
     </aside>
   );
