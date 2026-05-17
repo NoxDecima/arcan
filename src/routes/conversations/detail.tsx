@@ -150,6 +150,16 @@ export function ConversationDetailRoute() {
     setMenuOpen(false);
     setLeaving(true);
     try {
+      // Clear the linkedConversation cache on the matching contact BEFORE
+      // revoking — while we still have access to the conversation and can
+      // compare IDs. Jazz requires `undefined` to unset an optional ref.
+      if (contact) {
+        try {
+          (contact as any).$jazz?.set("linkedConversation", undefined);
+        } catch {
+          // ignore — sidebar will handle inaccessible conversations gracefully
+        }
+      }
       await leaveConversation(me, conversation);
       navigate("/conversations");
     } finally {

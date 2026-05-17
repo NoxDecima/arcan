@@ -144,12 +144,24 @@ export async function leaveConversation(
 
   conversationGroup.removeMember(me);
 
-  // Clear any contact cache referencing this conversation
+  // Clear any contact cache referencing this conversation.
+  // We compare by the conversation's jazz ID (a string like "co_z...").
+  // Both direct property assignment and $jazz.set are tried for compatibility.
+  const conversationId = conversation.$jazz?.id as string | undefined;
   const contactBook = (me as any).root?.contactBook;
-  if (contactBook) {
+  if (contactBook && conversationId) {
     for (const contact of contactBook) {
-      if (contact?.linkedConversation?.$jazz?.id === conversation.$jazz?.id) {
-        contact.$jazz.set("linkedConversation", null);
+      const linkedId = contact?.linkedConversation?.$jazz?.id as string | undefined;
+      // Also try the raw ID accessor for unresolved CoValue refs
+      const linkedIdAlt = (contact as any)?.linkedConversation?.id as string | undefined;
+      if (linkedId === conversationId || linkedIdAlt === conversationId) {
+        try {
+          // Jazz requires `undefined` (not null) to unset an optional CoValue ref.
+          // Proxy set handler throws for direct assignment; use $jazz.set.
+          contact.$jazz.set("linkedConversation", undefined as any);
+        } catch {
+          // ignore — sidebar will handle inaccessible conversations
+        }
       }
     }
   }
