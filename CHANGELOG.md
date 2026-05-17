@@ -23,6 +23,7 @@
 - Session fingerprints for old DeviceRecords created during Slice 1 remain `crypto.randomUUID()` values; they are not retroactively migrated.
 - Old DeviceRecords keep their `crypto.randomUUID()` values for `sessionFingerprint`; real session-derived fingerprints apply only to new accounts created in Slice 2+.
 - The "everyone writer" pattern is used instead of writerInvite-agent scoping for both pairing and invitations; tighter access control is planned for a future slice.
+- The responder device is not automatically registered as a `DeviceRecord` after QR pairing; Settings → Devices shows only the original device. Slice 3 can wire this up via a post-pair migration or hook.
 
 ### Slice 1 — Foundation + Account Creation
 
