@@ -275,7 +275,7 @@ export async function wrapAccountSecretForResponder(
   _account: Account,
   pairing: ReturnType<typeof EphemeralPairing.create>,
   ephemeralPrivkeyHex: string,
-  authContext: PairingAuthContext,
+  _authContext: PairingAuthContext,
 ): Promise<void> {
   const responderPubkeyHex = pairing.responderPubkey;
   if (!responderPubkeyHex) {
@@ -415,9 +415,14 @@ export async function claimAccountFromPairing(
 
   // Derive accountSecret and accountID per jazz-api-notes.md §13
   const accountSecret: AgentSecret = authContext.crypto.agentSecretFromSecretSeed(secretSeed);
+  // The CryptoProvider type from cojson is not fully intersectable with the
+  // PairingAuthContext's crypto shape. Cast through unknown to satisfy tsc -b.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cryptoProvider = authContext.crypto as unknown as Parameters<typeof cojsonInternals.accountHeaderForInitialAgentSecret>[1];
   const accountID = cojsonInternals.idforHeader(
-    cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, authContext.crypto as Parameters<typeof cojsonInternals.accountHeaderForInitialAgentSecret>[1]),
-    authContext.crypto as Parameters<typeof cojsonInternals.idforHeader>[1],
+    cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, cryptoProvider),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authContext.crypto as unknown as Parameters<typeof cojsonInternals.idforHeader>[1],
   ) as ID<Account>;
 
   // Authenticate (step 3 of the four-step bootstrap)
