@@ -61,6 +61,9 @@ export interface PairingAuthContext {
   };
   crypto: {
     agentSecretFromSecretSeed: (seed: Uint8Array) => AgentSecret;
+    // Full crypto object (CryptoProvider) for internal cojson operations
+    // (e.g. getAgentID used by cojsonInternals.accountHeaderForInitialAgentSecret)
+    [key: string]: unknown;
   };
 }
 
@@ -291,7 +294,7 @@ export async function wrapAccountSecretForResponder(
   const secretSeedHex = bytesToHex(storedCreds.secretSeed);
 
   const wrapped = sealForRecipient(secretSeedHex, responderPubkey, initiatorPrivkey);
-  (pairing as any).wrappedAccountSecret = wrapped;
+  (pairing as any).$jazz.set("wrappedAccountSecret", wrapped);
 }
 
 /**
@@ -301,7 +304,7 @@ export async function wrapAccountSecretForResponder(
 export async function tombstonePairing(
   pairing: ReturnType<typeof EphemeralPairing.create>,
 ): Promise<void> {
-  (pairing as any).expiresAt = new Date();
+  (pairing as any).$jazz.set("expiresAt", new Date());
 }
 
 // ---------------------------------------------------------------------------
@@ -354,7 +357,7 @@ export async function respondToPairing(
   const responderPubkeyHex = bytesToHex(responderKeypair.publicKey);
 
   // Write the pubkey to the pairing CoValue so the initiator can see it
-  (pairing as any).responderPubkey = responderPubkeyHex;
+  (pairing as any).$jazz.set("responderPubkey", responderPubkeyHex);
 
   return { responderPrivkeyHex };
 }

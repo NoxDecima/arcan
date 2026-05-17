@@ -201,7 +201,7 @@ export async function acceptInvitationAcceptance(
   }
 
   // Mark consumed
-  (invitation as any).consumed = true;
+  (invitation as any).$jazz.set("consumed", true);
 }
 
 /**
@@ -210,9 +210,9 @@ export async function acceptInvitationAcceptance(
 export async function revokeInvitation(
   invitation: ReturnType<typeof Invitation.create>,
 ): Promise<void> {
-  (invitation as any).consumed = true;
+  (invitation as any).$jazz.set("consumed", true);
   // Tombstone by setting expiresAt to now (signals expiry to the recipient)
-  (invitation as any).expiresAt = new Date();
+  (invitation as any).$jazz.set("expiresAt", new Date());
 }
 
 // ---------------------------------------------------------------------------
@@ -270,10 +270,10 @@ export async function acceptInvitation(
     (me as any).profile?.displayName ?? (me as any).profile?.name ?? "Anonymous";
 
   // Write recipient fields
-  (invitation as any).recipientAccountID = me.$jazz.id;
-  (invitation as any).recipientFingerprint = getAccountPubkeyHex(account);
-  (invitation as any).recipientDisplayName = displayName;
-  (invitation as any).acceptedAt = new Date();
+  (invitation as any).$jazz.set("recipientAccountID", me.$jazz.id);
+  (invitation as any).$jazz.set("recipientFingerprint", getAccountPubkeyHex(account));
+  (invitation as any).$jazz.set("recipientDisplayName", displayName);
+  (invitation as any).$jazz.set("acceptedAt", new Date());
 
   // Add inviter as contact on the recipient side
   const contactBook = (me as any).root?.contactBook;

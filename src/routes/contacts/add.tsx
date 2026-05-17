@@ -25,7 +25,7 @@ export function ContactAddRoute() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
-      root: { invitesIssued: { $each: true } },
+      root: { invitesIssued: { $each: true }, contactBook: { $each: true } },
     },
   });
 

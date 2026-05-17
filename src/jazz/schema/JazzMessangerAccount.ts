@@ -109,13 +109,14 @@ export const JazzMessangerAccount = co.account({
       ),
     );
   }
+
 });
 
 /**
  * Derives a human-readable device label from a User-Agent string.
  * Returns a string like "Firefox browser", "Chrome browser", etc.
  */
-function deriveDeviceLabel(ua: string): string {
+export function deriveDeviceLabel(ua: string): string {
   if (/Firefox\//i.test(ua)) return "Firefox browser";
   if (/Edg\//i.test(ua)) return "Edge browser";
   if (/OPR\//i.test(ua)) return "Opera browser";

@@ -67,7 +67,10 @@ export function ResponderStep() {
       // We still need crypto; in guest mode, jazzContext has a node field
     }
     const node = ("guest" in jazzContext) ? jazzContext.node : (jazzContext as { node: { crypto: unknown } }).node;
-    const crypto = (node as { crypto: { agentSecretFromSecretSeed: (s: Uint8Array) => AgentSecret } }).crypto;
+    // Use the full CryptoProvider instance — claimAccountFromPairing needs getAgentID
+    // (used internally by cojsonInternals.accountHeaderForInitialAgentSecret).
+    // Class methods live on the prototype so spreading won't copy them; pass the instance.
+    const cryptoInstance = (node as { crypto: { agentSecretFromSecretSeed: (s: Uint8Array) => AgentSecret; [k: string]: unknown } }).crypto;
 
     return {
       authenticate: async (credentials: { accountID: ID<Account>; accountSecret: AgentSecret }) => {
@@ -77,9 +80,8 @@ export function ResponderStep() {
         set: authSecretStorage.set.bind(authSecretStorage),
         get: authSecretStorage.get.bind(authSecretStorage),
       },
-      crypto: {
-        agentSecretFromSecretSeed: crypto.agentSecretFromSecretSeed.bind(crypto),
-      },
+      // Pass the crypto instance directly so prototype methods (getAgentID etc.) are accessible
+      crypto: cryptoInstance,
       initiatorNaclPubkeyHex: initiatorNaclPubkeyHex ?? undefined,
     };
   }, [jazzContext, authSecretStorage, initiatorNaclPubkeyHex]);
@@ -115,25 +117,7 @@ export function ResponderStep() {
 
         setResponderPrivkeyHex(privkey);
         setPhase("waiting-approval");
-
-        // Start polling for wrappedAccountSecret
-        const intervalId = setInterval(async () => {
-          try {
-            const reloaded = await loadPairingAsAgent(
-              parsed.pairingCoValueID,
-              parsed.pairingAgentSecret,
-              "",
-            );
-            if ((reloaded as { wrappedAccountSecret?: string }).wrappedAccountSecret && !cancelled) {
-              clearInterval(intervalId);
-              setPhase("claiming");
-            }
-          } catch {
-            // CoValue not ready — keep polling
-          }
-        }, POLL_INTERVAL_MS);
-
-        pollRef.current = intervalId;
+        // Polling for wrappedAccountSecret is handled by a dedicated useEffect below
       } catch (err: unknown) {
         if (!cancelled) {
           setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -145,6 +129,27 @@ export function ResponderStep() {
     submitPubkey();
     return () => { cancelled = true; };
   }, [phase, pairingUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Step 1b: poll for wrappedAccountSecret while in waiting-approval phase.
+  // Separate effect so the cancelled flag doesn't bleed in from submitPubkey.
+  useEffect(() => {
+    if (phase !== "waiting-approval" || !pairingCoValueID) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const reloaded = await loadPairingAsAgent(pairingCoValueID, "", "");
+        if ((reloaded as { wrappedAccountSecret?: string }).wrappedAccountSecret) {
+          clearInterval(intervalId);
+          setPhase("claiming");
+        }
+      } catch {
+        // CoValue not ready — keep polling
+      }
+    }, POLL_INTERVAL_MS);
+
+    pollRef.current = intervalId;
+    return () => clearInterval(intervalId);
+  }, [phase, pairingCoValueID]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Step 2: when we reach "claiming", do the actual account claim
   useEffect(() => {
