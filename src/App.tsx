@@ -1,13 +1,14 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useIsAuthenticated } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
-import { HomeRoute } from "./routes/home";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
 import { ContactsRoute } from "./routes/contacts";
 import { ContactAddRoute } from "./routes/contacts/add";
 import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
+import { ConversationsRoute } from "./routes/conversations";
+import { ConversationDetailRoute } from "./routes/conversations/detail";
 
 /**
  * App: top-level route shell.
@@ -53,7 +54,9 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<HomeRoute />} />
+      <Route path="/" element={<ConversationsRoute />} />
+      <Route path="/conversations" element={<ConversationsRoute />} />
+      <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
       <Route path="/settings/*" element={<SettingsRoute />} />
       <Route path="/contacts" element={<ContactsRoute />} />
       <Route path="/contacts/add" element={<ContactAddRoute />} />
