@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAccount } from "jazz-tools/react";
 import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
+import { Link } from "react-router-dom";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { QRDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
@@ -176,14 +177,11 @@ export function InitiatorStep() {
 
   if (phase === "complete") {
     return (
-      <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
-        data-testid="pair-init-complete"
-      >
-        <p className="text-green-700 font-medium">Device paired successfully!</p>
-        <p className="text-sm text-muted-foreground">
-          The new device now has access to your account.
-        </p>
+      <div className="p-6 text-center space-y-4" data-testid="pair-init-complete">
+        <h2 className="text-2xl font-semibold">New device linked</h2>
+        <Link to="/">
+          <Button data-testid="pair-init-home-btn">Back to home</Button>
+        </Link>
       </div>
     );
   }
