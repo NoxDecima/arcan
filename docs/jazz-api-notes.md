@@ -970,3 +970,122 @@ import type { AgentSecret } from "cojson";
    If you omit `secretSeed` from `authSecretStorage.set(...)`, `PassphraseAuth`'s
    `getCurrentAccountPassphrase()` and `signUp()` will throw `"No credentials found"`.
    Always include `secretSeed` when you have it.
+
+---
+
+## 14. Create-Transaction Signer (`$jazz.createdBy`) — Slice 3a
+
+> Verified against `node_modules/jazz-tools/dist/tools/coValues/CoValueBase.d.ts` on 2026-05-17.
+
+### The question
+
+Given a loaded CoValue (e.g., a `Message` instance), how do you get the accountID of the account that signed the create-transaction?
+
+### Finding: clean public API exists
+
+`CoValueJazzApi` (the type of `coValue.$jazz`) exposes a getter:
+
+```ts
+/**
+ * Returns the account ID of the user who created this CoValue.
+ *
+ * Creation is determined by inspecting the earliest valid transaction.
+ * Note: Where the author is a sealer/signer identifier (e.g. accounts)
+ * nothing is returned intentionally.
+ *
+ * @returns {string | undefined} The creating user's account ID, or
+ * `undefined` if no author can be determined.
+ */
+get createdBy(): string | undefined;
+```
+
+### Usage
+
+```ts
+export function getAuthorAccountIDFromMessage(message: any): string | null {
+  return message?.$jazz?.createdBy ?? null;
+}
+```
+
+This is signed by the authoring session key and is **immutable** — no post-hoc Group manipulation can change who signed the create transaction. This is the correct source of truth for authorship (see spec §6.2–§6.3, "demote-trick" attack analysis).
+
+### Companion API
+
+```ts
+// Also useful: creation timestamp
+get createdAt(): number;   // milliseconds since epoch
+
+// Last update timestamp (returns createdAt if no updates)
+get lastUpdatedAt(): number;
+```
+
+---
+
+## 15. Group Role Mechanics — Slice 3a (verified 2026-05-17)
+
+### Owner role on Group.create
+
+`Group.create({ owner: me })` assigns the creator's account ID the role `"admin"` in the raw group. There is no separate `"writer"` role for the owner. Admins have full write access.
+
+Consequence: after `Group.create({ owner: me })`, calling `group.addMember(me, "writer")` **overwrites** the admin role to writer, downgrading permissions. Do NOT do this for per-author WriteGroups.
+
+### Per-author WriteGroup creation (correct pattern)
+
+```ts
+const wg = Group.create({ owner: me });
+wg.addMember(conversationGroup, "reader");
+// Do NOT add me as "writer" — I am already admin (includes write)
+```
+
+### Direct vs inherited members
+
+```ts
+// Direct members only (non-inherited):
+group.getDirectMembers(): GroupMember[]
+// type: { id: string; role: AccountRole; ref: Ref<Account>; account: Account }
+
+// All members including inherited via parent groups:
+group.members: GroupMember[]
+
+// Role of a specific account:
+group.getRoleOf(accountId): Role | undefined
+```
+
+`getDirectMembers()` calls `raw.getMemberKeys()` which filters the group's raw key-value store for keys matching account IDs or agent IDs (starting with `co_` or agent ID format). Inherited accounts from parent groups are excluded.
+
+### Parent group role mapping
+
+`group.getParentGroups()` returns the parent `Group[]` but does NOT include the role-mapping (the "cap" role). To check the parent role, read the raw group:
+
+```ts
+const parentKey = `parent_${parentGroup.$jazz.raw.id}`;
+const parentRole = group.$jazz.raw.get(parentKey);
+// parentRole is one of: "reader" | "writer" | "admin" | "manager" | "extend" | "revoked"
+```
+
+This is an internal API path (accessing `$jazz.raw`). If jazz-tools exposes a cleaner method in a future version, prefer that.
+
+### Well-formed WriteGroup validation
+
+A per-author WriteGroup is "well-formed" if:
+1. The conversationGroup is a parent with role `"reader"` (cap at reader for inherited members)
+2. Exactly one direct admin (the author — who created this WriteGroup and has exclusive write access)
+3. No extra direct "writer" accounts (would mean others can write)
+
+```ts
+function isWellFormedWriteGroup(group: Group, conversationGroup: Group): boolean {
+  // 1. Check parent role
+  const parentRole = group.$jazz.raw.get(`parent_${conversationGroup.$jazz.raw.id}`);
+  if (parentRole !== "reader") return false;
+
+  // 2. Exactly one direct admin
+  const admins = group.getDirectMembers().filter(m => m.role === "admin");
+  if (admins.length !== 1) return false;
+
+  // 3. No extra writers
+  const writers = group.getDirectMembers().filter(m => m.role === "writer");
+  if (writers.length !== 0) return false;
+
+  return true;
+}
+```
