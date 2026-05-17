@@ -58,9 +58,12 @@ export async function editMessage(
   message: any,
   newBody: string,
 ): Promise<void> {
-  message.body = newBody;
-  message.edited = true;
-  message.editedAt = new Date();
+  // Use $jazz.set for reliable CoMap mutations that propagate through Jazz sync.
+  // Direct property assignment on Jazz CoMap proxies may silently no-op for
+  // functional co.map() schemas where getDescriptor returns undefined.
+  message.$jazz.set("body", newBody);
+  message.$jazz.set("edited", true);
+  message.$jazz.set("editedAt", new Date());
 }
 
 /**
@@ -69,8 +72,8 @@ export async function editMessage(
  * Transaction-log retention is a documented threat-model property.
  */
 export async function deleteMessage(_me: Account, message: any): Promise<void> {
-  message.body = "";
-  message.deleted = true;
+  message.$jazz.set("body", "");
+  message.$jazz.set("deleted", true);
 }
 
 /**
