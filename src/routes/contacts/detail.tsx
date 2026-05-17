@@ -10,6 +10,7 @@ import { useAccount } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
+import { findOrCreate1to1Conversation } from "@/jazz/conversation";
 
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
@@ -42,6 +43,12 @@ export function ContactDetailRoute() {
         </Button>
       </div>
     );
+  }
+
+  async function handleStartChat() {
+    if (!contact) return;
+    const conversation = await findOrCreate1to1Conversation(me, contact);
+    navigate(`/conversations/${(conversation as any).$jazz.id}`);
   }
 
   function handleRemove() {
@@ -81,13 +88,21 @@ export function ContactDetailRoute() {
         </div>
       </div>
 
-      <Button
-        variant="destructive"
-        onClick={handleRemove}
-        data-testid="contact-remove-btn"
-      >
-        Remove contact
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          onClick={() => void handleStartChat()}
+          data-testid="start-chat-btn"
+        >
+          Start chat
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={handleRemove}
+          data-testid="contact-remove-btn"
+        >
+          Remove contact
+        </Button>
+      </div>
     </div>
   );
 }
