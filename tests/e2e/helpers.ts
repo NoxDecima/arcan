@@ -30,15 +30,14 @@ export async function capturePassphraseWords(page: Page): Promise<string[]> {
 }
 
 /**
- * Completes the full account creation flow starting from the welcome screen.
+ * Walks the onboarding form steps up to and including clicking "Finish",
+ * but does NOT wait for home-main. Useful when the caller expects a
+ * post-registration redirect (e.g. invite replay) that navigates away
+ * before home-main ever renders.
  *
- * Precondition: page is at `/` (welcome step visible).
- * Postcondition: page is on the home screen (`home-main` visible).
- *
- * Returns the 24-word passphrase string (space-joined) and the display name
- * used, so callers can verify persistence / restore.
+ * Returns the passphrase words and display name for downstream assertions.
  */
-export async function createAccount(
+export async function fillOnboardingForm(
   page: Page,
   displayName = "Test User",
 ): Promise<{ phrase: string; displayName: string }> {
@@ -67,8 +66,26 @@ export async function createAccount(
   await page.getByTestId("display-name-input").fill(displayName);
   await page.getByTestId("finish-onboarding-btn").click();
 
+  return { phrase: words.join(" "), displayName };
+}
+
+/**
+ * Completes the full account creation flow starting from the welcome screen.
+ *
+ * Precondition: page is at `/` (welcome step visible).
+ * Postcondition: page is on the home screen (`home-main` visible).
+ *
+ * Returns the 24-word passphrase string (space-joined) and the display name
+ * used, so callers can verify persistence / restore.
+ */
+export async function createAccount(
+  page: Page,
+  displayName = "Test User",
+): Promise<{ phrase: string; displayName: string }> {
+  const result = await fillOnboardingForm(page, displayName);
+
   // Wait for home — Jazz initialization can take a few seconds
   await page.getByTestId("home-main").waitFor({ timeout: 15_000 });
 
-  return { phrase: words.join(" "), displayName };
+  return result;
 }

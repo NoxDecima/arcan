@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, fillOnboardingForm } from "./helpers";
 
 /**
  * E2E: Invite link received before sign-in triggers onboarding, then replays.
@@ -40,8 +40,12 @@ test("invite link opens onboarding then replays after sign-in", async ({ browser
       pageA.getByRole("heading", { name: /Welcome to Jazz Messanger/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Complete account creation as Alice
-    await createAccount(pageA, "Alice");
+    // Complete account creation as Alice.
+    // Use fillOnboardingForm (not createAccount) because ProfileStep will call
+    // window.location.assign("/invite#...") immediately after registerNewAccount,
+    // navigating away before home-main ever appears. We assert on the invite
+    // screen instead of home-main.
+    await fillOnboardingForm(pageA, "Alice");
 
     // After sign-in, ProfileStep replays the stashed invite URL via location.assign.
     // Alice should land on the invite accept screen showing Bob as inviter.
