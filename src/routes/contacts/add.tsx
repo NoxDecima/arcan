@@ -35,11 +35,15 @@ export function ContactAddRoute() {
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Synchronous guard prevents React StrictMode's double-invocation from
+  // creating two Invitations before the first setState resolves.
+  const creationStartedRef = useRef(false);
 
   // Step 1: create invitation once account is loaded
   useEffect(() => {
     if (!me.$isLoaded) return;
-    if (issued) return;
+    if (creationStartedRef.current) return;
+    creationStartedRef.current = true;
 
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
 
@@ -49,6 +53,7 @@ export function ContactAddRoute() {
         setPhase("waiting");
       })
       .catch((err: unknown) => {
+        creationStartedRef.current = false; // allow retry on error
         setErrorMsg(err instanceof Error ? err.message : String(err));
         setPhase("error");
       });

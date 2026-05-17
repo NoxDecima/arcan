@@ -50,6 +50,9 @@ export function InitiatorStep() {
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Synchronous guard prevents React StrictMode's double-invocation from
+  // creating two EphemeralPairing CoValues before the first setState resolves.
+  const creationStartedRef = useRef(false);
 
   // Derived auth context (reading secretSeed from authSecretStorage)
   const getAuthContext = useCallback(() => {
@@ -72,7 +75,8 @@ export function InitiatorStep() {
   // Step 1: create pairing invite once account is loaded
   useEffect(() => {
     if (!me.$isLoaded) return;
-    if (invitation) return; // already created
+    if (creationStartedRef.current) return;
+    creationStartedRef.current = true;
 
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
 
@@ -82,6 +86,7 @@ export function InitiatorStep() {
         setPhase("waiting");
       })
       .catch((err: unknown) => {
+        creationStartedRef.current = false; // allow retry on error
         setErrorMsg(err instanceof Error ? err.message : String(err));
         setPhase("error");
       });
