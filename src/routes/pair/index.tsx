@@ -24,11 +24,6 @@ export function PairRoute() {
           <h1 className="text-xl font-bold">
             {role === "initiator" ? "Link new device" : "Join account"}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {role === "initiator"
-              ? "Show this QR code on the device you want to add."
-              : "Scan the QR code shown on your existing device."}
-          </p>
         </div>
         {role === "initiator" ? <InitiatorStep /> : <ResponderStep />}
       </div>
