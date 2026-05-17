@@ -16,6 +16,14 @@
 - Migrated routing from state machine to `react-router-dom`; `/pair`, `/invite`, `/contacts/add`, `/contacts/:id` all work via direct URL entry.
 - New e2e tests: device pairing, contact invitation, invite-before-signin replay.
 
+### Slice 2 round 3 fixes
+
+- Switched pairing protocol from secretSeed transfer to accountSecret (AgentSecret) transfer. Sidesteps the secretSeed clobbering bug that affected repeated pairings within a single session.
+  - Trade-off: paired devices cannot display the passphrase via `getCurrentAccountPassphrase()`. The original device retains this capability. Document as a known property.
+- Added "Back to home" button on the initiator's pair-complete screen.
+- Added "Sign out" button in Settings → Account that clears local credentials and returns to onboarding.
+- Added soft device revocation in Settings → Devices. Marks DeviceRecord.revoked = true and hides from the list. Full cryptographic revocation (account secret rotation) deferred to E1.1.
+
 ### Slice 2 known limitations
 
 - Conversations are not yet created on invite acceptance — `Contact.linkedConversation` stays null. Slice 3 adds conversation creation.
