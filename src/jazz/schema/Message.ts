@@ -4,25 +4,25 @@ import { FileBlob } from "./FileBlob";
 /**
  * Message: a single message in a conversation.
  *
- * `replyTo` is a self-referential optional field; the getter pattern is
- * required by jazz-tools to express recursive CoMap schemas (the schema
- * object isn't fully initialised until after the co.map() call completes).
+ * Authorship is structural (the message's create-transaction signer) — NOT a
+ * self-declared field. See §6.2 of the Slice 3a design spec.
  *
- * `attachments` is a co.list of FileBlob entries embedded directly in
- * the map field (not a top-level CoList schema) so the whole list travels
- * with the message.
+ * Edit semantics: body is overwritten in place; `edited` flag set; `editedAt`
+ * records the most recent edit time. Edit history (previous versions) is not
+ * surfaced.
  *
- * Deviations from plan:
- * - Uses co.map() / z.* functional API instead of `class Message extends CoMap`.
- * - `co.ref(CoList.of(co.ref(FileBlob)))` becomes `co.list(FileBlob)` inline.
- * - `co.optional.ref(Message)` becomes a getter returning `Message.optional()`.
+ * Delete semantics: body is cleared (set to empty string); `deleted` flag set.
+ * Body is no longer trusted; the renderer shows a "This message was deleted"
+ * placeholder. Transaction-log retention is a documented threat-model property.
  */
 export const Message = co.map({
   sentAt: z.date(),
   body: z.string(),
   attachments: co.list(FileBlob),
+  edited: z.boolean().optional(),
+  editedAt: z.date().optional(),       // NEW
+  deleted: z.boolean().optional(),     // NEW
   get replyTo() {
     return Message.optional();
   },
-  edited: z.boolean().optional(),
 });
