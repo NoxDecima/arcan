@@ -672,3 +672,301 @@ The following items in the original Phase C plan need to be updated based on ver
 - **Error codes for invalid passphrase word count or checksum**: `logIn` throws a plain `Error` with message `"Invalid passphrase"` for any mnemonic parse failure. There is no structured error with a code distinguishing "wrong word" from "wrong length" from "bad checksum". ⚠️ All three map to the same error.
 - **Key rotation on `removeMember`**: The `removeMember` method calls `cojson`'s `raw.removeMember`. Whether this rotates encryption keys is a cojson-level detail not surfaced in jazz-tools types. ⚠️ unverified — check during implementation.
 - **`co.group()` schema definer**: `coGroupDefiner` exists (exported as `co.group`) but returns a `GroupSchema` with no `.create()` signature documented in the `.d.ts`. The imperative `Group.create()` class method is the verified path. ⚠️ Use `Group` from `"jazz-tools"`, not `co.group()`, for creating groups.
+
+---
+
+## 11. Pubkey Extraction (verified 2026-05-16, jazz-tools 0.20.18)
+
+### Finding
+
+There is no single `account.pubkeyHex` getter in jazz-tools. The Ed25519
+signing public key is accessible via the `ControlledAccountOrAgent` returned
+by `localNode.getCurrentAgent()`.
+
+### API path
+
+```ts
+import { base58 } from "@scure/base";
+import type { Account } from "jazz-tools";
+
+function getAccountPubkeyHex(account: Account): string {
+  const agent = account.$jazz.localNode.getCurrentAgent();
+  // SignerID format: "signer_z${base58_encoded_32_byte_ed25519_pubkey}"
+  const signerID = agent.currentSignerID();
+  const base58Part = signerID.slice("signer_z".length);
+  const pubkeyBytes = base58.decode(base58Part);
+  // Convert to 64-char lowercase hex
+  return Array.from(pubkeyBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+```
+
+### Key details
+
+- `me.$jazz.localNode` is exposed by `CoValueJazzApi` (base of `AccountJazzApi`).
+  Its getter is `get localNode(): LocalNode` returning `this.raw.core.node`.
+- `localNode.getCurrentAgent()` returns `ControlledAccountOrAgent` from cojson,
+  which always has `currentSignerID(): SignerID`.
+- `SignerID = signer_z${string}` where the suffix is base58-encoded raw bytes.
+- The underlying encoding uses `@scure/base`'s `base58` (NOT z-base32 — the `z`
+  prefix is just a naming convention in cojson).
+- Ed25519 public keys are exactly 32 bytes → 64 hex chars.
+- `@scure/base` is a transitive dependency of `jazz-tools` (via `cojson`) and
+  safe to import directly.
+
+### Why not use the account ID?
+
+`me.$jazz.id` (`co_z${base58}`) is the BLAKE3 hash of the initial agent
+secret — it is NOT the raw Ed25519 public key. Do not use it for pubkey
+derivation.
+
+---
+
+## 12. Session Fingerprint (verified 2026-05-16, jazz-tools 0.20.18)
+
+### Finding
+
+`me.$jazz.sessionID` is the stable session fingerprint. It is set in
+`AccountJazzApi` when `isLocalNodeOwner === true` (i.e. this is the signed-in
+user's account).
+
+### API path
+
+```ts
+import type { Account } from "jazz-tools";
+
+function getCurrentSessionFingerprint(account: Account): string {
+  const sessionID = account.$jazz.sessionID;
+  if (!sessionID) {
+    throw new Error("Not the local node owner");
+  }
+  return sessionID;
+}
+```
+
+### Key details
+
+- `SessionID` format (from cojson): `${RawAccountID}_session_z${base58_nonce}`
+  (active sessions) or `${RawAccountID}_session_d${base58_nonce}$` (deleted).
+- The session ID is created once per node startup and stored in localStorage
+  alongside account credentials. It is stable across page reloads for the
+  same device + account pair.
+- `me.$jazz.sessionID` is `SessionID | undefined` in the TypeScript type.
+  It is `undefined` only when `isLocalNodeOwner === false`, which never
+  happens for the signed-in `me` account.
+- Source: `AccountJazzApi` constructor in `chunk-MIPBSAS7.js`:
+  ```js
+  this.isLocalNodeOwner = this.raw.id === this.localNode.getCurrentAgent().id;
+  if (this.isLocalNodeOwner) {
+    this.sessionID = this.localNode.currentSessionID;
+  }
+  ```
+
+---
+
+## 13. Raw-Secret Account Login
+
+> Verified against `node_modules/jazz-tools/dist/` on 2026-05-16.  
+> Relevant to Slice 2 QR multi-device pairing (Phase D).
+
+### The question
+
+Given a raw 32-byte `secretSeed` (`Uint8Array`) — the kind that is stored inside
+`AuthSecretStorage` and that a BIP-39 passphrase encodes — how do you log in to
+an existing Jazz account on a fresh browser session without going through the
+passphrase derivation step?
+
+### Finding: there IS a clean public API
+
+The supported path uses two public exports from `jazz-tools`:
+1. **`AuthSecretStorage`** — the credential store that `JazzReactProvider` reads on mount.
+2. **`cojsonInternals`** (re-exported from `cojson`) — for deriving `accountID` from the
+   secret when you do not already know the `accountID`.
+
+And one internal hook (exported from `jazz-tools/react-core`):
+- **`useJazzContextValue`** — gives access to the live `authenticate` function.
+
+### The two-step API path
+
+#### Step A (preferred): write credentials into `AuthSecretStorage`, then call `authenticate`
+
+This is exactly what `PassphraseAuth.logIn` does internally
+(`dist/index.js` lines 386-410):
+
+```ts
+// Pseudocode of PassphraseAuth.logIn — the raw-secret equivalent is identical
+// except step 1 is skipped (no bip39.mnemonicToEntropy call needed).
+
+const secretSeed: Uint8Array = /* 32 bytes received from QR pairing */;
+
+// 1. Derive the AgentSecret from the raw seed
+const accountSecret: AgentSecret = crypto.agentSecretFromSecretSeed(secretSeed);
+
+// 2. Derive the deterministic accountID
+const accountID = cojsonInternals.idforHeader(
+  cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, crypto),
+  crypto
+);
+
+// 3. Call the authenticate function from the React context
+await authenticate({ accountID, accountSecret });
+
+// 4. Persist the credentials so the next page load restores them automatically
+await authSecretStorage.set({
+  accountID,
+  secretSeed,        // optional but keeps secretSeed available for future signUp/passphrase reads
+  accountSecret,
+  provider: "passphrase",  // or a custom string like "qr-pairing"
+});
+```
+
+#### Types
+
+```ts
+import type { AgentSecret } from "cojson";
+import { AuthSecretStorage, type AuthSetPayload, cojsonInternals } from "jazz-tools";
+import type { AuthCredentials } from "jazz-tools";   // from dist/tools/types.d.ts
+
+// AuthCredentials (passed to authenticate):
+type AuthCredentials = {
+  accountID: ID<Account>;
+  secretSeed?: Uint8Array;
+  accountSecret: AgentSecret;          // `${SealerSecret}/${SignerSecret}` formatted string
+  provider?: "anonymous" | "demo" | "passkey" | "passphrase" | string;
+};
+
+// AgentSecret (from cojson):
+type AgentSecret = `${SealerSecret}/${SignerSecret}`;  // NOT raw bytes — a formatted string
+
+// AuthSetPayload (passed to authSecretStorage.set):
+type AuthSetPayload = {
+  accountID: ID<Account>;
+  secretSeed?: Uint8Array;             // the 32-byte raw seed (optional but recommended)
+  accountSecret: AgentSecret;
+  provider: "anonymous" | "clerk" | "betterauth" | "demo" | "passkey" | "passphrase" | string;
+};
+```
+
+#### What the QR pairing should transfer
+
+The QR payload (sealed-boxed) must contain at least **either**:
+
+| Option | Transfer | Receiver derives |
+|--------|----------|-----------------|
+| A (preferred) | `secretSeed: Uint8Array` (32 bytes) | `accountSecret` via `crypto.agentSecretFromSecretSeed(secretSeed)`, then `accountID` via `cojsonInternals` |
+| B | `accountSecret: AgentSecret` (formatted string) + `accountID` | nothing — call `authenticate` directly |
+
+Option A is more compact (32 bytes vs ~80+ chars) and maintains the `secretSeed`
+in `AuthSecretStorage` for future passphrase display.
+
+### How to access `authenticate` and `crypto` in a React component
+
+```ts
+import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react-core";
+import { cojsonInternals } from "jazz-tools";
+import type { AgentSecret } from "cojson";
+
+function usePairingLogin() {
+  const context = useJazzContextValue();    // JazzContextType<Account>
+  const authSecretStorage = useAuthSecretStorage();
+
+  if ("guest" in context) {
+    throw new Error("Cannot pair in guest mode");
+  }
+
+  return async (secretSeed: Uint8Array) => {
+    const crypto = context.node.crypto;
+
+    const accountSecret: AgentSecret = crypto.agentSecretFromSecretSeed(secretSeed);
+    const accountID = cojsonInternals.idforHeader(
+      cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, crypto),
+      crypto
+    ) as ID<Account>;
+
+    // authenticate() triggers JazzContextManager.authenticate(), which tears down
+    // the current anonymous/stale context and boots a new one for this account.
+    await context.authenticate({ accountID, accountSecret });
+
+    // Persist so JazzReactProvider restores on next page load.
+    await authSecretStorage.set({
+      accountID,
+      secretSeed,
+      accountSecret,
+      provider: "qr-pairing",
+    });
+  };
+}
+```
+
+### Alternative: write `AuthSecretStorage` and reload (no hook needed)
+
+If you need to authenticate from outside the React tree (e.g., a service worker
+or a post-message handler), you can write directly to `AuthSecretStorage` and
+hard-reload. The provider reads `authSecretStorage.get()` on mount and boots with
+those credentials automatically:
+
+```ts
+import { AuthSecretStorage, cojsonInternals } from "jazz-tools";
+import type { AgentSecret } from "cojson";
+
+async function loginWithRawSeedAndReload(secretSeed: Uint8Array) {
+  const storage = new AuthSecretStorage();   // uses the same default key as JazzReactProvider
+  const crypto = /* WasmCrypto.create() or obtain from node.crypto */;
+
+  const accountSecret: AgentSecret = crypto.agentSecretFromSecretSeed(secretSeed);
+  const accountID = cojsonInternals.idforHeader(
+    cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, crypto),
+    crypto
+  ) as ID<Account>;
+
+  await storage.set({ accountID, secretSeed, accountSecret, provider: "qr-pairing" });
+  window.location.reload();  // JazzReactProvider picks up credentials on mount
+}
+```
+
+Caveat: `WasmCrypto` requires an async init (`await WasmCrypto.create()`).
+If you already have a Jazz context open, grab `context.node.crypto` instead to
+avoid a second WASM module load.
+
+### Import paths summary
+
+```ts
+// All from the public API — no internals import required
+import { AuthSecretStorage, cojsonInternals, type AuthSetPayload } from "jazz-tools";
+import type { AuthCredentials }  from "jazz-tools";           // re-exported via tools/types.d.ts
+import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react-core";
+// or equivalently:
+import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
+import type { AgentSecret } from "cojson";
+```
+
+### Key caveats for Phase D implementer
+
+1. **`AgentSecret` is NOT raw bytes.** It is a formatted string
+   `"sealerSecret_z…/signerSecret_z…"`. Do not try to transfer it as a `Uint8Array`;
+   either transfer the 32-byte `secretSeed` and re-derive, or transfer the string
+   directly.
+
+2. **`authenticate()` vs `authSecretStorage.set()` ordering matters.**  
+   `PassphraseAuth.logIn` calls `authenticate(...)` first (which triggers
+   `JazzContextManager.authenticate` → `createContext`), then calls
+   `authSecretStorage.set(...)` to persist. `authSecretStorage.set` also
+   emits an `onUpdate` event, but by then the context is already being built.
+   Follow the same order.
+
+3. **`authSecretStorageKey` must match the provider's key.**  
+   If `JazzReactProvider` was given a non-default `authSecretStorageKey`, use
+   `new AuthSecretStorage(thatKey)` or use the `useAuthSecretStorage()` hook
+   (which returns the instance the provider is already using).
+
+4. **The `authenticate` call is idempotent for the same `accountID`.**  
+   `JazzContextManager.authenticate` short-circuits silently if the same account
+   is already authenticated (`context.me.$jazz.id === credentials.accountID`).
+   This is safe but means you will not see a state change event if you call it
+   with the current account's ID.
+
+5. **No `secretSeed` = passphrase display breaks.**  
+   If you omit `secretSeed` from `authSecretStorage.set(...)`, `PassphraseAuth`'s
+   `getCurrentAccountPassphrase()` and `signUp()` will throw `"No credentials found"`.
+   Always include `secretSeed` when you have it.

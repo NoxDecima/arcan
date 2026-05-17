@@ -1,28 +1,22 @@
-import { useAccount } from "jazz-tools/react";
+import { useAccount, useLogOut } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { SafetyNumber } from "@/components/safety-number";
+import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { Button } from "@/components/ui/button";
 
 /**
- * Derives a 64-char hex string from a Jazz account ID for use with
- * formatSafetyNumber().
- *
- * NOTE: This is a Slice 1 placeholder. The account ID (e.g. "co_z123...")
- * is not a 32-byte Ed25519 public key — it is an opaque identifier. In Slice 2
- * the real Ed25519 pubkey will be extracted from the account's key material.
- * For now we extract hex characters from the ID, pad/truncate to 64 chars to
- * satisfy the formatSafetyNumber() input contract.
- */
-function deriveHexFromAccountId(accountId: string): string {
-  const hexOnly = accountId.replace(/[^0-9a-fA-F]/g, "").toLowerCase();
-  // Pad with zeros if shorter than 64 chars, truncate if longer.
-  return hexOnly.padEnd(64, "0").slice(0, 64);
-}
-
-/**
- * AccountSection: shows the user's safety number derived from their account ID.
+ * AccountSection: shows the user's safety number derived from their
+ * Ed25519 signing public key, plus a sign-out action.
  */
 export function AccountSection() {
   const me = useAccount(JazzMessangerAccount);
+  const logOut = useLogOut();
+
+  function handleSignOut() {
+    if (!confirm("Sign out? You'll need your passphrase to sign back in. Local data will be cleared.")) return;
+    logOut();
+    // After logout, App.tsx will detect !me and render OnboardingRoute.
+  }
 
   if (!me.$isLoaded) {
     return (
@@ -33,7 +27,7 @@ export function AccountSection() {
     );
   }
 
-  const fingerprintHex = deriveHexFromAccountId(me.$jazz.id);
+  const fingerprintHex = getAccountPubkeyHex(me);
 
   return (
     <section>
@@ -42,6 +36,14 @@ export function AccountSection() {
         <p className="text-sm text-gray-600">Your safety number:</p>
         <SafetyNumber fingerprintHex={fingerprintHex} />
       </div>
+      <Button
+        variant="outline"
+        onClick={handleSignOut}
+        data-testid="sign-out-btn"
+        className="mt-4"
+      >
+        Sign out
+      </Button>
     </section>
   );
 }

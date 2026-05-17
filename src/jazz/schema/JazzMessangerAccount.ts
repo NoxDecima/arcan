@@ -2,6 +2,7 @@ import { co, z, Group } from "jazz-tools";
 import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { Invitation } from "./Invitation";
+import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
  * JazzMessangerAccount: the root account schema for the application.
@@ -88,8 +89,9 @@ export const JazzMessangerAccount = co.account({
 
     // Add a device record for the device on which the account was created.
     // This runs only once (guarded by the has("root") check above).
-    // sessionFingerprint uses crypto.randomUUID() as a placeholder; the
-    // Jazz session identifier is not exposed as a public API in 0.20.18.
+    // sessionFingerprint uses the Jazz SessionID, which is stable for the
+    // current device+account pair across page reloads (until local storage
+    // is cleared or the user logs out). See src/auth/session.ts.
     const now = new Date();
     const ua =
       typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
@@ -100,20 +102,21 @@ export const JazzMessangerAccount = co.account({
           label,
           addedAt: now,
           lastSeenAt: now,
-          sessionFingerprint: crypto.randomUUID(),
+          sessionFingerprint: getCurrentSessionFingerprint(me),
           revoked: false,
         },
         { owner: me },
       ),
     );
   }
+
 });
 
 /**
  * Derives a human-readable device label from a User-Agent string.
  * Returns a string like "Firefox browser", "Chrome browser", etc.
  */
-function deriveDeviceLabel(ua: string): string {
+export function deriveDeviceLabel(ua: string): string {
   if (/Firefox\//i.test(ua)) return "Firefox browser";
   if (/Edg\//i.test(ua)) return "Edge browser";
   if (/OPR\//i.test(ua)) return "Opera browser";

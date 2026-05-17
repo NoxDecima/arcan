@@ -57,6 +57,14 @@ export function ProfileStep({ phrase, onBack }: ProfileStepProps) {
     setError(null);
     try {
       await auth.registerNewAccount(phrase, displayName.trim());
+      // Check for a stashed /invite fragment from a pre-auth invite visit.
+      // If present, replay the invite URL after sign-in so the user lands
+      // directly on the invitation acceptance page.
+      const pendingInviteFragment = sessionStorage.getItem("pending-invite-fragment");
+      if (pendingInviteFragment) {
+        sessionStorage.removeItem("pending-invite-fragment");
+        window.location.assign(`/invite${pendingInviteFragment}`);
+      }
       // Component will unmount as App's useIsAuthenticated flips to true.
       // No explicit navigation needed.
     } catch (err) {
