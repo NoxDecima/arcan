@@ -59,8 +59,8 @@ Contact removal stays local-only (Slice 2 status quo). A separate "Leave convers
 
 | Path | Responsibility |
 |---|---|
-| `src/jazz/conversation.ts` | Conversation lifecycle: `findOrCreate1to1Conversation`, `createWriteGroupForParticipant`, `leaveConversation`. Also exports the generic `createGroupConversation(me, participants, title?)` ready for Slice 3b; 3a only wires the 1:1 entry point. |
-| `src/jazz/messages.ts` | Message lifecycle: `sendMessage`, `editMessage`, `deleteMessage`, `getAuthorAccountIDFromMessage` (derives author from owning WriteGroup, with reverse-lookup against `conversation.authorWriteGroups`). |
+| `src/jazz/conversation.ts` | Conversation lifecycle: `findOrCreate1to1Conversation`, `ensureMyWriteGroup` (self-create per participant on first need), `leaveConversation`. Also exports the generic `createGroupConversation(me, participants, title?)` ready for Slice 3b; 3a only wires the 1:1 entry point. |
+| `src/jazz/messages.ts` | Message lifecycle: `sendMessage` (prepends `ensureMyWriteGroup`), `editMessage`, `deleteMessage`, `getAuthorAccountIDFromMessage` (derives author structurally from the single direct writer of the message's owning Group). |
 | `src/routes/conversations/index.tsx` | Conversation list route (the new "home"). Lists all conversations sorted by last-message timestamp; empty state when none. |
 | `src/routes/conversations/detail.tsx` | Single conversation view: timeline + composer + kebab menu with "Leave conversation". |
 | `src/routes/contacts/index.tsx` | Full-page contacts list (moved out of sidebar). Same data as the previous sidebar list; adds "+ Add contact" button. |
@@ -74,6 +74,7 @@ Contact removal stays local-only (Slice 2 status quo). A separate "Leave convers
 | Path | Change |
 |---|---|
 | `src/jazz/schema/Message.ts` | Add `deleted: z.boolean().optional()` and `editedAt: z.date().optional()` fields |
+| `src/jazz/schema/Conversation.ts` | **Remove** `authorWriteGroups` registry field (Slice 1 vestige). Author derivation is now structural — see §6. Safe to remove because Slice 3a is the first time any Conversation CoValue is created in practice. |
 | `src/components/sidebar.tsx` | Replace contact list rendering with conversation list; "+" button opens `ContactPicker`; add a "Contacts" link in the footer |
 | `src/routes/home/index.tsx` | Becomes a thin redirect to `/conversations` (or absorbed into `ConversationsRoute`) |
 | `src/routes/contacts/detail.tsx` | Add "Start chat" button → calls `findOrCreate1to1Conversation` → navigates |
@@ -100,11 +101,24 @@ export const Message = co.map({
     return Message.optional();
   },
 });
+
+// src/jazz/schema/Conversation.ts — REMOVE the authorWriteGroups field
+export const Conversation = co.map({
+  title: z.string().optional(),
+  kind: z.enum(["dm", "group"]),
+  createdAt: z.date(),
+  createdBy: z.string(),
+  messages: co.list(Message),
+  // authorWriteGroups REMOVED — author is derived structurally from
+  // each WriteGroup's single direct writer member (see §6).
+});
 ```
 
-`Conversation` schema (Slice 1) is unchanged. `Contact.linkedConversation` (Slice 2) gets populated on conversation creation.
+**Why drop `authorWriteGroups`:** the registry was writable by every conversation member (any writer on the ConversationGroup could write any key in the record), which enabled a *registry-poisoning* impersonation attack — Mallory could overwrite `authorWriteGroups[bob] = malloryWGID` and her messages would render as authored by Bob. Self-creating WriteGroups (§5.1, §5.2) eliminates this attack class because author derivation becomes structural: a WriteGroup's single direct writer member is its true author, and that membership cannot be forged.
 
-No new top-level schema. Per-author WriteGroups are runtime `Group` instances, not custom schemas — created via `Group.create({ owner: me })` with parent + member configuration set imperatively.
+`Contact.linkedConversation` (Slice 2) gets populated on conversation creation.
+
+No new top-level schema. Per-author WriteGroups are runtime `Group` instances, not custom schemas — each participant creates their own via `Group.create({ owner: me })` with parent + member configuration set imperatively on first message.
 
 ---
 
@@ -127,21 +141,11 @@ Triggered by Alice clicking "Start chat" on Bob's contact detail page.
    conversationGroup = Group.create({ owner: me })
    conversationGroup.addMember(bob, "admin")   // bob is admin; me is already admin as owner
 
-   aliceWriteGroup = createWriteGroupForParticipant(me, conversationGroup, me)
-   bobWriteGroup   = createWriteGroupForParticipant(me, conversationGroup, bob)
-
-   authorWriteGroups = co.record(z.string(), z.string()).create(
-     { [me.$jazz.id]: aliceWriteGroup.$jazz.id,
-       [bob.$jazz.id]: bobWriteGroup.$jazz.id },
-     { owner: conversationGroup }
-   )
-
    conversation = Conversation.create(
      { kind: "dm",
        createdAt: new Date(),
        createdBy: me.$jazz.id,
-       messages: co.list(Message).create([], { owner: conversationGroup }),
-       authorWriteGroups },
+       messages: co.list(Message).create([], { owner: conversationGroup }) },
      { owner: conversationGroup }
    )
 
@@ -149,15 +153,7 @@ Triggered by Alice clicking "Start chat" on Bob's contact detail page.
    navigate to /conversations/{conversation.$jazz.id}
 ```
 
-Where `createWriteGroupForParticipant(me, conversationGroup, participant)`:
-```
-wg = Group.create({ owner: me })
-wg.extend(conversationGroup, "reader")       // parent: conversationGroup mapped to reader
-wg.addMember(participant, "writer")
-return wg
-```
-
-**Pre-creating Bob's WriteGroup on Alice's side** is deliberate (confirmed during brainstorm). Bob's client doesn't need to do any setup when he opens the conversation for the first time; his WriteGroup is already there waiting for him. The alternative ("each participant creates their own WriteGroup on first message") introduces races and a special first-message code path.
+Note: **no WriteGroups are created at conversation-create time**. Each participant creates their own WriteGroup lazily on their first message send (see §5.4 and §7.1). This scales naturally to groups (Slice 3b: a new member's WriteGroup is created the first time they send), eliminates the "creator-provisions-everyone" coupling, and structurally prevents the registry-poisoning attack described in §4.
 
 ### 5.2 Bob's perspective on receiving the conversation
 
@@ -165,7 +161,34 @@ Bob's client subscribes to all `ConversationGroup`s he's a member of. When Alice
 
 His `bobContact.linkedConversation` for Alice's contact entry is null at this point. When Bob clicks "Start chat" on Alice's contact detail, step 2 of §5.1 finds the existing conversation and populates Bob's local cache. So clicks from either side converge.
 
-### 5.3 Leave conversation
+Bob doesn't yet have a WriteGroup. He can read everything (he's a member of the ConversationGroup), but he can't send a message until `ensureMyWriteGroup` (§5.4) creates one — which happens transparently on his first send.
+
+### 5.3 Self-creating WriteGroups on first message (`ensureMyWriteGroup`)
+
+```
+function ensureMyWriteGroup(me, conversation): Group {
+  conversationGroup = conversation.$jazz.owner
+
+  // Check whether I already have a WriteGroup in this conversation.
+  // We look at the conversation's existing Message owners and find the
+  // one whose direct writer is me. (See §6 for the underlying derivation.)
+  for each message in conversation.messages:
+    owningGroup = message.$jazz.owner
+    if isWriteGroupOwnedBy(owningGroup, me): return owningGroup
+
+  // None exists — create one.
+  wg = Group.create({ owner: me })
+  wg.extend(conversationGroup, "reader")    // inherit readers from the conversation
+  wg.addMember(me, "writer")                // I am the only direct writer
+  return wg
+}
+```
+
+The `for each message in conversation.messages` scan is fine for v1 (small message volume per conversation); a future optimization could cache the participant→WriteGroup mapping in account-local storage, but that's not needed here.
+
+`ensureMyWriteGroup` is idempotent and safe to call before every send.
+
+### 5.4 Leave conversation
 
 In the conversation detail view's kebab menu, "Leave conversation":
 
@@ -183,11 +206,11 @@ In the conversation detail view's kebab menu, "Leave conversation":
 - He can still read history; he just can't send new messages because there's no one to send to
 - He can leave the conversation himself if he wants it out of his list
 
-### 5.4 Conversation list ordering
+### 5.5 Conversation list ordering
 
 Sort by **last message's `sentAt`** descending. Empty conversations (no messages yet) fall back to `Conversation.createdAt`. The renderer reads `conversation.messages[messages.length - 1]?.sentAt ?? conversation.createdAt`.
 
-### 5.5 Title derivation
+### 5.6 Title derivation
 
 `Conversation.kind === "dm"`: title = the other participant's `Profile.displayName`. The "other" is determined by iterating `ConversationGroup` members and excluding `me`. Special case: if I'm the only remaining active member (other party revoked), title shows their display name with a "(left)" suffix.
 
@@ -197,26 +220,38 @@ Sort by **last message's `sentAt`** descending. Empty conversations (no messages
 
 ## 6. Per-author WriteGroup mechanics
 
-The Slice 1 spec (§6.3) introduced this pattern. Slice 3a operationalizes it for the first time:
+The Slice 1 spec (§6.3) introduced this pattern. Slice 3a operationalizes it for the first time, with **self-create** (each participant creates their own WriteGroup on first send — see §5.3):
 
 **Per participant, per conversation:** one `WriteGroup` such that
 - `WriteGroup` has `ConversationGroup` as parent with mapping `"reader"` — every member of the conversation (current and future) inherits `reader` on this WriteGroup
-- `WriteGroup` has the named participant as a direct `writer` member — only that participant can author writes
+- `WriteGroup` has the named participant as the *single direct* `writer` member — only that participant can author writes
+- Implicitly: the named participant is also the WriteGroup's admin (they created it via `Group.create({ owner: me })`)
 
-When a participant sends a message: client creates a `Message` CoValue with `owner: theirWriteGroup`. The Jazz validator on every replica accepts the write because the author is a `writer` on the owning group. Other participants can read (via parent inheritance) but cannot write (no direct `writer` role on someone else's WriteGroup).
+When a participant sends a message: client calls `ensureMyWriteGroup` (§5.3) → creates a `Message` CoValue with `owner: theirWriteGroup`. The Jazz validator on every replica accepts the write because the author is a `writer` on the owning group. Other participants can read (via parent inheritance) but cannot write (no direct `writer` role on someone else's WriteGroup).
 
-**Authorship derivation** in the rendering layer:
+**Authorship derivation — structural, no registry:**
+
 ```ts
-function getAuthorAccountIDFromMessage(message, conversation): string | null {
-  const owningGroupID = message.$jazz.owner.$jazz.id;
-  for (const [accountID, writeGroupID] of Object.entries(conversation.authorWriteGroups)) {
-    if (writeGroupID === owningGroupID) return accountID;
+function getAuthorAccountIDFromMessage(message): string | null {
+  const owningGroup = message.$jazz.owner;
+  if (!(owningGroup instanceof Group)) return null;
+
+  // Read the direct (non-inherited) writer members of this WriteGroup.
+  // For a well-formed WriteGroup there is exactly one.
+  const directWriters = directWriterMembers(owningGroup);
+  if (directWriters.length !== 1) {
+    // Malformed: refuse to render (treat as unknown author).
+    return null;
   }
-  return null;  // unexpected — message's owner isn't a registered WriteGroup
+  return directWriters[0].$jazz.id;
 }
 ```
 
-The `Message` schema has **no `author` field**. Author is computed structurally. A malicious participant cannot fake authorship because they can't create a `Message` owned by someone else's WriteGroup.
+`directWriterMembers(group)` reads the Group's member list and filters to those with role `writer` whose membership is set *directly* (not inherited via parent). The exact Jazz API for distinguishing direct vs inherited members is verified during implementation. If Jazz doesn't expose this distinction cleanly, the fallback is to use the WriteGroup's admin set (which is also length-1 for self-created WriteGroups by convention, and is not subject to parent inheritance for admin role — verify).
+
+**Why this is forgery-resistant:** Mallory cannot create a Group with Bob as the single direct writer AND have it pass renderer validation, because creating the Group requires *her* to sign the create transaction — making her (not Bob) the structural creator/admin. Even if she adds Bob as the direct writer, the Group's admin set is Mallory, not Bob, and the structural mismatch (`directWriters[0] !== admins[0]`) is detectable. The renderer treats any WriteGroup that doesn't have `directWriters.length === 1 && directWriters[0] === admins[0]` as malformed and refuses to render its messages.
+
+The `Message` schema has **no `author` field**. Author is computed structurally from the WriteGroup's membership shape.
 
 ---
 
@@ -228,8 +263,7 @@ User types in composer, hits Enter (Shift-Enter = newline):
 
 ```
 async function sendMessage(me, conversation, body):
-  myWriteGroupID = conversation.authorWriteGroups[me.$jazz.id]
-  myWriteGroup   = (resolve Group by ID)
+  myWriteGroup = ensureMyWriteGroup(me, conversation)   // creates on first call per conversation
   message = Message.create(
     { sentAt: new Date(),
       body,
@@ -240,6 +274,8 @@ async function sendMessage(me, conversation, body):
 ```
 
 UI clears composer; message appears in timeline immediately (optimistic, no per-message pending indicator per fork #5). Connection-status banner conveys the broader "is sync happening" signal.
+
+**First-send overhead:** the very first message a participant sends in a conversation is a 2-write operation (create WriteGroup + create Message). Both happen in the same logical action; on failure mid-way (rare), the worst case is an orphan WriteGroup with no messages — harmless. Subsequent sends are O(1) once `ensureMyWriteGroup` finds the existing WriteGroup via the §5.3 scan.
 
 ### 7.2 Edit
 
@@ -387,7 +423,7 @@ Slice 3a is complete when all of the following are true:
 
 ## 11. Open risks
 
-1. **Pre-creating Bob's WriteGroup on Alice's side requires Alice to have permission to do so.** Creating a `Group` is unrestricted, but configuring its parent and direct writer requires that Alice be the owner. Verify the Jazz API supports `wg.addMember(otherAccount, "writer")` from a Group whose owner is `me` — should be fine since Alice is the owner, but worth confirming during implementation.
+1. **Author derivation requires distinguishing direct from inherited members.** §6's `directWriterMembers(group)` needs the Jazz API to expose direct-vs-inherited member resolution. If the API only returns the resolved member set (including parent-inherited members), every conversation member would appear as a "writer" of each WriteGroup via inheritance subsumption, breaking the length-1 check. Fallback: derive author from the WriteGroup's admin set, which by convention is length-1 for self-created WriteGroups and is not subject to parent inheritance for admin role (verify). If neither works cleanly, dispatch a focused research subagent for this API before committing the renderer code.
 
 2. **Sender's local optimistic render must reconcile with Jazz's actual write completion.** The `Message.create` call returns a CoValue ID immediately; the actual sync to other peers happens asynchronously. The renderer should subscribe to the message's load state and re-render if anything changes (e.g., the sync confirms the write differently than expected). React + Jazz hooks should handle this automatically via `useCoState`.
 
@@ -398,6 +434,8 @@ Slice 3a is complete when all of the following are true:
 5. **"Bob sees Alice left" timeline event is a synthetic UI element, not a CoValue.** It's derived from the ConversationGroup's role-grant transaction history (Alice's role goes to `revoked`). Implementation needs to query that history and render the synthetic event in the right timeline position. The Jazz API for reading a Group's permission history needs verification — if not exposed cleanly, the fallback is to display a static "[Member left]" indicator at the bottom of the timeline rather than positioned at the exact transaction time. The full version of this is a 3b polish task; 3a can ship with the simple fallback if the API requires hunting.
 
 6. **react-router-dom param parsing.** `/conversations/:id` — verify the `:id` matches Jazz's CoValue ID format (`co_z…`) without URL-encoding surprises.
+
+7. **Removal of `Conversation.authorWriteGroups` is a schema change.** Slice 3a removes a Slice-1 field. Safe because no Conversation CoValue has ever been created (Slice 2 explicitly deferred conversation creation), but the test for the Conversation schema (`tests/unit/jazz/schema/Conversation.test.ts`) will need updating to reflect the new shape.
 
 ---
 
