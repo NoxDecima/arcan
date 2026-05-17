@@ -11,15 +11,19 @@
  * nacl.box uses X25519-XSalsa20-Poly1305.
  *
  * ## Account secret transfer
- * The QR payload contains the 32-byte secretSeed (Uint8Array), NOT the AgentSecret string.
- * The responder reconstructs AgentSecret via crypto.agentSecretFromSecretSeed(secretSeed).
+ * The initiator reads accountSecret (AgentSecret string) from authSecretStorage and seals it
+ * directly for the responder. The responder calls authenticate() with the unsealed AgentSecret.
+ * This approach sidesteps the secretSeed clobbering bug: Jazz reliably preserves accountSecret
+ * in authSecretStorage across all session events, so no separate localStorage key is needed.
+ *
+ * Trade-off: paired devices cannot display the passphrase via getCurrentAccountPassphrase().
+ * The original device retains that capability. This is a known limitation documented in CHANGELOG.
  */
 
 import nacl from "tweetnacl";
 import { Group } from "jazz-tools";
 import { EphemeralPairing } from "./schema/EphemeralPairing";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
-import { getPairingSeed, setPairingSeed } from "@/auth/pairing-seed";
 import type { AgentSecret } from "cojson";
 import { cojsonInternals } from "jazz-tools";
 import type { Account } from "jazz-tools";
@@ -260,22 +264,24 @@ export async function createPairingInvite(
 }
 
 /**
- * Initiator step 2: wrap the account's secretSeed for the responder.
+ * Initiator step 2: wrap the account's AgentSecret for the responder.
  *
- * Reads the responder's pubkey from the pairing CoValue, seals the
- * initiator's 32-byte secretSeed using nacl.box, and writes the result
- * to `pairing.wrappedAccountSecret`.
+ * Reads the accountSecret (AgentSecret string) from authSecretStorage, seals it
+ * using nacl.box, and writes the result to `pairing.wrappedAccountSecret`.
+ *
+ * Jazz reliably preserves accountSecret in authSecretStorage across all session
+ * events (unlike secretSeed which was clobbered on session reconnect).
  *
  * @param account - the initiator's account
  * @param pairing - the EphemeralPairing CoValue
  * @param ephemeralPrivkeyHex - hex of the initiator's ephemeral nacl private key
- * @param authContext - hook-supplied auth context to read secretSeed
+ * @param authContext - hook-supplied auth context to read accountSecret
  */
 export async function wrapAccountSecretForResponder(
   _account: Account,
   pairing: ReturnType<typeof EphemeralPairing.create>,
   ephemeralPrivkeyHex: string,
-  _authContext: PairingAuthContext,
+  authContext: PairingAuthContext,
 ): Promise<void> {
   const responderPubkeyHex = pairing.responderPubkey;
   if (!responderPubkeyHex) {
@@ -285,17 +291,16 @@ export async function wrapAccountSecretForResponder(
   const responderPubkey = hexToBytes(responderPubkeyHex);
   const initiatorPrivkey = hexToBytes(ephemeralPrivkeyHex);
 
-  // Read the secretSeed from our dedicated localStorage key — this survives
-  // Jazz session refresh/reconnect events that clobber authSecretStorage.
-  const storedSeed = getPairingSeed();
-  if (!storedSeed) {
-    throw new Error("No secretSeed found in authSecretStorage — cannot wrap account secret");
+  // Read accountSecret from authSecretStorage — Jazz reliably preserves this
+  // field across all session events (unlike secretSeed which was clobbered).
+  const stored = await authContext.authSecretStorage.get();
+  const accountSecret = stored?.accountSecret;
+  if (!accountSecret) {
+    throw new Error("No accountSecret available; please log out and log in again");
   }
 
-  // Encode secretSeed as hex string to pass through sealForRecipient
-  const secretSeedHex = bytesToHex(storedSeed);
-
-  const wrapped = sealForRecipient(secretSeedHex, responderPubkey, initiatorPrivkey);
+  // Seal the AgentSecret string directly (it is already a string)
+  const wrapped = sealForRecipient(accountSecret as string, responderPubkey, initiatorPrivkey);
   (pairing as any).$jazz.set("wrappedAccountSecret", wrapped);
 }
 
@@ -405,16 +410,10 @@ export async function claimAccountFromPairing(
   const initiatorNaclPubkey = hexToBytes(initiatorNaclPubkeyHex);
   const responderPrivkey = hexToBytes(responderPrivkeyHex);
 
-  // Unseal the secretSeed hex
-  const secretSeedHex = unsealFromSender(wrapped, initiatorNaclPubkey, responderPrivkey);
-  const secretSeed = hexToBytes(secretSeedHex);
+  // Unseal the accountSecret (AgentSecret string) directly — no hex/bytes intermediate
+  const accountSecret = unsealFromSender(wrapped, initiatorNaclPubkey, responderPrivkey) as AgentSecret;
 
-  // Persist seed to our dedicated key immediately — this ensures the responder
-  // can also initiate future pairings from this device without losing the seed.
-  setPairingSeed(secretSeed);
-
-  // Derive accountSecret and accountID per jazz-api-notes.md §13
-  const accountSecret: AgentSecret = authContext.crypto.agentSecretFromSecretSeed(secretSeed);
+  // Derive accountID from the AgentSecret per jazz-api-notes.md §13
   // The CryptoProvider type from cojson is not fully intersectable with the
   // PairingAuthContext's crypto shape. Cast through unknown to satisfy tsc -b.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -428,10 +427,11 @@ export async function claimAccountFromPairing(
   // Authenticate (step 3 of the four-step bootstrap)
   await authContext.authenticate({ accountID, accountSecret });
 
-  // Persist credentials (step 4)
+  // Persist credentials (step 4) — omit secretSeed intentionally.
+  // Paired devices cannot display the passphrase via getCurrentAccountPassphrase();
+  // the original device retains that capability. Documented as a known limitation.
   await authContext.authSecretStorage.set({
     accountID,
-    secretSeed,
     accountSecret,
     provider: "qr-pairing",
   });

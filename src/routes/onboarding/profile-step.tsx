@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { usePassphraseAuth } from "jazz-tools/react";
 import { wordlist } from "@scure/bip39/wordlists/english";
-import { mnemonicToEntropy } from "@scure/bip39";
-import { setPairingSeed } from "@/auth/pairing-seed";
 import { Button } from "@/components/ui/button";
 
 interface ProfileStepProps {
@@ -59,17 +57,6 @@ export function ProfileStep({ phrase, onBack }: ProfileStepProps) {
     setError(null);
     try {
       await auth.registerNewAccount(phrase, displayName.trim());
-      // Persist the secretSeed independently so wrapAccountSecretForResponder
-      // can read it even after Jazz's authSecretStorage is overwritten on
-      // session reconnect (see src/auth/pairing-seed.ts for rationale).
-      try {
-        const seed = mnemonicToEntropy(phrase, wordlist);
-        setPairingSeed(seed);
-      } catch {
-        // Non-fatal: seed persistence is a best-effort enhancement.
-        // The account was already created; log and continue.
-        console.warn("[pairing-seed] Failed to persist secretSeed after registerNewAccount");
-      }
       // Check for a stashed /invite fragment from a pre-auth invite visit.
       // If present, replay the invite URL after sign-in so the user lands
       // directly on the invitation acceptance page.
