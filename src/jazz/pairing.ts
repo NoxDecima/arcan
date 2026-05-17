@@ -19,6 +19,7 @@ import nacl from "tweetnacl";
 import { Group } from "jazz-tools";
 import { EphemeralPairing } from "./schema/EphemeralPairing";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getPairingSeed, setPairingSeed } from "@/auth/pairing-seed";
 import type { AgentSecret } from "cojson";
 import { cojsonInternals } from "jazz-tools";
 import type { Account } from "jazz-tools";
@@ -284,14 +285,15 @@ export async function wrapAccountSecretForResponder(
   const responderPubkey = hexToBytes(responderPubkeyHex);
   const initiatorPrivkey = hexToBytes(ephemeralPrivkeyHex);
 
-  // Read the secretSeed from authSecretStorage — this is the 32-byte seed
-  const storedCreds = await authContext.authSecretStorage.get();
-  if (!storedCreds?.secretSeed) {
+  // Read the secretSeed from our dedicated localStorage key — this survives
+  // Jazz session refresh/reconnect events that clobber authSecretStorage.
+  const storedSeed = getPairingSeed();
+  if (!storedSeed) {
     throw new Error("No secretSeed found in authSecretStorage — cannot wrap account secret");
   }
 
   // Encode secretSeed as hex string to pass through sealForRecipient
-  const secretSeedHex = bytesToHex(storedCreds.secretSeed);
+  const secretSeedHex = bytesToHex(storedSeed);
 
   const wrapped = sealForRecipient(secretSeedHex, responderPubkey, initiatorPrivkey);
   (pairing as any).$jazz.set("wrappedAccountSecret", wrapped);
@@ -406,6 +408,10 @@ export async function claimAccountFromPairing(
   // Unseal the secretSeed hex
   const secretSeedHex = unsealFromSender(wrapped, initiatorNaclPubkey, responderPrivkey);
   const secretSeed = hexToBytes(secretSeedHex);
+
+  // Persist seed to our dedicated key immediately — this ensures the responder
+  // can also initiate future pairings from this device without losing the seed.
+  setPairingSeed(secretSeed);
 
   // Derive accountSecret and accountID per jazz-api-notes.md §13
   const accountSecret: AgentSecret = authContext.crypto.agentSecretFromSecretSeed(secretSeed);

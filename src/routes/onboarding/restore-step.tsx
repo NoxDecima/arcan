@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { usePassphraseAuth } from "jazz-tools/react";
 import { wordlist } from "@scure/bip39/wordlists/english";
+import { mnemonicToEntropy } from "@scure/bip39";
 import { validatePassphrase } from "@/auth/passphrase";
+import { setPairingSeed } from "@/auth/pairing-seed";
 import { Button } from "@/components/ui/button";
 
 interface RestoreStepProps {
@@ -55,6 +57,16 @@ export function RestoreStep({ onBack }: RestoreStepProps) {
     setIsRestoring(true);
     try {
       await auth.logIn(trimmed);
+      // Persist the secretSeed independently so wrapAccountSecretForResponder
+      // can read it even after Jazz's authSecretStorage is overwritten on
+      // session reconnect (see src/auth/pairing-seed.ts for rationale).
+      try {
+        const seed = mnemonicToEntropy(trimmed, wordlist);
+        setPairingSeed(seed);
+      } catch {
+        // Non-fatal: seed persistence is a best-effort enhancement.
+        console.warn("[pairing-seed] Failed to persist secretSeed after logIn");
+      }
       // Check for a stashed /invite fragment from a pre-auth invite visit.
       const pendingInviteFragment = sessionStorage.getItem("pending-invite-fragment");
       if (pendingInviteFragment) {
