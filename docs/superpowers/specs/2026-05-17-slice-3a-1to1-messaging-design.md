@@ -60,7 +60,7 @@ Contact removal stays local-only (Slice 2 status quo). A separate "Leave convers
 | Path | Responsibility |
 |---|---|
 | `src/jazz/conversation.ts` | Conversation lifecycle: `findOrCreate1to1Conversation`, `ensureMyWriteGroup` (self-create per participant on first need), `leaveConversation`. Also exports the generic `createGroupConversation(me, participants, title?)` ready for Slice 3b; 3a only wires the 1:1 entry point. |
-| `src/jazz/messages.ts` | Message lifecycle: `sendMessage` (prepends `ensureMyWriteGroup`), `editMessage`, `deleteMessage`, `getAuthorAccountIDFromMessage` (derives author structurally from the single direct writer of the message's owning Group). |
+| `src/jazz/messages.ts` | Message lifecycle: `sendMessage` (prepends `ensureMyWriteGroup`), `editMessage`, `deleteMessage`, `getAuthorAccountIDFromMessage` (derives author from the message's create-transaction signer; well-formedness of the owning WriteGroup is validated separately). |
 | `src/routes/conversations/index.tsx` | Conversation list route (the new "home"). Lists all conversations sorted by last-message timestamp; empty state when none. |
 | `src/routes/conversations/detail.tsx` | Single conversation view: timeline + composer + kebab menu with "Leave conversation". |
 | `src/routes/contacts/index.tsx` | Full-page contacts list (moved out of sidebar). Same data as the previous sidebar list; adds "+ Add contact" button. |
@@ -223,35 +223,88 @@ Sort by **last message's `sentAt`** descending. Empty conversations (no messages
 The Slice 1 spec (§6.3) introduced this pattern. Slice 3a operationalizes it for the first time, with **self-create** (each participant creates their own WriteGroup on first send — see §5.3):
 
 **Per participant, per conversation:** one `WriteGroup` such that
-- `WriteGroup` has `ConversationGroup` as parent with mapping `"reader"` — every member of the conversation (current and future) inherits `reader` on this WriteGroup
+- `WriteGroup` has `ConversationGroup` as parent with mapping `"reader"` — see §6.1 below for what this mapping does and doesn't allow
 - `WriteGroup` has the named participant as the *single direct* `writer` member — only that participant can author writes
 - Implicitly: the named participant is also the WriteGroup's admin (they created it via `Group.create({ owner: me })`)
 
 When a participant sends a message: client calls `ensureMyWriteGroup` (§5.3) → creates a `Message` CoValue with `owner: theirWriteGroup`. The Jazz validator on every replica accepts the write because the author is a `writer` on the owning group. Other participants can read (via parent inheritance) but cannot write (no direct `writer` role on someone else's WriteGroup).
 
-**Authorship derivation — structural, no registry:**
+### 6.1 What the `"reader"` parent mapping enforces (and prevents)
+
+The mapping `"reader"` on the parent link **caps** the inherited role at reader for every ConversationGroup member — including admins:
+
+| Account | Direct role on WG_Bob | Inherited via ConversationGroup | Effective role |
+|---|---|---|---|
+| Bob (owner) | admin + writer | — | admin |
+| Alice (ConversationGroup admin) | none | min(admin, reader) = reader | reader |
+| Carol (ConversationGroup writer) | none | min(writer, reader) = reader | reader |
+
+Consequence — **conversation admins do NOT inherit edit/manage rights on other participants' WriteGroups:**
+
+- Alice can read all of Bob's messages (via the reader inheritance)
+- Alice **cannot** edit or delete Bob's messages — she has no writer role on WG_Bob
+- Alice **cannot** add/remove members of WG_Bob, rotate its readKey, or tombstone it — she has no admin/manager role
+- Alice **can** revoke Bob from the ConversationGroup (she's admin there), which stops Bob's *future* messages from being pushable to `conversation.messages` but does not delete his existing ones
+
+This is a deliberate design property: admin powers are **conversation-scoped** (who's in the conversation) rather than **message-scoped** (what messages exist and what they say). It also rules out a "moderator override" pattern for 3a — admins cannot remove offensive messages on a participant's behalf. For Vision X (small trust circles) this is acceptable; future moderation use cases (E2+) would need a separate role granting per-message override permission, designed in deliberately.
+
+If the parent mapping were `"extend"` instead of `"reader"`, conversation admins would inherit admin rights on every participant's WriteGroup — meaning any admin could rewrite or revoke anyone's history. That power imbalance is exactly what `"reader"` deliberately prevents.
+
+### 6.2 Authorship derivation — from the message's signer, not the Group's structure
+
+**The fundamental author identifier:** every Jazz transaction is signed by the authoring account session key. The signer of a Message's *create* transaction is cryptographically bound to that transaction forever — it's part of the signed history Jazz validates on every replica. No structural manipulation of the WriteGroup after the fact can change who signed the create transaction.
 
 ```ts
 function getAuthorAccountIDFromMessage(message): string | null {
-  const owningGroup = message.$jazz.owner;
-  if (!(owningGroup instanceof Group)) return null;
-
-  // Read the direct (non-inherited) writer members of this WriteGroup.
-  // For a well-formed WriteGroup there is exactly one.
-  const directWriters = directWriterMembers(owningGroup);
-  if (directWriters.length !== 1) {
-    // Malformed: refuse to render (treat as unknown author).
-    return null;
-  }
-  return directWriters[0].$jazz.id;
+  // The signer of the create-transaction of this CoValue is the author.
+  // Jazz exposes this via the CoValue's first-transaction metadata.
+  // Exact accessor (e.g. message.$jazz.createdBy) verified during implementation.
+  return message.$jazz.createdBy ?? null;
 }
 ```
 
-`directWriterMembers(group)` reads the Group's member list and filters to those with role `writer` whose membership is set *directly* (not inherited via parent). The exact Jazz API for distinguishing direct vs inherited members is verified during implementation. If Jazz doesn't expose this distinction cleanly, the fallback is to use the WriteGroup's admin set (which is also length-1 for self-created WriteGroups by convention, and is not subject to parent inheritance for admin role — verify).
+The renderer **additionally** validates the owning Group is a well-formed WriteGroup (as a sanity check, not as the author source):
 
-**Why this is forgery-resistant:** Mallory cannot create a Group with Bob as the single direct writer AND have it pass renderer validation, because creating the Group requires *her* to sign the create transaction — making her (not Bob) the structural creator/admin. Even if she adds Bob as the direct writer, the Group's admin set is Mallory, not Bob, and the structural mismatch (`directWriters[0] !== admins[0]`) is detectable. The renderer treats any WriteGroup that doesn't have `directWriters.length === 1 && directWriters[0] === admins[0]` as malformed and refuses to render its messages.
+```ts
+function isWellFormedWriteGroup(group, conversationGroup): boolean {
+  if (!(group instanceof Group)) return false;
 
-The `Message` schema has **no `author` field**. Author is computed structurally from the WriteGroup's membership shape.
+  // Parent is the conversation's ConversationGroup with mapping "reader"
+  const parents = group.parentExtensions();
+  if (!parents.some(p => p.group === conversationGroup && p.role === "reader")) return false;
+
+  // Single direct writer
+  const directWriters = directWriterMembers(group);
+  if (directWriters.length !== 1) return false;
+
+  // Single direct admin, equal to the direct writer
+  const directAdmins = directAdminMembers(group);
+  if (directAdmins.length !== 1) return false;
+  if (directAdmins[0].$jazz.id !== directWriters[0].$jazz.id) return false;
+
+  return true;
+}
+```
+
+The renderer's flow for each message:
+1. Get `author = getAuthorAccountIDFromMessage(message)`
+2. Verify `isWellFormedWriteGroup(message.$jazz.owner, conversationGroup)`. If not, render with a "[unverified author]" badge or refuse to render entirely (implementer's call — both prevent forgery).
+3. Verify `author` is a current or past member of `conversationGroup`. If not, render with badge / refuse.
+
+### 6.3 Why this defeats the "demote-trick" attack
+
+Without signer-derivation, a structural-only derivation is fooled by post-hoc Group manipulation:
+
+1. T1: Mallory creates WriteGroup WG; she is initial admin + writer.
+2. T2: Mallory writes Message M owned by WG. Validator accepts because she was writer at T2. **M's create transaction is signed by Mallory — forever.**
+3. T3: Mallory adds Bob as admin to WG.
+4. T4: Mallory revokes herself from WG.
+
+End state: WG has Bob as the only direct admin + writer. A *structural* derivation (current `directWriters[0]`) would attribute M to Bob. **Forgery.**
+
+With signer-derivation, `M.$jazz.createdBy === Mallory.id` at any read time. Author = Mallory. Correct attribution. The well-formedness check on WG can flag the group as suspicious (the admin/writer history shows weird churn), but the author truth comes from the signature, not the current shape.
+
+The `Message` schema has **no `author` field**. Author is computed from the signed history, not from any field a writer could populate.
 
 ---
 
@@ -423,7 +476,7 @@ Slice 3a is complete when all of the following are true:
 
 ## 11. Open risks
 
-1. **Author derivation requires distinguishing direct from inherited members.** §6's `directWriterMembers(group)` needs the Jazz API to expose direct-vs-inherited member resolution. If the API only returns the resolved member set (including parent-inherited members), every conversation member would appear as a "writer" of each WriteGroup via inheritance subsumption, breaking the length-1 check. Fallback: derive author from the WriteGroup's admin set, which by convention is length-1 for self-created WriteGroups and is not subject to parent inheritance for admin role (verify). If neither works cleanly, dispatch a focused research subagent for this API before committing the renderer code.
+1. **Author derivation depends on the Jazz API exposing a CoValue's create-transaction signer.** §6.2's `getAuthorAccountIDFromMessage` reads `message.$jazz.createdBy` (or equivalent). This is a fundamental primitive — Jazz must internally know who signed every transaction to validate signatures — so a public accessor almost certainly exists, but the exact API surface needs verification. Likely candidates: `message.$jazz.createdBy`, `cojsonInternals.firstSigner(message)`, or per-transaction iteration. If no clean accessor is exposed, dispatch a focused research subagent (Slice 1 API-survey pattern) before committing the renderer code. The well-formedness validator in §6.2 still requires distinguishing direct vs inherited members; same verification work applies there.
 
 2. **Sender's local optimistic render must reconcile with Jazz's actual write completion.** The `Message.create` call returns a CoValue ID immediately; the actual sync to other peers happens asynchronously. The renderer should subscribe to the message's load state and re-render if anything changes (e.g., the sync confirms the write differently than expected). React + Jazz hooks should handle this automatically via `useCoState`.
 
