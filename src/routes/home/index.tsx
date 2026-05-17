@@ -21,6 +21,15 @@ import { EmptyState } from "@/components/empty-state";
  * creation, guarded by has("root")), so we register it here on first home
  * mount instead.
  *
+ * If a matching record exists but is revoked (the user revoked this device
+ * then re-paired it), un-revoke it and bump lastSeenAt so the device
+ * reappears in the list. Session fingerprints are stable per (device,
+ * account), so without this branch a re-paired revoked device would never
+ * show up again.
+ *
+ * For existing non-revoked records, lastSeenAt is updated to now on each
+ * home mount so the device list reflects accurate activity.
+ *
  * A useRef guard prevents React StrictMode's double-effect from creating two
  * DeviceRecords in development.
  */
@@ -40,14 +49,13 @@ export function HomeRoute() {
 
     try {
       const fingerprint = getCurrentSessionFingerprint(me);
+      const now = new Date();
 
-      // Check whether this session is already recorded
-      const alreadyRegistered = me.root.devices.some(
+      const existing = me.root.devices.find(
         (d) => (d as any).sessionFingerprint === fingerprint,
       );
 
-      if (!alreadyRegistered) {
-        const now = new Date();
+      if (!existing) {
         const ua = typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
         me.root.devices.$jazz.push(
           DeviceRecord.create(
@@ -61,6 +69,13 @@ export function HomeRoute() {
             { owner: me },
           ),
         );
+      } else {
+        // Update last-seen; restore the record if it was previously revoked
+        // (re-pairing a revoked device is a clear "I want it back" signal).
+        if ((existing as any).revoked) {
+          (existing as any).$jazz.set("revoked", false);
+        }
+        (existing as any).$jazz.set("lastSeenAt", now);
       }
     } catch {
       // getCurrentSessionFingerprint can throw if called on a non-local account;
