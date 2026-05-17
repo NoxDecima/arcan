@@ -81,6 +81,13 @@ export function InviteRoute() {
 
     loadInvitationAsAgent(parsed.inviteGroupID, parsed.inviteAgentSecret, "")
       .then((inv) => {
+        // Self-contact guard: catch immediately so the user sees a clear
+        // message before ever reaching the accept button.
+        if ((inv as any).inviterAccountID === (me as any).$jazz?.id) {
+          setErrorMsg("Cannot add yourself as a contact");
+          setPhase("error");
+          return;
+        }
         setInvitation(inv);
         setInviterName((inv as any).inviterDisplayName ?? "Unknown");
         setInviterFingerprint((inv as any).inviterFingerprint ?? "");

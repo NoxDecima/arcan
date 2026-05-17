@@ -186,6 +186,12 @@ export async function acceptInvitationAcceptance(
     throw new Error("Invitation has not been accepted yet — recipient fields are missing");
   }
 
+  // Self-contact guard: refuse if the recipient is the same account as the inviter.
+  const meAccount = account as Account & { $jazz: { id: string } };
+  if (recipientAccountID === meAccount.$jazz.id) {
+    throw new Error("Cannot accept your own invitation");
+  }
+
   const contactBook = (me as any).root?.contactBook;
   if (contactBook) {
     const contact = Contact.create(
@@ -253,6 +259,8 @@ export async function loadInvitationAsAgent(
  *
  * @param account - the recipient's account
  * @param invitation - the loaded Invitation CoValue
+ * @throws Error("Cannot add yourself as a contact") if the invitation was
+ *   created by the same account that is accepting it.
  */
 export async function acceptInvitation(
   account: Account,
@@ -265,6 +273,11 @@ export async function acceptInvitation(
     };
     $jazz: { id: string };
   };
+
+  // Self-contact guard: refuse if the inviter is the same account.
+  if ((invitation as any).inviterAccountID === me.$jazz.id) {
+    throw new Error("Cannot add yourself as a contact");
+  }
 
   const displayName =
     (me as any).profile?.displayName ?? (me as any).profile?.name ?? "Anonymous";
