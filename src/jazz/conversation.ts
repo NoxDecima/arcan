@@ -1,4 +1,4 @@
-import { Group, Account, co } from "jazz-tools";
+import { Group, Account, co, InboxSender } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 
@@ -51,6 +51,20 @@ export async function findOrCreate1to1Conversation(
   );
 
   contact.$jazz.set("linkedConversation", conversation);
+
+  // Notify the other party via their inbox so their sidebar can auto-discover
+  // the conversation without requiring them to navigate to an explicit URL.
+  // If the other account doesn't have an inbox yet (legacy account before
+  // Change 1's migration ran), the catch handles it gracefully — the
+  // conversation is still usable, they just won't auto-discover until
+  // their account is upgraded.
+  try {
+    const sender = await InboxSender.load<typeof conversation>(otherAccountID as any, me);
+    await sender.sendMessage(conversation);
+  } catch (e) {
+    console.warn("[inbox] Failed to deliver conversation to other party's inbox:", e);
+  }
+
   return conversation;
 }
 
