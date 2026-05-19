@@ -1,7 +1,25 @@
 import { useEffect } from "react";
 import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
+import { z } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
+
+/**
+ * Thin notification wrapper sent through the Inbox.
+ *
+ * We cannot send the Conversation directly because `createInboxMessage`
+ * calls `conversationGroup.addMember(bob, "writer")` — and if Bob is
+ * already "admin" in the conversationGroup, cojson throws "Failed to set
+ * role writer to <bobID> (role of current account is admin)".
+ *
+ * Solution: wrap just the conversation's CoValue ID in a new CoMap owned
+ * by a FRESH group where Bob has no prior membership. `createInboxMessage`
+ * adds Bob as "writer" to that fresh group, which succeeds. The inbox
+ * callback then loads the actual Conversation by ID.
+ */
+const ConversationNotification = co.map({
+  conversationID: z.string(),
+});
 
 /**
  * Find or create a 1:1 conversation between `me` and the account referenced
@@ -55,16 +73,36 @@ export async function findOrCreate1to1Conversation(
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.
-  // If the other account doesn't have an inbox yet (legacy account before
-  // Change 1's migration ran), the catch handles it gracefully — the
-  // conversation is still usable, they just won't auto-discover until
-  // their account is upgraded.
-  try {
-    const sender = await InboxSender.load<typeof conversation>(otherAccountID as any, me);
-    await sender.sendMessage(conversation);
-  } catch (e) {
-    console.warn("[inbox] Failed to deliver conversation to other party's inbox:", e);
-  }
+  //
+  // We send a thin ConversationNotification wrapper (not the Conversation
+  // itself) because `createInboxMessage` tries to add the inbox owner as
+  // "writer" to the payload's owning group. Since Bob is already "admin"
+  // in the conversationGroup, that addMember call would throw. The
+  // notification CoMap is owned by a fresh Group where Bob has no prior
+  // membership, so the "writer" grant succeeds.
+  //
+  // Fire-and-forget: we do NOT await this — sendMessage resolves only after
+  // the recipient's inbox subscription processes the message (marks it
+  // processed: true). Awaiting would block findOrCreate1to1Conversation
+  // until Bob is online and his subscription fires.
+  //
+  // If the other account doesn't have an inbox yet, the catch handles it
+  // gracefully — the conversation is still usable.
+  const conversationID = (conversation as any).$jazz.id as string;
+  void (async () => {
+    try {
+      // Create a fresh group for the notification — Bob has no prior role here
+      const notificationGroup = Group.create({ owner: me });
+      const notification = ConversationNotification.create(
+        { conversationID },
+        { owner: notificationGroup },
+      );
+      const sender = await InboxSender.load<typeof notification>(otherAccountID as any, me);
+      await sender.sendMessage(notification);
+    } catch (e) {
+      console.warn("[inbox] Failed to deliver conversation to other party's inbox:", e);
+    }
+  })();
 
   return conversation;
 }
@@ -244,8 +282,8 @@ export function useConversationInboxSubscription(me: any) {
         const inbox = await Inbox.load(me);
         if (cancelled) return;
         unsubscribe = inbox.subscribe(
-          Conversation,
-          async (conversation: any, senderAccountID: any) => {
+          ConversationNotification,
+          async (notification: any, senderAccountID: any) => {
             const contactBook = me?.root?.contactBook;
             if (!contactBook) return;
             // Find the contact whose accountID matches the sender
@@ -254,7 +292,15 @@ export function useConversationInboxSubscription(me: any) {
             );
             if (!contact) return;
             if (contact.linkedConversation) return; // already set — idempotent
+            // Load the actual Conversation by ID from the notification payload
+            const conversationID = notification?.conversationID;
+            if (!conversationID) return;
             try {
+              const conversation = await Conversation.load(conversationID, {
+                loadAs: me,
+                resolve: {},
+              });
+              if (!conversation) return;
               contact.$jazz.set("linkedConversation", conversation);
             } catch (e) {
               console.warn("[inbox] Failed to set linkedConversation:", e);

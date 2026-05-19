@@ -32,10 +32,11 @@ function App() {
   const location = useLocation();
 
   // Load me with enough depth for the inbox subscription to find contacts.
+  // profile: true is required so Inbox.load(me) can read me.profile.inbox.
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
   const me = useAccount(JazzMessangerAccount, {
-    resolve: { root: { contactBook: { $each: true } } },
+    resolve: { profile: true, root: { contactBook: { $each: true } } },
   });
   useConversationInboxSubscription(me);
 
