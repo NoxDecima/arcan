@@ -1089,3 +1089,179 @@ function isWellFormedWriteGroup(group: Group, conversationGroup: Group): boolean
   return true;
 }
 ```
+
+---
+
+## 16. Enumerating My Groups / CoValues (verified 2026-05-19, jazz-tools 0.20.18)
+
+> Survey conducted for Slice 3a Issue 1: Bob's sidebar failing to auto-discover ConversationGroups that Alice created and invited Bob to.
+
+### Question
+
+Does jazz-tools 0.20.18 expose a way to enumerate all CoValues (specifically Groups, or filtered to a given schema type) that the current Account is a member of — without already knowing their IDs?
+
+### Finding: No public enumeration API exists
+
+There is no `useMyGroups()`, `useMyCoValues()`, `allMyGroups()`, `Group.find({ member: me })`, or any indexed query API in jazz-tools 0.20.18.
+
+**What WAS found:**
+
+#### 1. `LocalNode.allCoValues()` — internal, unfiltered
+
+`cojson`'s `LocalNode` (accessible as `me.$jazz.localNode`) exposes:
+
+```ts
+allCoValues(): MapIterator<CoValueCore>
+```
+
+This returns an iterator over every `CoValueCore` that is currently in the node's in-memory store. It is NOT marked `@internal` in `localNode.d.ts` — the method is public on the class — but it operates on `CoValueCore` (the raw cojson primitive), not jazz-tools schema instances.
+
+**To filter for groups you are a member of** you would need to:
+
+1. Filter to cores whose `verified.header.ruleset.type === "group"` (i.e. `PermissionsDef` of type `"group"`).
+2. Reconstruct a `RawGroup` from the core and call `roleOf(myAccountID)` to confirm membership.
+3. Map the surviving IDs up through the jazz-tools `Group` class.
+
+**Critical caveats:**
+
+- `allCoValues()` only reflects CoValues that have already been synced/loaded into the in-memory node. It is NOT an exhaustive membership index — it is a snapshot of what is in memory right now. CoValues the peer knows about but has not yet streamed will be absent.
+- The iterator returns `CoValueCore` objects, not `RawGroup` or any jazz-tools typed value. Further conversion is needed.
+- Relying on this for a UI "conversations list" would be fragile: the set grows over time as the sync server pushes data, with no stable ordering or completion signal.
+
+```ts
+// Illustrative (not production-ready) — shows what is technically possible
+function getKnownGroupIDs(me: Account): string[] {
+  const myID = me.$jazz.raw.id;
+  const result: string[] = [];
+  for (const core of me.$jazz.localNode.allCoValues()) {
+    if (!core.isAvailable()) continue;
+    const header = core.verified?.header;
+    if (header?.ruleset?.type !== "group") continue;
+    // Reconstruct raw group to check role — expensive, requires loading
+    result.push(core.id);
+  }
+  return result;
+}
+```
+
+#### 2. `Inbox` / `InboxSender` — the recommended jazz pattern
+
+jazz-tools 0.20.18 ships a first-class **Inbox** mechanism, publicly exported from `jazz-tools`:
+
+```ts
+import { Inbox, InboxSender } from "jazz-tools";
+```
+
+This is designed for exactly the use case of account-to-account CoValue delivery (e.g. "Alice wants to deliver a ConversationGroup ID to Bob"). It is the canonical solution the Jazz team built for this problem.
+
+**`Inbox` — Bob's side (receiver)**
+
+```ts
+export declare class Inbox {
+  account: Account;
+  messages: MessagesStream;
+  processed: TxKeyStream;
+  failed: FailedMessagesStream;
+  root: InboxRoot;
+
+  subscribe<M extends CoValueClassOrSchema, O extends CoValue | undefined>(
+    Schema: M,
+    callback: (message: InstanceOfSchema<M>, senderAccountID: ID<Account>) => Promise<O | undefined | void>,
+    options?: { concurrencyLimit?: number }
+  ): () => void;
+
+  static load(account: Account): Promise<Inbox>;
+}
+```
+
+Bob loads his own inbox and subscribes; the callback fires for each new message with a fully-typed payload.
+
+**`InboxSender` — Alice's side (sender)**
+
+```ts
+export declare class InboxSender<I extends CoValue, O extends CoValue | undefined> {
+  sendMessage(message: I): Promise<O extends CoValue ? ID<O> : undefined>;
+  static load<I extends CoValue, O extends CoValue | undefined = undefined>(
+    inboxOwnerID: ID<Account>,
+    currentAccount?: Account
+  ): Promise<InboxSender<I, O>>;
+}
+```
+
+Alice loads Bob's inbox sender (using Bob's account ID, which she already knows from the Contact relationship) and sends a message.
+
+**How an Inbox is created:**
+
+The framework reserves `inbox` and `inboxInvite` slots on the default account profile shape:
+
+```ts
+// AccountSchema default profile shape includes:
+inbox?: string;        // CoID of the inbox root
+inboxInvite?: string;  // InboxInvite token for granting send access
+```
+
+The `createInboxRoot(account)` helper sets these up:
+
+```ts
+import { createInboxRoot } from "jazz-tools";  // exported via internal.js
+// (createInboxRoot is not re-exported from the public exports.d.ts;
+//  it may be internal — use Inbox.load(account) which creates the root automatically)
+```
+
+**`InboxRoot` shape:**
+
+```ts
+type InboxRoot = RawCoMap<{
+  messages: CoID<MessagesStream>;   // CoStream of message CoIDs
+  processed: CoID<TxKeyStream>;     // tracks processed tx keys
+  failed: CoID<FailedMessagesStream>;
+  inviteLink: InboxInvite;          // `${messagesStreamID}/${inviteSecret}`
+}>;
+type InboxInvite = `${CoID<MessagesStream>}/${InviteSecret}`;
+```
+
+**Concrete usage sketch for Slice 3a:**
+
+```ts
+// Alice creates a conversation and wants Bob to discover it
+// 1. Alice sends the ConversationGroup CoValue to Bob's inbox
+const sender = await InboxSender.load<ConversationGroup>(
+  bobContactRef.id,       // Bob's account ID (already in Alice's ContactBook)
+  me                      // Alice's account
+);
+await sender.sendMessage(conversationGroupInstance);
+
+// 2. Bob's app subscribes to his inbox on startup
+const inbox = await Inbox.load(me);
+const unsub = inbox.subscribe(ConversationGroup, async (convoGroup, senderID) => {
+  // convoGroup is a fully-loaded ConversationGroup
+  // Update Bob's local contact cache: Contact.linkedConversation = convoGroup.$jazz.id
+  const contact = findContactByAccountID(me, senderID);
+  if (contact) {
+    contact.linkedConversation = convoGroup.$jazz.id;
+  }
+});
+```
+
+### Summary table
+
+| Approach | Available? | Notes |
+|---|---|---|
+| `useMyGroups()` hook | No | Does not exist |
+| `Group.find({ member: me })` | No | No indexed query API |
+| `LocalNode.allCoValues()` | Yes (internal) | Unfiltered, in-memory only, returns `CoValueCore` not typed schema instances; fragile for UI use |
+| `Inbox` / `InboxSender` | Yes (public) | The canonical jazz solution; designed for exactly this push-notification use case |
+
+### Recommendation for Slice 3a Issue 1
+
+**Use `Inbox` / `InboxSender`.**
+
+The `LocalNode.allCoValues()` path is too fragile for a conversations-list feature: it only covers what has been synced into memory, has no completion signal, and requires low-level `CoValueCore` manipulation. It would produce an incomplete list on cold start and would not react cleanly to new invitations arriving while the app is open.
+
+The `Inbox` pattern is the correct jazz-native solution:
+
+1. **Alice** calls `InboxSender.load(bobID)` and `sendMessage(conversationGroup)` after creating the ConversationGroup and adding Bob as a member.
+2. **Bob's app** calls `Inbox.load(me)` at startup and subscribes; the callback fires for each delivered ConversationGroup, at which point Bob can populate `Contact.linkedConversation` and update the sidebar.
+3. This correctly handles cold start (the inbox is a persistent CoStream — messages accumulate and are replayed), concurrent devices, and future group conversations beyond 1:1.
+
+The main implementation work is: (a) initialising an Inbox for every new account in `withMigration`, (b) wiring `InboxSender.load` into the conversation-creation flow, and (c) wiring `Inbox.load` + `subscribe` into the app bootstrap (alongside `useAccount`).
