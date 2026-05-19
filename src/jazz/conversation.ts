@@ -1,4 +1,5 @@
-import { Group, Account, co, InboxSender } from "jazz-tools";
+import { useEffect } from "react";
+import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 
@@ -216,4 +217,59 @@ function isMyDirectWriteGroup(group: Group, me: Account): boolean {
     directAdmins.length === 1 &&
     directAdmins[0].id === (me as any).$jazz.id
   );
+}
+
+/**
+ * React hook: subscribe to the current user's inbox and populate
+ * Contact.linkedConversation when an incoming Conversation matches a
+ * known contact.
+ *
+ * Call this once in the authenticated branch of App.tsx. The inbox is
+ * a persistent CoStream — messages that arrived before the current session
+ * are replayed on subscribe, so Bob will discover conversations even if he
+ * was offline when Alice created one.
+ *
+ * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes
+ * (i.e. on sign-in / account switch), not on every render.
+ */
+export function useConversationInboxSubscription(me: any) {
+  useEffect(() => {
+    if (!me?.$isLoaded) return;
+
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const inbox = await Inbox.load(me);
+        if (cancelled) return;
+        unsubscribe = inbox.subscribe(
+          Conversation,
+          async (conversation: any, senderAccountID: any) => {
+            const contactBook = me?.root?.contactBook;
+            if (!contactBook) return;
+            // Find the contact whose accountID matches the sender
+            const contact = Array.from(contactBook as Iterable<any>).find(
+              (c: any) => c?.contactAccountID === senderAccountID,
+            );
+            if (!contact) return;
+            if (contact.linkedConversation) return; // already set — idempotent
+            try {
+              contact.$jazz.set("linkedConversation", conversation);
+            } catch (e) {
+              console.warn("[inbox] Failed to set linkedConversation:", e);
+            }
+          },
+        );
+      } catch (e) {
+        console.warn("[inbox] Failed to subscribe to inbox:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.$isLoaded, (me as any)?.$jazz?.id]);
 }

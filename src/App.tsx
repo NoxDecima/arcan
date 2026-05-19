@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useIsAuthenticated } from "jazz-tools/react";
+import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
@@ -9,6 +9,8 @@ import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
+import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { useConversationInboxSubscription } from "@/jazz/conversation";
 
 /**
  * App: top-level route shell.
@@ -28,6 +30,14 @@ import { ConversationDetailRoute } from "./routes/conversations/detail";
 function App() {
   const isAuthenticated = useIsAuthenticated();
   const location = useLocation();
+
+  // Load me with enough depth for the inbox subscription to find contacts.
+  // Called unconditionally (hook rules) but the subscription itself is
+  // guarded on me.$isLoaded so it's a no-op when not authenticated.
+  const me = useAccount(JazzMessangerAccount, {
+    resolve: { root: { contactBook: { $each: true } } },
+  });
+  useConversationInboxSubscription(me);
 
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
