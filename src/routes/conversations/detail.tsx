@@ -85,20 +85,32 @@ export function ConversationDetailRoute() {
   // composerDisabled: true when the ConversationGroup's direct admin list is 1
   // (only me remains after the other party left). We check this via the group
   // stored on the conversation.
+  //
+  // leftMembers: members whose role is currently "revoked" — rendered as
+  // system events at the bottom of the timeline.
   let composerDisabled = false;
+  const leftMembers: { accountID: string; displayName: string }[] = [];
   if (conversation) {
     const group = (conversation as any).$jazz?.owner;
     if (group) {
       try {
-        const directAdmins = group
-          .getDirectMembers()
-          .filter((m: any) => m.role === "admin" || m.role === "writer");
-        // If only 1 admin member (just me), the other party has left
-        if (directAdmins.length <= 1) {
+        const all = group.getDirectMembers();
+        const activeWriters = all.filter(
+          (m: any) => m.role === "admin" || m.role === "writer",
+        );
+        if (activeWriters.length <= 1) {
           composerDisabled = true;
         }
+        for (const m of all) {
+          if (m.role !== "revoked") continue;
+          const accountID = m.account?.$jazz?.id ?? m.id;
+          if (!accountID || accountID === myAccountID) continue;
+          const displayName =
+            contactDisplayNames[accountID] ?? "Someone";
+          leftMembers.push({ accountID, displayName });
+        }
       } catch {
-        // Group introspection unavailable — allow sending
+        // Group introspection unavailable — allow sending; no left-member badges
       }
     }
   }
@@ -259,6 +271,20 @@ export function ConversationDetailRoute() {
               );
             })
           )}
+
+          {/* System events: members who have left the conversation */}
+          {leftMembers.map((m) => (
+            <div
+              key={`left-${m.accountID}`}
+              className="flex justify-center py-2"
+              data-testid={`member-left-${m.accountID}`}
+            >
+              <div className="bg-muted text-xs text-muted-foreground italic px-3 py-1 rounded-full">
+                {m.displayName} left the chat
+              </div>
+            </div>
+          ))}
+
           <div ref={bottomRef} />
         </div>
 
