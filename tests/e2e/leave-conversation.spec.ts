@@ -100,6 +100,14 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     // The linkedConversation was cleared by leaveConversation; after reload
     // the sidebar re-derives from the (now null) ref and shows no rows.
     await expect(pageA.getByTestId("conversation-row-0")).not.toBeVisible({ timeout: 10_000 });
+
+    // ── 6. Bob sees the "Alice left the chat" system event in the timeline ──
+    // Bob's still-open conversation view should pick up the role-change via
+    // Jazz sync and render a centered pill below the messages. Use a partial
+    // testid match because the suffix is the leaver's accountID.
+    await expect(
+      pageB.locator('[data-testid^="member-left-"]'),
+    ).toContainText("Alice left the chat", { timeout: 15_000 });
   } finally {
     await ctxA.close();
     await ctxB.close();

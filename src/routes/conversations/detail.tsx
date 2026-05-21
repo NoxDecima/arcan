@@ -50,6 +50,20 @@ export function ConversationDetailRoute() {
     resolve: { messages: { $each: true } },
   });
 
+  // Jazz's useCoState fires re-renders when the Conversation CoValue itself
+  // changes, but NOT when its owning ConversationGroup's membership changes
+  // (e.g., the other party leaves). We poll every 2s while the view is open
+  // so composerDisabled + leftMembers re-evaluate against the current group
+  // state. Future: replace with an explicit Group subscription if jazz-tools
+  // exposes one cleanly.
+  const [pollTick, setPollTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setPollTick((t) => t + 1), 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  void pollTick;
+
   // Auto-scroll to bottom whenever the message list grows
   const messageCount = (conversation as any)?.messages?.length ?? 0;
   useEffect(() => {
@@ -83,34 +97,74 @@ export function ConversationDetailRoute() {
   }
 
   // composerDisabled: true when the ConversationGroup's direct admin list is 1
-  // (only me remains after the other party left). We check this via the group
-  // stored on the conversation.
+  // (only me remains after the other party left).
   //
-  // leftMembers: members whose role is currently "revoked" — rendered as
-  // system events at the bottom of the timeline.
+  // leftMembers: contacts whose current role on the conversation is "revoked"
+  // — rendered as system events at the bottom of the timeline.
+  //
+  // Note: Jazz's getDirectMembers() returns GroupMember[] typed with
+  // AccountRole (reader / writer / admin / manager / writeOnly), which
+  // EXCLUDES "revoked" — revoked members are filtered out of that list.
+  // To detect revocations we use group.getRoleOf(accountID), which returns
+  // the full Role type including "revoked". For the 1:1 case we check the
+  // contact paired with this conversation. (Slice 3b will iterate all
+  // participants for the N-way case.)
   let composerDisabled = false;
   const leftMembers: { accountID: string; displayName: string }[] = [];
   if (conversation) {
     const group = (conversation as any).$jazz?.owner;
     if (group) {
       try {
-        const all = group.getDirectMembers();
-        const activeWriters = all.filter(
-          (m: any) => m.role === "admin" || m.role === "writer",
-        );
+        const activeWriters = group
+          .getDirectMembers()
+          .filter((m: any) => m.role === "admin" || m.role === "writer");
         if (activeWriters.length <= 1) {
           composerDisabled = true;
         }
-        for (const m of all) {
-          if (m.role !== "revoked") continue;
-          const accountID = m.account?.$jazz?.id ?? m.id;
-          if (!accountID || accountID === myAccountID) continue;
-          const displayName =
-            contactDisplayNames[accountID] ?? "Someone";
-          leftMembers.push({ accountID, displayName });
-        }
       } catch {
-        // Group introspection unavailable — allow sending; no left-member badges
+        // Group introspection unavailable — allow sending
+      }
+
+      // Identify the leaver when composer is disabled. Jazz's getRoleOf
+      // returns `undefined` for both "never-a-member" and "was-revoked"
+      // (they're indistinguishable via this API), so we infer "the other
+      // party left" from composerDisabled and find the leaver via:
+      //   1. The contact whose linkedConversation matches (most reliable)
+      //   2. Fallback to Conversation.createdBy if it's not me (covers the
+      //      case where the inbox subscription hasn't yet populated the
+      //      linkedConversation cache on this side)
+      if (composerDisabled) {
+        let leaverID: string | undefined;
+        let leaverName = "Someone";
+
+        if (contact) {
+          const cAny = contact as any;
+          if (cAny.contactAccountID && cAny.contactAccountID !== myAccountID) {
+            leaverID = cAny.contactAccountID;
+            leaverName = cAny.displayNameLocal ?? "Someone";
+          }
+        }
+
+        if (!leaverID) {
+          const createdBy = (conversation as any).createdBy;
+          if (createdBy && createdBy !== myAccountID) {
+            leaverID = createdBy;
+            const cb = (me as any).root?.contactBook;
+            if (cb) {
+              for (const c of Array.from(cb)) {
+                const cAny = c as any;
+                if (cAny?.contactAccountID === createdBy) {
+                  leaverName = cAny.displayNameLocal ?? "Someone";
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        if (leaverID) {
+          leftMembers.push({ accountID: leaverID, displayName: leaverName });
+        }
       }
     }
   }
