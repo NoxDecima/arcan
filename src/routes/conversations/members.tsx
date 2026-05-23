@@ -1,0 +1,455 @@
+/**
+ * MembersRoute: member-list and role-management view for a group conversation.
+ *
+ * Route: /conversations/:id/members
+ *
+ * Per spec §8:
+ *   - Ordered list of group members with role badges (RolePill)
+ *   - Admin-only: "Add member" button (ContactPicker, excludes current members)
+ *   - Admin-only row actions: promote writer → admin, demote admin → writer, remove
+ *   - "Leave conversation" button visible to all (destructive, bottom of page)
+ *     - If me is last admin AND other members remain → LeaveWithPromoteDialog
+ *     - Otherwise → leaveConversation + navigate /conversations
+ *   - Back button → /conversations/:id
+ */
+
+import { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useAccount, useCoState } from "jazz-tools/react";
+import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { Conversation } from "@/jazz/schema/Conversation";
+import { Sidebar } from "@/components/sidebar";
+import { ContactPicker } from "@/components/contact-picker";
+import { RolePill } from "@/components/role-pill";
+import { LeaveWithPromoteDialog } from "@/components/leave-with-promote-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  addMemberToConversation,
+  removeMemberFromConversation,
+  promoteToAdmin,
+  demoteToWriter,
+  leaveConversation,
+  isLastAdmin,
+  updateConversationTitle,
+} from "@/jazz/conversation";
+
+export function MembersRoute() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
+  const [leavePromoteOpen, setLeavePromoteOpen] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState(false);
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (titleEditing) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [titleEditing]);
+
+  const me = useAccount(JazzMessangerAccount, {
+    resolve: {
+      profile: true,
+      root: { contactBook: { $each: true }, knownConversations: true },
+    },
+  });
+
+  const conversation = useCoState(Conversation, id as any, {
+    resolve: { messages: true },
+  });
+
+  // ---- loading / error states ----
+
+  if (!me.$isLoaded) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (conversation === null) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-red-600">Conversation not found.</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!conversation) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">Loading members…</p>
+        </main>
+      </div>
+    );
+  }
+
+  // ---- derive members from group ----
+
+  const myAccountID = (me as any).$jazz?.id as string | undefined;
+  const group = (conversation as any).$jazz?.owner;
+  const rawMembers: Array<{
+    accountID: string;
+    role: "admin" | "writer";
+    displayName: string;
+  }> = [];
+
+  if (group) {
+    try {
+      const directMembers = group.getDirectMembers() as Array<{
+        account: any;
+        role: string;
+        id: string;
+      }>;
+      for (const m of directMembers) {
+        const accountID: string = m.account?.$jazz?.id ?? m.id;
+        const role = m.role as string;
+        if (role !== "admin" && role !== "writer") continue; // skip revoked / inherited
+        const displayName: string =
+          m.account?.profile?.name ??
+          m.account?.profile?.displayName ??
+          ((() => {
+            // Try looking up in contactBook
+            for (const c of Array.from((me as any).root?.contactBook ?? []) as any[]) {
+              if (c?.contactAccountID === accountID) return c.displayNameLocal ?? null;
+            }
+            return null;
+          })()) ??
+          (accountID === myAccountID
+            ? ((me as any).profile?.displayName ?? "Me")
+            : "Unknown");
+        rawMembers.push({ accountID, role: role as "admin" | "writer", displayName });
+      }
+    } catch {
+      // Group introspection unavailable
+    }
+  }
+
+  // Sort: admins first, then writers; within each group alphabetically
+  rawMembers.sort((a, b) => {
+    if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
+    return a.displayName.localeCompare(b.displayName);
+  });
+
+  const myRole = rawMembers.find((m) => m.accountID === myAccountID)?.role;
+  const iAmAdmin = myRole === "admin";
+
+  const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
+
+  // ---- handlers ----
+
+  async function handleAddMembers(contacts: any[]) {
+    setAddPickerOpen(false);
+    if (contacts.length === 0) return;
+    setActionInProgress(true);
+    try {
+      for (const contact of contacts) {
+        await addMemberToConversation(
+          me,
+          conversation,
+          contact.contactAccountID as string,
+          "writer",
+        );
+      }
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function handlePromote(accountID: string) {
+    setActionInProgress(true);
+    try {
+      await promoteToAdmin(me, conversation, accountID);
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function handleDemote(accountID: string) {
+    setActionInProgress(true);
+    try {
+      await demoteToWriter(me, conversation, accountID);
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function handleRemove(accountID: string) {
+    if (!confirm("Remove this member from the conversation?")) return;
+    setActionInProgress(true);
+    try {
+      await removeMemberFromConversation(me, conversation, accountID);
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function handleLeave() {
+    const otherMembers = rawMembers.filter((m) => m.accountID !== myAccountID);
+    if (isLastAdmin(me, conversation) && otherMembers.length > 0) {
+      setLeavePromoteOpen(true);
+      return;
+    }
+    if (!confirm("Leave this conversation? You will lose access to its messages.")) return;
+    setActionInProgress(true);
+    try {
+      await leaveConversation(me, conversation);
+      navigate("/conversations");
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function handleLeaveWithPromote(newAdminAccountID: string) {
+    setActionInProgress(true);
+    try {
+      await promoteToAdmin(me, conversation, newAdminAccountID);
+      await leaveConversation(me, conversation);
+      setLeavePromoteOpen(false);
+      navigate("/conversations");
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  const conversationTitle = (conversation as any)?.title ?? "Conversation";
+
+  // ---- title edit handlers ----
+
+  function startTitleEdit() {
+    if (!iAmAdmin) return;
+    setTitleDraft(conversationTitle);
+    setTitleEditing(true);
+  }
+
+  async function saveTitleEdit() {
+    const trimmed = titleDraft.trim();
+    if (!trimmed) {
+      setTitleEditing(false);
+      return;
+    }
+    setActionInProgress(true);
+    try {
+      await updateConversationTitle(me, conversation, trimmed);
+    } finally {
+      setActionInProgress(false);
+      setTitleEditing(false);
+    }
+  }
+
+  function cancelTitleEdit() {
+    setTitleEditing(false);
+    setTitleDraft("");
+  }
+
+  // ---- render ----
+
+  return (
+    <div className="flex h-screen" data-testid="members-route">
+      <Sidebar />
+
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white">
+          <Link
+            to={`/conversations/${id}`}
+            className="text-sm text-muted-foreground hover:text-foreground"
+            data-testid="back-btn"
+          >
+            ← Back
+          </Link>
+
+          <div className="flex-1 min-w-0">
+            {titleEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void saveTitleEdit();
+                    } else if (e.key === "Escape") {
+                      cancelTitleEdit();
+                    }
+                  }}
+                  maxLength={60}
+                  disabled={actionInProgress}
+                  className="flex-1 border rounded px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="group-title-edit-input"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => void saveTitleEdit()}
+                  disabled={!titleDraft.trim() || actionInProgress}
+                  data-testid="group-title-save-btn"
+                >
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={cancelTitleEdit}
+                  disabled={actionInProgress}
+                  data-testid="group-title-cancel-btn"
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <h1
+                className={`font-semibold text-gray-900 truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
+                onClick={iAmAdmin ? startTitleEdit : undefined}
+                title={iAmAdmin ? "Click to edit title" : undefined}
+                data-testid="group-title-display"
+              >
+                {conversationTitle}
+              </h1>
+            )}
+          </div>
+
+          {iAmAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAddPickerOpen(true)}
+              disabled={actionInProgress}
+              data-testid="add-member-btn"
+            >
+              Add member
+            </Button>
+          )}
+        </div>
+
+        {/* Member list */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <ul className="space-y-1" data-testid="members-list">
+            {rawMembers.map((member) => {
+              const isMe = member.accountID === myAccountID;
+              return (
+                <li
+                  key={member.accountID}
+                  className="flex items-center gap-3 px-3 py-2 rounded hover:bg-accent"
+                  data-testid={`member-row-${member.accountID}`}
+                >
+                  {/* Avatar initial */}
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary flex-shrink-0">
+                    {member.displayName[0]?.toUpperCase() ?? "?"}
+                  </div>
+
+                  {/* Display name */}
+                  <span className="flex-1 text-sm font-medium text-gray-900 truncate">
+                    {member.displayName}
+                    {isMe && (
+                      <span className="ml-1 text-xs text-muted-foreground">(you)</span>
+                    )}
+                  </span>
+
+                  {/* Role badge */}
+                  <RolePill role={member.role} />
+
+                  {/* Admin actions (only for other members, only if I'm admin) */}
+                  {iAmAdmin && !isMe && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {member.role === "writer" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-7 px-2"
+                          onClick={() => void handlePromote(member.accountID)}
+                          disabled={actionInProgress}
+                          data-testid={`promote-${member.accountID}`}
+                        >
+                          Promote
+                        </Button>
+                      )}
+                      {member.role === "admin" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-7 px-2"
+                          onClick={() => void handleDemote(member.accountID)}
+                          disabled={actionInProgress}
+                          data-testid={`demote-${member.accountID}`}
+                        >
+                          Demote
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                        onClick={() => void handleRemove(member.accountID)}
+                        disabled={actionInProgress}
+                        data-testid={`remove-${member.accountID}`}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {rawMembers.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No members found.
+            </p>
+          )}
+        </div>
+
+        {/* Leave conversation — destructive, bottom */}
+        <div className="p-4 border-t border-border">
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => void handleLeave()}
+            disabled={actionInProgress}
+            data-testid="leave-conversation-btn"
+          >
+            {actionInProgress ? "Working…" : "Leave conversation"}
+          </Button>
+        </div>
+      </main>
+
+      {/* Dialogs */}
+      {addPickerOpen && (
+        <ContactPicker
+          onSelect={handleAddMembers}
+          onClose={() => setAddPickerOpen(false)}
+          excludeAccountIDs={currentMemberAccountIDs}
+        />
+      )}
+
+      {leavePromoteOpen && (
+        <LeaveWithPromoteDialog
+          candidates={rawMembers
+            .filter((m) => m.accountID !== myAccountID)
+            .map((m) => ({
+              accountID: m.accountID,
+              displayName: m.displayName,
+              currentRole: m.role,
+            }))}
+          onLeave={(newAdminAccountID) => void handleLeaveWithPromote(newAdminAccountID)}
+          onCancel={() => setLeavePromoteOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

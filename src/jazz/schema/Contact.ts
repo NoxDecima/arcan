@@ -1,19 +1,14 @@
 import { co, z } from "jazz-tools";
-import { Conversation } from "./Conversation";
 
 /**
  * Contact: a single contact entry in the user's contact book.
  *
- * `linkedConversation` is an optional reference to the shared DM conversation
- * between the local user and this contact. It is populated by Slice 3 when
- * the user initiates their first message; Slice 2 leaves it null.
- *
- * The getter pattern is required to avoid the circular-import problem:
- * Contact → Conversation → (no back-reference). If Conversation ever imports
- * Contact in a future slice, switch to `linkedConversationID: z.string().optional()`.
- *
  * Deviation from plan: uses co.map() / z.* functional API instead of
  * `class Contact extends CoMap`.
+ *
+ * Note: `linkedConversation` was removed in Slice 3b — conversation
+ * discovery now uses `me.root.knownConversations` (spec §5). The per-contact
+ * ref was a 1:1-only design; knownConversations supports both DM and group.
  */
 export const Contact = co.map({
   contactAccountID: z.string(),
@@ -21,9 +16,8 @@ export const Contact = co.map({
   displayNameLocal: z.string(),
   addedAt: z.date(),
   notes: z.string().optional(),
-  get linkedConversation() {
-    return Conversation.optional();
-  },
+  // linkedConversation REMOVED — discovery now uses
+  // me.root.knownConversations (Slice 3b spec §5).
 });
 
 /**

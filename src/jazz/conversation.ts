@@ -26,42 +26,75 @@ const ConversationNotification = co.map({
  * by `contact`. The contact is a Contact CoValue from `me.root.contactBook`.
  *
  * Steps:
- *   1. If contact.linkedConversation is set, return it.
- *   2. Otherwise create a new ConversationGroup + Conversation, set the cache.
+ *   1. Search me.root.knownConversations for an existing kind="dm" with this contact.
+ *   2. Defensive wait + recheck (300ms) — handles Inbox delivery race.
+ *   3. If still not found, create a new ConversationGroup + Conversation.
+ *   4. Push the new conversation to me.root.knownConversations.
+ *   5. Fire-and-forget Inbox notification to the other party.
  *
  * Returns the Conversation CoValue.
- *
- * Note: The defensive scan step (iterate my ConversationGroups to find one
- * with the contact as the other member) is deferred — it requires Jazz's
- * group-membership graph traversal API which is not yet documented. The
- * linkedConversation cache is the primary lookup mechanism; both sides
- * converge because when Alice creates the conversation she also sets
- * contact.linkedConversation, and Bob's side populates on first "Start chat".
  */
 export async function findOrCreate1to1Conversation(
   me: Account,
   contact: any,
 ): Promise<any> {
-  if (contact.linkedConversation) {
-    return contact.linkedConversation;
+  const otherAccountID = contact.contactAccountID as string;
+
+  /**
+   * Safely iterate knownConversations. The list may be a NotLoaded CoValue
+   * proxy (truthy but not iterable) if the calling component's resolve query
+   * doesn't include knownConversations. Guard with both existence and
+   * iterability checks.
+   */
+  function iterateKnown(list: any): any[] {
+    if (!list || typeof list[Symbol.iterator] !== "function") return [];
+    try {
+      return Array.from(list);
+    } catch {
+      return [];
+    }
   }
 
-  // Defensive wait against the duplicate-creation race: if Alice just created
-  // a conversation, her InboxSender delivered a notification that Bob's
-  // subscription is processing. If Bob clicks "Start chat" with Alice before
-  // his subscription finishes, this contact.linkedConversation is still null
-  // and we'd create a duplicate conversation. Brief wait + recheck.
+  // Search knownConversations for an existing 1:1 with this contact
+  const known = (me as any).root?.knownConversations;
+  for (const c of iterateKnown(known)) {
+    if (!c) continue;
+    const cAny = c as any;
+    if (cAny.kind !== "dm") continue;
+    const group = cAny.$jazz?.owner;
+    if (!group) continue;
+    const otherMember = group
+      .getDirectMembers()
+      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
+    if (otherMember) {
+      return cAny;
+    }
+  }
+
+  // Defensive wait against the duplicate-creation race: if the other party
+  // just created the conversation, our Inbox subscription may still be
+  // processing the notification. Brief wait + recheck.
   //
   // 300ms is unnoticeable in the worst case (legitimately new chat with
   // someone who never created one) and prevents the race in the common case
   // (Inbox propagation is near-instant when online).
   await new Promise((r) => setTimeout(r, 300));
-  if (contact.linkedConversation) {
-    return contact.linkedConversation;
+  const knownAfterWait = (me as any).root?.knownConversations;
+  for (const c of iterateKnown(knownAfterWait)) {
+    if (!c) continue;
+    const cAny = c as any;
+    if (cAny.kind !== "dm") continue;
+    const group = cAny.$jazz?.owner;
+    if (!group) continue;
+    const otherMember = group
+      .getDirectMembers()
+      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
+    if (otherMember) {
+      return cAny;
+    }
   }
 
   // Load the other account so we can add them as a member
-  const otherAccountID = contact.contactAccountID as string;
   const otherAccount = await loadAccountByID(me, otherAccountID);
   if (!otherAccount) {
     throw new Error(
@@ -69,7 +102,7 @@ export async function findOrCreate1to1Conversation(
     );
   }
 
-  // Create new ConversationGroup with both participants as admin
+  // Create new ConversationGroup with both participants as admin (1:1: both admin)
   const conversationGroup = Group.create({ owner: me });
   conversationGroup.addMember(otherAccount, "admin");
 
@@ -83,7 +116,8 @@ export async function findOrCreate1to1Conversation(
     { owner: conversationGroup },
   );
 
-  contact.$jazz.set("linkedConversation", conversation);
+  // Push to my own knownConversations
+  (me as any).root.knownConversations.$jazz.push(conversation);
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.
@@ -122,20 +156,26 @@ export async function findOrCreate1to1Conversation(
 }
 
 /**
- * Generic group conversation creation, ready for Slice 3b. Not exposed via
- * UI in Slice 3a — only the 1:1 entry point is wired.
+ * Create a group conversation with multiple participants.
+ *
+ * Creator becomes the implicit admin (via Group.create). All participants
+ * are added as "writer" by default (admin-only change must go through
+ * promoteToAdmin). Pushes to me.root.knownConversations and fires
+ * fire-and-forget Inbox notifications to each participant.
+ *
+ * `title` is required for group conversations.
  */
 export async function createGroupConversation(
   me: Account,
   participantAccountIDs: string[],
-  title?: string,
+  title: string,
 ): Promise<any> {
   const conversationGroup = Group.create({ owner: me });
 
   for (const accountID of participantAccountIDs) {
     const acc = await loadAccountByID(me, accountID);
     if (acc) {
-      conversationGroup.addMember(acc, "admin");
+      conversationGroup.addMember(acc, "writer"); // groups: writer by default (not admin)
     }
   }
 
@@ -149,6 +189,33 @@ export async function createGroupConversation(
     },
     { owner: conversationGroup },
   );
+
+  // Push to my own knownConversations
+  (me as any).root.knownConversations.$jazz.push(conversation);
+
+  // Notify each participant via Inbox (fire-and-forget, parallel)
+  const conversationID = (conversation as any).$jazz.id as string;
+  for (const accountID of participantAccountIDs) {
+    void (async () => {
+      try {
+        const notificationGroup = Group.create({ owner: me });
+        const notification = ConversationNotification.create(
+          { conversationID },
+          { owner: notificationGroup },
+        );
+        const sender = await InboxSender.load<typeof notification>(
+          accountID as any,
+          me,
+        );
+        await sender.sendMessage(notification);
+      } catch (e) {
+        console.warn(
+          `[inbox] Failed to deliver group conversation to ${accountID}:`,
+          e,
+        );
+      }
+    })();
+  }
 
   return conversation;
 }
@@ -220,7 +287,11 @@ export async function ensureMyWriteGroup(
  * rotates the readKey; future messages from remaining members are encrypted
  * under the new key I no longer have access to.
  *
- * Clears any linkedConversation cache in the contact book pointing here.
+ * Also removes the conversation from me.root.knownConversations so the
+ * sidebar no longer shows it.
+ *
+ * CoList removal API: `list.$jazz.remove(index)` — verified against
+ * jazz-tools 0.20.18 docs/jazz-api-notes.md §6 (CoList mutation section).
  */
 export async function leaveConversation(
   me: Account,
@@ -231,29 +302,188 @@ export async function leaveConversation(
     throw new Error("Conversation has no owning group");
   }
 
+  // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // Clear any contact cache referencing this conversation.
-  // We compare by the conversation's jazz ID (a string like "co_z...").
-  // Both direct property assignment and $jazz.set are tried for compatibility.
-  const conversationId = conversation.$jazz?.id as string | undefined;
-  const contactBook = (me as any).root?.contactBook;
-  if (contactBook && conversationId) {
-    for (const contact of contactBook) {
-      const linkedId = contact?.linkedConversation?.$jazz?.id as string | undefined;
-      // Also try the raw ID accessor for unresolved CoValue refs
-      const linkedIdAlt = (contact as any)?.linkedConversation?.id as string | undefined;
-      if (linkedId === conversationId || linkedIdAlt === conversationId) {
-        try {
-          // Jazz requires `undefined` (not null) to unset an optional CoValue ref.
-          // Proxy set handler throws for direct assignment; use $jazz.set.
-          contact.$jazz.set("linkedConversation", undefined as any);
-        } catch {
-          // ignore — sidebar will handle inaccessible conversations
-        }
+  // Remove from my own knownConversations list.
+  // Guard: known.$jazz.remove is only available when knownConversations is
+  // a fully-loaded CoList proxy. If the calling context doesn't include
+  // knownConversations in its resolve query, the proxy won't have the method.
+  const known = (me as any).root?.knownConversations;
+  if (known && typeof (known as any).$jazz?.remove === "function") {
+    const conversationID = conversation.$jazz?.id;
+    for (let i = 0; i < known.length; i++) {
+      const entry = known[i];
+      if (entry?.$jazz?.id === conversationID) {
+        known.$jazz.remove(i);
+        break;
       }
     }
   }
+}
+
+// ----- member management primitives -----
+
+/**
+ * Add a new member to a group conversation with the given role (default writer).
+ * Sends an Inbox notification so the new member's sidebar auto-discovers.
+ *
+ * Admin-only action; caller should check role before invoking. Jazz validators
+ * will reject if `me` doesn't have admin/manager role on the conversationGroup.
+ */
+export async function addMemberToConversation(
+  me: Account,
+  conversation: any,
+  newAccountID: string,
+  role: "admin" | "writer" = "writer",
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+
+  const newAccount = await loadAccountByID(me, newAccountID);
+  if (!newAccount) {
+    throw new Error(`Cannot load account ${newAccountID}`);
+  }
+
+  conversationGroup.addMember(newAccount, role);
+
+  // Notify the new member via their Inbox so their sidebar auto-discovers
+  const conversationID = conversation.$jazz.id as string;
+  void (async () => {
+    try {
+      const notificationGroup = Group.create({ owner: me });
+      const notification = ConversationNotification.create(
+        { conversationID },
+        { owner: notificationGroup },
+      );
+      const sender = await InboxSender.load<typeof notification>(
+        newAccountID as any,
+        me,
+      );
+      await sender.sendMessage(notification);
+    } catch (e) {
+      console.warn(
+        `[inbox] Failed to deliver group invite to ${newAccountID}:`,
+        e,
+      );
+    }
+  })();
+}
+
+/**
+ * Remove a member from a group conversation.
+ *
+ * Admin-only action; caller should check role before invoking. Jazz auto-rotates
+ * the readKey when a member is removed.
+ */
+export async function removeMemberFromConversation(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+
+  conversationGroup.removeMember(targetAccount);
+}
+
+/**
+ * Promote a writer to admin. Admin-only action.
+ *
+ * Jazz allows re-assigning an existing member's role by calling addMember
+ * again with a different role — this overwrites the prior role.
+ */
+export async function promoteToAdmin(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  // Re-adding with a different role overwrites the prior role
+  conversationGroup.addMember(targetAccount, "admin");
+}
+
+/**
+ * Demote an admin to writer. Admin-only action.
+ *
+ * Caller should check `isLastAdmin(me, conversation)` first — if true,
+ * the sole admin cannot demote themselves without promoting another first.
+ *
+ * IMPORTANT cojson constraint (verified 0.20.18): an admin peer CANNOT
+ * downgrade another admin to writer — neither via `addMember(target, "writer")`
+ * (throws "Failed to set role writer to <id> (role of current account is admin)")
+ * nor via `removeMember(target)` (throws "Failed to revoke role to <id>...").
+ * Only the target admin themselves can relinquish admin role.
+ *
+ * In practice, the UI should only offer "Demote" on writers, never on admins.
+ * This function attempts the demotion and lets the cojson error surface if the
+ * caller violates the constraint — do not catch it silently.
+ */
+export async function demoteToWriter(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  // Attempt role downgrade — will throw if target is already admin (cojson
+  // prevents admin-to-admin demotion at the protocol level).
+  conversationGroup.addMember(targetAccount, "writer");
+}
+
+/**
+ * Update the conversation title. Admin-only for groups; no-op for 1:1
+ * (1:1 conversations derive their title from the other participant's display
+ * name — there is no explicit title field to update).
+ */
+export async function updateConversationTitle(
+  _me: Account,
+  conversation: any,
+  newTitle: string,
+): Promise<void> {
+  if (conversation.kind !== "group") {
+    return; // no-op for 1:1
+  }
+  conversation.$jazz.set("title", newTitle);
+}
+
+/**
+ * Returns true when `me` is the only direct admin of the conversation's group.
+ * Used to decide whether the leave flow needs to prompt for promotion of another
+ * member before the admin can leave.
+ */
+export function isLastAdmin(me: Account, conversation: any): boolean {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) return false;
+  const admins = conversationGroup
+    .getDirectMembers()
+    .filter((m: any) => m.role === "admin");
+  return (
+    admins.length === 1 &&
+    admins[0]?.account?.$jazz?.id === (me as any).$jazz?.id
+  );
 }
 
 // ----- private helpers -----
@@ -294,14 +524,16 @@ function isMyDirectWriteGroup(group: Group, me: Account): boolean {
 }
 
 /**
- * React hook: subscribe to the current user's inbox and populate
- * Contact.linkedConversation when an incoming Conversation matches a
- * known contact.
+ * React hook: subscribe to the current user's inbox and push incoming
+ * Conversations to me.root.knownConversations for sidebar auto-discovery.
  *
  * Call this once in the authenticated branch of App.tsx. The inbox is
  * a persistent CoStream — messages that arrived before the current session
  * are replayed on subscribe, so Bob will discover conversations even if he
  * was offline when Alice created one.
+ *
+ * Replaces the Slice 3a behavior of setting contact.linkedConversation.
+ * All conversation kinds (1:1 and group) use the same knownConversations path.
  *
  * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes
  * (i.e. on sign-in / account switch), not on every render.
@@ -319,15 +551,7 @@ export function useConversationInboxSubscription(me: any) {
         if (cancelled) return;
         unsubscribe = inbox.subscribe(
           ConversationNotification,
-          async (notification: any, senderAccountID: any) => {
-            const contactBook = me?.root?.contactBook;
-            if (!contactBook) return;
-            // Find the contact whose accountID matches the sender
-            const contact = Array.from(contactBook as Iterable<any>).find(
-              (c: any) => c?.contactAccountID === senderAccountID,
-            );
-            if (!contact) return;
-            if (contact.linkedConversation) return; // already set — idempotent
+          async (notification: any) => {
             // Load the actual Conversation by ID from the notification payload
             const conversationID = notification?.conversationID;
             if (!conversationID) return;
@@ -337,9 +561,21 @@ export function useConversationInboxSubscription(me: any) {
                 resolve: {},
               });
               if (!conversation) return;
-              contact.$jazz.set("linkedConversation", conversation);
+
+              // Dedup: only push if not already in knownConversations.
+              // Guard: known.$jazz.push may not be available if knownConversations
+              // is a NotLoaded proxy (not in the resolve query for this account
+              // load). Check typeof before calling to avoid runtime errors.
+              const known = me?.root?.knownConversations;
+              if (!known || typeof (known as any).$jazz?.push !== "function") return;
+              const alreadyKnown = Array.from(known as Iterable<any>).some(
+                (c: any) => c?.$jazz?.id === conversationID,
+              );
+              if (alreadyKnown) return;
+
+              (known as any).$jazz.push(conversation);
             } catch (e) {
-              console.warn("[inbox] Failed to set linkedConversation:", e);
+              console.warn("[inbox] Failed to push conversation to knownConversations:", e);
             }
           },
         );

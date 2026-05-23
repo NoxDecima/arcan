@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Slice 3b — Group Conversations + Member Management
+
+- knownConversations refactor: `Account.root.knownConversations: co.list(Conversation)` replaces the per-contact `linkedConversation` cache; Inbox subscription populates it for both 1:1 and group conversations; sidebar iterates it as the single source of truth
+- Group conversation creation: multi-select ContactPicker (2+ contacts selected → GroupCreateDialog for title → `createGroupConversation` → `knownConversations`) with Inbox notifications so all participants auto-discover via sidebar
+- MembersRoute at `/conversations/:id/members`: member list with role pills, admin-only "Add member" button (ContactPicker with excluded-member list), per-member promote/remove/demote buttons, "Leave conversation" button at the bottom; members-link in conversation detail header navigates here
+- Member add/remove with admin gating: `addMemberToConversation` sends Inbox notification so the new member's sidebar auto-discovers; `removeMemberFromConversation` revokes Jazz crypto access (readKey rotates)
+- Role management: admin/writer distinction (creator = admin, added members = writer); `RolePill` badge component; `promoteToAdmin` works via `group.addMember(target, "admin")`; cojson 0.20.18 constraint: admin-to-admin demotion is not permitted by the protocol (only the target admin themselves can relinquish admin role) — documented in `src/jazz/conversation.ts:demoteToWriter`
+- Last-admin promote-before-leave flow: `isLastAdmin` guard → `LeaveWithPromoteDialog` → `promoteToAdmin` + `leaveConversation` as one user action
+- Inline group title edit on MembersRoute: admin clicks `group-title-display` → input appears; Enter/save-button saves via `updateConversationTitle`; Esc cancels; 60-char max; writer role sees read-only display
+- SystemEvent component extracted for left/added events; `system-event-left` and `system-event-added` testids
+- Test counts: 79 unit tests passing, 34 e2e tests passing (17 per browser: 6 new specs added — group-create, group-member-management, group-roles, last-admin-leave ×2, group-title-edit)
+
+### Slice 3b known limitations
+
+- cojson 0.20.18 prevents an admin from downgrading another admin's role; the UI exposes a Demote button for admin rows but the protocol call throws — only self-demotion is possible, which the current UI does not expose
+- Group conversation `kind` field stays `"dm"` when a 1:1 DM has a third member added via MembersRoute "Add member" (the kind is set at creation time and is immutable); this is a cosmetic inconsistency in title derivation
+- No group avatars/icons (deferred to Slice 4)
+- No role-change or title-change system events in timeline (only join/leave events in v1)
+- Disband group action and archived conversations view deferred (Linear task #25)
+
 ### Slice 3a — 1:1 Conversations + Messaging Foundation
 
 - Schema additions: Message.deleted, Message.editedAt

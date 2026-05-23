@@ -8,8 +8,8 @@
  *   - Composer: text input + send button (disabled when all other members left)
  *
  * Title derivation (1:1): finds the contact in me.root.contactBook whose
- * linkedConversation matches this conversation's ID, and uses that contact's
- * displayNameLocal. Falls back to "Conversation" while loading.
+ * contactAccountID matches another member of the conversation's owning Group.
+ * Falls back to conversation.title (groups) or "Conversation" while loading.
  *
  * Author derivation: getAuthorAccountIDFromMessage() reads the create-tx signer
  * (immutable, unforgeable). Display name resolved from contactBook.
@@ -19,7 +19,7 @@
  */
 
 import { useRef, useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -29,20 +29,17 @@ import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { Button } from "@/components/ui/button";
 import { sendMessage } from "@/jazz/messages";
-import { leaveConversation } from "@/jazz/conversation";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
+import { SystemEvent } from "@/components/system-event";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [leaving, setLeaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true } },
+      root: { contactBook: { $each: true }, knownConversations: true },
     },
   });
 
@@ -74,16 +71,38 @@ export function ConversationDetailRoute() {
 
   const myAccountID = me.$isLoaded ? (me as any).$jazz?.id : null;
 
-  // Derive title: find contact whose linkedConversation matches this conversation
+  // Derive title: for DM conversations find the contact whose contactAccountID
+  // matches one of the other members of the conversation's owning Group.
+  // Falls back to conversation.title (group chats) or "Conversation".
   const contact =
-    me.$isLoaded && id
-      ? Array.from((me as any).root.contactBook).find(
-          (c: any) => c?.linkedConversation?.$jazz?.id === id,
-        )
+    me.$isLoaded && id && conversation
+      ? (() => {
+          const conv = conversation as any;
+          if (conv.kind !== "dm") return null;
+          const group = conv.$jazz?.owner;
+          if (!group) return null;
+          const members = (() => {
+            try {
+              return group.getDirectMembers();
+            } catch {
+              return [];
+            }
+          })();
+          const contactBook = (me as any).root?.contactBook;
+          if (!contactBook) return null;
+          return Array.from(contactBook).find((ct: any) => {
+            if (!ct?.contactAccountID) return false;
+            return members.some(
+              (m: any) => m.account?.$jazz?.id === ct.contactAccountID,
+            );
+          }) ?? null;
+        })()
       : null;
 
   const conversationTitle =
-    (contact as any)?.displayNameLocal ?? "Conversation";
+    (contact as any)?.displayNameLocal ??
+    (conversation as any)?.title ??
+    "Conversation";
 
   // Build accountID → displayName map from contactBook for author display
   const contactDisplayNames: Record<string, string> = {};
@@ -129,10 +148,8 @@ export function ConversationDetailRoute() {
       // returns `undefined` for both "never-a-member" and "was-revoked"
       // (they're indistinguishable via this API), so we infer "the other
       // party left" from composerDisabled and find the leaver via:
-      //   1. The contact whose linkedConversation matches (most reliable)
-      //   2. Fallback to Conversation.createdBy if it's not me (covers the
-      //      case where the inbox subscription hasn't yet populated the
-      //      linkedConversation cache on this side)
+      //   1. The contact derived from group membership (most reliable)
+      //   2. Fallback to Conversation.createdBy if it's not me
       if (composerDisabled) {
         let leaverID: string | undefined;
         let leaverName = "Someone";
@@ -211,28 +228,6 @@ export function ConversationDetailRoute() {
     await sendMessage(me, conversation, body);
   }
 
-  async function handleLeave() {
-    if (!confirm("Leave this conversation? You will lose access to its messages.")) return;
-    setMenuOpen(false);
-    setLeaving(true);
-    try {
-      // Clear the linkedConversation cache on the matching contact BEFORE
-      // revoking — while we still have access to the conversation and can
-      // compare IDs. Jazz requires `undefined` to unset an optional ref.
-      if (contact) {
-        try {
-          (contact as any).$jazz?.set("linkedConversation", undefined);
-        } catch {
-          // ignore — sidebar will handle inaccessible conversations gracefully
-        }
-      }
-      await leaveConversation(me, conversation);
-      navigate("/conversations");
-    } finally {
-      setLeaving(false);
-    }
-  }
-
   // ---- render ----
 
   const messages = Array.from((conversation as any).messages ?? []);
@@ -258,34 +253,15 @@ export function ConversationDetailRoute() {
             {conversationTitle}
           </h1>
 
-          {/* Kebab menu */}
-          <div className="relative">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setMenuOpen((v) => !v)}
-              data-testid="conversation-menu-btn"
-              title="Conversation options"
-            >
-              ⋮
+          {/* Members link */}
+          <Link
+            to={`/conversations/${id}/members`}
+            data-testid="members-link"
+          >
+            <Button size="sm" variant="ghost" title="View members">
+              👥 Members
             </Button>
-
-            {menuOpen && (
-              <div
-                className="absolute right-0 top-full mt-1 z-10 bg-white border border-border rounded shadow-md min-w-[160px]"
-                data-testid="conversation-menu"
-              >
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  onClick={() => void handleLeave()}
-                  disabled={leaving}
-                  data-testid="leave-conversation-btn"
-                >
-                  {leaving ? "Leaving…" : "Leave conversation"}
-                </button>
-              </div>
-            )}
-          </div>
+          </Link>
         </div>
 
         <ConnectionBanner />
@@ -294,7 +270,6 @@ export function ConversationDetailRoute() {
         <div
           className="flex-1 overflow-y-auto py-2"
           data-testid="message-timeline"
-          onClick={() => setMenuOpen(false)}
         >
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -328,15 +303,11 @@ export function ConversationDetailRoute() {
 
           {/* System events: members who have left the conversation */}
           {leftMembers.map((m) => (
-            <div
+            <SystemEvent
               key={`left-${m.accountID}`}
-              className="flex justify-center py-2"
-              data-testid={`member-left-${m.accountID}`}
-            >
-              <div className="bg-muted text-xs text-muted-foreground italic px-3 py-1 rounded-full">
-                {m.displayName} left the chat
-              </div>
-            </div>
+              kind="left"
+              targetName={m.displayName}
+            />
           ))}
 
           <div ref={bottomRef} />

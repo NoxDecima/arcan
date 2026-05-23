@@ -79,8 +79,10 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     });
 
     // ── 5. Alice leaves the conversation ─────────────────────────────────────
-    await pageA.getByTestId("conversation-menu-btn").click();
-    await expect(pageA.getByTestId("conversation-menu")).toBeVisible({ timeout: 3_000 });
+    // Leave button is now on the MembersRoute (/conversations/:id/members).
+    // Navigate there via the Members link in the detail header.
+    await pageA.getByTestId("members-link").click();
+    await expect(pageA.getByTestId("members-route")).toBeVisible({ timeout: 5_000 });
 
     // Accept the confirm dialog
     pageA.once("dialog", (dialog) => dialog.accept());
@@ -103,10 +105,10 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
 
     // ── 6. Bob sees the "Alice left the chat" system event in the timeline ──
     // Bob's still-open conversation view should pick up the role-change via
-    // Jazz sync and render a centered pill below the messages. Use a partial
-    // testid match because the suffix is the leaver's accountID.
+    // Jazz sync and render a centered pill below the messages. The SystemEvent
+    // component renders data-testid="system-event-left".
     await expect(
-      pageB.locator('[data-testid^="member-left-"]'),
+      pageB.getByTestId("system-event-left"),
     ).toContainText("Alice left the chat", { timeout: 15_000 });
   } finally {
     await ctxA.close();

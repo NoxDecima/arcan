@@ -4,24 +4,29 @@ import { useAccount } from "jazz-tools/react";
 import { Button } from "@/components/ui/button";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { ContactPicker } from "@/components/contact-picker";
-import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { GroupCreateDialog } from "@/components/group-create-dialog";
+import { findOrCreate1to1Conversation, createGroupConversation } from "@/jazz/conversation";
 
 /**
  * Sidebar component for the main layout.
  *
- * Slice 3a: displays conversation list derived from contactBook.linkedConversation
- * refs, sorted by last message timestamp descending. A "+" button opens the
+ * Slice 3b: displays conversation list derived from me.root.knownConversations,
+ * sorted by last message timestamp descending. A "+" button opens the
  * ContactPicker to start a new 1:1 conversation. Contacts moved to /contacts.
  */
 export function Sidebar() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true } },
+      root: {
+        contactBook: { $each: true },
+        knownConversations: { $each: true },
+      },
     },
   });
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
 
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
@@ -34,15 +39,31 @@ export function Sidebar() {
     );
   }
 
-  // For Slice 3a, the conversation list is derived from contactBook.linkedConversation refs.
-  // A more general "list all my conversations" path will come in Slice 3b.
-  const contacts = me.root.contactBook;
-  const conversations = Array.from(contacts)
-    .filter((c: any) => c?.linkedConversation)
-    .map((c: any) => ({
-      conversation: c.linkedConversation,
-      contact: c,
-    }));
+  // Slice 3b: derive conversation list from knownConversations (unified for 1:1 and groups).
+  // Contact lookup uses contactBook for display names on DM conversations.
+  const contactBook = me.root.contactBook;
+  const knownConversations = me.root.knownConversations;
+
+  const conversations = Array.from(knownConversations ?? [])
+    .filter((c: any) => c != null)
+    .map((c: any) => {
+      // For DM conversations, find the other participant's contact for display name.
+      const contact =
+        c.kind === "dm"
+          ? Array.from(contactBook).find((ct: any) => {
+              if (!ct) return false;
+              const group = c.$jazz?.owner;
+              if (!group) return false;
+              return group
+                .getDirectMembers()
+                .some(
+                  (m: any) =>
+                    m.account?.$jazz?.id === ct.contactAccountID,
+                );
+            })
+          : null;
+      return { conversation: c, contact };
+    });
 
   // Sort by last message sentAt descending; fall back to conversation createdAt.
   conversations.sort((a: any, b: any) => {
@@ -59,10 +80,14 @@ export function Sidebar() {
     return bTime - aTime;
   });
 
-  async function handlePickContact(contact: any) {
+  async function handlePickContacts(contacts: any[]) {
     setPickerOpen(false);
-    const conversation = await findOrCreate1to1Conversation(me, contact);
-    navigate(`/conversations/${(conversation as any).$jazz.id}`);
+    if (contacts.length === 1) {
+      const conversation = await findOrCreate1to1Conversation(me, contacts[0]);
+      navigate(`/conversations/${(conversation as any).$jazz.id}`);
+    } else if (contacts.length >= 2) {
+      setPendingGroupContacts(contacts);
+    }
   }
 
   return (
@@ -103,16 +128,23 @@ export function Sidebar() {
               </Link>
             </div>
           ) : (
-            conversations.map((c: any, i: number) => (
-              <Link
-                key={i}
-                to={`/conversations/${c.conversation.$jazz.id}`}
-                className="block p-2 hover:bg-accent rounded text-sm"
-                data-testid={`conversation-row-${i}`}
-              >
-                {c.contact.displayNameLocal}
-              </Link>
-            ))
+            conversations.map((c: any, i: number) => {
+              // Derive display label: use contact name for DM, title for group
+              const label =
+                c.contact?.displayNameLocal ??
+                c.conversation?.title ??
+                "Conversation";
+              return (
+                <Link
+                  key={i}
+                  to={`/conversations/${c.conversation.$jazz.id}`}
+                  className="block p-2 hover:bg-accent rounded text-sm"
+                  data-testid={`conversation-row-${i}`}
+                >
+                  {label}
+                </Link>
+              );
+            })
           )}
         </nav>
 
@@ -137,8 +169,25 @@ export function Sidebar() {
 
       {pickerOpen && (
         <ContactPicker
-          onSelect={handlePickContact}
+          onSelect={handlePickContacts}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {pendingGroupContacts && (
+        <GroupCreateDialog
+          participantNames={pendingGroupContacts.map(
+            (c: any) => c?.displayNameLocal ?? "(unknown)",
+          )}
+          onCreate={async (title) => {
+            const accountIDs = pendingGroupContacts.map(
+              (c: any) => c.contactAccountID as string,
+            );
+            const conv = await createGroupConversation(me, accountIDs, title);
+            setPendingGroupContacts(null);
+            navigate(`/conversations/${(conv as any).$jazz.id}`);
+          }}
+          onCancel={() => setPendingGroupContacts(null)}
         />
       )}
     </>

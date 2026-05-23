@@ -9,6 +9,7 @@ import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
+import { MembersRoute } from "./routes/conversations/members";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 
@@ -31,12 +32,15 @@ function App() {
   const isAuthenticated = useIsAuthenticated();
   const location = useLocation();
 
-  // Load me with enough depth for the inbox subscription to find contacts.
+  // Load me with enough depth for the inbox subscription to find contacts
+  // and push arriving conversations to knownConversations.
   // profile: true is required so Inbox.load(me) can read me.profile.inbox.
+  // knownConversations: true is required so the inbox callback can call
+  // $jazz.push on the list (NotLoaded proxies don't have push).
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
   const me = useAccount(JazzMessangerAccount, {
-    resolve: { profile: true, root: { contactBook: { $each: true } } },
+    resolve: { profile: true, root: { contactBook: { $each: true }, knownConversations: true } },
   });
   useConversationInboxSubscription(me);
 
@@ -68,6 +72,7 @@ function App() {
       <Route path="/" element={<ConversationsRoute />} />
       <Route path="/conversations" element={<ConversationsRoute />} />
       <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
+      <Route path="/conversations/:id/members" element={<MembersRoute />} />
       <Route path="/settings/*" element={<SettingsRoute />} />
       <Route path="/contacts" element={<ContactsRoute />} />
       <Route path="/contacts/add" element={<ContactAddRoute />} />
