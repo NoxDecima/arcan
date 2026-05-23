@@ -79,8 +79,10 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     });
 
     // ── 5. Alice leaves the conversation ─────────────────────────────────────
-    await pageA.getByTestId("conversation-menu-btn").click();
-    await expect(pageA.getByTestId("conversation-menu")).toBeVisible({ timeout: 3_000 });
+    // Leave button is now on the MembersRoute (/conversations/:id/members).
+    // Navigate there via the Members link in the detail header.
+    await pageA.getByTestId("members-link").click();
+    await expect(pageA.getByTestId("members-route")).toBeVisible({ timeout: 5_000 });
 
     // Accept the confirm dialog
     pageA.once("dialog", (dialog) => dialog.accept());

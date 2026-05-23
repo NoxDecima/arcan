@@ -19,7 +19,7 @@
  */
 
 import { useRef, useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -29,15 +29,11 @@ import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { Button } from "@/components/ui/button";
 import { sendMessage } from "@/jazz/messages";
-import { leaveConversation } from "@/jazz/conversation";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [leaving, setLeaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const me = useAccount(JazzMessangerAccount, {
@@ -232,18 +228,6 @@ export function ConversationDetailRoute() {
     await sendMessage(me, conversation, body);
   }
 
-  async function handleLeave() {
-    if (!confirm("Leave this conversation? You will lose access to its messages.")) return;
-    setMenuOpen(false);
-    setLeaving(true);
-    try {
-      await leaveConversation(me, conversation);
-      navigate("/conversations");
-    } finally {
-      setLeaving(false);
-    }
-  }
-
   // ---- render ----
 
   const messages = Array.from((conversation as any).messages ?? []);
@@ -269,34 +253,15 @@ export function ConversationDetailRoute() {
             {conversationTitle}
           </h1>
 
-          {/* Kebab menu */}
-          <div className="relative">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setMenuOpen((v) => !v)}
-              data-testid="conversation-menu-btn"
-              title="Conversation options"
-            >
-              ⋮
+          {/* Members link */}
+          <Link
+            to={`/conversations/${id}/members`}
+            data-testid="members-link"
+          >
+            <Button size="sm" variant="ghost" title="View members">
+              👥 Members
             </Button>
-
-            {menuOpen && (
-              <div
-                className="absolute right-0 top-full mt-1 z-10 bg-white border border-border rounded shadow-md min-w-[160px]"
-                data-testid="conversation-menu"
-              >
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  onClick={() => void handleLeave()}
-                  disabled={leaving}
-                  data-testid="leave-conversation-btn"
-                >
-                  {leaving ? "Leaving…" : "Leave conversation"}
-                </button>
-              </div>
-            )}
-          </div>
+          </Link>
         </div>
 
         <ConnectionBanner />
@@ -305,7 +270,6 @@ export function ConversationDetailRoute() {
         <div
           className="flex-1 overflow-y-auto py-2"
           data-testid="message-timeline"
-          onClick={() => setMenuOpen(false)}
         >
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
