@@ -141,20 +141,26 @@ export async function findOrCreate1to1Conversation(
 }
 
 /**
- * Generic group conversation creation, ready for Slice 3b. Not exposed via
- * UI in Slice 3a — only the 1:1 entry point is wired.
+ * Create a group conversation with multiple participants.
+ *
+ * Creator becomes the implicit admin (via Group.create). All participants
+ * are added as "writer" by default (admin-only change must go through
+ * promoteToAdmin). Pushes to me.root.knownConversations and fires
+ * fire-and-forget Inbox notifications to each participant.
+ *
+ * `title` is required for group conversations.
  */
 export async function createGroupConversation(
   me: Account,
   participantAccountIDs: string[],
-  title?: string,
+  title: string,
 ): Promise<any> {
   const conversationGroup = Group.create({ owner: me });
 
   for (const accountID of participantAccountIDs) {
     const acc = await loadAccountByID(me, accountID);
     if (acc) {
-      conversationGroup.addMember(acc, "admin");
+      conversationGroup.addMember(acc, "writer"); // groups: writer by default (not admin)
     }
   }
 
@@ -168,6 +174,33 @@ export async function createGroupConversation(
     },
     { owner: conversationGroup },
   );
+
+  // Push to my own knownConversations
+  (me as any).root.knownConversations.$jazz.push(conversation);
+
+  // Notify each participant via Inbox (fire-and-forget, parallel)
+  const conversationID = (conversation as any).$jazz.id as string;
+  for (const accountID of participantAccountIDs) {
+    void (async () => {
+      try {
+        const notificationGroup = Group.create({ owner: me });
+        const notification = ConversationNotification.create(
+          { conversationID },
+          { owner: notificationGroup },
+        );
+        const sender = await InboxSender.load<typeof notification>(
+          accountID as any,
+          me,
+        );
+        await sender.sendMessage(notification);
+      } catch (e) {
+        console.warn(
+          `[inbox] Failed to deliver group conversation to ${accountID}:`,
+          e,
+        );
+      }
+    })();
+  }
 
   return conversation;
 }

@@ -157,3 +157,58 @@ describe("findOrCreate1to1Conversation", () => {
     expect(result.$jazz.id).toBe(existingConversation.$jazz.id);
   });
 });
+
+describe("createGroupConversation", () => {
+  it("adds participants as 'writer' by default, pushes to knownConversations", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    const carol = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Carol" },
+      isCurrentActiveAccount: false,
+    });
+
+    await linkAccounts(alice, bob);
+    await linkAccounts(alice, carol);
+
+    const conversation = await createGroupConversation(
+      alice,
+      [bob.$jazz.id, carol.$jazz.id],
+      "Test Group",
+    );
+
+    expect(conversation).toBeDefined();
+    expect(conversation.kind).toBe("group");
+    expect(conversation.title).toBe("Test Group");
+
+    const conversationGroup = conversation.$jazz.owner;
+    const directMembers = conversationGroup.getDirectMembers();
+
+    // Alice is implicit admin (group creator), bob + carol are writers
+    const bobMember = directMembers.find((m: any) => m.account?.$jazz?.id === bob.$jazz.id);
+    const carolMember = directMembers.find((m: any) => m.account?.$jazz?.id === carol.$jazz.id);
+
+    expect(bobMember).toBeDefined();
+    expect(bobMember?.role).toBe("writer");
+    expect(carolMember).toBeDefined();
+    expect(carolMember?.role).toBe("writer");
+
+    // Alice is admin (group creator)
+    const aliceMember = directMembers.find((m: any) => m.account?.$jazz?.id === alice.$jazz.id);
+    expect(aliceMember).toBeDefined();
+    expect(aliceMember?.role).toBe("admin");
+
+    // Should be in alice's knownConversations
+    const known = Array.from((alice as any).root?.knownConversations ?? []);
+    const found = known.find((c: any) => c?.$jazz?.id === conversation.$jazz.id);
+    expect(found).toBeDefined();
+  });
+});
