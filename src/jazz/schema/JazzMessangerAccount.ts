@@ -115,10 +115,19 @@ export const JazzMessangerAccount = co.account({
 
   // -- 2b. knownConversations backfill (existing accounts) --
   // For accounts that already have root (created before Slice 3b), initialize
-  // knownConversations if not yet present. Uses $jazz.set() per NOX-13 warning:
-  // direct property writes on co.map() instances are silently no-ops.
-  if (me.root && !me.root.knownConversations) {
-    me.root.$jazz.set(
+  // knownConversations if not yet present.
+  //
+  // Guard: me.root.$jazz.set is only available when me.root is a fully-loaded
+  // CoMap. In the withLoadedAccount migration path the root may be a partial
+  // proxy whose $jazz only exposes { id, loadingState } (no set method).
+  // Checking typeof ensures we don't throw on partially-loaded roots; the
+  // backfill will run again on the next load once the root is resolved.
+  if (
+    me.root &&
+    !me.root.knownConversations &&
+    typeof (me.root as any).$jazz?.set === "function"
+  ) {
+    (me.root as any).$jazz.set(
       "knownConversations",
       co.list(Conversation).create([], { owner: me }),
     );
