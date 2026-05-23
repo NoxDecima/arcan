@@ -4,7 +4,8 @@ import { useAccount } from "jazz-tools/react";
 import { Button } from "@/components/ui/button";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { ContactPicker } from "@/components/contact-picker";
-import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { GroupCreateDialog } from "@/components/group-create-dialog";
+import { findOrCreate1to1Conversation, createGroupConversation } from "@/jazz/conversation";
 
 /**
  * Sidebar component for the main layout.
@@ -25,6 +26,7 @@ export function Sidebar() {
   });
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
 
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
@@ -83,8 +85,9 @@ export function Sidebar() {
     if (contacts.length === 1) {
       const conversation = await findOrCreate1to1Conversation(me, contacts[0]);
       navigate(`/conversations/${(conversation as any).$jazz.id}`);
+    } else if (contacts.length >= 2) {
+      setPendingGroupContacts(contacts);
     }
-    // Multi-select (2+ contacts) will be wired to GroupCreateDialog in Task 15.
   }
 
   return (
@@ -168,6 +171,23 @@ export function Sidebar() {
         <ContactPicker
           onSelect={handlePickContacts}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {pendingGroupContacts && (
+        <GroupCreateDialog
+          participantNames={pendingGroupContacts.map(
+            (c: any) => c?.displayNameLocal ?? "(unknown)",
+          )}
+          onCreate={async (title) => {
+            const accountIDs = pendingGroupContacts.map(
+              (c: any) => c.contactAccountID as string,
+            );
+            const conv = await createGroupConversation(me, accountIDs, title);
+            setPendingGroupContacts(null);
+            navigate(`/conversations/${(conv as any).$jazz.id}`);
+          }}
+          onCancel={() => setPendingGroupContacts(null)}
         />
       )}
     </>
