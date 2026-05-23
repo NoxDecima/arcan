@@ -9,6 +9,7 @@ import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
+import { MembersRoute } from "./routes/conversations/members";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 
@@ -71,6 +72,7 @@ function App() {
       <Route path="/" element={<ConversationsRoute />} />
       <Route path="/conversations" element={<ConversationsRoute />} />
       <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
+      <Route path="/conversations/:id/members" element={<MembersRoute />} />
       <Route path="/settings/*" element={<SettingsRoute />} />
       <Route path="/contacts" element={<ContactsRoute />} />
       <Route path="/contacts/add" element={<ContactAddRoute />} />
