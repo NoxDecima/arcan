@@ -8,8 +8,8 @@
  *   - Composer: text input + send button (disabled when all other members left)
  *
  * Title derivation (1:1): finds the contact in me.root.contactBook whose
- * linkedConversation matches this conversation's ID, and uses that contact's
- * displayNameLocal. Falls back to "Conversation" while loading.
+ * contactAccountID matches another member of the conversation's owning Group.
+ * Falls back to conversation.title (groups) or "Conversation" while loading.
  *
  * Author derivation: getAuthorAccountIDFromMessage() reads the create-tx signer
  * (immutable, unforgeable). Display name resolved from contactBook.
@@ -42,7 +42,7 @@ export function ConversationDetailRoute() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true } },
+      root: { contactBook: { $each: true }, knownConversations: true },
     },
   });
 
@@ -74,16 +74,38 @@ export function ConversationDetailRoute() {
 
   const myAccountID = me.$isLoaded ? (me as any).$jazz?.id : null;
 
-  // Derive title: find contact whose linkedConversation matches this conversation
+  // Derive title: for DM conversations find the contact whose contactAccountID
+  // matches one of the other members of the conversation's owning Group.
+  // Falls back to conversation.title (group chats) or "Conversation".
   const contact =
-    me.$isLoaded && id
-      ? Array.from((me as any).root.contactBook).find(
-          (c: any) => c?.linkedConversation?.$jazz?.id === id,
-        )
+    me.$isLoaded && id && conversation
+      ? (() => {
+          const conv = conversation as any;
+          if (conv.kind !== "dm") return null;
+          const group = conv.$jazz?.owner;
+          if (!group) return null;
+          const members = (() => {
+            try {
+              return group.getDirectMembers();
+            } catch {
+              return [];
+            }
+          })();
+          const contactBook = (me as any).root?.contactBook;
+          if (!contactBook) return null;
+          return Array.from(contactBook).find((ct: any) => {
+            if (!ct?.contactAccountID) return false;
+            return members.some(
+              (m: any) => m.account?.$jazz?.id === ct.contactAccountID,
+            );
+          }) ?? null;
+        })()
       : null;
 
   const conversationTitle =
-    (contact as any)?.displayNameLocal ?? "Conversation";
+    (contact as any)?.displayNameLocal ??
+    (conversation as any)?.title ??
+    "Conversation";
 
   // Build accountID → displayName map from contactBook for author display
   const contactDisplayNames: Record<string, string> = {};
@@ -129,10 +151,8 @@ export function ConversationDetailRoute() {
       // returns `undefined` for both "never-a-member" and "was-revoked"
       // (they're indistinguishable via this API), so we infer "the other
       // party left" from composerDisabled and find the leaver via:
-      //   1. The contact whose linkedConversation matches (most reliable)
-      //   2. Fallback to Conversation.createdBy if it's not me (covers the
-      //      case where the inbox subscription hasn't yet populated the
-      //      linkedConversation cache on this side)
+      //   1. The contact derived from group membership (most reliable)
+      //   2. Fallback to Conversation.createdBy if it's not me
       if (composerDisabled) {
         let leaverID: string | undefined;
         let leaverName = "Someone";
@@ -216,16 +236,6 @@ export function ConversationDetailRoute() {
     setMenuOpen(false);
     setLeaving(true);
     try {
-      // Clear the linkedConversation cache on the matching contact BEFORE
-      // revoking — while we still have access to the conversation and can
-      // compare IDs. Jazz requires `undefined` to unset an optional ref.
-      if (contact) {
-        try {
-          (contact as any).$jazz?.set("linkedConversation", undefined);
-        } catch {
-          // ignore — sidebar will handle inaccessible conversations gracefully
-        }
-      }
       await leaveConversation(me, conversation);
       navigate("/conversations");
     } finally {
