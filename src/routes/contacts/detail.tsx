@@ -18,7 +18,7 @@ export function ContactDetailRoute() {
 
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
-      root: { contactBook: { $each: true } },
+      root: { contactBook: { $each: true }, knownConversations: true },
     },
   });
 
