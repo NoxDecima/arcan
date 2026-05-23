@@ -78,10 +78,13 @@ export function Sidebar() {
     return bTime - aTime;
   });
 
-  async function handlePickContact(contact: any) {
+  async function handlePickContacts(contacts: any[]) {
     setPickerOpen(false);
-    const conversation = await findOrCreate1to1Conversation(me, contact);
-    navigate(`/conversations/${(conversation as any).$jazz.id}`);
+    if (contacts.length === 1) {
+      const conversation = await findOrCreate1to1Conversation(me, contacts[0]);
+      navigate(`/conversations/${(conversation as any).$jazz.id}`);
+    }
+    // Multi-select (2+ contacts) will be wired to GroupCreateDialog in Task 15.
   }
 
   return (
@@ -163,7 +166,7 @@ export function Sidebar() {
 
       {pickerOpen && (
         <ContactPicker
-          onSelect={handlePickContact}
+          onSelect={handlePickContacts}
           onClose={() => setPickerOpen(false)}
         />
       )}
