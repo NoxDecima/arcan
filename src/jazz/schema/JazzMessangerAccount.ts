@@ -2,6 +2,7 @@ import { co, z, Group, Inbox } from "jazz-tools";
 import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { Invitation } from "./Invitation";
+import { Conversation } from "./Conversation";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
@@ -29,6 +30,7 @@ export const JazzMessangerAccountRoot = co.map({
   contactBook: ContactBook,
   devices: co.list(DeviceRecord),
   invitesIssued: co.list(Invitation),
+  knownConversations: co.list(Conversation),
 });
 
 export const JazzMessangerAccount = co.account({
@@ -78,11 +80,12 @@ export const JazzMessangerAccount = co.account({
     const contactBook = ContactBook.create([], { owner: me });
     const devices = co.list(DeviceRecord).create([], { owner: me });
     const invitesIssued = co.list(Invitation).create([], { owner: me });
+    const knownConversations = co.list(Conversation).create([], { owner: me });
 
     me.$jazz.set(
       "root",
       JazzMessangerAccountRoot.create(
-        { contactBook, devices, invitesIssued },
+        { contactBook, devices, invitesIssued, knownConversations },
         { owner: me },
       ),
     );
@@ -107,6 +110,17 @@ export const JazzMessangerAccount = co.account({
         },
         { owner: me },
       ),
+    );
+  }
+
+  // -- 2b. knownConversations backfill (existing accounts) --
+  // For accounts that already have root (created before Slice 3b), initialize
+  // knownConversations if not yet present. Uses $jazz.set() per NOX-13 warning:
+  // direct property writes on co.map() instances are silently no-ops.
+  if (me.root && !me.root.knownConversations) {
+    me.root.$jazz.set(
+      "knownConversations",
+      co.list(Conversation).create([], { owner: me }),
     );
   }
 
