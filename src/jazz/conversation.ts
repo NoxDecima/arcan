@@ -506,14 +506,16 @@ function isMyDirectWriteGroup(group: Group, me: Account): boolean {
 }
 
 /**
- * React hook: subscribe to the current user's inbox and populate
- * Contact.linkedConversation when an incoming Conversation matches a
- * known contact.
+ * React hook: subscribe to the current user's inbox and push incoming
+ * Conversations to me.root.knownConversations for sidebar auto-discovery.
  *
  * Call this once in the authenticated branch of App.tsx. The inbox is
  * a persistent CoStream — messages that arrived before the current session
  * are replayed on subscribe, so Bob will discover conversations even if he
  * was offline when Alice created one.
+ *
+ * Replaces the Slice 3a behavior of setting contact.linkedConversation.
+ * All conversation kinds (1:1 and group) use the same knownConversations path.
  *
  * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes
  * (i.e. on sign-in / account switch), not on every render.
@@ -531,15 +533,7 @@ export function useConversationInboxSubscription(me: any) {
         if (cancelled) return;
         unsubscribe = inbox.subscribe(
           ConversationNotification,
-          async (notification: any, senderAccountID: any) => {
-            const contactBook = me?.root?.contactBook;
-            if (!contactBook) return;
-            // Find the contact whose accountID matches the sender
-            const contact = Array.from(contactBook as Iterable<any>).find(
-              (c: any) => c?.contactAccountID === senderAccountID,
-            );
-            if (!contact) return;
-            if (contact.linkedConversation) return; // already set — idempotent
+          async (notification: any) => {
             // Load the actual Conversation by ID from the notification payload
             const conversationID = notification?.conversationID;
             if (!conversationID) return;
@@ -549,9 +543,18 @@ export function useConversationInboxSubscription(me: any) {
                 resolve: {},
               });
               if (!conversation) return;
-              contact.$jazz.set("linkedConversation", conversation);
+
+              // Dedup: only push if not already in knownConversations
+              const known = me?.root?.knownConversations;
+              if (!known) return;
+              const alreadyKnown = Array.from(known as Iterable<any>).some(
+                (c: any) => c?.$jazz?.id === conversationID,
+              );
+              if (alreadyKnown) return;
+
+              known.$jazz.push(conversation);
             } catch (e) {
-              console.warn("[inbox] Failed to set linkedConversation:", e);
+              console.warn("[inbox] Failed to push conversation to knownConversations:", e);
             }
           },
         );
