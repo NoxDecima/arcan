@@ -26,42 +26,60 @@ const ConversationNotification = co.map({
  * by `contact`. The contact is a Contact CoValue from `me.root.contactBook`.
  *
  * Steps:
- *   1. If contact.linkedConversation is set, return it.
- *   2. Otherwise create a new ConversationGroup + Conversation, set the cache.
+ *   1. Search me.root.knownConversations for an existing kind="dm" with this contact.
+ *   2. Defensive wait + recheck (300ms) — handles Inbox delivery race.
+ *   3. If still not found, create a new ConversationGroup + Conversation.
+ *   4. Push the new conversation to me.root.knownConversations.
+ *   5. Fire-and-forget Inbox notification to the other party.
  *
  * Returns the Conversation CoValue.
- *
- * Note: The defensive scan step (iterate my ConversationGroups to find one
- * with the contact as the other member) is deferred — it requires Jazz's
- * group-membership graph traversal API which is not yet documented. The
- * linkedConversation cache is the primary lookup mechanism; both sides
- * converge because when Alice creates the conversation she also sets
- * contact.linkedConversation, and Bob's side populates on first "Start chat".
  */
 export async function findOrCreate1to1Conversation(
   me: Account,
   contact: any,
 ): Promise<any> {
-  if (contact.linkedConversation) {
-    return contact.linkedConversation;
+  const otherAccountID = contact.contactAccountID as string;
+
+  // Search knownConversations for an existing 1:1 with this contact
+  const known = (me as any).root?.knownConversations ?? [];
+  for (const c of Array.from(known)) {
+    if (!c) continue;
+    const cAny = c as any;
+    if (cAny.kind !== "dm") continue;
+    const group = cAny.$jazz?.owner;
+    if (!group) continue;
+    const otherMember = group
+      .getDirectMembers()
+      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
+    if (otherMember) {
+      return cAny;
+    }
   }
 
-  // Defensive wait against the duplicate-creation race: if Alice just created
-  // a conversation, her InboxSender delivered a notification that Bob's
-  // subscription is processing. If Bob clicks "Start chat" with Alice before
-  // his subscription finishes, this contact.linkedConversation is still null
-  // and we'd create a duplicate conversation. Brief wait + recheck.
+  // Defensive wait against the duplicate-creation race: if the other party
+  // just created the conversation, our Inbox subscription may still be
+  // processing the notification. Brief wait + recheck.
   //
   // 300ms is unnoticeable in the worst case (legitimately new chat with
   // someone who never created one) and prevents the race in the common case
   // (Inbox propagation is near-instant when online).
   await new Promise((r) => setTimeout(r, 300));
-  if (contact.linkedConversation) {
-    return contact.linkedConversation;
+  const knownAfterWait = (me as any).root?.knownConversations ?? [];
+  for (const c of Array.from(knownAfterWait)) {
+    if (!c) continue;
+    const cAny = c as any;
+    if (cAny.kind !== "dm") continue;
+    const group = cAny.$jazz?.owner;
+    if (!group) continue;
+    const otherMember = group
+      .getDirectMembers()
+      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
+    if (otherMember) {
+      return cAny;
+    }
   }
 
   // Load the other account so we can add them as a member
-  const otherAccountID = contact.contactAccountID as string;
   const otherAccount = await loadAccountByID(me, otherAccountID);
   if (!otherAccount) {
     throw new Error(
@@ -69,7 +87,7 @@ export async function findOrCreate1to1Conversation(
     );
   }
 
-  // Create new ConversationGroup with both participants as admin
+  // Create new ConversationGroup with both participants as admin (1:1: both admin)
   const conversationGroup = Group.create({ owner: me });
   conversationGroup.addMember(otherAccount, "admin");
 
@@ -83,7 +101,8 @@ export async function findOrCreate1to1Conversation(
     { owner: conversationGroup },
   );
 
-  contact.$jazz.set("linkedConversation", conversation);
+  // Push to my own knownConversations
+  (me as any).root.knownConversations.$jazz.push(conversation);
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.

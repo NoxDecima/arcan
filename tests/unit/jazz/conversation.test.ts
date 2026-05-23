@@ -8,6 +8,14 @@ import { FileBlob } from "@/jazz/schema/FileBlob";
 import {
   ensureMyWriteGroup,
   findOrCreate1to1Conversation,
+  createGroupConversation,
+  addMemberToConversation,
+  removeMemberFromConversation,
+  promoteToAdmin,
+  demoteToWriter,
+  updateConversationTitle,
+  isLastAdmin,
+  leaveConversation,
 } from "@/jazz/conversation";
 
 /**
@@ -82,7 +90,7 @@ describe("ensureMyWriteGroup", () => {
 });
 
 describe("findOrCreate1to1Conversation", () => {
-  it("creates a new Conversation with kind=dm when contact.linkedConversation is null", async () => {
+  it("creates a new Conversation with kind=dm and pushes to knownConversations", async () => {
     const alice = await createJazzTestAccount({
       AccountSchema: JazzMessangerAccount,
       creationProps: { name: "Alice" },
@@ -97,17 +105,8 @@ describe("findOrCreate1to1Conversation", () => {
     // Link the two test accounts so each can see the other's CoValues
     await linkAccounts(alice, bob);
 
-    let linkedConversation: any = null;
     const contactStub = {
       contactAccountID: bob.$jazz.id,
-      get linkedConversation() {
-        return linkedConversation;
-      },
-      $jazz: {
-        set: (_key: string, value: any) => {
-          linkedConversation = value;
-        },
-      },
     };
 
     const conversation = await findOrCreate1to1Conversation(alice, contactStub);
@@ -115,11 +114,14 @@ describe("findOrCreate1to1Conversation", () => {
     expect(conversation).toBeDefined();
     expect(conversation.kind).toBe("dm");
     expect(conversation.createdBy).toBe(alice.$jazz.id);
-    // Contact cache should have been populated
-    expect(contactStub.linkedConversation).toBeDefined();
+
+    // Should be in alice's knownConversations
+    const known = Array.from((alice as any).root?.knownConversations ?? []);
+    const found = known.find((c: any) => c?.$jazz?.id === conversation.$jazz.id);
+    expect(found).toBeDefined();
   });
 
-  it("returns the existing Conversation when linkedConversation is already set", async () => {
+  it("returns existing Conversation when one is already in knownConversations", async () => {
     const alice = await createJazzTestAccount({
       AccountSchema: JazzMessangerAccount,
       creationProps: { name: "Alice" },
@@ -133,7 +135,9 @@ describe("findOrCreate1to1Conversation", () => {
 
     await linkAccounts(alice, bob);
 
+    // Create a conversation and push it to knownConversations manually
     const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "admin");
     const existingConversation = Conversation.create(
       {
         kind: "dm",
@@ -143,13 +147,10 @@ describe("findOrCreate1to1Conversation", () => {
       },
       { owner: conversationGroup },
     );
+    (alice as any).root.knownConversations.$jazz.push(existingConversation);
 
     const contactStub = {
       contactAccountID: bob.$jazz.id,
-      linkedConversation: existingConversation,
-      $jazz: {
-        set: () => {},
-      },
     };
 
     const result = await findOrCreate1to1Conversation(alice, contactStub);
