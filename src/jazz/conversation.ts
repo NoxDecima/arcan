@@ -46,6 +46,20 @@ export async function findOrCreate1to1Conversation(
     return contact.linkedConversation;
   }
 
+  // Defensive wait against the duplicate-creation race: if Alice just created
+  // a conversation, her InboxSender delivered a notification that Bob's
+  // subscription is processing. If Bob clicks "Start chat" with Alice before
+  // his subscription finishes, this contact.linkedConversation is still null
+  // and we'd create a duplicate conversation. Brief wait + recheck.
+  //
+  // 300ms is unnoticeable in the worst case (legitimately new chat with
+  // someone who never created one) and prevents the race in the common case
+  // (Inbox propagation is near-instant when online).
+  await new Promise((r) => setTimeout(r, 300));
+  if (contact.linkedConversation) {
+    return contact.linkedConversation;
+  }
+
   // Load the other account so we can add them as a member
   const otherAccountID = contact.contactAccountID as string;
   const otherAccount = await loadAccountByID(me, otherAccountID);
@@ -140,42 +154,64 @@ export async function createGroupConversation(
 }
 
 /**
+ * Module-level cache: conversationID → my WriteGroup for that conversation.
+ *
+ * Avoids the O(n messages) scan on every send by remembering the WriteGroup
+ * we found/created the first time. Cache is per-session; cleared on reload
+ * or logout, which is fine — we just rebuild via one scan on first use.
+ *
+ * Keyed only by conversationID because `me` doesn't change within a session.
+ */
+const writeGroupCache = new Map<string, Group>();
+
+/**
  * Ensure I have a WriteGroup in this conversation. Creates one (parent =
  * conversationGroup mapped reader, self as direct writer) if none exists.
  *
- * Idempotent. Safe to call before every send.
- *
- * Scan: iterates conversation.messages to find a message whose owning Group
- * has `me` as a direct writer. This is O(n messages) but fine for v1 — a
- * future optimization could cache the participant→WriteGroup mapping.
+ * Idempotent. Safe to call before every send. O(1) after the first call per
+ * conversation thanks to the module-level cache.
  */
 export async function ensureMyWriteGroup(
   me: Account,
   conversation: any,
 ): Promise<Group> {
+  const conversationID = conversation.$jazz?.id as string | undefined;
+  if (conversationID) {
+    const cached = writeGroupCache.get(conversationID);
+    if (cached) return cached;
+  }
+
   const conversationGroup = conversation.$jazz?.owner as Group | undefined;
   if (!conversationGroup) {
     throw new Error("Conversation has no owning group");
   }
 
   // Scan existing messages to find one whose owner Group has me as direct writer
+  let wg: Group | undefined;
   const messages = conversation.messages ?? [];
   for (const message of messages) {
     if (!message) continue;
     const owningGroup = (message as any).$jazz?.owner;
     if (owningGroup instanceof Group && isMyDirectWriteGroup(owningGroup, me)) {
-      return owningGroup;
+      wg = owningGroup;
+      break;
     }
   }
 
-  // None found — create a new WriteGroup.
-  // Owner (me) is automatically assigned "admin" role by Jazz when the group is
-  // created via Group.create({ owner: me }). Admin includes write access, so no
-  // explicit addMember(me, "writer") is needed. The parent group is added with
-  // "reader" role so all ConversationGroup members can read messages owned by
-  // this WriteGroup (cap at reader — see spec §6.1).
-  const wg = Group.create({ owner: me });
-  wg.addMember(conversationGroup, "reader");
+  if (!wg) {
+    // None found — create a new WriteGroup.
+    // Owner (me) is automatically assigned "admin" role by Jazz when the group
+    // is created via Group.create({ owner: me }). Admin includes write access,
+    // so no explicit addMember(me, "writer") is needed. The parent group is
+    // added with "reader" role so all ConversationGroup members can read
+    // messages owned by this WriteGroup (cap at reader — see spec §6.1).
+    wg = Group.create({ owner: me });
+    wg.addMember(conversationGroup, "reader");
+  }
+
+  if (conversationID) {
+    writeGroupCache.set(conversationID, wg);
+  }
   return wg;
 }
 
