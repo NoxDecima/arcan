@@ -13,7 +13,7 @@
  *   - Back button → /conversations/:id
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
@@ -30,6 +30,7 @@ import {
   demoteToWriter,
   leaveConversation,
   isLastAdmin,
+  updateConversationTitle,
 } from "@/jazz/conversation";
 
 export function MembersRoute() {
@@ -39,6 +40,16 @@ export function MembersRoute() {
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [leavePromoteOpen, setLeavePromoteOpen] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (titleEditing) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [titleEditing]);
 
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
@@ -216,6 +227,34 @@ export function MembersRoute() {
 
   const conversationTitle = (conversation as any)?.title ?? "Conversation";
 
+  // ---- title edit handlers ----
+
+  function startTitleEdit() {
+    if (!iAmAdmin) return;
+    setTitleDraft(conversationTitle);
+    setTitleEditing(true);
+  }
+
+  async function saveTitleEdit() {
+    const trimmed = titleDraft.trim();
+    if (!trimmed) {
+      setTitleEditing(false);
+      return;
+    }
+    setActionInProgress(true);
+    try {
+      await updateConversationTitle(me, conversation, trimmed);
+    } finally {
+      setActionInProgress(false);
+      setTitleEditing(false);
+    }
+  }
+
+  function cancelTitleEdit() {
+    setTitleEditing(false);
+    setTitleDraft("");
+  }
+
   // ---- render ----
 
   return (
@@ -233,9 +272,56 @@ export function MembersRoute() {
             ← Back
           </Link>
 
-          <h1 className="flex-1 font-semibold text-gray-900 truncate">
-            Members — {conversationTitle}
-          </h1>
+          <div className="flex-1 min-w-0">
+            {titleEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void saveTitleEdit();
+                    } else if (e.key === "Escape") {
+                      cancelTitleEdit();
+                    }
+                  }}
+                  maxLength={60}
+                  disabled={actionInProgress}
+                  className="flex-1 border rounded px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="group-title-edit-input"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => void saveTitleEdit()}
+                  disabled={!titleDraft.trim() || actionInProgress}
+                  data-testid="group-title-save-btn"
+                >
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={cancelTitleEdit}
+                  disabled={actionInProgress}
+                  data-testid="group-title-cancel-btn"
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <h1
+                className={`font-semibold text-gray-900 truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
+                onClick={iAmAdmin ? startTitleEdit : undefined}
+                title={iAmAdmin ? "Click to edit title" : undefined}
+                data-testid="group-title-display"
+              >
+                {conversationTitle}
+              </h1>
+            )}
+          </div>
 
           {iAmAdmin && (
             <Button
