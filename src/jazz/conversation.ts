@@ -272,7 +272,11 @@ export async function ensureMyWriteGroup(
  * rotates the readKey; future messages from remaining members are encrypted
  * under the new key I no longer have access to.
  *
- * Clears any linkedConversation cache in the contact book pointing here.
+ * Also removes the conversation from me.root.knownConversations so the
+ * sidebar no longer shows it.
+ *
+ * CoList removal API: `list.$jazz.remove(index)` — verified against
+ * jazz-tools 0.20.18 docs/jazz-api-notes.md §6 (CoList mutation section).
  */
 export async function leaveConversation(
   me: Account,
@@ -283,29 +287,185 @@ export async function leaveConversation(
     throw new Error("Conversation has no owning group");
   }
 
+  // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // Clear any contact cache referencing this conversation.
-  // We compare by the conversation's jazz ID (a string like "co_z...").
-  // Both direct property assignment and $jazz.set are tried for compatibility.
-  const conversationId = conversation.$jazz?.id as string | undefined;
-  const contactBook = (me as any).root?.contactBook;
-  if (contactBook && conversationId) {
-    for (const contact of contactBook) {
-      const linkedId = contact?.linkedConversation?.$jazz?.id as string | undefined;
-      // Also try the raw ID accessor for unresolved CoValue refs
-      const linkedIdAlt = (contact as any)?.linkedConversation?.id as string | undefined;
-      if (linkedId === conversationId || linkedIdAlt === conversationId) {
-        try {
-          // Jazz requires `undefined` (not null) to unset an optional CoValue ref.
-          // Proxy set handler throws for direct assignment; use $jazz.set.
-          contact.$jazz.set("linkedConversation", undefined as any);
-        } catch {
-          // ignore — sidebar will handle inaccessible conversations
-        }
+  // Remove from my own knownConversations list
+  const known = (me as any).root?.knownConversations;
+  if (known) {
+    const conversationID = conversation.$jazz?.id;
+    for (let i = 0; i < known.length; i++) {
+      const entry = known[i];
+      if (entry?.$jazz?.id === conversationID) {
+        known.$jazz.remove(i);
+        break;
       }
     }
   }
+}
+
+// ----- member management primitives -----
+
+/**
+ * Add a new member to a group conversation with the given role (default writer).
+ * Sends an Inbox notification so the new member's sidebar auto-discovers.
+ *
+ * Admin-only action; caller should check role before invoking. Jazz validators
+ * will reject if `me` doesn't have admin/manager role on the conversationGroup.
+ */
+export async function addMemberToConversation(
+  me: Account,
+  conversation: any,
+  newAccountID: string,
+  role: "admin" | "writer" = "writer",
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+
+  const newAccount = await loadAccountByID(me, newAccountID);
+  if (!newAccount) {
+    throw new Error(`Cannot load account ${newAccountID}`);
+  }
+
+  conversationGroup.addMember(newAccount, role);
+
+  // Notify the new member via their Inbox so their sidebar auto-discovers
+  const conversationID = conversation.$jazz.id as string;
+  void (async () => {
+    try {
+      const notificationGroup = Group.create({ owner: me });
+      const notification = ConversationNotification.create(
+        { conversationID },
+        { owner: notificationGroup },
+      );
+      const sender = await InboxSender.load<typeof notification>(
+        newAccountID as any,
+        me,
+      );
+      await sender.sendMessage(notification);
+    } catch (e) {
+      console.warn(
+        `[inbox] Failed to deliver group invite to ${newAccountID}:`,
+        e,
+      );
+    }
+  })();
+}
+
+/**
+ * Remove a member from a group conversation.
+ *
+ * Admin-only action; caller should check role before invoking. Jazz auto-rotates
+ * the readKey when a member is removed.
+ */
+export async function removeMemberFromConversation(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+
+  conversationGroup.removeMember(targetAccount);
+}
+
+/**
+ * Promote a writer to admin. Admin-only action.
+ *
+ * Jazz allows re-assigning an existing member's role by calling addMember
+ * again with a different role — this overwrites the prior role.
+ */
+export async function promoteToAdmin(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  // Re-adding with a different role overwrites the prior role
+  conversationGroup.addMember(targetAccount, "admin");
+}
+
+/**
+ * Demote an admin to writer. Admin-only action.
+ *
+ * Caller should check `isLastAdmin(me, conversation)` first — if true,
+ * the sole admin cannot demote themselves without promoting another first.
+ *
+ * IMPORTANT cojson constraint (verified 0.20.18): an admin peer CANNOT
+ * downgrade another admin to writer — neither via `addMember(target, "writer")`
+ * (throws "Failed to set role writer to <id> (role of current account is admin)")
+ * nor via `removeMember(target)` (throws "Failed to revoke role to <id>...").
+ * Only the target admin themselves can relinquish admin role.
+ *
+ * In practice, the UI should only offer "Demote" on writers, never on admins.
+ * This function attempts the demotion and lets the cojson error surface if the
+ * caller violates the constraint — do not catch it silently.
+ */
+export async function demoteToWriter(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+): Promise<void> {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) {
+    throw new Error("Conversation has no owning group");
+  }
+  const targetAccount = await loadAccountByID(me, targetAccountID);
+  if (!targetAccount) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  // Attempt role downgrade — will throw if target is already admin (cojson
+  // prevents admin-to-admin demotion at the protocol level).
+  conversationGroup.addMember(targetAccount, "writer");
+}
+
+/**
+ * Update the conversation title. Admin-only for groups; no-op for 1:1
+ * (1:1 conversations derive their title from the other participant's display
+ * name — there is no explicit title field to update).
+ */
+export async function updateConversationTitle(
+  _me: Account,
+  conversation: any,
+  newTitle: string,
+): Promise<void> {
+  if (conversation.kind !== "group") {
+    return; // no-op for 1:1
+  }
+  conversation.$jazz.set("title", newTitle);
+}
+
+/**
+ * Returns true when `me` is the only direct admin of the conversation's group.
+ * Used to decide whether the leave flow needs to prompt for promotion of another
+ * member before the admin can leave.
+ */
+export function isLastAdmin(me: Account, conversation: any): boolean {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) return false;
+  const admins = conversationGroup
+    .getDirectMembers()
+    .filter((m: any) => m.role === "admin");
+  return (
+    admins.length === 1 &&
+    admins[0]?.account?.$jazz?.id === (me as any).$jazz?.id
+  );
 }
 
 // ----- private helpers -----

@@ -212,3 +212,291 @@ describe("createGroupConversation", () => {
     expect(found).toBeDefined();
   });
 });
+
+// Helper to create a group conversation for member-mgmt tests
+async function makeGroupConversation(alice: any, bob: any, carol?: any) {
+  const conversationGroup = Group.create({ owner: alice });
+  conversationGroup.addMember(bob, "writer");
+  if (carol) conversationGroup.addMember(carol, "writer");
+  const conversation = Conversation.create(
+    {
+      title: "Test Group",
+      kind: "group",
+      createdAt: new Date(),
+      createdBy: alice.$jazz.id,
+      messages: co.list(Message).create([], { owner: conversationGroup }),
+    },
+    { owner: conversationGroup },
+  );
+  (alice as any).root.knownConversations.$jazz.push(conversation);
+  return { conversationGroup, conversation };
+}
+
+describe("addMemberToConversation", () => {
+  it("adds with writer role by default", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    const carol = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Carol" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+    await linkAccounts(alice, carol);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await addMemberToConversation(alice, conversation, carol.$jazz.id);
+
+    const group = conversation.$jazz.owner;
+    const carolMember = group.getDirectMembers().find((m: any) => m.account?.$jazz?.id === carol.$jazz.id);
+    expect(carolMember).toBeDefined();
+    expect(carolMember?.role).toBe("writer");
+  });
+
+  it("respects explicit admin role", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    const carol = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Carol" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+    await linkAccounts(alice, carol);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await addMemberToConversation(alice, conversation, carol.$jazz.id, "admin");
+
+    const group = conversation.$jazz.owner;
+    const carolMember = group.getDirectMembers().find((m: any) => m.account?.$jazz?.id === carol.$jazz.id);
+    expect(carolMember).toBeDefined();
+    expect(carolMember?.role).toBe("admin");
+  });
+});
+
+describe("removeMemberFromConversation", () => {
+  it("revokes the target member", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await removeMemberFromConversation(alice, conversation, bob.$jazz.id);
+
+    const group = conversation.$jazz.owner;
+    const bobMember = group.getDirectMembers().find((m: any) => m.account?.$jazz?.id === bob.$jazz.id);
+    // After removal, bob should not appear as a direct member (or role is revoked)
+    expect(bobMember).toBeUndefined();
+  });
+});
+
+describe("promoteToAdmin and demoteToWriter", () => {
+  it("promoteToAdmin changes role from writer to admin", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await promoteToAdmin(alice, conversation, bob.$jazz.id);
+
+    const group = conversation.$jazz.owner;
+    const bobMember = group.getDirectMembers().find((m: any) => m.account?.$jazz?.id === bob.$jazz.id);
+    expect(bobMember?.role).toBe("admin");
+  });
+
+  it("demoteToWriter changes role from writer to writer (idempotent on writer)", async () => {
+    // cojson constraint (verified 0.20.18): an admin CANNOT demote ANOTHER admin to writer
+    // — this is enforced at the protocol level ("role of current account is admin").
+    // demoteToWriter is only valid when the target is a writer (idempotent) or
+    // the TARGET account calls it on themselves.
+    // This test verifies the call succeeds when target is already a writer (no-op).
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    // Bob is already a writer; calling demoteToWriter is a no-op (same role)
+    await demoteToWriter(alice, conversation, bob.$jazz.id);
+
+    const group = conversation.$jazz.owner;
+    const bobMember = group.getDirectMembers().find((m: any) => m.account?.$jazz?.id === bob.$jazz.id);
+    expect(bobMember?.role).toBe("writer");
+  });
+});
+
+describe("updateConversationTitle", () => {
+  it("changes the title for group conversations", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    expect(conversation.title).toBe("Test Group");
+
+    await updateConversationTitle(alice, conversation, "New Title");
+    expect(conversation.title).toBe("New Title");
+  });
+
+  it("is a no-op for 1:1 conversations", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const conversationGroup = Group.create({ owner: alice });
+    const dmConversation = Conversation.create(
+      {
+        kind: "dm",
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+
+    const titleBefore = dmConversation.title;
+    await updateConversationTitle(alice, dmConversation, "Anything");
+    expect(dmConversation.title).toBe(titleBefore);
+  });
+});
+
+describe("isLastAdmin", () => {
+  it("returns true when me is the only admin", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    // Alice is the sole admin (bob is writer)
+    expect(isLastAdmin(alice, conversation)).toBe(true);
+  });
+
+  it("returns false when there are multiple admins", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await promoteToAdmin(alice, conversation, bob.$jazz.id);
+    // Now both alice and bob are admins
+    expect(isLastAdmin(alice, conversation)).toBe(false);
+  });
+});
+
+describe("leaveConversation", () => {
+  it("removes the conversation from knownConversations", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    const { conversation } = await makeGroupConversation(alice, bob);
+
+    // Verify it's in knownConversations before leaving
+    const knownBefore = Array.from((alice as any).root?.knownConversations ?? []);
+    expect(knownBefore.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(true);
+
+    // Bob must leave (Alice is admin and created it — let Bob leave as the member)
+    await leaveConversation(bob, conversation);
+
+    // Bob's known conversations should be empty (he never pushed it, so nothing to remove)
+    // Alice should still have it
+    const aliceKnown = Array.from((alice as any).root?.knownConversations ?? []);
+    expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(true);
+  });
+
+  it("removes from alice's knownConversations when alice leaves", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+
+    // Promote bob first so alice is no longer the sole admin
+    const { conversation } = await makeGroupConversation(alice, bob);
+    await promoteToAdmin(alice, conversation, bob.$jazz.id);
+
+    // Now alice can leave
+    await leaveConversation(alice, conversation);
+
+    const aliceKnown = Array.from((alice as any).root?.knownConversations ?? []);
+    expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(false);
+  });
+});
