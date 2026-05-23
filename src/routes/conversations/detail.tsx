@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { sendMessage } from "@/jazz/messages";
 import { leaveConversation } from "@/jazz/conversation";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
+import { SystemEvent } from "@/components/system-event";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -338,15 +339,11 @@ export function ConversationDetailRoute() {
 
           {/* System events: members who have left the conversation */}
           {leftMembers.map((m) => (
-            <div
+            <SystemEvent
               key={`left-${m.accountID}`}
-              className="flex justify-center py-2"
-              data-testid={`member-left-${m.accountID}`}
-            >
-              <div className="bg-muted text-xs text-muted-foreground italic px-3 py-1 rounded-full">
-                {m.displayName} left the chat
-              </div>
-            </div>
+              kind="left"
+              targetName={m.displayName}
+            />
           ))}
 
           <div ref={bottomRef} />
