@@ -40,9 +40,24 @@ export async function findOrCreate1to1Conversation(
 ): Promise<any> {
   const otherAccountID = contact.contactAccountID as string;
 
+  /**
+   * Safely iterate knownConversations. The list may be a NotLoaded CoValue
+   * proxy (truthy but not iterable) if the calling component's resolve query
+   * doesn't include knownConversations. Guard with both existence and
+   * iterability checks.
+   */
+  function iterateKnown(list: any): any[] {
+    if (!list || typeof list[Symbol.iterator] !== "function") return [];
+    try {
+      return Array.from(list);
+    } catch {
+      return [];
+    }
+  }
+
   // Search knownConversations for an existing 1:1 with this contact
-  const known = (me as any).root?.knownConversations ?? [];
-  for (const c of Array.from(known)) {
+  const known = (me as any).root?.knownConversations;
+  for (const c of iterateKnown(known)) {
     if (!c) continue;
     const cAny = c as any;
     if (cAny.kind !== "dm") continue;
@@ -64,8 +79,8 @@ export async function findOrCreate1to1Conversation(
   // someone who never created one) and prevents the race in the common case
   // (Inbox propagation is near-instant when online).
   await new Promise((r) => setTimeout(r, 300));
-  const knownAfterWait = (me as any).root?.knownConversations ?? [];
-  for (const c of Array.from(knownAfterWait)) {
+  const knownAfterWait = (me as any).root?.knownConversations;
+  for (const c of iterateKnown(knownAfterWait)) {
     if (!c) continue;
     const cAny = c as any;
     if (cAny.kind !== "dm") continue;
@@ -290,9 +305,12 @@ export async function leaveConversation(
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // Remove from my own knownConversations list
+  // Remove from my own knownConversations list.
+  // Guard: known.$jazz.remove is only available when knownConversations is
+  // a fully-loaded CoList proxy. If the calling context doesn't include
+  // knownConversations in its resolve query, the proxy won't have the method.
   const known = (me as any).root?.knownConversations;
-  if (known) {
+  if (known && typeof (known as any).$jazz?.remove === "function") {
     const conversationID = conversation.$jazz?.id;
     for (let i = 0; i < known.length; i++) {
       const entry = known[i];
@@ -544,15 +562,18 @@ export function useConversationInboxSubscription(me: any) {
               });
               if (!conversation) return;
 
-              // Dedup: only push if not already in knownConversations
+              // Dedup: only push if not already in knownConversations.
+              // Guard: known.$jazz.push may not be available if knownConversations
+              // is a NotLoaded proxy (not in the resolve query for this account
+              // load). Check typeof before calling to avoid runtime errors.
               const known = me?.root?.knownConversations;
-              if (!known) return;
+              if (!known || typeof (known as any).$jazz?.push !== "function") return;
               const alreadyKnown = Array.from(known as Iterable<any>).some(
                 (c: any) => c?.$jazz?.id === conversationID,
               );
               if (alreadyKnown) return;
 
-              known.$jazz.push(conversation);
+              (known as any).$jazz.push(conversation);
             } catch (e) {
               console.warn("[inbox] Failed to push conversation to knownConversations:", e);
             }
