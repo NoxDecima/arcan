@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+### Slice 3a — 1:1 Conversations + Messaging Foundation
+
+- Schema additions: Message.deleted, Message.editedAt
+- Schema removal: Conversation.authorWriteGroups (registry-poisoning attack vector)
+- Self-creating per-author WriteGroups: each participant creates their own WriteGroup on first send. Author derivation reads the create-transaction signer (immutable signed bytes), validated against well-formedness of the owning WriteGroup. Scales naturally to groups (Slice 3b) and structurally defeats both the "two direct writers" forgery and the "demote-trick" sequencing attack.
+- 1:1 conversation creation on Start chat from contact detail page (lazy)
+- Conversation list in the sidebar (replaces contact list); "+" opens contact picker
+- Contacts moved to /contacts (full page) accessible via sidebar footer link
+- Message composer (Enter sends, Shift-Enter newline) and message bubbles (own/other variants, edited indicator, deleted placeholder)
+- Edit own message (soft, in-place body overwrite, edited + editedAt flags)
+- Delete own message (soft: body cleared, deleted: true, placeholder rendered)
+- Leave conversation (cryptographic revoke from ConversationGroup; closes NOX-9)
+- Connection-status banner shown only when offline
+- E2E tests: messaging-1to1, leave-conversation, conversation-list-ordering
+
+### Slice 3a known limitations
+
+- No group conversations yet (Slice 3b)
+- No "delete for me" — delete is always for everyone
+- No edit-history view (we don't surface previous versions of edited messages)
+- Conversation discovery is via Contact.linkedConversation cache; "iterate all my conversations" path will come in Slice 3b
+- Soft revoke device follow-up (NOX-10) remains deferred
+
 ### Slice 2 — QR Pairing + Contact Invitations
 
 - New `EphemeralPairing` CoValue schema for the QR multi-device pairing handshake.

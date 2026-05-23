@@ -970,3 +970,298 @@ import type { AgentSecret } from "cojson";
    If you omit `secretSeed` from `authSecretStorage.set(...)`, `PassphraseAuth`'s
    `getCurrentAccountPassphrase()` and `signUp()` will throw `"No credentials found"`.
    Always include `secretSeed` when you have it.
+
+---
+
+## 14. Create-Transaction Signer (`$jazz.createdBy`) — Slice 3a
+
+> Verified against `node_modules/jazz-tools/dist/tools/coValues/CoValueBase.d.ts` on 2026-05-17.
+
+### The question
+
+Given a loaded CoValue (e.g., a `Message` instance), how do you get the accountID of the account that signed the create-transaction?
+
+### Finding: clean public API exists
+
+`CoValueJazzApi` (the type of `coValue.$jazz`) exposes a getter:
+
+```ts
+/**
+ * Returns the account ID of the user who created this CoValue.
+ *
+ * Creation is determined by inspecting the earliest valid transaction.
+ * Note: Where the author is a sealer/signer identifier (e.g. accounts)
+ * nothing is returned intentionally.
+ *
+ * @returns {string | undefined} The creating user's account ID, or
+ * `undefined` if no author can be determined.
+ */
+get createdBy(): string | undefined;
+```
+
+### Usage
+
+```ts
+export function getAuthorAccountIDFromMessage(message: any): string | null {
+  return message?.$jazz?.createdBy ?? null;
+}
+```
+
+This is signed by the authoring session key and is **immutable** — no post-hoc Group manipulation can change who signed the create transaction. This is the correct source of truth for authorship (see spec §6.2–§6.3, "demote-trick" attack analysis).
+
+### Companion API
+
+```ts
+// Also useful: creation timestamp
+get createdAt(): number;   // milliseconds since epoch
+
+// Last update timestamp (returns createdAt if no updates)
+get lastUpdatedAt(): number;
+```
+
+---
+
+## 15. Group Role Mechanics — Slice 3a (verified 2026-05-17)
+
+### Owner role on Group.create
+
+`Group.create({ owner: me })` assigns the creator's account ID the role `"admin"` in the raw group. There is no separate `"writer"` role for the owner. Admins have full write access.
+
+Consequence: after `Group.create({ owner: me })`, calling `group.addMember(me, "writer")` **overwrites** the admin role to writer, downgrading permissions. Do NOT do this for per-author WriteGroups.
+
+### Per-author WriteGroup creation (correct pattern)
+
+```ts
+const wg = Group.create({ owner: me });
+wg.addMember(conversationGroup, "reader");
+// Do NOT add me as "writer" — I am already admin (includes write)
+```
+
+### Direct vs inherited members
+
+```ts
+// Direct members only (non-inherited):
+group.getDirectMembers(): GroupMember[]
+// type: { id: string; role: AccountRole; ref: Ref<Account>; account: Account }
+
+// All members including inherited via parent groups:
+group.members: GroupMember[]
+
+// Role of a specific account:
+group.getRoleOf(accountId): Role | undefined
+```
+
+`getDirectMembers()` calls `raw.getMemberKeys()` which filters the group's raw key-value store for keys matching account IDs or agent IDs (starting with `co_` or agent ID format). Inherited accounts from parent groups are excluded.
+
+### Parent group role mapping
+
+`group.getParentGroups()` returns the parent `Group[]` but does NOT include the role-mapping (the "cap" role). To check the parent role, read the raw group:
+
+```ts
+const parentKey = `parent_${parentGroup.$jazz.raw.id}`;
+const parentRole = group.$jazz.raw.get(parentKey);
+// parentRole is one of: "reader" | "writer" | "admin" | "manager" | "extend" | "revoked"
+```
+
+This is an internal API path (accessing `$jazz.raw`). If jazz-tools exposes a cleaner method in a future version, prefer that.
+
+### Well-formed WriteGroup validation
+
+A per-author WriteGroup is "well-formed" if:
+1. The conversationGroup is a parent with role `"reader"` (cap at reader for inherited members)
+2. Exactly one direct admin (the author — who created this WriteGroup and has exclusive write access)
+3. No extra direct "writer" accounts (would mean others can write)
+
+```ts
+function isWellFormedWriteGroup(group: Group, conversationGroup: Group): boolean {
+  // 1. Check parent role
+  const parentRole = group.$jazz.raw.get(`parent_${conversationGroup.$jazz.raw.id}`);
+  if (parentRole !== "reader") return false;
+
+  // 2. Exactly one direct admin
+  const admins = group.getDirectMembers().filter(m => m.role === "admin");
+  if (admins.length !== 1) return false;
+
+  // 3. No extra writers
+  const writers = group.getDirectMembers().filter(m => m.role === "writer");
+  if (writers.length !== 0) return false;
+
+  return true;
+}
+```
+
+---
+
+## 16. Enumerating My Groups / CoValues (verified 2026-05-19, jazz-tools 0.20.18)
+
+> Survey conducted for Slice 3a Issue 1: Bob's sidebar failing to auto-discover ConversationGroups that Alice created and invited Bob to.
+
+### Question
+
+Does jazz-tools 0.20.18 expose a way to enumerate all CoValues (specifically Groups, or filtered to a given schema type) that the current Account is a member of — without already knowing their IDs?
+
+### Finding: No public enumeration API exists
+
+There is no `useMyGroups()`, `useMyCoValues()`, `allMyGroups()`, `Group.find({ member: me })`, or any indexed query API in jazz-tools 0.20.18.
+
+**What WAS found:**
+
+#### 1. `LocalNode.allCoValues()` — internal, unfiltered
+
+`cojson`'s `LocalNode` (accessible as `me.$jazz.localNode`) exposes:
+
+```ts
+allCoValues(): MapIterator<CoValueCore>
+```
+
+This returns an iterator over every `CoValueCore` that is currently in the node's in-memory store. It is NOT marked `@internal` in `localNode.d.ts` — the method is public on the class — but it operates on `CoValueCore` (the raw cojson primitive), not jazz-tools schema instances.
+
+**To filter for groups you are a member of** you would need to:
+
+1. Filter to cores whose `verified.header.ruleset.type === "group"` (i.e. `PermissionsDef` of type `"group"`).
+2. Reconstruct a `RawGroup` from the core and call `roleOf(myAccountID)` to confirm membership.
+3. Map the surviving IDs up through the jazz-tools `Group` class.
+
+**Critical caveats:**
+
+- `allCoValues()` only reflects CoValues that have already been synced/loaded into the in-memory node. It is NOT an exhaustive membership index — it is a snapshot of what is in memory right now. CoValues the peer knows about but has not yet streamed will be absent.
+- The iterator returns `CoValueCore` objects, not `RawGroup` or any jazz-tools typed value. Further conversion is needed.
+- Relying on this for a UI "conversations list" would be fragile: the set grows over time as the sync server pushes data, with no stable ordering or completion signal.
+
+```ts
+// Illustrative (not production-ready) — shows what is technically possible
+function getKnownGroupIDs(me: Account): string[] {
+  const myID = me.$jazz.raw.id;
+  const result: string[] = [];
+  for (const core of me.$jazz.localNode.allCoValues()) {
+    if (!core.isAvailable()) continue;
+    const header = core.verified?.header;
+    if (header?.ruleset?.type !== "group") continue;
+    // Reconstruct raw group to check role — expensive, requires loading
+    result.push(core.id);
+  }
+  return result;
+}
+```
+
+#### 2. `Inbox` / `InboxSender` — the recommended jazz pattern
+
+jazz-tools 0.20.18 ships a first-class **Inbox** mechanism, publicly exported from `jazz-tools`:
+
+```ts
+import { Inbox, InboxSender } from "jazz-tools";
+```
+
+This is designed for exactly the use case of account-to-account CoValue delivery (e.g. "Alice wants to deliver a ConversationGroup ID to Bob"). It is the canonical solution the Jazz team built for this problem.
+
+**`Inbox` — Bob's side (receiver)**
+
+```ts
+export declare class Inbox {
+  account: Account;
+  messages: MessagesStream;
+  processed: TxKeyStream;
+  failed: FailedMessagesStream;
+  root: InboxRoot;
+
+  subscribe<M extends CoValueClassOrSchema, O extends CoValue | undefined>(
+    Schema: M,
+    callback: (message: InstanceOfSchema<M>, senderAccountID: ID<Account>) => Promise<O | undefined | void>,
+    options?: { concurrencyLimit?: number }
+  ): () => void;
+
+  static load(account: Account): Promise<Inbox>;
+}
+```
+
+Bob loads his own inbox and subscribes; the callback fires for each new message with a fully-typed payload.
+
+**`InboxSender` — Alice's side (sender)**
+
+```ts
+export declare class InboxSender<I extends CoValue, O extends CoValue | undefined> {
+  sendMessage(message: I): Promise<O extends CoValue ? ID<O> : undefined>;
+  static load<I extends CoValue, O extends CoValue | undefined = undefined>(
+    inboxOwnerID: ID<Account>,
+    currentAccount?: Account
+  ): Promise<InboxSender<I, O>>;
+}
+```
+
+Alice loads Bob's inbox sender (using Bob's account ID, which she already knows from the Contact relationship) and sends a message.
+
+**How an Inbox is created:**
+
+The framework reserves `inbox` and `inboxInvite` slots on the default account profile shape:
+
+```ts
+// AccountSchema default profile shape includes:
+inbox?: string;        // CoID of the inbox root
+inboxInvite?: string;  // InboxInvite token for granting send access
+```
+
+The `createInboxRoot(account)` helper sets these up:
+
+```ts
+import { createInboxRoot } from "jazz-tools";  // exported via internal.js
+// (createInboxRoot is not re-exported from the public exports.d.ts;
+//  it may be internal — use Inbox.load(account) which creates the root automatically)
+```
+
+**`InboxRoot` shape:**
+
+```ts
+type InboxRoot = RawCoMap<{
+  messages: CoID<MessagesStream>;   // CoStream of message CoIDs
+  processed: CoID<TxKeyStream>;     // tracks processed tx keys
+  failed: CoID<FailedMessagesStream>;
+  inviteLink: InboxInvite;          // `${messagesStreamID}/${inviteSecret}`
+}>;
+type InboxInvite = `${CoID<MessagesStream>}/${InviteSecret}`;
+```
+
+**Concrete usage sketch for Slice 3a:**
+
+```ts
+// Alice creates a conversation and wants Bob to discover it
+// 1. Alice sends the ConversationGroup CoValue to Bob's inbox
+const sender = await InboxSender.load<ConversationGroup>(
+  bobContactRef.id,       // Bob's account ID (already in Alice's ContactBook)
+  me                      // Alice's account
+);
+await sender.sendMessage(conversationGroupInstance);
+
+// 2. Bob's app subscribes to his inbox on startup
+const inbox = await Inbox.load(me);
+const unsub = inbox.subscribe(ConversationGroup, async (convoGroup, senderID) => {
+  // convoGroup is a fully-loaded ConversationGroup
+  // Update Bob's local contact cache: Contact.linkedConversation = convoGroup.$jazz.id
+  const contact = findContactByAccountID(me, senderID);
+  if (contact) {
+    contact.linkedConversation = convoGroup.$jazz.id;
+  }
+});
+```
+
+### Summary table
+
+| Approach | Available? | Notes |
+|---|---|---|
+| `useMyGroups()` hook | No | Does not exist |
+| `Group.find({ member: me })` | No | No indexed query API |
+| `LocalNode.allCoValues()` | Yes (internal) | Unfiltered, in-memory only, returns `CoValueCore` not typed schema instances; fragile for UI use |
+| `Inbox` / `InboxSender` | Yes (public) | The canonical jazz solution; designed for exactly this push-notification use case |
+
+### Recommendation for Slice 3a Issue 1
+
+**Use `Inbox` / `InboxSender`.**
+
+The `LocalNode.allCoValues()` path is too fragile for a conversations-list feature: it only covers what has been synced into memory, has no completion signal, and requires low-level `CoValueCore` manipulation. It would produce an incomplete list on cold start and would not react cleanly to new invitations arriving while the app is open.
+
+The `Inbox` pattern is the correct jazz-native solution:
+
+1. **Alice** calls `InboxSender.load(bobID)` and `sendMessage(conversationGroup)` after creating the ConversationGroup and adding Bob as a member.
+2. **Bob's app** calls `Inbox.load(me)` at startup and subscribes; the callback fires for each delivered ConversationGroup, at which point Bob can populate `Contact.linkedConversation` and update the sidebar.
+3. This correctly handles cold start (the inbox is a persistent CoStream — messages accumulate and are replayed), concurrent devices, and future group conversations beyond 1:1.
+
+The main implementation work is: (a) initialising an Inbox for every new account in `withMigration`, (b) wiring `InboxSender.load` into the conversation-creation flow, and (c) wiring `Inbox.load` + `subscribe` into the app bootstrap (alongside `useAccount`).

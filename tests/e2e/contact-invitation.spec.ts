@@ -46,18 +46,18 @@ test("contact invitation flow", async ({ browser }) => {
     // Alice lands on accepted screen
     await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
 
-    // Alice navigates home — her contact list should contain Bob
-    await pageA.goto("/");
-    await expect(pageA.getByTestId("contact-list")).toContainText("Bob", {
+    // Alice navigates to /contacts — her contacts list should contain Bob
+    await pageA.goto("/contacts");
+    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
       timeout: 10_000,
     });
 
-    // Bob's side: polling detects acceptance and completes → navigate home
+    // Bob's side: polling detects acceptance and completes → navigate to /contacts
     // Bob may still be on /contacts/add showing "Contact added!" or the page may have navigated.
-    // Either way: navigate home explicitly and check contact list.
+    // Either way: navigate to /contacts explicitly and check the contacts page list.
     await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
-    await pageB.getByRole("button", { name: /go home/i }).click();
-    await expect(pageB.getByTestId("contact-list")).toContainText("Alice", {
+    await pageB.goto("/contacts");
+    await expect(pageB.getByTestId("contacts-page-list")).toContainText("Alice", {
       timeout: 10_000,
     });
   } finally {

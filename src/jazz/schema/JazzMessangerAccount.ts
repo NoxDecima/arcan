@@ -1,4 +1,4 @@
-import { co, z, Group } from "jazz-tools";
+import { co, z, Group, Inbox } from "jazz-tools";
 import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { Invitation } from "./Invitation";
@@ -108,6 +108,18 @@ export const JazzMessangerAccount = co.account({
         { owner: me },
       ),
     );
+  }
+
+  // -- 3. Inbox initialization --
+  // Inbox.load is idempotent: creates the inbox if missing, returns existing
+  // if already present. The framework writes the inbox CoValue ID to
+  // me.profile.inbox automatically. Running on every startup ensures existing
+  // accounts (created before this migration step was added) also get an inbox.
+  try {
+    await Inbox.load(me);
+  } catch (e) {
+    console.warn("[inbox] Failed to load/create inbox on migration:", e);
+    // Non-fatal: subsequent app bootstrap will retry
   }
 
 });
