@@ -48,7 +48,7 @@ export function ConversationDetailRoute() {
   });
 
   const conversation = useCoState(Conversation, id as any, {
-    resolve: { messages: { $each: true }, systemEvents: { $each: true } },
+    resolve: { messages: { $each: true } },
   });
 
   // Auto-scroll to bottom whenever the message list grows
@@ -58,6 +58,10 @@ export function ConversationDetailRoute() {
   }, [messageCount]);
 
   // ---- derived values (safe to call before early returns) ----
+
+  // useNavigate MUST be called here (before any conditional returns) — hooks
+  // must always be called in the same order regardless of component state.
+  const navigate = useNavigate();
 
   const myAccountID = me.$isLoaded ? (me as any).$jazz?.id : null;
 
@@ -160,8 +164,6 @@ export function ConversationDetailRoute() {
   }
 
   // ---- handlers ----
-
-  const navigate = useNavigate();
 
   async function handleSend(body: string) {
     await sendMessage(me, conversation, body);

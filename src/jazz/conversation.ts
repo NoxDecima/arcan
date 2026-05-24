@@ -140,6 +140,7 @@ export async function findOrCreate1to1Conversation(
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
+      systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
     },
     { owner: conversationGroup },
   );
@@ -199,6 +200,7 @@ export async function createGroupConversation(
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
+      systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
     },
     { owner: conversationGroup },
   );
@@ -534,8 +536,19 @@ export function isLastAdmin(me: Account, conversation: any): boolean {
  * and to gate the detail/members routes into read-only mode.
  */
 export function isArchived(me: Account, conversation: any): boolean {
+  // If the conversation itself is a NotLoaded proxy (inaccessible after revocation),
+  // treat it as archived. The sidebar uses $each: { $onError: "catch" } so
+  // inaccessible conversations land here as NotLoaded values rather than being
+  // filtered out. A conversation in knownConversations that is inaccessible means
+  // Alice was revoked from it — i.e., it's archived.
+  if (conversation?.$isLoaded === false) return true;
+
   const group = conversation?.$jazz?.owner as Group | undefined;
   if (!group) return false;
+
+  // If the group itself is a NotLoaded proxy (inaccessible), treat as archived.
+  if ((group as any)?.$isLoaded === false) return true;
+
   const myID = (me as any).$jazz?.id;
   if (!myID) return false;
   return group.getRoleOf(myID) === undefined;

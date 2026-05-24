@@ -61,7 +61,11 @@ export function Sidebar() {
       profile: true,
       root: {
         contactBook: { $each: true },
-        knownConversations: { $each: true },
+        // $onError: "catch" ensures the sidebar loads even when some conversations
+        // become inaccessible (e.g. after Alice leaves and Jazz revokes her read
+        // access to the ConversationGroup). Without this, the whole knownConversations
+        // resolve stalls indefinitely and me.$isLoaded stays false.
+        knownConversations: { $each: { $onError: "catch" } },
       },
     },
   });
