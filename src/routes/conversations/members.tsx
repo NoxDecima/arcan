@@ -31,6 +31,7 @@ import {
   leaveConversation,
   isLastAdmin,
   updateConversationTitle,
+  isArchived,
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 
@@ -139,6 +140,8 @@ export function MembersRoute() {
 
   const myRole = rawMembers.find((m) => m.accountID === myAccountID)?.role;
   const iAmAdmin = myRole === "admin";
+  const archivedForMe = me.$isLoaded && conversation ? isArchived(me, conversation) : false;
+  const iAmCurrentMember = !archivedForMe;
 
   const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
 
@@ -214,7 +217,7 @@ export function MembersRoute() {
   // ---- title edit handlers ----
 
   function startTitleEdit() {
-    if (!iAmAdmin) return;
+    if (!iAmAdmin || !iAmCurrentMember) return;
     setTitleDraft(conversationTitle);
     setTitleEditing(true);
   }
@@ -307,7 +310,7 @@ export function MembersRoute() {
             )}
           </div>
 
-          {iAmAdmin && (
+          {iAmAdmin && iAmCurrentMember && (
             <Button
               size="sm"
               variant="outline"
@@ -347,8 +350,8 @@ export function MembersRoute() {
                   {/* Role badge */}
                   <RolePill role={member.role} />
 
-                  {/* Admin actions (only for other members, only if I'm admin) */}
-                  {iAmAdmin && !isMe && (
+                  {/* Admin actions (only for other members, only if I'm admin and current member) */}
+                  {iAmAdmin && iAmCurrentMember && !isMe && (
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {member.role === "writer" && (
                         <Button
@@ -388,18 +391,20 @@ export function MembersRoute() {
           )}
         </div>
 
-        {/* Leave conversation — destructive, bottom */}
-        <div className="p-4 border-t border-border">
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => void handleLeave()}
-            disabled={actionInProgress}
-            data-testid="leave-conversation-btn"
-          >
-            {actionInProgress ? "Working…" : "Leave conversation"}
-          </Button>
-        </div>
+        {/* Leave conversation — destructive, bottom; hidden when archived (already left) */}
+        {iAmCurrentMember && (
+          <div className="p-4 border-t border-border">
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => void handleLeave()}
+              disabled={actionInProgress}
+              data-testid="leave-conversation-btn"
+            >
+              {actionInProgress ? "Working…" : "Leave conversation"}
+            </Button>
+          </div>
+        )}
       </main>
 
       {/* Dialogs */}
