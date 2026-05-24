@@ -296,15 +296,17 @@ export async function ensureMyWriteGroup(
 }
 
 /**
- * Leave a conversation by revoking self from the ConversationGroup. Jazz
- * rotates the readKey; future messages from remaining members are encrypted
- * under the new key I no longer have access to.
+ * Leave a conversation.
  *
- * Also removes the conversation from me.root.knownConversations so the
- * sidebar no longer shows it.
+ * Slice 4 changed this from "splice from knownConversations" to "leave a
+ * trail": we write a `left` system event, then self-revoke. The conversation
+ * stays in me.root.knownConversations; the sidebar detects via isArchived()
+ * and routes it to the Archived section. The user can call removeFromArchive
+ * later to truly delete the entry.
  *
- * CoList removal API: `list.$jazz.remove(index)` — verified against
- * jazz-tools 0.20.18 docs/jazz-api-notes.md §6 (CoList mutation section).
+ * For last-admin leaves, the caller should first call promoteToAdmin on
+ * another member (see LeaveWithPromoteDialog) — this function does not
+ * handle that flow.
  */
 export async function leaveConversation(
   me: Account,
@@ -325,21 +327,10 @@ export async function leaveConversation(
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // Remove from my own knownConversations list.
-  // Guard: known.$jazz.remove is only available when knownConversations is
-  // a fully-loaded CoList proxy. If the calling context doesn't include
-  // knownConversations in its resolve query, the proxy won't have the method.
-  const known = (me as any).root?.knownConversations;
-  if (known && typeof (known as any).$jazz?.remove === "function") {
-    const conversationID = conversation.$jazz?.id;
-    for (let i = 0; i < known.length; i++) {
-      const entry = known[i];
-      if (entry?.$jazz?.id === conversationID) {
-        known.$jazz.remove(i);
-        break;
-      }
-    }
-  }
+  // NOTE: We deliberately do NOT remove from me.root.knownConversations.
+  // Slice 4 keeps the conversation in the list so it lands in the Archived
+  // section (isArchived returns true after self-revoke). The user can
+  // explicitly remove via the archive's X button -> removeFromArchive().
 }
 
 // ----- member management primitives -----

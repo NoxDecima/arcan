@@ -499,28 +499,31 @@ describe("leaveConversation", () => {
     expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(true);
   });
 
-  it("removes from alice's knownConversations when alice leaves", async () => {
-    const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
-      creationProps: { name: "Alice" },
-      isCurrentActiveAccount: true,
-    });
-    const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
-      creationProps: { name: "Bob" },
-      isCurrentActiveAccount: false,
-    });
-    await linkAccounts(alice, bob);
+  it("does NOT remove the conversation from knownConversations after leaving (Slice 4)", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
 
-    // Promote bob first so alice is no longer the sole admin
-    const { conversation } = await makeGroupConversation(alice, bob);
-    await promoteToAdmin(alice, conversation, bob.$jazz.id);
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "admin"); // both admin so alice can leave cleanly
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+    alice.root.knownConversations.$jazz.push(conversation);
+    expect(Array.from(alice.root.knownConversations).length).toBe(1);
 
-    // Now alice can leave
     await leaveConversation(alice, conversation);
 
-    const aliceKnown = Array.from((alice as any).root?.knownConversations ?? []);
-    expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(false);
+    // Slice 4: conversation stays in knownConversations so it can appear in archive
+    expect(Array.from(alice.root.knownConversations).length).toBe(1);
+    // But me is no longer in the group
+    expect(isArchived(alice, conversation)).toBe(true);
   });
 });
 
