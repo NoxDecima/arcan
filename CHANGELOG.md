@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+### Slice 3c — Polish (post-3b)
+
+**Closes:** NOX-14 (demote button crashes), NOX-15 (stale `kind` after 1:1→group).
+
+#### Changed
+- Removed `kind: "dm" | "group"` discriminator from `Conversation` schema. Conversations now have a single shape; "1:1 with Bob" means "a conversation whose direct admin/writer members are exactly me + Bob".
+- `findOrCreate1to1Conversation` discovers existing 1:1s by member-set match instead of by `kind === "dm"`. A former group that decayed to 2 members is returned correctly as the 1:1 with that contact.
+- Sidebar synthesizes a conversation label from non-me members when no explicit `title` is set. Explicit titles always win. Renaming a contact propagates automatically.
+- `updateConversationTitle` works on any conversation, not just groups.
+- Message-header author resolution and MembersRoute name resolution share a single `resolveDisplayName` helper (`src/jazz/displayName.ts`). The chain is: self → contactBook displayNameLocal → group member profile → "Unknown".
+
+#### Removed
+- Demote button on MembersRoute admin rows. Cojson 0.20.18 forbids admin-to-admin demotion at the protocol level; the button could only crash. The `demoteToWriter` and `isLastAdmin` primitives in `src/jazz/conversation.ts` are retained for future self-demote / transfer-ownership work.
+- Remove button hidden on admin rows (same cojson constraint: admin-remove-admin is forbidden). Remove button remains visible for writer rows.
+
+#### Fixed
+- Author display in group chats: messages from a member who is not in the local contact book now show that member's profile name instead of "Unknown".
+
+#### Test coverage
+- New unit tests for `resolveDisplayName` (9 cases) and for member-set-based discovery.
+- New e2e assertion in `group-create.spec.ts` that a non-contact member's profile name resolves in the message header.
+- Phase A reconnaissance test documenting cojson admin-remove-admin behavior.
+
+#### Deferred
+- Owner / manager / transfer-ownership concepts → future slice.
+- Conversation lifecycle (disband group, archive, chronological events) → NOX-16, NOX-17, NOX-18.
+
 ### Slice 3b — Group Conversations + Member Management
 
 - knownConversations refactor: `Account.root.knownConversations: co.list(Conversation)` replaces the per-contact `linkedConversation` cache; Inbox subscription populates it for both 1:1 and group conversations; sidebar iterates it as the single source of truth
