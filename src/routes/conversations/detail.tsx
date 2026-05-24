@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
+import { resolveDisplayName } from "@/jazz/displayName";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -74,28 +75,38 @@ export function ConversationDetailRoute() {
   // Derive title: for DM conversations find the contact whose contactAccountID
   // matches one of the other members of the conversation's owning Group.
   // Falls back to conversation.title (group chats) or "Conversation".
+  // "View contact" affordance: show when the conversation has exactly two
+  // direct admin/writer members (me + one other) AND the other one is in my
+  // contact book. Replaces the prior kind === "dm" gate per Slice 3c.
   const contact =
     me.$isLoaded && id && conversation
       ? (() => {
           const conv = conversation as any;
-          if (conv.kind !== "dm") return null;
           const group = conv.$jazz?.owner;
           if (!group) return null;
-          const members = (() => {
-            try {
-              return group.getDirectMembers();
-            } catch {
-              return [];
-            }
-          })();
+          const myID = (me as any).$jazz?.id;
+          let members: any[] = [];
+          try {
+            members = group.getDirectMembers();
+          } catch {
+            return null;
+          }
+          const participants = members.filter(
+            (m: any) => m.role === "admin" || m.role === "writer",
+          );
+          if (participants.length !== 2) return null;
+          const otherMember = participants.find(
+            (m: any) => m.account?.$jazz?.id !== myID,
+          );
+          if (!otherMember) return null;
+          const otherID = otherMember.account?.$jazz?.id;
           const contactBook = (me as any).root?.contactBook;
-          if (!contactBook) return null;
-          return Array.from(contactBook).find((ct: any) => {
-            if (!ct?.contactAccountID) return false;
-            return members.some(
-              (m: any) => m.account?.$jazz?.id === ct.contactAccountID,
-            );
-          }) ?? null;
+          if (!contactBook || !otherID) return null;
+          return (
+            (Array.from(contactBook).find(
+              (ct: any) => ct?.contactAccountID === otherID,
+            ) as any) ?? null
+          );
         })()
       : null;
 
@@ -103,17 +114,6 @@ export function ConversationDetailRoute() {
     (contact as any)?.displayNameLocal ??
     (conversation as any)?.title ??
     "Conversation";
-
-  // Build accountID → displayName map from contactBook for author display
-  const contactDisplayNames: Record<string, string> = {};
-  if (me.$isLoaded) {
-    for (const c of Array.from((me as any).root.contactBook)) {
-      const cAny = c as any;
-      if (cAny?.contactAccountID && cAny?.displayNameLocal) {
-        contactDisplayNames[cAny.contactAccountID] = cAny.displayNameLocal;
-      }
-    }
-  }
 
   // composerDisabled: true when the ConversationGroup's direct admin list is 1
   // (only me remains after the other party left).
@@ -281,11 +281,13 @@ export function ConversationDetailRoute() {
             messages.map((message: any, i: number) => {
               const authorAccountID = getAuthorAccountIDFromMessage(message);
               const isMine = authorAccountID === myAccountID;
+              const conversationGroup = (conversation as any)?.$jazz?.owner;
               const authorDisplayName = authorAccountID
-                ? (contactDisplayNames[authorAccountID] ??
-                  (isMine
-                    ? ((me as any).profile?.displayName ?? "Me")
-                    : "Unknown"))
+                ? resolveDisplayName({
+                    accountID: authorAccountID,
+                    me,
+                    group: conversationGroup,
+                  })
                 : "Unknown";
 
               return (

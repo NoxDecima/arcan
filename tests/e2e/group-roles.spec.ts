@@ -3,19 +3,15 @@ import { createAccount } from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
- * E2E: Admin promotion and demotion in group conversation
+ * E2E: Admin promotion in group conversation
  *
  * Alice creates a 3-member group (Alice admin, Bob writer, Charlie writer).
  * Alice promotes Bob to admin. Bob's /members view then shows the admin role
- * badge and admin action buttons (add-member, promote/demote/remove for others).
+ * badge and admin action buttons (add-member, promote/remove for writers).
  *
- * Note on demote: cojson 0.20.18 prevents an admin from downgrading another
- * admin's role ("Failed to set role writer to <id> (role of current account is
- * admin)"). Only the target admin can relinquish their own role. The MembersRoute
- * exposes the Demote button for admin rows (as a UI affordance) but the protocol
- * call will throw at runtime. This test therefore does NOT assert a successful
- * Alice-demotes-Bob flow — that constraint is documented in
- * src/jazz/conversation.ts:demoteToWriter.
+ * Note: Slice 3c removed the Demote button from admin rows — cojson 0.20.18
+ * forbids one admin from demoting another (confirmed via Phase A recon test).
+ * The remove button is also hidden on admin rows for the same reason.
  */
 
 async function pairWith(
@@ -122,11 +118,11 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     // Bob's role pill updates to admin
     await expect(bobRow.getByTestId("role-pill-admin")).toBeVisible({ timeout: 10_000 });
 
-    // The promote button is gone; the demote button appears
+    // The promote button is gone (Bob is now admin; no demote button on admin rows per Slice 3c)
     await expect(pageA.getByTestId(`promote-${bobAccountID}`)).not.toBeVisible({
       timeout: 5_000,
     });
-    await expect(pageA.getByTestId(`demote-${bobAccountID}`)).toBeVisible({
+    await expect(pageA.getByTestId(`demote-${bobAccountID}`)).not.toBeVisible({
       timeout: 5_000,
     });
 
@@ -168,20 +164,21 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
       timeout: 5_000,
     });
 
-    // ── 7. Verify demote button exists for admins (cojson constraint note) ───
-    // The demote button appears in the UI for admin members (as designed).
-    // However, clicking it will throw at the protocol level because cojson prevents
-    // an admin from downgrading another admin's role (only self-demotion is allowed,
-    // which the current UI doesn't expose). This is a known cojson 0.20.18 constraint.
-    // We verify the button is present but do not assert a successful demotion flow.
+    // ── 7. Verify admin rows have no demote/remove buttons (Slice 3c) ────────
+    // Slice 3c removed the Demote button and hides Remove on admin rows.
+    // Bob (admin) should NOT see demote or remove for Alice (also admin).
     const aliceRowOnBob = pageBob.getByTestId("members-list").locator('[data-testid^="member-row-"]').filter({
       hasText: "Alice",
     });
     await expect(aliceRowOnBob).toBeVisible({ timeout: 5_000 });
     const aliceTestId = await aliceRowOnBob.getAttribute("data-testid");
     const aliceAccountID = aliceTestId?.replace("member-row-", "") ?? "";
-    // Bob (admin) sees the demote button for Alice (admin, not Bob himself)
-    await expect(pageBob.getByTestId(`demote-${aliceAccountID}`)).toBeVisible({
+    // No demote button on admin rows
+    await expect(pageBob.getByTestId(`demote-${aliceAccountID}`)).not.toBeVisible({
+      timeout: 5_000,
+    });
+    // No remove button on admin rows (cojson admin-remove-admin forbidden per Phase A recon)
+    await expect(pageBob.getByTestId(`remove-${aliceAccountID}`)).not.toBeVisible({
       timeout: 5_000,
     });
 

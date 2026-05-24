@@ -6,6 +6,7 @@ import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { ContactPicker } from "@/components/contact-picker";
 import { GroupCreateDialog } from "@/components/group-create-dialog";
 import { findOrCreate1to1Conversation, createGroupConversation } from "@/jazz/conversation";
+import { resolveDisplayName } from "@/jazz/displayName";
 
 /**
  * Sidebar component for the main layout.
@@ -14,6 +15,46 @@ import { findOrCreate1to1Conversation, createGroupConversation } from "@/jazz/co
  * sorted by last message timestamp descending. A "+" button opens the
  * ContactPicker to start a new 1:1 conversation. Contacts moved to /contacts.
  */
+/**
+ * Derive a sidebar label for a conversation: explicit title wins; else
+ * synthesize from the non-me direct members. Uses resolveDisplayName so the
+ * contact-book / profile resolution chain stays consistent with MessageRow.
+ */
+function deriveConversationLabel(conversation: any, me: any): string {
+  const explicit = conversation?.title;
+  if (typeof explicit === "string" && explicit.length > 0) return explicit;
+
+  const myID = me?.$jazz?.id ?? null;
+  const group = conversation?.$jazz?.owner;
+  if (!group) return "Conversation";
+
+  let members: any[] = [];
+  try {
+    members = group.getDirectMembers();
+  } catch {
+    return "Conversation";
+  }
+
+  const others = members
+    .filter(
+      (m: any) =>
+        (m.role === "admin" || m.role === "writer") &&
+        m.account?.$jazz?.id !== myID,
+    )
+    .map((m: any) => m.account?.$jazz?.id)
+    .filter((id: any) => typeof id === "string") as string[];
+
+  if (others.length === 0) return "Conversation";
+
+  const names = others.map((id) =>
+    resolveDisplayName({ accountID: id, me, group }),
+  );
+
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]}, ${names[1]}`;
+  return `${names[0]}, ${names[1]} +${names.length - 2} more`;
+}
+
 export function Sidebar() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
@@ -39,31 +80,15 @@ export function Sidebar() {
     );
   }
 
-  // Slice 3b: derive conversation list from knownConversations (unified for 1:1 and groups).
-  // Contact lookup uses contactBook for display names on DM conversations.
-  const contactBook = me.root.contactBook;
+  // Slice 3c: derive conversation list from knownConversations (unified shape).
+  // The label for each conversation prefers the explicit title; falls back to
+  // synthesizing from non-me direct members. resolveDisplayName handles the
+  // contact-book / profile chain.
   const knownConversations = me.root.knownConversations;
 
   const conversations = Array.from(knownConversations ?? [])
     .filter((c: any) => c != null)
-    .map((c: any) => {
-      // For DM conversations, find the other participant's contact for display name.
-      const contact =
-        c.kind === "dm"
-          ? Array.from(contactBook).find((ct: any) => {
-              if (!ct) return false;
-              const group = c.$jazz?.owner;
-              if (!group) return false;
-              return group
-                .getDirectMembers()
-                .some(
-                  (m: any) =>
-                    m.account?.$jazz?.id === ct.contactAccountID,
-                );
-            })
-          : null;
-      return { conversation: c, contact };
-    });
+    .map((c: any) => ({ conversation: c }));
 
   // Sort by last message sentAt descending; fall back to conversation createdAt.
   conversations.sort((a: any, b: any) => {
@@ -129,11 +154,7 @@ export function Sidebar() {
             </div>
           ) : (
             conversations.map((c: any, i: number) => {
-              // Derive display label: use contact name for DM, title for group
-              const label =
-                c.contact?.displayNameLocal ??
-                c.conversation?.title ??
-                "Conversation";
+              const label = deriveConversationLabel(c.conversation, me);
               return (
                 <Link
                   key={i}
