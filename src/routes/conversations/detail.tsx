@@ -21,7 +21,7 @@
  */
 
 import { useRef, useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -34,7 +34,7 @@ import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
-import { isArchived } from "@/jazz/conversation";
+import { isArchived, removeFromArchive } from "@/jazz/conversation";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -161,8 +161,17 @@ export function ConversationDetailRoute() {
 
   // ---- handlers ----
 
+  const navigate = useNavigate();
+
   async function handleSend(body: string) {
     await sendMessage(me, conversation, body);
+  }
+
+  async function handleRemoveFromArchive() {
+    if (!conversation) return;
+    if (!confirm("Remove this conversation from your archive? This cannot be undone.")) return;
+    await removeFromArchive(me, conversation);
+    navigate("/conversations");
   }
 
   // ---- render ----
@@ -203,6 +212,22 @@ export function ConversationDetailRoute() {
         </div>
 
         <ConnectionBanner />
+
+        {archivedForMe && (
+          <div
+            className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900 flex items-center justify-between"
+            data-testid="archived-banner"
+          >
+            <span>You're no longer a member of this conversation.</span>
+            <button
+              className="text-amber-700 underline hover:text-amber-900"
+              onClick={handleRemoveFromArchive}
+              data-testid="archived-remove-link"
+            >
+              Remove from archive
+            </button>
+          </div>
+        )}
 
         {/* Message timeline */}
         <div
