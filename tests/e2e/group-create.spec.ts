@@ -205,6 +205,23 @@ test("group conversation create — multi-select picker, title, discovery, messa
       "Hey everyone, Charlie here",
       { timeout: 20_000 },
     );
+
+    // ── 11. Slice 3c regression: non-contact author resolves to profile name ──
+    // Charlie is not in Bob's contact book (Bob ↔ Charlie were never paired).
+    // Pre-Slice-3c the author header on Bob's screen showed "Unknown".
+    // Post-Slice-3c, resolveDisplayName falls back to the group member's
+    // profile.name — so Bob should see "Charlie", not "Unknown".
+    const charlieMessageOnBobScreen = pageBob
+      .getByTestId("message-timeline")
+      .locator('[data-testid="message-other"]')
+      .filter({ hasText: "Hey everyone, Charlie here" })
+      .first();
+
+    await expect(charlieMessageOnBobScreen).toBeVisible({ timeout: 10_000 });
+    // Author label visible in the header of the message bubble
+    await expect(charlieMessageOnBobScreen).toContainText("Charlie");
+    // "Unknown" must NOT appear
+    await expect(charlieMessageOnBobScreen).not.toContainText("Unknown");
   } finally {
     await ctxA.close();
     if (ctxBob) await ctxBob.close();
