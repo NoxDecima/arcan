@@ -524,6 +524,49 @@ export function isLastAdmin(me: Account, conversation: any): boolean {
   );
 }
 
+/**
+ * True when `me` is no longer a participant in the conversation.
+ *
+ * Detection: getRoleOf returns undefined for both "revoked" and
+ * "never-a-member". Since this helper is only called for conversations in
+ * me.root.knownConversations (which we only push to when me becomes a
+ * member), undefined here means "was a member, now revoked" — i.e., archived.
+ *
+ * Slice 4 uses this to partition the sidebar into active vs archived sections
+ * and to gate the detail/members routes into read-only mode.
+ */
+export function isArchived(me: Account, conversation: any): boolean {
+  const group = conversation?.$jazz?.owner as Group | undefined;
+  if (!group) return false;
+  const myID = (me as any).$jazz?.id;
+  if (!myID) return false;
+  return group.getRoleOf(myID) === undefined;
+}
+
+/**
+ * Remove a conversation from me's knownConversations list. Terminal action —
+ * the conversation disappears from the user's view entirely (active and
+ * archived sections both).
+ *
+ * No-op when the conversation is not in the list.
+ */
+export async function removeFromArchive(
+  me: Account,
+  conversation: any,
+): Promise<void> {
+  const known = (me as any).root?.knownConversations;
+  if (!known || typeof known.$jazz?.remove !== "function") return;
+  const conversationID = conversation?.$jazz?.id;
+  if (!conversationID) return;
+  for (let i = 0; i < known.length; i++) {
+    const entry = known[i];
+    if (entry?.$jazz?.id === conversationID) {
+      known.$jazz.remove(i);
+      return;
+    }
+  }
+}
+
 // ----- private helpers -----
 
 /**

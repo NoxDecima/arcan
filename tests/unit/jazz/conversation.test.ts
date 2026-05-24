@@ -17,6 +17,8 @@ import {
   updateConversationTitle,
   isLastAdmin,
   leaveConversation,
+  isArchived,
+  removeFromArchive,
 } from "@/jazz/conversation";
 
 /**
@@ -637,6 +639,58 @@ describe("Slice 4 systemEvents writes", () => {
     expect(promoted).toHaveLength(1);
     expect(promoted[0].actorAccountID).toBe(alice.$jazz.id);
     expect(promoted[0].targetAccountID).toBe(bob.$jazz.id);
+  });
+});
+
+describe("isArchived", () => {
+  it("returns false for a conversation where me is still a member", async () => {
+    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const { conversation } = await makeConversation(me);
+    expect(isArchived(me, conversation)).toBe(false);
+  });
+
+  it("returns true after me is removed from the conversation group", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const conversationGroup = Group.create({ owner: bob });
+    conversationGroup.addMember(alice, "writer");
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: bob.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+
+    expect(isArchived(alice, conversation)).toBe(false);
+    conversationGroup.removeMember(alice);
+    expect(isArchived(alice, conversation)).toBe(true);
+  });
+});
+
+describe("removeFromArchive", () => {
+  it("splices the conversation from me.root.knownConversations", async () => {
+    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const { conversation } = await makeConversation(me);
+    me.root.knownConversations.$jazz.push(conversation);
+    expect(Array.from(me.root.knownConversations).length).toBe(1);
+
+    await removeFromArchive(me, conversation);
+
+    expect(Array.from(me.root.knownConversations).length).toBe(0);
+  });
+
+  it("is a no-op when the conversation is not in knownConversations", async () => {
+    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const { conversation } = await makeConversation(me);
+
+    await removeFromArchive(me, conversation); // not in list yet
+
+    expect(Array.from(me.root.knownConversations).length).toBe(0);
   });
 });
 
