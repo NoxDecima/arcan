@@ -4,8 +4,10 @@
  * Renders Sidebar + a main panel containing:
  *   - Header: back link, conversation title, kebab menu with "Leave conversation"
  *   - ConnectionBanner: shown when offline
- *   - Message timeline: each message as a <MessageBubble>
- *   - Composer: text input + send button (disabled when all other members left)
+ *   - Message timeline: each message as a <MessageBubble>, interleaved with
+ *     SystemEvent entries from the conversation's sidecar log (Slice 4).
+ *   - Composer: text input + send button (hidden when archivedForMe; disabled
+ *     when composerDisabled — only me remains in an active 1:1)
  *
  * Title derivation (1:1): finds the contact in me.root.contactBook whose
  * contactAccountID matches another member of the conversation's owning Group.
@@ -19,7 +21,7 @@
  */
 
 import { useRef, useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -32,6 +34,7 @@ import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { isArchived, removeFromArchive } from "@/jazz/conversation";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -48,20 +51,6 @@ export function ConversationDetailRoute() {
     resolve: { messages: { $each: true } },
   });
 
-  // Jazz's useCoState fires re-renders when the Conversation CoValue itself
-  // changes, but NOT when its owning ConversationGroup's membership changes
-  // (e.g., the other party leaves). We poll every 2s while the view is open
-  // so composerDisabled + leftMembers re-evaluate against the current group
-  // state. Future: replace with an explicit Group subscription if jazz-tools
-  // exposes one cleanly.
-  const [pollTick, setPollTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setPollTick((t) => t + 1), 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  void pollTick;
-
   // Auto-scroll to bottom whenever the message list grows
   const messageCount = (conversation as any)?.messages?.length ?? 0;
   useEffect(() => {
@@ -69,6 +58,10 @@ export function ConversationDetailRoute() {
   }, [messageCount]);
 
   // ---- derived values (safe to call before early returns) ----
+
+  // useNavigate MUST be called here (before any conditional returns) — hooks
+  // must always be called in the same order regardless of component state.
+  const navigate = useNavigate();
 
   const myAccountID = me.$isLoaded ? (me as any).$jazz?.id : null;
 
@@ -116,20 +109,8 @@ export function ConversationDetailRoute() {
     "Conversation";
 
   // composerDisabled: true when the ConversationGroup's direct admin list is 1
-  // (only me remains after the other party left).
-  //
-  // leftMembers: contacts whose current role on the conversation is "revoked"
-  // — rendered as system events at the bottom of the timeline.
-  //
-  // Note: Jazz's getDirectMembers() returns GroupMember[] typed with
-  // AccountRole (reader / writer / admin / manager / writeOnly), which
-  // EXCLUDES "revoked" — revoked members are filtered out of that list.
-  // To detect revocations we use group.getRoleOf(accountID), which returns
-  // the full Role type including "revoked". For the 1:1 case we check the
-  // contact paired with this conversation. (Slice 3b will iterate all
-  // participants for the N-way case.)
+  // (only me remains after the other party left in an active conversation).
   let composerDisabled = false;
-  const leftMembers: { accountID: string; displayName: string }[] = [];
   if (conversation) {
     const group = (conversation as any).$jazz?.owner;
     if (group) {
@@ -142,46 +123,6 @@ export function ConversationDetailRoute() {
         }
       } catch {
         // Group introspection unavailable — allow sending
-      }
-
-      // Identify the leaver when composer is disabled. Jazz's getRoleOf
-      // returns `undefined` for both "never-a-member" and "was-revoked"
-      // (they're indistinguishable via this API), so we infer "the other
-      // party left" from composerDisabled and find the leaver via:
-      //   1. The contact derived from group membership (most reliable)
-      //   2. Fallback to Conversation.createdBy if it's not me
-      if (composerDisabled) {
-        let leaverID: string | undefined;
-        let leaverName = "Someone";
-
-        if (contact) {
-          const cAny = contact as any;
-          if (cAny.contactAccountID && cAny.contactAccountID !== myAccountID) {
-            leaverID = cAny.contactAccountID;
-            leaverName = cAny.displayNameLocal ?? "Someone";
-          }
-        }
-
-        if (!leaverID) {
-          const createdBy = (conversation as any).createdBy;
-          if (createdBy && createdBy !== myAccountID) {
-            leaverID = createdBy;
-            const cb = (me as any).root?.contactBook;
-            if (cb) {
-              for (const c of Array.from(cb)) {
-                const cAny = c as any;
-                if (cAny?.contactAccountID === createdBy) {
-                  leaverName = cAny.displayNameLocal ?? "Someone";
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        if (leaverID) {
-          leftMembers.push({ accountID: leaverID, displayName: leaverName });
-        }
       }
     }
   }
@@ -228,9 +169,17 @@ export function ConversationDetailRoute() {
     await sendMessage(me, conversation, body);
   }
 
+  async function handleRemoveFromArchive() {
+    if (!conversation) return;
+    if (!confirm("Remove this conversation from your archive? This cannot be undone.")) return;
+    await removeFromArchive(me, conversation);
+    navigate("/conversations");
+  }
+
   // ---- render ----
 
   const messages = Array.from((conversation as any).messages ?? []);
+  const archivedForMe = me.$isLoaded && conversation ? isArchived(me, conversation) : false;
 
   return (
     <div className="flex h-screen" data-testid="conversation-detail">
@@ -266,60 +215,110 @@ export function ConversationDetailRoute() {
 
         <ConnectionBanner />
 
+        {archivedForMe && (
+          <div
+            className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900 flex items-center justify-between"
+            data-testid="archived-banner"
+          >
+            <span>You're no longer a member of this conversation.</span>
+            <button
+              className="text-amber-700 underline hover:text-amber-900"
+              onClick={handleRemoveFromArchive}
+              data-testid="archived-remove-link"
+            >
+              Remove from archive
+            </button>
+          </div>
+        )}
+
         {/* Message timeline */}
         <div
           className="flex-1 overflow-y-auto py-2"
           data-testid="message-timeline"
         >
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">
-                No messages yet. Say hello!
-              </p>
-            </div>
-          ) : (
-            messages.map((message: any, i: number) => {
-              const authorAccountID = getAuthorAccountIDFromMessage(message);
-              const isMine = authorAccountID === myAccountID;
-              const conversationGroup = (conversation as any)?.$jazz?.owner;
-              const authorDisplayName = authorAccountID
-                ? resolveDisplayName({
-                    accountID: authorAccountID,
-                    me,
-                    group: conversationGroup,
-                  })
-                : "Unknown";
+          {(() => {
+            const conversationGroup = (conversation as any)?.$jazz?.owner;
+            type TimelineItem =
+              | { kind: "message"; data: any; sortAt: number; key: string }
+              | { kind: "event"; data: any; sortAt: number; key: string };
 
+            const items: TimelineItem[] = [];
+            for (const m of messages as any[]) {
+              const sentAt = (m as any)?.sentAt;
+              const ts = sentAt instanceof Date ? sentAt.getTime() : new Date(sentAt ?? 0).getTime();
+              items.push({
+                kind: "message",
+                data: m,
+                sortAt: ts,
+                key: `m-${(m as any)?.$jazz?.id ?? items.length}`,
+              });
+            }
+            const eventsList = Array.from(((conversation as any)?.systemEvents ?? []) as any[]);
+            for (const e of eventsList) {
+              const occurredAt = (e as any)?.occurredAt;
+              const ts = occurredAt instanceof Date ? occurredAt.getTime() : new Date(occurredAt ?? 0).getTime();
+              items.push({
+                kind: "event",
+                data: e,
+                sortAt: ts,
+                key: `e-${(e as any)?.$jazz?.id ?? items.length}`,
+              });
+            }
+            items.sort((a, b) => a.sortAt - b.sortAt);
+
+            if (items.length === 0) {
               return (
-                <MessageBubble
-                  key={(message as any)?.$jazz?.id ?? i}
-                  message={message}
-                  authorAccountID={authorAccountID}
-                  authorDisplayName={authorDisplayName}
-                  isMine={isMine}
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-muted-foreground">
+                    No messages yet. Say hello!
+                  </p>
+                </div>
+              );
+            }
+
+            return items.map((item) => {
+              if (item.kind === "message") {
+                const message = item.data;
+                const authorAccountID = getAuthorAccountIDFromMessage(message);
+                const isMine = authorAccountID === myAccountID;
+                const authorDisplayName = authorAccountID
+                  ? resolveDisplayName({
+                      accountID: authorAccountID,
+                      me,
+                      group: conversationGroup,
+                    })
+                  : "Unknown";
+                return (
+                  <MessageBubble
+                    key={item.key}
+                    message={message}
+                    authorAccountID={authorAccountID}
+                    authorDisplayName={authorDisplayName}
+                    isMine={isMine}
+                    me={me}
+                  />
+                );
+              }
+              return (
+                <SystemEvent
+                  key={item.key}
+                  event={item.data}
                   me={me}
+                  group={conversationGroup}
                 />
               );
-            })
-          )}
-
-          {/* System events: members who have left the conversation */}
-          {leftMembers.map((m) => (
-            <SystemEvent
-              key={`left-${m.accountID}`}
-              kind="left"
-              targetName={m.displayName}
-            />
-          ))}
+            });
+          })()}
 
           <div ref={bottomRef} />
         </div>
 
-        {/* Composer */}
-        <Composer
-          onSend={handleSend}
-          disabled={composerDisabled}
-        />
+        {!archivedForMe && (
+          <Composer
+            onSend={handleSend}
+            disabled={composerDisabled}
+          />
+        )}
       </main>
     </div>
   );

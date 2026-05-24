@@ -3,6 +3,7 @@ import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
 import { z } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
+import { SystemEvent } from "@/jazz/schema/SystemEvent";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -20,6 +21,42 @@ import { Message } from "@/jazz/schema/Message";
 const ConversationNotification = co.map({
   conversationID: z.string(),
 });
+
+/**
+ * Append a SystemEvent to the conversation's sidecar log.
+ *
+ * Caller MUST have write access to the conversation's owning group. For
+ * leaveConversation specifically, this MUST be called BEFORE self-revoke —
+ * once the leaver's role is revoked, $jazz.push will be rejected by cojson.
+ *
+ * Defensive: if `conversation.systemEvents` is undefined (pre-Slice-4
+ * conversation created without the field), the push will fail. We accept
+ * this — existing conversations get no events; new ones do. The render
+ * path uses `?? []` to handle the missing-field case.
+ */
+function writeSystemEvent(
+  me: Account,
+  conversation: any,
+  payload: {
+    kind: "added" | "removed" | "left" | "promoted";
+    targetAccountID?: string;
+  },
+): void {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) return;
+  const events = conversation.systemEvents;
+  if (!events || typeof events.$jazz?.push !== "function") return;
+  const event = SystemEvent.create(
+    {
+      kind: payload.kind,
+      actorAccountID: (me as any).$jazz.id as string,
+      targetAccountID: payload.targetAccountID,
+      occurredAt: new Date(),
+    },
+    { owner: conversationGroup },
+  );
+  events.$jazz.push(event);
+}
 
 export async function findOrCreate1to1Conversation(
   me: Account,
@@ -103,6 +140,7 @@ export async function findOrCreate1to1Conversation(
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
+      systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
     },
     { owner: conversationGroup },
   );
@@ -162,6 +200,7 @@ export async function createGroupConversation(
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
+      systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
     },
     { owner: conversationGroup },
   );
@@ -259,15 +298,17 @@ export async function ensureMyWriteGroup(
 }
 
 /**
- * Leave a conversation by revoking self from the ConversationGroup. Jazz
- * rotates the readKey; future messages from remaining members are encrypted
- * under the new key I no longer have access to.
+ * Leave a conversation.
  *
- * Also removes the conversation from me.root.knownConversations so the
- * sidebar no longer shows it.
+ * Slice 4 changed this from "splice from knownConversations" to "leave a
+ * trail": we write a `left` system event, then self-revoke. The conversation
+ * stays in me.root.knownConversations; the sidebar detects via isArchived()
+ * and routes it to the Archived section. The user can call removeFromArchive
+ * later to truly delete the entry.
  *
- * CoList removal API: `list.$jazz.remove(index)` — verified against
- * jazz-tools 0.20.18 docs/jazz-api-notes.md §6 (CoList mutation section).
+ * For last-admin leaves, the caller should first call promoteToAdmin on
+ * another member (see LeaveWithPromoteDialog) — this function does not
+ * handle that flow.
  */
 export async function leaveConversation(
   me: Account,
@@ -278,24 +319,27 @@ export async function leaveConversation(
     throw new Error("Conversation has no owning group");
   }
 
+  // Write the "left" event BEFORE self-revoking — once removeMember(me) lands,
+  // me no longer has write permission to the conversation's owning group.
+  writeSystemEvent(me, conversation, {
+    kind: "left",
+    // targetAccountID intentionally omitted — actor IS the target for "left"
+  });
+
+  // Yield to the event loop so cojson finishes validating the SystemEvent
+  // create + push transactions before we revoke our own admin role. Without
+  // this, the revoke can race ahead and retroactively invalidate the event
+  // write (cojson rejects transactions from a now-revoked author). Observed
+  // as a 1-in-3 unit test flake during Phase B verification.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // Remove from my own knownConversations list.
-  // Guard: known.$jazz.remove is only available when knownConversations is
-  // a fully-loaded CoList proxy. If the calling context doesn't include
-  // knownConversations in its resolve query, the proxy won't have the method.
-  const known = (me as any).root?.knownConversations;
-  if (known && typeof (known as any).$jazz?.remove === "function") {
-    const conversationID = conversation.$jazz?.id;
-    for (let i = 0; i < known.length; i++) {
-      const entry = known[i];
-      if (entry?.$jazz?.id === conversationID) {
-        known.$jazz.remove(i);
-        break;
-      }
-    }
-  }
+  // NOTE: We deliberately do NOT remove from me.root.knownConversations.
+  // Slice 4 keeps the conversation in the list so it lands in the Archived
+  // section (isArchived returns true after self-revoke). The user can
+  // explicitly remove via the archive's X button -> removeFromArchive().
 }
 
 // ----- member management primitives -----
@@ -322,6 +366,11 @@ export async function addMemberToConversation(
   if (!newAccount) {
     throw new Error(`Cannot load account ${newAccountID}`);
   }
+
+  writeSystemEvent(me, conversation, {
+    kind: "added",
+    targetAccountID: newAccountID,
+  });
 
   conversationGroup.addMember(newAccount, role);
 
@@ -369,6 +418,11 @@ export async function removeMemberFromConversation(
     throw new Error(`Cannot load account ${targetAccountID}`);
   }
 
+  writeSystemEvent(me, conversation, {
+    kind: "removed",
+    targetAccountID,
+  });
+
   conversationGroup.removeMember(targetAccount);
 }
 
@@ -391,6 +445,10 @@ export async function promoteToAdmin(
   if (!targetAccount) {
     throw new Error(`Cannot load account ${targetAccountID}`);
   }
+  writeSystemEvent(me, conversation, {
+    kind: "promoted",
+    targetAccountID,
+  });
   // Re-adding with a different role overwrites the prior role
   conversationGroup.addMember(targetAccount, "admin");
 }
@@ -464,6 +522,60 @@ export function isLastAdmin(me: Account, conversation: any): boolean {
     admins.length === 1 &&
     admins[0]?.account?.$jazz?.id === (me as any).$jazz?.id
   );
+}
+
+/**
+ * True when `me` is no longer a participant in the conversation.
+ *
+ * Detection: getRoleOf returns undefined for both "revoked" and
+ * "never-a-member". Since this helper is only called for conversations in
+ * me.root.knownConversations (which we only push to when me becomes a
+ * member), undefined here means "was a member, now revoked" — i.e., archived.
+ *
+ * Slice 4 uses this to partition the sidebar into active vs archived sections
+ * and to gate the detail/members routes into read-only mode.
+ */
+export function isArchived(me: Account, conversation: any): boolean {
+  // If the conversation itself is a NotLoaded proxy (inaccessible after revocation),
+  // treat it as archived. The sidebar uses $each: { $onError: "catch" } so
+  // inaccessible conversations land here as NotLoaded values rather than being
+  // filtered out. A conversation in knownConversations that is inaccessible means
+  // Alice was revoked from it — i.e., it's archived.
+  if (conversation?.$isLoaded === false) return true;
+
+  const group = conversation?.$jazz?.owner as Group | undefined;
+  if (!group) return false;
+
+  // If the group itself is a NotLoaded proxy (inaccessible), treat as archived.
+  if ((group as any)?.$isLoaded === false) return true;
+
+  const myID = (me as any).$jazz?.id;
+  if (!myID) return false;
+  return group.getRoleOf(myID) === undefined;
+}
+
+/**
+ * Remove a conversation from me's knownConversations list. Terminal action —
+ * the conversation disappears from the user's view entirely (active and
+ * archived sections both).
+ *
+ * No-op when the conversation is not in the list.
+ */
+export async function removeFromArchive(
+  me: Account,
+  conversation: any,
+): Promise<void> {
+  const known = (me as any).root?.knownConversations;
+  if (!known || typeof known.$jazz?.remove !== "function") return;
+  const conversationID = conversation?.$jazz?.id;
+  if (!conversationID) return;
+  for (let i = 0; i < known.length; i++) {
+    const entry = known[i];
+    if (entry?.$jazz?.id === conversationID) {
+      known.$jazz.remove(i);
+      return;
+    }
+  }
 }
 
 // ----- private helpers -----

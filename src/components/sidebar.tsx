@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { ContactPicker } from "@/components/contact-picker";
 import { GroupCreateDialog } from "@/components/group-create-dialog";
-import { findOrCreate1to1Conversation, createGroupConversation } from "@/jazz/conversation";
+import { findOrCreate1to1Conversation, createGroupConversation, isArchived, removeFromArchive } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 
 /**
@@ -61,13 +61,18 @@ export function Sidebar() {
       profile: true,
       root: {
         contactBook: { $each: true },
-        knownConversations: { $each: true },
+        // $onError: "catch" ensures the sidebar loads even when some conversations
+        // become inaccessible (e.g. after Alice leaves and Jazz revokes her read
+        // access to the ConversationGroup). Without this, the whole knownConversations
+        // resolve stalls indefinitely and me.$isLoaded stays false.
+        knownConversations: { $each: { $onError: "catch" } },
       },
     },
   });
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
+  const [archivedExpanded, setArchivedExpanded] = useState(false);
 
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
@@ -81,29 +86,39 @@ export function Sidebar() {
   }
 
   // Slice 3c: derive conversation list from knownConversations (unified shape).
-  // The label for each conversation prefers the explicit title; falls back to
-  // synthesizing from non-me direct members. resolveDisplayName handles the
-  // contact-book / profile chain.
+  // Slice 4: partition into active and archived (isArchived detects revoked membership).
   const knownConversations = me.root.knownConversations;
 
-  const conversations = Array.from(knownConversations ?? [])
+  const allConversations = Array.from(knownConversations ?? [])
     .filter((c: any) => c != null)
     .map((c: any) => ({ conversation: c }));
 
+  const archivedConversations = allConversations.filter((c: any) =>
+    isArchived(me, c.conversation),
+  );
+  const conversations = allConversations.filter(
+    (c: any) => !isArchived(me, c.conversation),
+  );
+
   // Sort by last message sentAt descending; fall back to conversation createdAt.
-  conversations.sort((a: any, b: any) => {
-    const msgs = a.conversation.messages;
-    const aLastMsg = msgs ? msgs[msgs.length - 1] : null;
-    const bMsgs = b.conversation.messages;
-    const bLastMsg = bMsgs ? bMsgs[bMsgs.length - 1] : null;
-    const aTime = aLastMsg?.sentAt
-      ? new Date(aLastMsg.sentAt).getTime()
-      : new Date(a.conversation.createdAt).getTime();
-    const bTime = bLastMsg?.sentAt
-      ? new Date(bLastMsg.sentAt).getTime()
-      : new Date(b.conversation.createdAt).getTime();
-    return bTime - aTime;
-  });
+  function sortByActivity(list: any[]): any[] {
+    return [...list].sort((a, b) => {
+      const aMsgs = a.conversation.messages;
+      const aLastMsg = aMsgs ? aMsgs[aMsgs.length - 1] : null;
+      const bMsgs = b.conversation.messages;
+      const bLastMsg = bMsgs ? bMsgs[bMsgs.length - 1] : null;
+      const aTime = aLastMsg?.sentAt
+        ? new Date(aLastMsg.sentAt).getTime()
+        : new Date(a.conversation.createdAt).getTime();
+      const bTime = bLastMsg?.sentAt
+        ? new Date(bLastMsg.sentAt).getTime()
+        : new Date(b.conversation.createdAt).getTime();
+      return bTime - aTime;
+    });
+  }
+
+  const sortedActive = sortByActivity(conversations);
+  const sortedArchived = sortByActivity(archivedConversations);
 
   async function handlePickContacts(contacts: any[]) {
     setPickerOpen(false);
@@ -143,7 +158,7 @@ export function Sidebar() {
           className="flex-1 overflow-y-auto p-2"
           data-testid="conversation-list"
         >
-          {conversations.length === 0 ? (
+          {sortedActive.length === 0 && sortedArchived.length === 0 ? (
             <div className="p-4 text-center space-y-3">
               <p className="text-sm text-muted-foreground">No conversations yet.</p>
               <Link to="/contacts">
@@ -153,19 +168,70 @@ export function Sidebar() {
               </Link>
             </div>
           ) : (
-            conversations.map((c: any, i: number) => {
-              const label = deriveConversationLabel(c.conversation, me);
-              return (
-                <Link
-                  key={i}
-                  to={`/conversations/${c.conversation.$jazz.id}`}
-                  className="block p-2 hover:bg-accent rounded text-sm"
-                  data-testid={`conversation-row-${i}`}
-                >
-                  {label}
-                </Link>
-              );
-            })
+            <>
+              {sortedActive.map((c: any, i: number) => {
+                const label = deriveConversationLabel(c.conversation, me);
+                return (
+                  <Link
+                    key={i}
+                    to={`/conversations/${c.conversation.$jazz.id}`}
+                    className="block p-2 hover:bg-accent rounded text-sm"
+                    data-testid={`conversation-row-${i}`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+
+              {sortedArchived.length > 0 && (
+                <div className="mt-4 border-t border-gray-200 pt-2">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 w-full"
+                    onClick={() => setArchivedExpanded((v) => !v)}
+                    data-testid="archived-section-header"
+                  >
+                    <span>{archivedExpanded ? "▼" : "▶"}</span>
+                    <span>Archived ({sortedArchived.length})</span>
+                  </button>
+                  {archivedExpanded && (
+                    <div data-testid="archived-section-list">
+                      {sortedArchived.map((c: any, i: number) => {
+                        const label = deriveConversationLabel(c.conversation, me);
+                        return (
+                          <div
+                            key={i}
+                            className="group flex items-center gap-1 p-2 hover:bg-accent rounded text-sm text-gray-500 italic opacity-70"
+                            data-testid={`archived-row-${i}`}
+                          >
+                            <Link
+                              to={`/conversations/${c.conversation.$jazz.id}`}
+                              className="flex-1 min-w-0 truncate"
+                            >
+                              {label}
+                            </Link>
+                            <button
+                              type="button"
+                              className="opacity-0 group-hover:opacity-100 text-xs text-red-600 px-1"
+                              title="Remove from archive"
+                              data-testid={`archived-remove-${i}`}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!confirm("Remove this conversation from your archive? This cannot be undone.")) return;
+                                await removeFromArchive(me, c.conversation);
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </nav>
 
