@@ -324,6 +324,13 @@ export async function leaveConversation(
     // targetAccountID intentionally omitted — actor IS the target for "left"
   });
 
+  // Yield to the event loop so cojson finishes validating the SystemEvent
+  // create + push transactions before we revoke our own admin role. Without
+  // this, the revoke can race ahead and retroactively invalidate the event
+  // write (cojson rejects transactions from a now-revoked author). Observed
+  // as a 1-in-3 unit test flake during Phase B verification.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
