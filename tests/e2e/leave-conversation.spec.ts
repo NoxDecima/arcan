@@ -5,17 +5,18 @@ import { createAccount } from "./helpers";
  * E2E: Leave conversation
  *
  * Alice and Bob are mutual contacts; Alice starts a conversation, sends a
- * message, Bob opens it. Then Alice leaves — her sidebar no longer shows
- * the conversation.
+ * message, Bob opens it. Then Alice leaves.
  *
- * Implementation note: after Alice leaves, the ConversationGroup revokes her
- * cryptographically. The sidebar derives conversations from
- * contactBook.linkedConversation refs, so we can't easily assert "not in list"
- * until the ref is cleared OR the component hides revoked conversations.
- * The test asserts:
+ * Slice 4 behavior: after leaving, the conversation is NOT removed from
+ * Alice's knownConversations. Instead, it lands in the sidebar's "Archived"
+ * section (isArchived returns true once Alice's role is revoked). Alice can
+ * later remove it permanently via the X button (see archive-remove.spec.ts).
+ *
+ * This test asserts:
  *   - Alice is navigated back to /conversations
- *   - The conversation no longer appears in Alice's conversation-list element
- *   (with a reasonable timeout to allow the UI to settle)
+ *   - The conversation does NOT appear in Alice's active conversation rows
+ *   - An "Archived (1)" section header IS visible in the sidebar
+ *   - Bob sees the "Alice left the chat" system-event pill in the timeline
  */
 test("leave conversation — Alice revokes self, list updates", async ({ browser }) => {
   test.setTimeout(120_000); // generous timeout for cross-context Jazz sync
@@ -73,7 +74,7 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     const aliceConvUrl = pageA.url();
 
     await pageB.goto(aliceConvUrl);
-    await expect(pageB.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    await expect(pageB.getByTestId("conversation-detail")).toBeVisible({ timeout: 15_000 });
     await expect(pageB.getByTestId("message-timeline")).toContainText("Hello before leaving", {
       timeout: 15_000,
     });
@@ -91,17 +92,15 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     // Alice is navigated to /conversations
     await expect(pageA).toHaveURL(/\/conversations$/, { timeout: 10_000 });
 
-    // Reload the page to flush any React state and re-read Jazz data.
-    // After revoking self from the ConversationGroup, the linkedConversation
-    // cache on Alice's contact should be null (leaveConversation clears it).
-    // After reload, the sidebar should show no conversation rows.
-    await pageA.reload();
-    await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-
-    // After leaving, the conversation should not appear in Alice's sidebar.
-    // The linkedConversation was cleared by leaveConversation; after reload
-    // the sidebar re-derives from the (now null) ref and shows no rows.
+    // Slice 4: active conversation list does NOT show the conversation
+    // (it's moved to the Archived section, not the active list)
     await expect(pageA.getByTestId("conversation-row-0")).not.toBeVisible({ timeout: 10_000 });
+
+    // Slice 4: the conversation lives in the Archived section instead
+    await expect(pageA.getByTestId("archived-section-header")).toHaveText(
+      /Archived \(1\)/,
+      { timeout: 10_000 },
+    );
 
     // ── 6. Bob sees the "Alice left the chat" system event in the timeline ──
     // Bob's still-open conversation view should pick up the role-change via
