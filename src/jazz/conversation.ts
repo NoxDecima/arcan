@@ -3,6 +3,7 @@ import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
 import { z } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
+import { SystemEvent } from "@/jazz/schema/SystemEvent";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -20,6 +21,42 @@ import { Message } from "@/jazz/schema/Message";
 const ConversationNotification = co.map({
   conversationID: z.string(),
 });
+
+/**
+ * Append a SystemEvent to the conversation's sidecar log.
+ *
+ * Caller MUST have write access to the conversation's owning group. For
+ * leaveConversation specifically, this MUST be called BEFORE self-revoke —
+ * once the leaver's role is revoked, $jazz.push will be rejected by cojson.
+ *
+ * Defensive: if `conversation.systemEvents` is undefined (pre-Slice-4
+ * conversation created without the field), the push will fail. We accept
+ * this — existing conversations get no events; new ones do. The render
+ * path uses `?? []` to handle the missing-field case.
+ */
+function writeSystemEvent(
+  me: Account,
+  conversation: any,
+  payload: {
+    kind: "added" | "removed" | "left" | "promoted";
+    targetAccountID?: string;
+  },
+): void {
+  const conversationGroup = conversation.$jazz?.owner as Group | undefined;
+  if (!conversationGroup) return;
+  const events = conversation.systemEvents;
+  if (!events || typeof events.$jazz?.push !== "function") return;
+  const event = SystemEvent.create(
+    {
+      kind: payload.kind,
+      actorAccountID: (me as any).$jazz.id as string,
+      targetAccountID: payload.targetAccountID,
+      occurredAt: new Date(),
+    },
+    { owner: conversationGroup },
+  );
+  events.$jazz.push(event);
+}
 
 export async function findOrCreate1to1Conversation(
   me: Account,
@@ -278,6 +315,13 @@ export async function leaveConversation(
     throw new Error("Conversation has no owning group");
   }
 
+  // Write the "left" event BEFORE self-revoking — once removeMember(me) lands,
+  // me no longer has write permission to the conversation's owning group.
+  writeSystemEvent(me, conversation, {
+    kind: "left",
+    // targetAccountID intentionally omitted — actor IS the target for "left"
+  });
+
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
@@ -322,6 +366,11 @@ export async function addMemberToConversation(
   if (!newAccount) {
     throw new Error(`Cannot load account ${newAccountID}`);
   }
+
+  writeSystemEvent(me, conversation, {
+    kind: "added",
+    targetAccountID: newAccountID,
+  });
 
   conversationGroup.addMember(newAccount, role);
 
@@ -369,6 +418,11 @@ export async function removeMemberFromConversation(
     throw new Error(`Cannot load account ${targetAccountID}`);
   }
 
+  writeSystemEvent(me, conversation, {
+    kind: "removed",
+    targetAccountID,
+  });
+
   conversationGroup.removeMember(targetAccount);
 }
 
@@ -391,6 +445,10 @@ export async function promoteToAdmin(
   if (!targetAccount) {
     throw new Error(`Cannot load account ${targetAccountID}`);
   }
+  writeSystemEvent(me, conversation, {
+    kind: "promoted",
+    targetAccountID,
+  });
   // Re-adding with a different role overwrites the prior role
   conversationGroup.addMember(targetAccount, "admin");
 }

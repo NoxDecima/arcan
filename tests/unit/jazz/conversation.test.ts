@@ -5,6 +5,7 @@ import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { FileBlob } from "@/jazz/schema/FileBlob";
+import { SystemEvent } from "@/jazz/schema/SystemEvent";
 import {
   ensureMyWriteGroup,
   findOrCreate1to1Conversation,
@@ -518,6 +519,124 @@ describe("leaveConversation", () => {
 
     const aliceKnown = Array.from((alice as any).root?.knownConversations ?? []);
     expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(false);
+  });
+});
+
+describe("Slice 4 systemEvents writes", () => {
+  it("addMemberToConversation writes an 'added' event with actor=me, target=new member", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const charlie = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+    linkAccounts(alice, charlie);
+
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "writer");
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+
+    await addMemberToConversation(alice, conversation, charlie.$jazz.id, "writer");
+
+    const events = Array.from(conversation.systemEvents ?? []);
+    const addedEvents = events.filter((e: any) => e.kind === "added");
+    expect(addedEvents).toHaveLength(1);
+    expect(addedEvents[0].actorAccountID).toBe(alice.$jazz.id);
+    expect(addedEvents[0].targetAccountID).toBe(charlie.$jazz.id);
+    expect(addedEvents[0].occurredAt).toBeInstanceOf(Date);
+  });
+
+  it("removeMemberFromConversation writes a 'removed' event", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "writer");
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+
+    await removeMemberFromConversation(alice, conversation, bob.$jazz.id);
+
+    const events = Array.from(conversation.systemEvents ?? []);
+    const removed = events.filter((e: any) => e.kind === "removed");
+    expect(removed).toHaveLength(1);
+    expect(removed[0].actorAccountID).toBe(alice.$jazz.id);
+    expect(removed[0].targetAccountID).toBe(bob.$jazz.id);
+  });
+
+  it("leaveConversation writes a 'left' event BEFORE self-revoking (so the leaver still has write permission)", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "admin"); // both admin so alice can leave w/o promote
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+    alice.root.knownConversations.$jazz.push(conversation);
+
+    await leaveConversation(alice, conversation);
+
+    // After alice leaves, she loses read access to the group. Verify the event was
+    // written by loading the conversation from bob's perspective (bob is still admin).
+    // In the linkAccounts test environment, alice and bob share the same node so
+    // all data is immediately visible.
+    const bobConversation = await Conversation.load(conversation.$jazz.id as any, {
+      loadAs: bob,
+      resolve: { systemEvents: true },
+    });
+    const events = Array.from((bobConversation as any)?.systemEvents ?? []);
+    const left = events.filter((e: any) => e.kind === "left");
+    expect(left).toHaveLength(1);
+    expect((left[0] as any).actorAccountID).toBe(alice.$jazz.id);
+    expect((left[0] as any).targetAccountID).toBeUndefined();
+  });
+
+  it("promoteToAdmin writes a 'promoted' event", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "writer");
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+
+    await promoteToAdmin(alice, conversation, bob.$jazz.id);
+
+    const events = Array.from(conversation.systemEvents ?? []);
+    const promoted = events.filter((e: any) => e.kind === "promoted");
+    expect(promoted).toHaveLength(1);
+    expect(promoted[0].actorAccountID).toBe(alice.$jazz.id);
+    expect(promoted[0].targetAccountID).toBe(bob.$jazz.id);
   });
 });
 
