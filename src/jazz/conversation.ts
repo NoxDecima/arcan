@@ -21,24 +21,12 @@ const ConversationNotification = co.map({
   conversationID: z.string(),
 });
 
-/**
- * Find or create a 1:1 conversation between `me` and the account referenced
- * by `contact`. The contact is a Contact CoValue from `me.root.contactBook`.
- *
- * Steps:
- *   1. Search me.root.knownConversations for an existing kind="dm" with this contact.
- *   2. Defensive wait + recheck (300ms) — handles Inbox delivery race.
- *   3. If still not found, create a new ConversationGroup + Conversation.
- *   4. Push the new conversation to me.root.knownConversations.
- *   5. Fire-and-forget Inbox notification to the other party.
- *
- * Returns the Conversation CoValue.
- */
 export async function findOrCreate1to1Conversation(
   me: Account,
   contact: any,
 ): Promise<any> {
   const otherAccountID = contact.contactAccountID as string;
+  const myAccountID = (me as any).$jazz?.id as string;
 
   /**
    * Safely iterate knownConversations. The list may be a NotLoaded CoValue
@@ -55,43 +43,47 @@ export async function findOrCreate1to1Conversation(
     }
   }
 
+  /**
+   * A conversation matches "the 1:1 with this contact" iff its direct admin-
+   * or-writer members form exactly the set {me, otherAccountID}. This replaces
+   * the prior `kind === "dm"` filter — see Slice 3c §2 (drop-the-kind-field).
+   * A former 3-member group that decayed to 2 members WILL match; that's
+   * intentional: a conversation between exactly me and Bob IS my conversation
+   * with Bob, regardless of how it started.
+   */
+  function isOneToOneWith(conversation: any, otherID: string): boolean {
+    const group = conversation?.$jazz?.owner;
+    if (!group) return false;
+    let members: any[] = [];
+    try {
+      members = group.getDirectMembers();
+    } catch {
+      return false;
+    }
+    const participantIDs = members
+      .filter((m: any) => m.role === "admin" || m.role === "writer")
+      .map((m: any) => m.account?.$jazz?.id)
+      .filter((id: any) => typeof id === "string");
+    if (participantIDs.length !== 2) return false;
+    return (
+      participantIDs.includes(myAccountID) &&
+      participantIDs.includes(otherID)
+    );
+  }
+
   // Search knownConversations for an existing 1:1 with this contact
   const known = (me as any).root?.knownConversations;
   for (const c of iterateKnown(known)) {
-    if (!c) continue;
-    const cAny = c as any;
-    if (cAny.kind !== "dm") continue;
-    const group = cAny.$jazz?.owner;
-    if (!group) continue;
-    const otherMember = group
-      .getDirectMembers()
-      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
-    if (otherMember) {
-      return cAny;
-    }
+    if (c && isOneToOneWith(c, otherAccountID)) return c;
   }
 
   // Defensive wait against the duplicate-creation race: if the other party
   // just created the conversation, our Inbox subscription may still be
   // processing the notification. Brief wait + recheck.
-  //
-  // 300ms is unnoticeable in the worst case (legitimately new chat with
-  // someone who never created one) and prevents the race in the common case
-  // (Inbox propagation is near-instant when online).
   await new Promise((r) => setTimeout(r, 300));
   const knownAfterWait = (me as any).root?.knownConversations;
   for (const c of iterateKnown(knownAfterWait)) {
-    if (!c) continue;
-    const cAny = c as any;
-    if (cAny.kind !== "dm") continue;
-    const group = cAny.$jazz?.owner;
-    if (!group) continue;
-    const otherMember = group
-      .getDirectMembers()
-      .find((m: any) => m.account?.$jazz?.id === otherAccountID);
-    if (otherMember) {
-      return cAny;
-    }
+    if (c && isOneToOneWith(c, otherAccountID)) return c;
   }
 
   // Load the other account so we can add them as a member
@@ -108,7 +100,6 @@ export async function findOrCreate1to1Conversation(
 
   const conversation = Conversation.create(
     {
-      kind: "dm",
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
@@ -121,25 +112,11 @@ export async function findOrCreate1to1Conversation(
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.
-  //
-  // We send a thin ConversationNotification wrapper (not the Conversation
-  // itself) because `createInboxMessage` tries to add the inbox owner as
-  // "writer" to the payload's owning group. Since Bob is already "admin"
-  // in the conversationGroup, that addMember call would throw. The
-  // notification CoMap is owned by a fresh Group where Bob has no prior
-  // membership, so the "writer" grant succeeds.
-  //
-  // Fire-and-forget: we do NOT await this — sendMessage resolves only after
-  // the recipient's inbox subscription processes the message (marks it
-  // processed: true). Awaiting would block findOrCreate1to1Conversation
-  // until Bob is online and his subscription fires.
-  //
-  // If the other account doesn't have an inbox yet, the catch handles it
-  // gracefully — the conversation is still usable.
   const conversationID = (conversation as any).$jazz.id as string;
   void (async () => {
     try {
-      // Create a fresh group for the notification — Bob has no prior role here
+      // Fresh notification group — the other account has no prior role here,
+      // so InboxSender's add-as-writer call won't conflict with admin role.
       const notificationGroup = Group.create({ owner: me });
       const notification = ConversationNotification.create(
         { conversationID },
@@ -182,7 +159,6 @@ export async function createGroupConversation(
   const conversation = Conversation.create(
     {
       title,
-      kind: "group",
       createdAt: new Date(),
       createdBy: (me as any).$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
@@ -454,18 +430,22 @@ export async function demoteToWriter(
 }
 
 /**
- * Update the conversation title. Admin-only for groups; no-op for 1:1
- * (1:1 conversations derive their title from the other participant's display
- * name — there is no explicit title field to update).
+ * Update the conversation title on any conversation.
+ *
+ * Slice 3c removed the kind="group" gate — titles are editable on every
+ * conversation regardless of member count. Two-person conversations
+ * typically have no title (the sidebar synthesizes a label from the other
+ * participant's name); admins may still set one if they want a custom label.
+ *
+ * The caller is responsible for admin-permission gating in the UI; cojson
+ * will reject the underlying $jazz.set at the protocol level if the caller
+ * lacks write access to the conversation.
  */
 export async function updateConversationTitle(
   _me: Account,
   conversation: any,
   newTitle: string,
 ): Promise<void> {
-  if (conversation.kind !== "group") {
-    return; // no-op for 1:1
-  }
   conversation.$jazz.set("title", newTitle);
 }
 

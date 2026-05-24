@@ -26,7 +26,6 @@ async function makeConversation(me: any) {
   const conversationGroup = Group.create({ owner: me });
   const conversation = Conversation.create(
     {
-      kind: "dm",
       createdAt: new Date(),
       createdBy: me.$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
@@ -90,7 +89,7 @@ describe("ensureMyWriteGroup", () => {
 });
 
 describe("findOrCreate1to1Conversation", () => {
-  it("creates a new Conversation with kind=dm and pushes to knownConversations", async () => {
+  it("creates a new Conversation and pushes to knownConversations", async () => {
     const alice = await createJazzTestAccount({
       AccountSchema: JazzMessangerAccount,
       creationProps: { name: "Alice" },
@@ -112,7 +111,6 @@ describe("findOrCreate1to1Conversation", () => {
     const conversation = await findOrCreate1to1Conversation(alice, contactStub);
 
     expect(conversation).toBeDefined();
-    expect(conversation.kind).toBe("dm");
     expect(conversation.createdBy).toBe(alice.$jazz.id);
 
     // Should be in alice's knownConversations
@@ -140,7 +138,6 @@ describe("findOrCreate1to1Conversation", () => {
     conversationGroup.addMember(bob, "admin");
     const existingConversation = Conversation.create(
       {
-        kind: "dm",
         createdAt: new Date(),
         createdBy: alice.$jazz.id,
         messages: co.list(Message).create([], { owner: conversationGroup }),
@@ -155,6 +152,33 @@ describe("findOrCreate1to1Conversation", () => {
 
     const result = await findOrCreate1to1Conversation(alice, contactStub);
     expect(result.$jazz.id).toBe(existingConversation.$jazz.id);
+  });
+
+  it("returns an existing 2-member conversation matching {me, contact} even if it lacks an explicit kind", async () => {
+    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(me, bob);
+
+    const bobContact = {
+      contactAccountID: bob.$jazz.id,
+      displayNameLocal: "Bob",
+    };
+
+    // Manually create a conversation with bob (no kind field) and push to knownConversations
+    const conversationGroup = Group.create({ owner: me });
+    conversationGroup.addMember(bob, "admin");
+    const existing = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: me.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+    me.root.knownConversations.$jazz.push(existing);
+
+    const result = await findOrCreate1to1Conversation(me, bobContact);
+    expect(result.$jazz.id).toBe(existing.$jazz.id);
   });
 });
 
@@ -186,7 +210,6 @@ describe("createGroupConversation", () => {
     );
 
     expect(conversation).toBeDefined();
-    expect(conversation.kind).toBe("group");
     expect(conversation.title).toBe("Test Group");
 
     const conversationGroup = conversation.$jazz.owner;
@@ -221,7 +244,6 @@ async function makeGroupConversation(alice: any, bob: any, carol?: any) {
   const conversation = Conversation.create(
     {
       title: "Test Group",
-      kind: "group",
       createdAt: new Date(),
       createdBy: alice.$jazz.id,
       messages: co.list(Message).create([], { owner: conversationGroup }),
@@ -385,26 +407,24 @@ describe("updateConversationTitle", () => {
     expect(conversation.title).toBe("New Title");
   });
 
-  it("is a no-op for 1:1 conversations", async () => {
-    const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
-      creationProps: { name: "Alice" },
-      isCurrentActiveAccount: true,
-    });
-    const conversationGroup = Group.create({ owner: alice });
-    const dmConversation = Conversation.create(
+  it("allows setting a title on a 2-person conversation (formerly DM)", async () => {
+    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(me, bob);
+
+    const conversationGroup = Group.create({ owner: me });
+    conversationGroup.addMember(bob, "admin");
+    const conversation = Conversation.create(
       {
-        kind: "dm",
         createdAt: new Date(),
-        createdBy: alice.$jazz.id,
+        createdBy: me.$jazz.id,
         messages: co.list(Message).create([], { owner: conversationGroup }),
       },
       { owner: conversationGroup },
     );
 
-    const titleBefore = dmConversation.title;
-    await updateConversationTitle(alice, dmConversation, "Anything");
-    expect(dmConversation.title).toBe(titleBefore);
+    await updateConversationTitle(me, conversation, "Custom Label");
+    expect((conversation as any).title).toBe("Custom Label");
   });
 });
 
