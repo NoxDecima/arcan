@@ -2,6 +2,47 @@
 
 ## [Unreleased]
 
+### Slice 4 — Conversation Lifecycle (archive + chronological system events)
+
+**Closes:** NOX-16 (leave → archive), NOX-17 (admin-kick → archive), NOX-18 (chronological system events in timeline).
+
+#### Added
+
+- `SystemEvent` schema (`src/jazz/schema/SystemEvent.ts`): a CoValue with `kind` (`"left" | "added" | "removed" | "promoted"`), `subjectAccountID`, `occurredAt`, and a free-text `body`. Owned by the ConversationGroup so all current members can read it; revoked members see a NotLoaded proxy.
+- `systemEvents: co.list(SystemEvent)` sidecar list appended to every `Conversation` at creation time (both 1:1 DMs and group conversations). `leaveConversation`, `addMemberToConversation`, `removeMemberFromConversation`, and `promoteToAdmin` all write a matching `SystemEvent` entry before (or alongside) the permission change.
+- `SystemEvent` React component (`src/components/system-event.tsx`): renders a horizontally-centered pill in the timeline for each event kind. Testids: `system-event-left`, `system-event-added`, `system-event-removed`, `system-event-promoted`. Resolves the subject account's display name via the existing `resolveDisplayName` chain.
+- Merged message + event timeline in `ConversationDetailRoute`: messages and system events are interleaved into a single sorted array by timestamp and rendered in document order, so events appear between the messages that bracket them.
+- `isArchived(me, conversation)` primitive (`src/jazz/conversation.ts`): returns `true` when the caller has no role in the conversation's owning Group, or when the conversation/group is a NotLoaded proxy (post-revocation).
+- `removeFromArchive(me, conversation)` primitive: splices the conversation out of `me.root.knownConversations` permanently (irreversible; shown behind a `window.confirm` guard).
+- **Archived section in Sidebar**: conversations where `isArchived` returns `true` are partitioned into a collapsible "Archived (N)" section below the active list. Section header is a `<button>` toggling `archivedExpanded` state; each archived row links to the conversation detail and exposes an X button (`archived-remove-{i}`) to call `removeFromArchive`.
+- **Archived-banner in `ConversationDetailRoute`**: when `archivedForMe` is true a top-of-panel amber banner is shown ("You're no longer a member of this conversation.") with a "Remove from archive" inline link. The Composer is hidden for archived conversations.
+
+#### Changed
+
+- `leaveConversation` (`src/jazz/conversation.ts`): after writing the `SystemEvent` entry, yields the event loop (`await Promise.resolve()`) to allow the event to sync before the crypto revoke; the conversation entry is **not** removed from `knownConversations`, so it lands in the Archived section automatically.
+- `Sidebar` `knownConversations` resolve changed from `{ $each: true }` to `{ $each: { $onError: "catch" } }` so that inaccessible post-revocation conversations return NotLoaded proxies instead of blocking `me.$isLoaded` indefinitely.
+- `ConversationDetailRoute` `useCoState` resolve drops the `systemEvents: { $each: true }` depth; system events are read directly from `conversation.systemEvents` in the render pass instead, avoiding a stall on conversations created before the sidecar list was added.
+- `useNavigate()` hook call in `ConversationDetailRoute` moved before all conditional early-returns to satisfy React Rules of Hooks (was the root cause of blank-page regressions when navigating to a conversation from another browser context).
+- `MembersRoute`: "Leave conversation" and "Remove" buttons are hidden when `isArchived` returns true (read-only view).
+
+#### Test coverage
+
+- **Unit tests** (unchanged count — Slice 4 additions are all e2e): 101 unit tests passing.
+- **New e2e specs (4)**:
+  - `archive-after-leave.spec.ts` — self-leave moves conversation to Archived section; archived-banner shown; composer hidden.
+  - `archive-after-kick.spec.ts` — admin-kicks-member moves conversation to kicked member's Archived section; Alice sees `system-event-removed` pill.
+  - `system-events-chronological.spec.ts` — system events render in the correct chronological position between messages in the timeline.
+  - `archive-remove.spec.ts` — X button on an archived row permanently removes the conversation; Archived section disappears.
+- **Updated e2e spec**: `leave-conversation.spec.ts` — assertions updated for Slice 4: conversation moves to Archived section rather than disappearing; Bob sees `system-event-left` pill.
+- **Total**: 42 e2e tests passing (21 per browser).
+
+#### Deferred
+
+- Group avatar / icon (no design yet).
+- Title-change system events (currently only membership-change events are recorded).
+- Disband-group action (equivalent to removing all non-admin members and then leaving).
+- Soft device revocation follow-up (NOX-10).
+
 ### Slice 3c — Polish (post-3b)
 
 **Closes:** NOX-14 (demote button crashes), NOX-15 (stale `kind` after 1:1→group).
