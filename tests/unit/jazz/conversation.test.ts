@@ -520,3 +520,51 @@ describe("leaveConversation", () => {
     expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(false);
   });
 });
+
+describe("[recon] cojson admin-remove-admin behavior (Slice 3c)", () => {
+  it("documents whether one admin can remove another admin", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const group = Group.create({ owner: alice });
+    group.addMember(bob, "admin");
+
+    // Sanity: both are admins
+    const beforeRoles = group.getDirectMembers().map((m: any) => m.role).sort();
+    expect(beforeRoles).toEqual(["admin", "admin"]);
+
+    // Attempt: Alice (the caller, the test's "me") removes Bob
+    let removeError: unknown = null;
+    try {
+      await removeMemberFromConversation(
+        alice as any,
+        { $jazz: { owner: group } } as any,
+        bob.$jazz.id,
+      );
+    } catch (e) {
+      removeError = e;
+    }
+
+    const afterRoles = group.getDirectMembers().map((m: any) => m.role).sort();
+    const stillContainsBob = group
+      .getDirectMembers()
+      .some((m: any) => m.account?.$jazz?.id === bob.$jazz.id);
+
+    // This test does not assert pass/fail on cojson's behavior — it documents
+    // the observed result. Read the commit message for the recorded outcome.
+    // The Phase B UI is built against whichever outcome lands.
+    console.log("[recon] admin-remove-admin:", {
+      removeErrorMessage: removeError instanceof Error ? removeError.message : null,
+      beforeRoles,
+      afterRoles,
+      stillContainsBob,
+    });
+
+    // Recon result will be recorded by the implementer in the commit message
+    // and used to set REMOVE_ADMIN_PERMITTED in Phase B Task 8.
+    // The test itself passes regardless — its purpose is to surface observable
+    // behavior, not to enforce it.
+    expect(true).toBe(true);
+  });
+});
