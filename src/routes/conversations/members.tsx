@@ -32,6 +32,7 @@ import {
   isLastAdmin,
   updateConversationTitle,
 } from "@/jazz/conversation";
+import { resolveDisplayName } from "@/jazz/displayName";
 
 export function MembersRoute() {
   const { id } = useParams<{ id: string }>();
@@ -118,19 +119,11 @@ export function MembersRoute() {
         const accountID: string = m.account?.$jazz?.id ?? m.id;
         const role = m.role as string;
         if (role !== "admin" && role !== "writer") continue; // skip revoked / inherited
-        const displayName: string =
-          m.account?.profile?.name ??
-          m.account?.profile?.displayName ??
-          ((() => {
-            // Try looking up in contactBook
-            for (const c of Array.from((me as any).root?.contactBook ?? []) as any[]) {
-              if (c?.contactAccountID === accountID) return c.displayNameLocal ?? null;
-            }
-            return null;
-          })()) ??
-          (accountID === myAccountID
-            ? ((me as any).profile?.displayName ?? "Me")
-            : "Unknown");
+        const displayName = resolveDisplayName({
+          accountID,
+          me,
+          group,
+        });
         rawMembers.push({ accountID, role: role as "admin" | "writer", displayName });
       }
     } catch {
@@ -173,15 +166,6 @@ export function MembersRoute() {
     setActionInProgress(true);
     try {
       await promoteToAdmin(me, conversation, accountID);
-    } finally {
-      setActionInProgress(false);
-    }
-  }
-
-  async function handleDemote(accountID: string) {
-    setActionInProgress(true);
-    try {
-      await demoteToWriter(me, conversation, accountID);
     } finally {
       setActionInProgress(false);
     }
@@ -378,28 +362,18 @@ export function MembersRoute() {
                           Promote
                         </Button>
                       )}
-                      {member.role === "admin" && (
+                      {member.role === "writer" && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-xs h-7 px-2"
-                          onClick={() => void handleDemote(member.accountID)}
+                          className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+                          onClick={() => void handleRemove(member.accountID)}
                           disabled={actionInProgress}
-                          data-testid={`demote-${member.accountID}`}
+                          data-testid={`remove-${member.accountID}`}
                         >
-                          Demote
+                          Remove
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
-                        onClick={() => void handleRemove(member.accountID)}
-                        disabled={actionInProgress}
-                        data-testid={`remove-${member.accountID}`}
-                      >
-                        Remove
-                      </Button>
                     </div>
                   )}
                 </li>
