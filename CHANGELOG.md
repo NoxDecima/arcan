@@ -26,6 +26,7 @@
 #### Fixed
 
 - `Composer` type-only import: `PendingAttachment` re-imported with the `type` modifier to comply with `verbatimModuleSyntax` (the type-erased name was leaking into runtime ESM and failing Vite's module resolution).
+- `MessageBubble` lightbox blob-URL leak: revocation moved into a `useEffect` cleanup keyed on `lightboxSrc`, so each new lightbox open revokes the prior URL and bubble unmount revokes the final one. Previously the URL leaked when the bubble unmounted while the lightbox was open or when a second image was opened without explicitly closing the first.
 
 #### Test coverage
 
@@ -36,6 +37,9 @@
 #### Deferred
 
 - True deletion of body / attachments (orphan-scrub + Jazz local-cache GC investigation) — tracked as **NOX-21**.
+- Deduplicate the inline `co.profile({...})` shape in `JazzMessangerAccount.ts` (currently appears in both the schema decl and the migration's create call — adding a field requires editing both) — tracked as **NOX-22**.
+- Migrate `Contact.contactAccountID` (string) to `co.ref(JazzMessangerAccount)` and drop the `useRemoteAvatar` hook — tracked as **NOX-23**.
+- Extract `pairAccounts` + `startOneToOneChat` e2e helpers (5+ specs copy-paste the same two-account QR-invite + start-chat boilerplate) — tracked as **NOX-24**.
 - Drag-and-drop attachment onto window.
 - Optimistic send with per-attachment upload progress.
 - Link / PDF / text-file previews.
