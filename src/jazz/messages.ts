@@ -23,13 +23,15 @@ export function _registerEnsureMyWriteGroup(fn: EnsureMyWriteGroupFn): void {
  * Send a new message in a conversation.
  *
  * Ensures the sender has a WriteGroup in the conversation (self-create on first
- * send), then creates a Message CoValue owned by that WriteGroup and appends a
- * ref to conversation.messages.
+ * send), then creates a Message CoValue owned by that WriteGroup, attaches the
+ * given FileBlobs (which the caller has already uploaded via uploadAttachment),
+ * and appends a ref to conversation.messages.
  */
 export async function sendMessage(
   me: Account,
   conversation: any,
   body: string,
+  attachments: Array<any> = [],
 ): Promise<any> {
   if (!_ensureMyWriteGroup) {
     // Lazy import to avoid circular dependency at module load time
@@ -37,11 +39,14 @@ export async function sendMessage(
     _ensureMyWriteGroup = mod.ensureMyWriteGroup;
   }
   const myWriteGroup = await _ensureMyWriteGroup(me, conversation);
+  const attachmentsList = co.list(FileBlob).create(attachments, {
+    owner: myWriteGroup,
+  });
   const message = Message.create(
     {
       sentAt: new Date(),
       body,
-      attachments: co.list(FileBlob).create([], { owner: myWriteGroup }),
+      attachments: attachmentsList,
     },
     { owner: myWriteGroup },
   );

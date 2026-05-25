@@ -4,12 +4,16 @@ import { Group, co } from "jazz-tools";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Message } from "@/jazz/schema/Message";
 import { FileBlob } from "@/jazz/schema/FileBlob";
+import { Conversation } from "@/jazz/schema/Conversation";
+import { SystemEvent } from "@/jazz/schema/SystemEvent";
 import {
   getAuthorAccountIDFromMessage,
   isWellFormedWriteGroup,
   directWriterMembers,
   directAdminMembers,
+  sendMessage,
 } from "@/jazz/messages";
+import { uploadAttachment } from "@/jazz/attachments";
 
 /**
  * Build a proper per-author WriteGroup:
@@ -150,5 +154,59 @@ describe("isWellFormedWriteGroup", () => {
     wg.addMember(bob, "admin");
 
     expect(isWellFormedWriteGroup(wg, conversationGroup)).toBe(false);
+  });
+});
+
+describe("sendMessage with attachments", () => {
+  it("attaches a FileBlob to the new Message", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    linkAccounts(alice, bob);
+
+    const conversationGroup = Group.create({ owner: alice });
+    conversationGroup.addMember(bob, "admin");
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+    alice.root.knownConversations.$jazz.push(conversation);
+
+    // Author's WriteGroup is created by ensureMyWriteGroup on first send.
+    // For the test, we upload directly via a fresh WriteGroup to mimic the flow:
+    const writeGroup = Group.create({ owner: alice });
+    writeGroup.addMember(conversationGroup, "reader");
+    const file = new File([new Uint8Array([1, 2, 3])], "hi.png", { type: "image/png" });
+    const attachment = await uploadAttachment(writeGroup, file);
+
+    const message = await sendMessage(alice as any, conversation, "look", [attachment]);
+
+    expect((message as any).body).toBe("look");
+    expect(Array.from((message as any).attachments).length).toBe(1);
+    expect(((message as any).attachments[0] as any).filename).toBe("hi.png");
+  });
+
+  it("accepts an empty attachments array (backward compatible)", async () => {
+    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const conversationGroup = Group.create({ owner: alice });
+    const conversation = Conversation.create(
+      {
+        createdAt: new Date(),
+        createdBy: alice.$jazz.id,
+        messages: co.list(Message).create([], { owner: conversationGroup }),
+        systemEvents: co.list(SystemEvent).create([], { owner: conversationGroup }),
+      },
+      { owner: conversationGroup },
+    );
+    (alice as any).root.knownConversations.$jazz.push(conversation);
+
+    const message = await sendMessage(alice as any, conversation, "no files");
+
+    expect((message as any).body).toBe("no files");
+    expect(Array.from((message as any).attachments).length).toBe(0);
   });
 });
