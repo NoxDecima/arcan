@@ -8,7 +8,11 @@ import { createAccount } from "./helpers";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PNG = path.resolve(__dirname, "fixtures/tiny.png");
 
-test("paste an image from clipboard adds it to the tray", async ({ browser }) => {
+test("paste an image from clipboard adds it to the tray", async ({ browser, browserName }) => {
+  // Firefox's synthetic ClipboardEvent does not deliver constructed DataTransfer
+  // files to onPaste listeners; this test verifies the composer handler shape
+  // and is reliably driven only via Chromium.
+  test.skip(browserName === "firefox", "Firefox synthetic ClipboardEvent files unreachable");
   test.setTimeout(120_000);
   const ctxA = await browser.newContext();
   const pageA = await ctxA.newPage();
