@@ -289,6 +289,7 @@ export function ConversationDetailRoute() {
                     authorDisplayName={authorDisplayName}
                     isMine={isMine}
                     me={me}
+                    group={conversationGroup}
                   />
                 );
               }
