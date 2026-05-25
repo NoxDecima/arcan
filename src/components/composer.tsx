@@ -3,7 +3,7 @@ import { useRef, useState, KeyboardEvent, ClipboardEvent, ChangeEvent } from "re
 import { Button } from "@/components/ui/button";
 import {
   ComposerAttachmentTray,
-  PendingAttachment,
+  type PendingAttachment,
 } from "@/components/composer-attachment-tray";
 import {
   uploadAttachment,
