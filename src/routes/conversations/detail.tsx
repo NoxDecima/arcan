@@ -37,7 +37,7 @@ import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
-import { isArchived } from "@/jazz/conversation";
+import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -178,8 +178,12 @@ export function ConversationDetailRoute() {
 
   // ---- handlers ----
 
-  async function handleSend(body: string) {
-    await sendMessage(me, conversation, body);
+  async function handleSend(body: string, attachments: any[]) {
+    await sendMessage(me, conversation, body, attachments);
+  }
+
+  async function handleGetWriteGroup() {
+    return ensureMyWriteGroup(me, conversation);
   }
 
   // ---- render ----
@@ -304,6 +308,7 @@ export function ConversationDetailRoute() {
 
         <Composer
           onSend={handleSend}
+          getWriteGroup={handleGetWriteGroup}
           disabled={composerDisabled}
         />
       </main>
