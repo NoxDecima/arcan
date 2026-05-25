@@ -1,8 +1,10 @@
 // tests/e2e/attachment-image.spec.ts
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { createAccount } from "./helpers";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PNG = path.resolve(__dirname, "fixtures/tiny.png");
 
 test("image attachment: Alice sends a PNG, Bob sees it + lightbox opens", async ({ browser }) => {

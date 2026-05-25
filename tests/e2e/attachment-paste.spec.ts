@@ -1,9 +1,11 @@
 // tests/e2e/attachment-paste.spec.ts
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { createAccount } from "./helpers";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PNG = path.resolve(__dirname, "fixtures/tiny.png");
 
 test("paste an image from clipboard adds it to the tray", async ({ browser }) => {

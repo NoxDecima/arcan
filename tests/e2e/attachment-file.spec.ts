@@ -1,8 +1,10 @@
 // tests/e2e/attachment-file.spec.ts
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { createAccount } from "./helpers";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PDF = path.resolve(__dirname, "fixtures/tiny.pdf");
 
 test("non-image attachment renders as a file tile in Bob's bubble", async ({ browser }) => {

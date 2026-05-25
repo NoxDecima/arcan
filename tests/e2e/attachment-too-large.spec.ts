@@ -1,8 +1,10 @@
 // tests/e2e/attachment-too-large.spec.ts
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { createAccount } from "./helpers";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OVERSIZED = path.resolve(__dirname, "fixtures/oversized.bin");
 
 test("oversized files are rejected at pick time", async ({ browser }) => {
