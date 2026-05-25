@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+### Post-Slice-4 — Revert archive UI
+
+Manual validation surfaced that post-revoke Jazz semantics hide all conversation
+contents from the revoked account: messages, system events, and the title are
+all unreadable once `removeMember(me)` lands. The Slice 4 archive view therefore
+rendered as an empty "Conversation" page with only the banner — not the
+"viewable last-known history" the spec promised.
+
+Decision: drop the archive concept entirely. Conversations the user leaves (or
+is kicked from) disappear from their sidebar. An export-before-leaving workflow
+may be added later as a distinct feature.
+
+#### Changed
+
+- `leaveConversation` (`src/jazz/conversation.ts`): after writing the `left`
+  system event and self-revoking, splices the conversation out of
+  `me.root.knownConversations`. The previous Slice-4 behaviour of keeping the
+  entry was based on a wrong assumption about Jazz revocation semantics.
+- `Sidebar` (`src/components/sidebar.tsx`): drops the Archived section entirely.
+  `isArchived` is still used to filter kicked conversations out of the active
+  list so they don't render as broken stubs.
+- `ConversationDetailRoute` / `MembersRoute`: when `isArchived` is true, both
+  routes redirect to `/conversations`. Removes the archived banner, the
+  "Remove from archive" link, the composer-hide branch, and the read-only
+  member-list gating.
+
+#### Removed
+
+- `removeFromArchive` export (replaced by an internal
+  `removeFromKnownConversations` helper used only by `leaveConversation`).
+- E2E specs `archive-after-leave.spec.ts`, `archive-after-kick.spec.ts`,
+  `archive-remove.spec.ts` — no longer reflect shipped behaviour.
+
+#### Test coverage
+
+- Unit: 98 passing.
+- `leave-conversation.spec.ts` reverted to asserting the conversation
+  disappears from the sidebar (the pre-Slice-4 behaviour) and Bob still sees
+  the `system-event-left` pill.
+
 ### Slice 4 — Conversation Lifecycle (archive + chronological system events)
 
 **Closes:** NOX-16 (leave → archive), NOX-17 (admin-kick → archive), NOX-18 (chronological system events in timeline).

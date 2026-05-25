@@ -64,6 +64,14 @@ export function MembersRoute() {
     resolve: { messages: true },
   });
 
+  // Redirect to /conversations when me has been revoked from this conversation.
+  // Same rationale as detail.tsx — the data is unreadable, no point rendering.
+  const archivedForMe =
+    me.$isLoaded && conversation ? isArchived(me, conversation) : false;
+  useEffect(() => {
+    if (archivedForMe) navigate("/conversations", { replace: true });
+  }, [archivedForMe, navigate]);
+
   // ---- loading / error states ----
 
   if (!me.$isLoaded) {
@@ -140,8 +148,6 @@ export function MembersRoute() {
 
   const myRole = rawMembers.find((m) => m.accountID === myAccountID)?.role;
   const iAmAdmin = myRole === "admin";
-  const archivedForMe = me.$isLoaded && conversation ? isArchived(me, conversation) : false;
-  const iAmCurrentMember = !archivedForMe;
 
   const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
 
@@ -217,7 +223,7 @@ export function MembersRoute() {
   // ---- title edit handlers ----
 
   function startTitleEdit() {
-    if (!iAmAdmin || !iAmCurrentMember) return;
+    if (!iAmAdmin) return;
     setTitleDraft(conversationTitle);
     setTitleEditing(true);
   }
@@ -310,7 +316,7 @@ export function MembersRoute() {
             )}
           </div>
 
-          {iAmAdmin && iAmCurrentMember && (
+          {iAmAdmin && (
             <Button
               size="sm"
               variant="outline"
@@ -350,8 +356,8 @@ export function MembersRoute() {
                   {/* Role badge */}
                   <RolePill role={member.role} />
 
-                  {/* Admin actions (only for other members, only if I'm admin and current member) */}
-                  {iAmAdmin && iAmCurrentMember && !isMe && (
+                  {/* Admin actions (only for other members, only if I'm admin) */}
+                  {iAmAdmin && !isMe && (
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {member.role === "writer" && (
                         <Button
@@ -391,20 +397,18 @@ export function MembersRoute() {
           )}
         </div>
 
-        {/* Leave conversation — destructive, bottom; hidden when archived (already left) */}
-        {iAmCurrentMember && (
-          <div className="p-4 border-t border-border">
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => void handleLeave()}
-              disabled={actionInProgress}
-              data-testid="leave-conversation-btn"
-            >
-              {actionInProgress ? "Working…" : "Leave conversation"}
-            </Button>
-          </div>
-        )}
+        {/* Leave conversation — destructive, bottom */}
+        <div className="p-4 border-t border-border">
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => void handleLeave()}
+            disabled={actionInProgress}
+            data-testid="leave-conversation-btn"
+          >
+            {actionInProgress ? "Working…" : "Leave conversation"}
+          </Button>
+        </div>
       </main>
 
       {/* Dialogs */}

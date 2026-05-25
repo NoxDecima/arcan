@@ -18,7 +18,6 @@ import {
   isLastAdmin,
   leaveConversation,
   isArchived,
-  removeFromArchive,
 } from "@/jazz/conversation";
 
 /**
@@ -471,35 +470,7 @@ describe("isLastAdmin", () => {
 });
 
 describe("leaveConversation", () => {
-  it("removes the conversation from knownConversations", async () => {
-    const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
-      creationProps: { name: "Alice" },
-      isCurrentActiveAccount: true,
-    });
-    const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
-      creationProps: { name: "Bob" },
-      isCurrentActiveAccount: false,
-    });
-    await linkAccounts(alice, bob);
-
-    const { conversation } = await makeGroupConversation(alice, bob);
-
-    // Verify it's in knownConversations before leaving
-    const knownBefore = Array.from((alice as any).root?.knownConversations ?? []);
-    expect(knownBefore.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(true);
-
-    // Bob must leave (Alice is admin and created it — let Bob leave as the member)
-    await leaveConversation(bob, conversation);
-
-    // Bob's known conversations should be empty (he never pushed it, so nothing to remove)
-    // Alice should still have it
-    const aliceKnown = Array.from((alice as any).root?.knownConversations ?? []);
-    expect(aliceKnown.some((c: any) => c?.$jazz?.id === conversation.$jazz.id)).toBe(true);
-  });
-
-  it("does NOT remove the conversation from knownConversations after leaving (Slice 4)", async () => {
+  it("removes the conversation from the leaver's knownConversations", async () => {
     const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
     const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
     linkAccounts(alice, bob);
@@ -520,10 +491,9 @@ describe("leaveConversation", () => {
 
     await leaveConversation(alice, conversation);
 
-    // Slice 4: conversation stays in knownConversations so it can appear in archive
-    expect(Array.from(alice.root.knownConversations).length).toBe(1);
-    // But me is no longer in the group
-    expect(isArchived(alice, conversation)).toBe(true);
+    // Jazz revokes alice's read access on self-leave, so a dangling entry would
+    // render as a broken stub. leaveConversation drops the reference.
+    expect(Array.from(alice.root.knownConversations).length).toBe(0);
   });
 });
 
@@ -672,28 +642,6 @@ describe("isArchived", () => {
     expect(isArchived(alice, conversation)).toBe(false);
     conversationGroup.removeMember(alice);
     expect(isArchived(alice, conversation)).toBe(true);
-  });
-});
-
-describe("removeFromArchive", () => {
-  it("splices the conversation from me.root.knownConversations", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const { conversation } = await makeConversation(me);
-    me.root.knownConversations.$jazz.push(conversation);
-    expect(Array.from(me.root.knownConversations).length).toBe(1);
-
-    await removeFromArchive(me, conversation);
-
-    expect(Array.from(me.root.knownConversations).length).toBe(0);
-  });
-
-  it("is a no-op when the conversation is not in knownConversations", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const { conversation } = await makeConversation(me);
-
-    await removeFromArchive(me, conversation); // not in list yet
-
-    expect(Array.from(me.root.knownConversations).length).toBe(0);
   });
 });
 

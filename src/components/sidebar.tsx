@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { ContactPicker } from "@/components/contact-picker";
 import { GroupCreateDialog } from "@/components/group-create-dialog";
-import { findOrCreate1to1Conversation, createGroupConversation, isArchived, removeFromArchive } from "@/jazz/conversation";
+import { findOrCreate1to1Conversation, createGroupConversation, isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 
 /**
@@ -62,9 +62,9 @@ export function Sidebar() {
       root: {
         contactBook: { $each: true },
         // $onError: "catch" ensures the sidebar loads even when some conversations
-        // become inaccessible (e.g. after Alice leaves and Jazz revokes her read
-        // access to the ConversationGroup). Without this, the whole knownConversations
-        // resolve stalls indefinitely and me.$isLoaded stays false.
+        // become inaccessible (e.g. after the user is kicked and Jazz revokes their
+        // read access to the ConversationGroup). Without this, the whole
+        // knownConversations resolve stalls indefinitely and me.$isLoaded stays false.
         knownConversations: { $each: { $onError: "catch" } },
       },
     },
@@ -72,7 +72,6 @@ export function Sidebar() {
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
-  const [archivedExpanded, setArchivedExpanded] = useState(false);
 
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
@@ -85,40 +84,30 @@ export function Sidebar() {
     );
   }
 
-  // Slice 3c: derive conversation list from knownConversations (unified shape).
-  // Slice 4: partition into active and archived (isArchived detects revoked membership).
+  // Derive conversation list from knownConversations. Filter out entries the
+  // user has been removed from (self-leave splices in leaveConversation; kicked
+  // entries linger in knownConversations but Jazz revocation hides their data,
+  // so we hide them from the sidebar to avoid broken stubs).
   const knownConversations = me.root.knownConversations;
 
-  const allConversations = Array.from(knownConversations ?? [])
-    .filter((c: any) => c != null)
+  const conversations = Array.from(knownConversations ?? [])
+    .filter((c: any) => c != null && !isArchived(me, c, { treatNotLoadedAsArchived: true }))
     .map((c: any) => ({ conversation: c }));
 
-  const archivedConversations = allConversations.filter((c: any) =>
-    isArchived(me, c.conversation),
-  );
-  const conversations = allConversations.filter(
-    (c: any) => !isArchived(me, c.conversation),
-  );
-
   // Sort by last message sentAt descending; fall back to conversation createdAt.
-  function sortByActivity(list: any[]): any[] {
-    return [...list].sort((a, b) => {
-      const aMsgs = a.conversation.messages;
-      const aLastMsg = aMsgs ? aMsgs[aMsgs.length - 1] : null;
-      const bMsgs = b.conversation.messages;
-      const bLastMsg = bMsgs ? bMsgs[bMsgs.length - 1] : null;
-      const aTime = aLastMsg?.sentAt
-        ? new Date(aLastMsg.sentAt).getTime()
-        : new Date(a.conversation.createdAt).getTime();
-      const bTime = bLastMsg?.sentAt
-        ? new Date(bLastMsg.sentAt).getTime()
-        : new Date(b.conversation.createdAt).getTime();
-      return bTime - aTime;
-    });
-  }
-
-  const sortedActive = sortByActivity(conversations);
-  const sortedArchived = sortByActivity(archivedConversations);
+  const sortedActive = [...conversations].sort((a, b) => {
+    const aMsgs = a.conversation.messages;
+    const aLastMsg = aMsgs ? aMsgs[aMsgs.length - 1] : null;
+    const bMsgs = b.conversation.messages;
+    const bLastMsg = bMsgs ? bMsgs[bMsgs.length - 1] : null;
+    const aTime = aLastMsg?.sentAt
+      ? new Date(aLastMsg.sentAt).getTime()
+      : new Date(a.conversation.createdAt).getTime();
+    const bTime = bLastMsg?.sentAt
+      ? new Date(bLastMsg.sentAt).getTime()
+      : new Date(b.conversation.createdAt).getTime();
+    return bTime - aTime;
+  });
 
   async function handlePickContacts(contacts: any[]) {
     setPickerOpen(false);
@@ -158,7 +147,7 @@ export function Sidebar() {
           className="flex-1 overflow-y-auto p-2"
           data-testid="conversation-list"
         >
-          {sortedActive.length === 0 && sortedArchived.length === 0 ? (
+          {sortedActive.length === 0 ? (
             <div className="p-4 text-center space-y-3">
               <p className="text-sm text-muted-foreground">No conversations yet.</p>
               <Link to="/contacts">
@@ -168,70 +157,19 @@ export function Sidebar() {
               </Link>
             </div>
           ) : (
-            <>
-              {sortedActive.map((c: any, i: number) => {
-                const label = deriveConversationLabel(c.conversation, me);
-                return (
-                  <Link
-                    key={i}
-                    to={`/conversations/${c.conversation.$jazz.id}`}
-                    className="block p-2 hover:bg-accent rounded text-sm"
-                    data-testid={`conversation-row-${i}`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-
-              {sortedArchived.length > 0 && (
-                <div className="mt-4 border-t border-gray-200 pt-2">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 w-full"
-                    onClick={() => setArchivedExpanded((v) => !v)}
-                    data-testid="archived-section-header"
-                  >
-                    <span>{archivedExpanded ? "▼" : "▶"}</span>
-                    <span>Archived ({sortedArchived.length})</span>
-                  </button>
-                  {archivedExpanded && (
-                    <div data-testid="archived-section-list">
-                      {sortedArchived.map((c: any, i: number) => {
-                        const label = deriveConversationLabel(c.conversation, me);
-                        return (
-                          <div
-                            key={i}
-                            className="group flex items-center gap-1 p-2 hover:bg-accent rounded text-sm text-gray-500 italic opacity-70"
-                            data-testid={`archived-row-${i}`}
-                          >
-                            <Link
-                              to={`/conversations/${c.conversation.$jazz.id}`}
-                              className="flex-1 min-w-0 truncate"
-                            >
-                              {label}
-                            </Link>
-                            <button
-                              type="button"
-                              className="opacity-0 group-hover:opacity-100 text-xs text-red-600 px-1"
-                              title="Remove from archive"
-                              data-testid={`archived-remove-${i}`}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!confirm("Remove this conversation from your archive? This cannot be undone.")) return;
-                                await removeFromArchive(me, c.conversation);
-                              }}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
+            sortedActive.map((c: any, i: number) => {
+              const label = deriveConversationLabel(c.conversation, me);
+              return (
+                <Link
+                  key={i}
+                  to={`/conversations/${c.conversation.$jazz.id}`}
+                  className="block p-2 hover:bg-accent rounded text-sm"
+                  data-testid={`conversation-row-${i}`}
+                >
+                  {label}
+                </Link>
+              );
+            })
           )}
         </nav>
 

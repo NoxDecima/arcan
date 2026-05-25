@@ -2,12 +2,12 @@
  * ConversationDetailRoute: the main chat view for a single conversation.
  *
  * Renders Sidebar + a main panel containing:
- *   - Header: back link, conversation title, kebab menu with "Leave conversation"
+ *   - Header: back link, conversation title, members link
  *   - ConnectionBanner: shown when offline
  *   - Message timeline: each message as a <MessageBubble>, interleaved with
- *     SystemEvent entries from the conversation's sidecar log (Slice 4).
- *   - Composer: text input + send button (hidden when archivedForMe; disabled
- *     when composerDisabled — only me remains in an active 1:1)
+ *     SystemEvent entries from the conversation's sidecar log.
+ *   - Composer: text input + send button (disabled when composerDisabled —
+ *     only me remains in an active 1:1)
  *
  * Title derivation (1:1): finds the contact in me.root.contactBook whose
  * contactAccountID matches another member of the conversation's owning Group.
@@ -18,9 +18,12 @@
  *
  * composerDisabled: true when the ConversationGroup's direct-admin list is
  * length 1 (only me remains) — the other party has left.
+ *
+ * If me has been revoked from the ConversationGroup (e.g. kicked), the URL
+ * is unreadable — we redirect to /conversations rather than render a stub.
  */
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
@@ -34,7 +37,7 @@ import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
-import { isArchived, removeFromArchive } from "@/jazz/conversation";
+import { isArchived } from "@/jazz/conversation";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -62,6 +65,16 @@ export function ConversationDetailRoute() {
   // useNavigate MUST be called here (before any conditional returns) — hooks
   // must always be called in the same order regardless of component state.
   const navigate = useNavigate();
+
+  // Redirect to /conversations when me has been revoked from this conversation.
+  // Reachable via a bookmarked URL after being kicked, or via direct nav before
+  // the sidebar's filter has settled. Hook order is preserved by calling
+  // useEffect unconditionally.
+  const archivedForMe =
+    me.$isLoaded && conversation ? isArchived(me, conversation) : false;
+  useEffect(() => {
+    if (archivedForMe) navigate("/conversations", { replace: true });
+  }, [archivedForMe, navigate]);
 
   const myAccountID = me.$isLoaded ? (me as any).$jazz?.id : null;
 
@@ -169,17 +182,9 @@ export function ConversationDetailRoute() {
     await sendMessage(me, conversation, body);
   }
 
-  async function handleRemoveFromArchive() {
-    if (!conversation) return;
-    if (!confirm("Remove this conversation from your archive? This cannot be undone.")) return;
-    await removeFromArchive(me, conversation);
-    navigate("/conversations");
-  }
-
   // ---- render ----
 
   const messages = Array.from((conversation as any).messages ?? []);
-  const archivedForMe = me.$isLoaded && conversation ? isArchived(me, conversation) : false;
 
   return (
     <div className="flex h-screen" data-testid="conversation-detail">
@@ -214,22 +219,6 @@ export function ConversationDetailRoute() {
         </div>
 
         <ConnectionBanner />
-
-        {archivedForMe && (
-          <div
-            className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900 flex items-center justify-between"
-            data-testid="archived-banner"
-          >
-            <span>You're no longer a member of this conversation.</span>
-            <button
-              className="text-amber-700 underline hover:text-amber-900"
-              onClick={handleRemoveFromArchive}
-              data-testid="archived-remove-link"
-            >
-              Remove from archive
-            </button>
-          </div>
-        )}
 
         {/* Message timeline */}
         <div
@@ -313,12 +302,10 @@ export function ConversationDetailRoute() {
           <div ref={bottomRef} />
         </div>
 
-        {!archivedForMe && (
-          <Composer
-            onSend={handleSend}
-            disabled={composerDisabled}
-          />
-        )}
+        <Composer
+          onSend={handleSend}
+          disabled={composerDisabled}
+        />
       </main>
     </div>
   );
