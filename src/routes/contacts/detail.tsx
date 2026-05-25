@@ -11,6 +11,8 @@ import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { Avatar } from "@/components/avatar";
+import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
 
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
@@ -73,12 +75,20 @@ export function ContactDetailRoute() {
       </div>
 
       <div className="space-y-4">
-        <h1
-          data-testid="contact-detail-name"
-          className="text-2xl font-bold text-gray-900"
-        >
-          {(contact as any).displayNameLocal}
-        </h1>
+        <div className="flex items-center gap-4 mb-4">
+          <Avatar
+            src={resolveAvatarFileBlob({ accountID: (contact as any).contactAccountID, me })}
+            initials={(contact as any).displayNameLocal?.[0] ?? "?"}
+            size="lg"
+            loadAs={me}
+          />
+          <h1
+            data-testid="contact-detail-name"
+            className="text-2xl font-bold text-gray-900"
+          >
+            {(contact as any).displayNameLocal}
+          </h1>
+        </div>
 
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground font-medium">

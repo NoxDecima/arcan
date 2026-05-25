@@ -2,6 +2,8 @@ import { useAccount } from "jazz-tools/react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { Avatar } from "@/components/avatar";
+import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
 
 /**
  * ContactsRoute: full-page contacts list at /contacts.
@@ -47,10 +49,16 @@ export function ContactsRoute() {
             <li key={i}>
               <Link
                 to={`/contacts/${c?.$jazz?.id}`}
-                className="block p-3 hover:bg-accent rounded text-sm"
+                className="flex items-center gap-3 p-3 hover:bg-accent rounded text-sm"
                 data-testid={`contacts-page-row-${i}`}
               >
-                {c?.displayNameLocal ?? "(unknown)"}
+                <Avatar
+                  src={resolveAvatarFileBlob({ accountID: c?.contactAccountID, me })}
+                  initials={c?.displayNameLocal?.[0] ?? "?"}
+                  size="md"
+                  loadAs={me}
+                />
+                <span>{c?.displayNameLocal ?? "(unknown)"}</span>
               </Link>
             </li>
           ))}
