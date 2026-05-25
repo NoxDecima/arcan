@@ -300,11 +300,11 @@ export async function ensureMyWriteGroup(
 /**
  * Leave a conversation.
  *
- * Slice 4 changed this from "splice from knownConversations" to "leave a
- * trail": we write a `left` system event, then self-revoke. The conversation
- * stays in me.root.knownConversations; the sidebar detects via isArchived()
- * and routes it to the Archived section. The user can call removeFromArchive
- * later to truly delete the entry.
+ * Writes a `left` system event for other members to see, self-revokes from
+ * the ConversationGroup, and removes the conversation from
+ * me.root.knownConversations. Once revoked, Jazz no longer surfaces the
+ * conversation's contents to me — so we drop the dangling reference rather
+ * than keep an unreadable entry in the user's list.
  *
  * For last-admin leaves, the caller should first call promoteToAdmin on
  * another member (see LeaveWithPromoteDialog) — this function does not
@@ -336,10 +336,9 @@ export async function leaveConversation(
   // Revoke myself from the ConversationGroup; Jazz auto-rotates the readKey
   conversationGroup.removeMember(me);
 
-  // NOTE: We deliberately do NOT remove from me.root.knownConversations.
-  // Slice 4 keeps the conversation in the list so it lands in the Archived
-  // section (isArchived returns true after self-revoke). The user can
-  // explicitly remove via the archive's X button -> removeFromArchive().
+  // Drop the conversation from my list — Jazz revocation hides its contents
+  // from me, so a dangling reference would only show as a broken row.
+  await removeFromKnownConversations(me, conversation);
 }
 
 // ----- member management primitives -----
@@ -527,27 +526,28 @@ export function isLastAdmin(me: Account, conversation: any): boolean {
 /**
  * True when `me` is no longer a participant in the conversation.
  *
- * Detection: getRoleOf returns undefined for both "revoked" and
- * "never-a-member". Since this helper is only called for conversations in
- * me.root.knownConversations (which we only push to when me becomes a
- * member), undefined here means "was a member, now revoked" — i.e., archived.
- *
- * Slice 4 uses this to partition the sidebar into active vs archived sections
- * and to gate the detail/members routes into read-only mode.
+ * Used by:
+ *   - the sidebar, to hide conversations the user has been kicked from
+ *     (they would render as broken stubs because Jazz revocation hides their
+ *     contents) — passes `{ treatNotLoadedAsArchived: true }` so $each-with-
+ *     $onError-catch NotLoaded entries get filtered.
+ *   - the detail / members routes, to redirect away when the role is
+ *     definitively revoked — uses the default (strict) mode so transient
+ *     NotLoaded states during initial sync don't trigger spurious redirects.
  */
-export function isArchived(me: Account, conversation: any): boolean {
-  // If the conversation itself is a NotLoaded proxy (inaccessible after revocation),
-  // treat it as archived. The sidebar uses $each: { $onError: "catch" } so
-  // inaccessible conversations land here as NotLoaded values rather than being
-  // filtered out. A conversation in knownConversations that is inaccessible means
-  // Alice was revoked from it — i.e., it's archived.
-  if (conversation?.$isLoaded === false) return true;
+export function isArchived(
+  me: Account,
+  conversation: any,
+  opts: { treatNotLoadedAsArchived?: boolean } = {},
+): boolean {
+  const { treatNotLoadedAsArchived = false } = opts;
+
+  if (conversation?.$isLoaded === false) return treatNotLoadedAsArchived;
 
   const group = conversation?.$jazz?.owner as Group | undefined;
   if (!group) return false;
 
-  // If the group itself is a NotLoaded proxy (inaccessible), treat as archived.
-  if ((group as any)?.$isLoaded === false) return true;
+  if ((group as any)?.$isLoaded === false) return treatNotLoadedAsArchived;
 
   const myID = (me as any).$jazz?.id;
   if (!myID) return false;
@@ -555,13 +555,13 @@ export function isArchived(me: Account, conversation: any): boolean {
 }
 
 /**
- * Remove a conversation from me's knownConversations list. Terminal action —
- * the conversation disappears from the user's view entirely (active and
- * archived sections both).
+ * Remove a conversation reference from me.root.knownConversations.
  *
- * No-op when the conversation is not in the list.
+ * Used by leaveConversation after self-revoke; also serves as the cleanup
+ * primitive for kicked entries that we want to permanently drop. No-op when
+ * the conversation is not in the list.
  */
-export async function removeFromArchive(
+async function removeFromKnownConversations(
   me: Account,
   conversation: any,
 ): Promise<void> {

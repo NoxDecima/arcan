@@ -7,15 +7,13 @@ import { createAccount } from "./helpers";
  * Alice and Bob are mutual contacts; Alice starts a conversation, sends a
  * message, Bob opens it. Then Alice leaves.
  *
- * Slice 4 behavior: after leaving, the conversation is NOT removed from
- * Alice's knownConversations. Instead, it lands in the sidebar's "Archived"
- * section (isArchived returns true once Alice's role is revoked). Alice can
- * later remove it permanently via the X button (see archive-remove.spec.ts).
+ * Behavior: after leaving, the conversation is removed from Alice's
+ * knownConversations entirely (Jazz revokes her read access on self-leave,
+ * so a dangling reference would render as a broken row).
  *
  * This test asserts:
  *   - Alice is navigated back to /conversations
- *   - The conversation does NOT appear in Alice's active conversation rows
- *   - An "Archived (1)" section header IS visible in the sidebar
+ *   - The conversation disappears from Alice's sidebar
  *   - Bob sees the "Alice left the chat" system-event pill in the timeline
  */
 test("leave conversation — Alice revokes self, list updates", async ({ browser }) => {
@@ -92,15 +90,8 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     // Alice is navigated to /conversations
     await expect(pageA).toHaveURL(/\/conversations$/, { timeout: 10_000 });
 
-    // Slice 4: active conversation list does NOT show the conversation
-    // (it's moved to the Archived section, not the active list)
+    // The conversation disappears from Alice's sidebar entirely.
     await expect(pageA.getByTestId("conversation-row-0")).not.toBeVisible({ timeout: 10_000 });
-
-    // Slice 4: the conversation lives in the Archived section instead
-    await expect(pageA.getByTestId("archived-section-header")).toHaveText(
-      /Archived \(1\)/,
-      { timeout: 10_000 },
-    );
 
     // ── 6. Bob sees the "Alice left the chat" system event in the timeline ──
     // Bob's still-open conversation view should pick up the role-change via
