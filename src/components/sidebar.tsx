@@ -7,6 +7,7 @@ import { ContactPicker } from "@/components/contact-picker";
 import { GroupCreateDialog } from "@/components/group-create-dialog";
 import { findOrCreate1to1Conversation, createGroupConversation, isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { Avatar } from "@/components/avatar";
 
 /**
  * Sidebar component for the main layout.
@@ -122,14 +123,23 @@ export function Sidebar() {
   return (
     <>
       <aside className="w-64 flex flex-col border-r border-gray-200 bg-white">
-        {/* Header: display name + new chat button */}
+        {/* Header: avatar + display name + new chat button */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-2">
-          <span
-            data-testid="sidebar-display-name"
-            className="font-semibold text-gray-800 truncate"
-          >
-            {me.profile.displayName}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Avatar
+              src={(me as any).profile.avatar}
+              initials={me.profile.displayName?.[0] ?? "?"}
+              size="sm"
+              loadAs={me}
+              data-testid="sidebar-avatar"
+            />
+            <span
+              data-testid="sidebar-display-name"
+              className="font-semibold text-gray-800 truncate"
+            >
+              {me.profile.displayName}
+            </span>
+          </div>
           <Button
             size="sm"
             variant="outline"

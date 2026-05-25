@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+### Slice 5 — Inline media + profile avatars
+
+**Closes:** E1a §9.1 "inline media (≤5 MB)" line item; Profile.avatar UI gap.
+
+#### Added
+
+- `src/jazz/attachments.ts` — `uploadAttachment(owner, file)` primitive + `AttachmentTooLargeError` + `MAX_ATTACHMENT_BYTES`. Wraps `co.fileStream().createFromBlob` and wraps the resulting FileStream in a FileBlob CoMap owned by the same group as its parent.
+- `src/jazz/avatar.ts` — `setProfileAvatar(me, file)` + `clearProfileAvatar(me)`. The avatar FileBlob is owned by the profile's owning group.
+- `src/jazz/avatarResolver.ts` — `resolveAvatarFileBlob({ accountID, me, group? })`, mirrors `resolveDisplayName`'s lookup order. Also exports `useRemoteAvatar(accountID)` — a reactive hook that loads a remote account's `profile.avatar` FileBlob by ID. Needed because the `Contact` schema stores `contactAccountID: string` (not an Account ref), so the contact-book branch of the sync resolver has no path to the avatar; the hook backfills via `useCoState(JazzMessangerAccount, accountID, { resolve: { profile: true } })`.
+- `<Avatar>` (`src/components/avatar.tsx`) — round container; loads the FileStream as a Blob via `co.fileStream().loadAsBlob` → object URL; revokes on unmount + on FileStream-ID change.
+- `<AttachmentTile>` (`src/components/attachment-tile.tsx`) — pending vs sent modes; image vs file branches.
+- `<ImageLightbox>` (`src/components/image-lightbox.tsx`) — Esc / backdrop-click / close-button dismiss.
+- `<ComposerAttachmentTray>` (`src/components/composer-attachment-tray.tsx`) — pending tray above the composer textarea.
+- Avatar surfaces: sidebar header, members route, contacts list (via `useRemoteAvatar`), contacts detail (via `useRemoteAvatar`), per-message bubble gutter (both 1:1 and groups), settings profile section (upload + Remove).
+
+#### Changed
+
+- `sendMessage` (`src/jazz/messages.ts`) — new optional `attachments: FileBlob[]` parameter. Empty array is the default for backward compatibility.
+- `Composer` (`src/components/composer.tsx`) — paperclip button + clipboard-paste handler + pending tray + tray-aware Send. New `getWriteGroup` prop so the composer can request the author's WriteGroup at upload time. New `onSend(body, attachments)` signature. Error surface is a single `string | null` with 4-second auto-dismiss (the design spec sketched `errors: string[]`; the implemented shape collapses transient pick/upload failures into one banner).
+- `MessageBubble` (`src/components/message-bubble.tsx`) — renders `<AttachmentTile mode="sent">` per attachment under the body text; new leading avatar gutter for every bubble (1:1 + group, mine + other). The deleted-message branch also renders the gutter for layout consistency.
+
+#### Fixed
+
+- `Composer` type-only import: `PendingAttachment` re-imported with the `type` modifier to comply with `verbatimModuleSyntax` (the type-erased name was leaking into runtime ESM and failing Vite's module resolution).
+- `MessageBubble` lightbox blob-URL leak: revocation moved into a `useEffect` cleanup keyed on `lightboxSrc`, so each new lightbox open revokes the prior URL and bubble unmount revokes the final one. Previously the URL leaked when the bubble unmounted while the lightbox was open or when a second image was opened without explicitly closing the first.
+
+#### Test coverage
+
+- Unit: 107 passing (the 6 net-new Phase-A tests are bundled in the existing 24 files).
+- E2E: +11 net-new test executions across 6 specs — `attachment-image`, `attachment-file`, `attachment-multiple`, `attachment-paste` (Chromium only; see Deferred), `attachment-too-large`, `profile-avatar`. 47 e2e passing in total (Chromium + Firefox); 1 skipped (paste on Firefox).
+- 3 fixtures committed: `tests/e2e/fixtures/{tiny.png,tiny.pdf,oversized.bin}`.
+
+#### Deferred
+
+- True deletion of body / attachments (orphan-scrub + Jazz local-cache GC investigation) — tracked as **NOX-21**.
+- Deduplicate the inline `co.profile({...})` shape in `JazzMessangerAccount.ts` (currently appears in both the schema decl and the migration's create call — adding a field requires editing both) — tracked as **NOX-22**.
+- Migrate `Contact.contactAccountID` (string) to `co.ref(JazzMessangerAccount)` and drop the `useRemoteAvatar` hook — tracked as **NOX-23**.
+- Extract `pairAccounts` + `startOneToOneChat` e2e helpers (5+ specs copy-paste the same two-account QR-invite + start-chat boilerplate) — tracked as **NOX-24**.
+- Drag-and-drop attachment onto window.
+- Optimistic send with per-attachment upload progress.
+- Link / PDF / text-file previews.
+- Cropping at avatar upload.
+- Firefox clipboard-paste e2e coverage — synthetic `ClipboardEvent` constructed in the page does not deliver `clipboardData.files` to listeners under Gecko; the spec is `test.skip`-gated on `browserName === "firefox"`. The composer's paste handler itself works in real Firefox use; only the synthetic-event test path is unreachable.
+
 ### Post-Slice-4 — Revert archive UI
 
 Manual validation surfaced that post-revoke Jazz semantics hide all conversation

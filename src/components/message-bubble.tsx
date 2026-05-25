@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { co } from "jazz-tools";
 import { Button } from "@/components/ui/button";
 import { editMessage, deleteMessage } from "@/jazz/messages";
+import { AttachmentTile } from "@/components/attachment-tile";
+import { ImageLightbox } from "@/components/image-lightbox";
+import { Avatar } from "@/components/avatar";
+import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
 
 interface MessageBubbleProps {
   message: any;
@@ -8,6 +13,7 @@ interface MessageBubbleProps {
   authorDisplayName: string;
   isMine: boolean;
   me: any;
+  group?: any; // ConversationGroup, for avatar resolution
 }
 
 export function MessageBubble({
@@ -16,10 +22,23 @@ export function MessageBubble({
   authorDisplayName,
   isMine,
   me,
+  group,
 }: MessageBubbleProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.body ?? "");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // Revoke the lightbox blob URL on unmount and whenever it changes (e.g. user
+  // opens a second image without explicitly closing the first). The cleanup
+  // callback closes over the URL that was current when the effect ran, so
+  // each new URL revokes the previous one and unmount revokes the final one.
+  // Must run before any conditional early return (Rules of Hooks).
+  useEffect(() => {
+    return () => {
+      if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
+    };
+  }, [lightboxSrc]);
 
   if (!authorAccountID) {
     return (
@@ -42,13 +61,25 @@ export function MessageBubble({
   if (message.deleted) {
     return (
       <div
-        className={`px-3 py-2 italic text-sm text-muted-foreground ${isMine ? "text-right" : "text-left"}`}
+        className={`px-3 py-2 italic text-sm text-muted-foreground flex gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}
         data-testid="message-deleted"
       >
-        ⌫ This message was deleted
-        <span className="ml-2 text-xs">
-          — {authorDisplayName} {formattedTime}
-        </span>
+        <Avatar
+          src={
+            authorAccountID
+              ? resolveAvatarFileBlob({ accountID: authorAccountID, me, group })
+              : undefined
+          }
+          initials={authorDisplayName}
+          size="sm"
+          loadAs={me}
+        />
+        <div className={isMine ? "text-right" : "text-left"}>
+          ⌫ This message was deleted
+          <span className="ml-2 text-xs">
+            — {authorDisplayName} {formattedTime}
+          </span>
+        </div>
       </div>
     );
   }
@@ -65,86 +96,139 @@ export function MessageBubble({
     await deleteMessage(me, message);
   }
 
+  const attachments = Array.from((message as any).attachments ?? []);
+
+  async function openLightbox(att: any) {
+    const id = att?.data?.$jazz?.id;
+    if (!id) return;
+    const blob = await co.fileStream().loadAsBlob(id, { loadAs: me });
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    setLightboxSrc(url);
+  }
+
+  function closeLightbox() {
+    setLightboxSrc(null);
+  }
+
+  const authorAvatar = authorAccountID
+    ? resolveAvatarFileBlob({ accountID: authorAccountID, me, group })
+    : undefined;
+
   return (
     <div
-      className={`group px-3 py-1 ${isMine ? "text-right" : "text-left"}`}
+      className={`group px-3 py-1 flex gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}
       data-testid={`message-${isMine ? "mine" : "other"}`}
     >
-      <div className="text-xs text-muted-foreground mb-1">
-        {isMine ? formattedTime : `${authorDisplayName} ${formattedTime}`}
-        {message.edited && <span className="ml-1">(edited)</span>}
-        {isMine && !editing && (
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="ml-2 opacity-0 group-hover:opacity-100"
-            data-testid="message-menu-btn"
-          >
-            ⋮
-          </button>
-        )}
-      </div>
+      <Avatar
+        src={authorAvatar}
+        initials={authorDisplayName}
+        size="sm"
+        loadAs={me}
+        ariaLabel={`${authorDisplayName} avatar`}
+      />
 
-      {editing ? (
-        <div className="inline-flex flex-col gap-1 items-end">
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            rows={2}
-            className="rounded border bg-background p-2 text-sm w-64"
-            data-testid="message-edit-input"
-          />
-          <div className="flex gap-1">
+      <div className={`flex-1 min-w-0 ${isMine ? "text-right" : "text-left"}`}>
+        <div className="text-xs text-muted-foreground mb-1">
+          {isMine ? formattedTime : `${authorDisplayName} ${formattedTime}`}
+          {message.edited && <span className="ml-1">(edited)</span>}
+          {isMine && !editing && (
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="ml-2 opacity-0 group-hover:opacity-100"
+              data-testid="message-menu-btn"
+            >
+              ⋮
+            </button>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="inline-flex flex-col gap-1 items-end">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={2}
+              className="rounded border bg-background p-2 text-sm w-64"
+              data-testid="message-edit-input"
+            />
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                data-testid="message-edit-save"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {message.body && (
+              <div
+                className={`inline-block max-w-md rounded-lg px-3 py-2 text-sm ${
+                  isMine ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}
+              >
+                {message.body}
+              </div>
+            )}
+            {attachments.length > 0 && (
+              <div
+                className={`mt-1 flex flex-wrap gap-2 ${isMine ? "justify-end" : "justify-start"}`}
+                data-testid="message-attachments"
+              >
+                {attachments.map((att: any, i: number) => (
+                  <AttachmentTile
+                    key={(att as any)?.$jazz?.id ?? i}
+                    attachment={att}
+                    mode="sent"
+                    loadAs={me}
+                    onImageClick={() => void openLightbox(att)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {menuOpen && isMine && !editing && (
+          <div className="mt-1 flex justify-end gap-1">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setEditing(false)}
+              onClick={() => {
+                setMenuOpen(false);
+                setEditing(true);
+              }}
+              data-testid="message-edit-btn"
             >
-              Cancel
+              Edit
             </Button>
             <Button
               size="sm"
-              onClick={handleSaveEdit}
-              data-testid="message-edit-save"
+              variant="outline"
+              onClick={() => {
+                setMenuOpen(false);
+                void handleDelete();
+              }}
+              data-testid="message-delete-btn"
             >
-              Save
+              Delete
             </Button>
           </div>
-        </div>
-      ) : (
-        <div
-          className={`inline-block max-w-md rounded-lg px-3 py-2 text-sm ${
-            isMine ? "bg-primary text-primary-foreground" : "bg-muted"
-          }`}
-        >
-          {message.body}
-        </div>
-      )}
+        )}
+      </div>
 
-      {menuOpen && isMine && !editing && (
-        <div className="mt-1 flex justify-end gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setMenuOpen(false);
-              setEditing(true);
-            }}
-            data-testid="message-edit-btn"
-          >
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setMenuOpen(false);
-              void handleDelete();
-            }}
-            data-testid="message-delete-btn"
-          >
-            Delete
-          </Button>
-        </div>
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} onClose={closeLightbox} />
       )}
     </div>
   );

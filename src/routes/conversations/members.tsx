@@ -34,6 +34,8 @@ import {
   isArchived,
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { Avatar } from "@/components/avatar";
+import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
 
 export function MembersRoute() {
   const { id } = useParams<{ id: string }>();
@@ -340,10 +342,13 @@ export function MembersRoute() {
                   className="flex items-center gap-3 px-3 py-2 rounded hover:bg-accent"
                   data-testid={`member-row-${member.accountID}`}
                 >
-                  {/* Avatar initial */}
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary flex-shrink-0">
-                    {member.displayName[0]?.toUpperCase() ?? "?"}
-                  </div>
+                  <Avatar
+                    src={resolveAvatarFileBlob({ accountID: member.accountID, me, group })}
+                    initials={member.displayName[0] ?? "?"}
+                    size="sm"
+                    loadAs={me}
+                    data-testid={`member-avatar-${member.accountID}`}
+                  />
 
                   {/* Display name */}
                   <span className="flex-1 text-sm font-medium text-gray-900 truncate">
