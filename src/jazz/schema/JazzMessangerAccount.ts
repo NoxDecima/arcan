@@ -3,6 +3,7 @@ import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { Invitation } from "./Invitation";
 import { Conversation } from "./Conversation";
+import { FileBlob } from "./FileBlob";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
@@ -37,6 +38,7 @@ export const JazzMessangerAccount = co.account({
   profile: co.profile({
     displayName: z.string(),
     bio: z.string().optional(),
+    avatar: FileBlob.optional(),
   }),
   root: JazzMessangerAccountRoot,
 }).withMigration(async (me, creationProps) => {
@@ -67,6 +69,7 @@ export const JazzMessangerAccount = co.account({
         .profile({
           displayName: z.string(),
           bio: z.string().optional(),
+          avatar: FileBlob.optional(),
         })
         .create(
           { name: displayName, displayName },
