@@ -12,7 +12,7 @@ import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
 import { Avatar } from "@/components/avatar";
-import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
+import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
@@ -24,6 +24,23 @@ export function ContactDetailRoute() {
     },
   });
 
+  const contact = me.$isLoaded
+    ? me.root.contactBook.find((c) => (c as any).$jazz?.id === contactID)
+    : undefined;
+
+  // Sync resolver (covers self / group member); remote-load hook fills in the
+  // contact-book branch where the schema only stores a string accountID.
+  const localAvatar = me.$isLoaded
+    ? resolveAvatarFileBlob({
+        accountID: (contact as any)?.contactAccountID,
+        me,
+      })
+    : undefined;
+  const remoteAvatar = useRemoteAvatar(
+    localAvatar ? null : (contact as any)?.contactAccountID ?? null,
+  );
+  const avatar = localAvatar ?? remoteAvatar;
+
   if (!me.$isLoaded) {
     return (
       <div className="flex flex-col items-center gap-4 p-6">
@@ -31,10 +48,6 @@ export function ContactDetailRoute() {
       </div>
     );
   }
-
-  const contact = me.root.contactBook.find(
-    (c) => (c as any).$jazz?.id === contactID,
-  );
 
   if (!contact) {
     return (
@@ -77,7 +90,7 @@ export function ContactDetailRoute() {
       <div className="space-y-4">
         <div className="flex items-center gap-4 mb-4">
           <Avatar
-            src={resolveAvatarFileBlob({ accountID: (contact as any).contactAccountID, me })}
+            src={avatar}
             initials={(contact as any).displayNameLocal?.[0] ?? "?"}
             size="lg"
             loadAs={me}
