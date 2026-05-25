@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
 import { Button } from "@/components/ui/button";
 import { editMessage, deleteMessage } from "@/jazz/messages";
@@ -87,6 +87,16 @@ export function MessageBubble({
 
   const attachments = Array.from((message as any).attachments ?? []);
 
+  // Revoke the lightbox blob URL on unmount and whenever it changes (e.g. user
+  // opens a second image without explicitly closing the first). The cleanup
+  // callback closes over the URL that was current when the effect ran, so
+  // each new URL revokes the previous one and unmount revokes the final one.
+  useEffect(() => {
+    return () => {
+      if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
+    };
+  }, [lightboxSrc]);
+
   async function openLightbox(att: any) {
     const id = att?.data?.$jazz?.id;
     if (!id) return;
@@ -97,7 +107,6 @@ export function MessageBubble({
   }
 
   function closeLightbox() {
-    if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
     setLightboxSrc(null);
   }
 
