@@ -1,0 +1,30 @@
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"     # HTTP-01 challenge + redirect to HTTPS
+      - "443:443"   # HTTPS + WSS
+    volumes:
+      - caddy_data:/data      # ACME state, issued certs — must persist
+      - caddy_config:/config  # Caddy runtime config cache
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    depends_on:
+      - sync
+
+  sync:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.sync
+    restart: unless-stopped
+    volumes:
+      - ./data:/data          # SQLite file on the host for easy inspection / manual backup
+    # NOT exposed on the host — internal docker network only.
+
+volumes:
+  caddy_data:
+  caddy_config:
