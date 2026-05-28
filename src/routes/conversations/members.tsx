@@ -27,7 +27,6 @@ import {
   addMemberToConversation,
   removeMemberFromConversation,
   promoteToAdmin,
-  demoteToWriter,
   leaveConversation,
   isLastAdmin,
   updateConversationTitle,
