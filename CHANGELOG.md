@@ -2,6 +2,41 @@
 
 ## [Unreleased]
 
+### Slice 6 — Caddy + TLS Docker Compose deploy
+
+**Closes:** E1a §9.2 (Production deployment) — minimum viable VPS deploy story.
+
+#### Added
+
+- `deploy/Dockerfile.caddy` — multi-stage build: `node:22-alpine` runs `npm ci && npm run build`, then `caddy:2-alpine` serves the resulting `dist/` from `/usr/share/caddy` and reverse-proxies `/sync/*` to the sync container.
+- `deploy/Dockerfile.sync` — `node:22-alpine` + `npm install -g jazz-tools@^0.20.0`; CMD runs `jazz-run sync --host 0.0.0.0 --port 4200 --db /data/sync.sqlite`. Listens only on the internal Docker network; not exposed on the host.
+- `deploy/Caddyfile` — one site block for `{$DOMAIN}`. `handle_path /sync/*` strips the prefix before reverse-proxying (Caddy handles the WebSocket `Upgrade` natively). `tls {$ACME_EMAIL}` enables auto-TLS via Let's Encrypt HTTP-01.
+- `deploy/docker-compose.yml` — two services + named `caddy_data` and `caddy_config` volumes (cert state must persist across rebuilds) + bind mount `./data:/data` for the SQLite file (operator-inspectable). Sync service has no `ports:` block.
+- `deploy/.env.example` — `DOMAIN` + `ACME_EMAIL` template, separate from the repo-root `.env.example` (which stays for local dev).
+- `deploy/README.md` — one-page operator guide: prerequisites, quick start, verify, update, on-disk data, reserved path, troubleshooting.
+- `.dockerignore` at repo root — excludes `node_modules`, `tests/`, `.vite/`, `dist/`, `.env*`, `.jazz-data/`, `deploy/data/`, etc. Trims the build context for both Dockerfiles.
+
+#### Changed
+
+- `src/jazz/provider.tsx` — when `VITE_SYNC_URL` is unset, the default sync URL is derived at runtime from `window.location` (`wss://<host>/sync/` over HTTPS, `ws://<host>/sync/` over HTTP). Makes the built Docker image domain-portable: the same image works on any domain without rebuild. The existing `VITE_SYNC_URL` override still wins when set (used for local Tailscale dev, etc.).
+
+#### Test coverage
+
+- Unit: +4 tests in `tests/unit/jazz/provider.test.ts` covering the derivation matrix (SSR-undefined window, HTTPS host, HTTP host, non-standard port). 111 total.
+- Smoke: `docker compose config` validates; `docker compose build` completes. Full end-to-end run-on-a-real-domain test is operator-side (documented in `deploy/README.md`).
+
+#### Fixed (build hygiene, discovered while implementing this slice)
+
+- Strict-mode TypeScript breaks that had accumulated since around Slice 3 — `verbatimModuleSyntax` violations on React event imports (`composer.tsx`, `profile-section.tsx`); `erasableSyntaxOnly` violations in `AttachmentTooLargeError`; `MaybeLoaded<Account>` not narrowing into handler closures across `sidebar.tsx`, `members.tsx`, `contacts/detail.tsx`, `conversations/detail.tsx`; `Settled<Account>` Inaccessible variant in `loadAccountByID`; `knownConversations` access on a `never`-narrowed migration branch; unused `demoteToWriter` import in `members.tsx`. All masked by the documented "verify clean" step running `tsc --noEmit` against the root `tsconfig.json` (`files: []`) which type-checks nothing. `npm run build` now passes; **NOX-25** tracks switching every plan's verify step from `npx tsc --noEmit` to `npm run build` so this can't recur.
+
+#### Deferred
+
+- Backups of `./data/sync.sqlite` and the `caddy_data` volume — specced at high level in E1a §7.2 (weekly encrypted snapshots, off-site object storage). Out of scope for the first deploy.
+- Per-account quotas / abuse heuristics.
+- Monitoring / log shipping.
+- DNS-01 ACME challenge / wildcard certs.
+- Docker Compose support for local development (kept on `npm run dev` + `npm run sync`).
+
 ### Slice 5 — Inline media + profile avatars
 
 **Closes:** E1a §9.1 "inline media (≤5 MB)" line item; Profile.avatar UI gap.

@@ -1,0 +1,33 @@
+# Sit at repo root — deploy/docker-compose.yml sets `context: ..` for both
+# builds, so Docker reads this from here.
+
+# Node deps — rebuilt inside the image.
+node_modules/
+
+# Test artifacts — never needed for the production bundle.
+tests/
+playwright-report/
+test-results/
+
+# Local dev data + caches.
+.jazz-data/
+.vite/
+deploy/data/
+
+# Env files — secrets, not for the image.
+.env
+.env.*
+deploy/.env
+
+# Build output — rebuilt inside the image; would otherwise collide with
+# the Caddy stage's COPY /app/dist.
+dist/
+
+# Editor + OS noise.
+.vscode/
+.idea/
+.DS_Store
+
+# Docs + source-control metadata don't belong in the image.
+.git/
+.github/

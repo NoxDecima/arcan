@@ -127,7 +127,7 @@ export const JazzMessangerAccount = co.account({
   // backfill will run again on the next load once the root is resolved.
   if (
     me.root &&
-    !me.root.knownConversations &&
+    !(me.root as any).knownConversations &&
     typeof (me.root as any).$jazz?.set === "function"
   ) {
     (me.root as any).$jazz.set(

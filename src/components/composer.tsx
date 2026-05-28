@@ -1,5 +1,5 @@
 // src/components/composer.tsx
-import { useRef, useState, KeyboardEvent, ClipboardEvent, ChangeEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type ClipboardEvent, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ComposerAttachmentTray,

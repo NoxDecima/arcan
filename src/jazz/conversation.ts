@@ -592,8 +592,9 @@ async function loadAccountByID(me: Account, accountID: string): Promise<Account 
     const result = await Account.load(accountID as any, {
       loadAs: me,
     });
-    // Account.load returns Settled<Resolved<A, R>> — may be null if not found
-    return result ?? null;
+    // Account.load returns Settled<Resolved<A, R>> — may be null if not found,
+    // or an Inaccessible variant. Callers already treat the return as nullable.
+    return (result ?? null) as Account | null;
   } catch {
     return null;
   }

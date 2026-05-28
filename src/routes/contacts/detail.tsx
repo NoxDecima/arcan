@@ -62,7 +62,7 @@ export function ContactDetailRoute() {
 
   async function handleStartChat() {
     if (!contact) return;
-    const conversation = await findOrCreate1to1Conversation(me, contact);
+    const conversation = await findOrCreate1to1Conversation(me as any, contact);
     navigate(`/conversations/${(conversation as any).$jazz.id}`);
   }
 

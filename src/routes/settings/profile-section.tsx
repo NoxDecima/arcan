@@ -1,5 +1,5 @@
 // src/routes/settings/profile-section.tsx
-import { useRef, useState, ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useAccount } from "jazz-tools/react";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { Avatar } from "@/components/avatar";

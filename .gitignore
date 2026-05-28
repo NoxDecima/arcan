@@ -37,3 +37,7 @@ Thumbs.db
 # Playwright
 test-results/
 playwright-report/
+
+# Slice 6 — Docker Compose deploy
+deploy/data/
+deploy/.env
