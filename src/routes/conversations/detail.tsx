@@ -179,11 +179,11 @@ export function ConversationDetailRoute() {
   // ---- handlers ----
 
   async function handleSend(body: string, attachments: any[]) {
-    await sendMessage(me, conversation, body, attachments);
+    await sendMessage(me as any, conversation, body, attachments);
   }
 
   async function handleGetWriteGroup() {
-    return ensureMyWriteGroup(me, conversation);
+    return ensureMyWriteGroup(me as any, conversation);
   }
 
   // ---- render ----

@@ -162,7 +162,7 @@ export function MembersRoute() {
     try {
       for (const contact of contacts) {
         await addMemberToConversation(
-          me,
+          me as any,
           conversation,
           contact.contactAccountID as string,
           "writer",
@@ -176,7 +176,7 @@ export function MembersRoute() {
   async function handlePromote(accountID: string) {
     setActionInProgress(true);
     try {
-      await promoteToAdmin(me, conversation, accountID);
+      await promoteToAdmin(me as any, conversation, accountID);
     } finally {
       setActionInProgress(false);
     }
@@ -186,7 +186,7 @@ export function MembersRoute() {
     if (!confirm("Remove this member from the conversation?")) return;
     setActionInProgress(true);
     try {
-      await removeMemberFromConversation(me, conversation, accountID);
+      await removeMemberFromConversation(me as any, conversation, accountID);
     } finally {
       setActionInProgress(false);
     }
@@ -194,14 +194,14 @@ export function MembersRoute() {
 
   async function handleLeave() {
     const otherMembers = rawMembers.filter((m) => m.accountID !== myAccountID);
-    if (isLastAdmin(me, conversation) && otherMembers.length > 0) {
+    if (isLastAdmin(me as any, conversation) && otherMembers.length > 0) {
       setLeavePromoteOpen(true);
       return;
     }
     if (!confirm("Leave this conversation? You will lose access to its messages.")) return;
     setActionInProgress(true);
     try {
-      await leaveConversation(me, conversation);
+      await leaveConversation(me as any, conversation);
       navigate("/conversations");
     } finally {
       setActionInProgress(false);
@@ -211,8 +211,8 @@ export function MembersRoute() {
   async function handleLeaveWithPromote(newAdminAccountID: string) {
     setActionInProgress(true);
     try {
-      await promoteToAdmin(me, conversation, newAdminAccountID);
-      await leaveConversation(me, conversation);
+      await promoteToAdmin(me as any, conversation, newAdminAccountID);
+      await leaveConversation(me as any, conversation);
       setLeavePromoteOpen(false);
       navigate("/conversations");
     } finally {
@@ -238,7 +238,7 @@ export function MembersRoute() {
     }
     setActionInProgress(true);
     try {
-      await updateConversationTitle(me, conversation, trimmed);
+      await updateConversationTitle(me as any, conversation, trimmed);
     } finally {
       setActionInProgress(false);
       setTitleEditing(false);

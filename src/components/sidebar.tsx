@@ -113,7 +113,7 @@ export function Sidebar() {
   async function handlePickContacts(contacts: any[]) {
     setPickerOpen(false);
     if (contacts.length === 1) {
-      const conversation = await findOrCreate1to1Conversation(me, contacts[0]);
+      const conversation = await findOrCreate1to1Conversation(me as any, contacts[0]);
       navigate(`/conversations/${(conversation as any).$jazz.id}`);
     } else if (contacts.length >= 2) {
       setPendingGroupContacts(contacts);
