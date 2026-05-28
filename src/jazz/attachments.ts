@@ -5,11 +5,15 @@ import { FileBlob } from "@/jazz/schema/FileBlob";
 export const MAX_ATTACHMENT_BYTES = 5_000_000;
 
 export class AttachmentTooLargeError extends Error {
-  constructor(public readonly filename: string, public readonly size: number) {
+  readonly filename: string;
+  readonly size: number;
+  constructor(filename: string, size: number) {
     super(
       `${filename} is ${(size / 1_000_000).toFixed(1)} MB. Max 5 MB per attachment.`,
     );
     this.name = "AttachmentTooLargeError";
+    this.filename = filename;
+    this.size = size;
   }
 }
 
@@ -26,7 +30,7 @@ export class AttachmentTooLargeError extends Error {
 export async function uploadAttachment(
   owner: Group,
   file: File,
-): Promise<typeof FileBlob.$Type> {
+): Promise<any> {
   if (file.size > MAX_ATTACHMENT_BYTES) {
     throw new AttachmentTooLargeError(file.name, file.size);
   }
