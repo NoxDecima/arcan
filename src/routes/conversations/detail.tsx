@@ -145,7 +145,7 @@ export function ConversationDetailRoute() {
   if (!me.$isLoaded) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading…</p>
         </main>
@@ -156,7 +156,7 @@ export function ConversationDetailRoute() {
   if (conversation === null) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-red-600">Conversation not found.</p>
         </main>
@@ -168,7 +168,7 @@ export function ConversationDetailRoute() {
     // Still loading
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading conversation…</p>
         </main>
@@ -192,7 +192,7 @@ export function ConversationDetailRoute() {
 
   return (
     <div className="flex h-screen" data-testid="conversation-detail">
-      <Sidebar />
+      <div className="hidden md:contents"><Sidebar /></div>
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}

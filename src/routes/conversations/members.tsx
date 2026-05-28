@@ -79,7 +79,7 @@ export function MembersRoute() {
   if (!me.$isLoaded) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading…</p>
         </main>
@@ -90,7 +90,7 @@ export function MembersRoute() {
   if (conversation === null) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-red-600">Conversation not found.</p>
         </main>
@@ -101,7 +101,7 @@ export function MembersRoute() {
   if (!conversation) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
+        <div className="hidden md:contents"><Sidebar /></div>
         <main className="flex-1 flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading members…</p>
         </main>
@@ -254,7 +254,7 @@ export function MembersRoute() {
 
   return (
     <div className="flex h-screen" data-testid="members-route">
-      <Sidebar />
+      <div className="hidden md:contents"><Sidebar /></div>
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}

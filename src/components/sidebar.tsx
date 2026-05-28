@@ -77,7 +77,7 @@ export function Sidebar() {
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
     return (
-      <aside className="w-64 flex flex-col border-r border-gray-200 bg-white">
+      <aside className="w-full md:w-64 flex flex-col border-r border-gray-200 bg-white">
         <div className="p-4 border-b border-gray-200">
           <span className="text-sm text-gray-400">Loading…</span>
         </div>
@@ -122,7 +122,7 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="w-64 flex flex-col border-r border-gray-200 bg-white">
+      <aside className="w-full md:w-64 flex flex-col border-r border-gray-200 bg-white">
         {/* Header: avatar + display name + new chat button */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
