@@ -2,12 +2,42 @@ import { JazzReactProvider } from "jazz-tools/react";
 import { JazzMessangerAccount } from "./schema/JazzMessangerAccount";
 
 /**
- * The WebSocket sync URL. Defaults to a local development sync server.
- * Set VITE_SYNC_URL in your .env file for production (must use ws:// or wss://).
+ * Derive a default sync-server URL from the current page origin.
+ *
+ * When VITE_SYNC_URL is unset, the built image asks the browser to connect
+ * to wss://<host>/sync/ on the same origin it was loaded from. This makes
+ * the same Docker image domain-portable — the operator can deploy it to
+ * any domain without rebuilding.
+ *
+ * Edge cases:
+ * - SSR / non-browser context: window is undefined; fall back to the
+ *   local-dev default so unit tests + node tooling don't crash.
+ * - Non-standard ports: window.location.host already includes the port if
+ *   the page is served on a non-default one (e.g. "localhost:8080"), so
+ *   the resulting URL targets the same port. Correct behaviour for users
+ *   who reverse-proxy through their own gateway.
+ *
+ * Tested in tests/unit/jazz/provider.test.ts.
+ */
+export function deriveDefaultSyncURL(): `ws://${string}` | `wss://${string}` {
+  if (typeof window === "undefined") return "ws://localhost:4200";
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}/sync/`;
+}
+
+/**
+ * The WebSocket sync URL.
+ *
+ * Priority:
+ * 1. VITE_SYNC_URL env var (build-time bake) — explicit override wins.
+ *    Use this for local dev pointing at a Tailscale IP, or for any deploy
+ *    where the sync server lives on a different host than the SPA.
+ * 2. window.location-derived default (wss://<host>/sync/) — what the
+ *    one-container Docker deploy uses.
  */
 const SYNC_URL =
-  (import.meta.env.VITE_SYNC_URL as `ws://${string}` | `wss://${string}`) ??
-  "ws://localhost:4200";
+  (import.meta.env.VITE_SYNC_URL as `ws://${string}` | `wss://${string}` | undefined) ??
+  deriveDefaultSyncURL();
 
 interface MessangerProviderProps {
   children: React.ReactNode;
@@ -17,7 +47,8 @@ interface MessangerProviderProps {
  * MessangerProvider: top-level Jazz context provider for the application.
  *
  * Wires JazzReactProvider with:
- * - WebSocket sync (VITE_SYNC_URL env var, defaulting to ws://localhost:4200)
+ * - WebSocket sync (VITE_SYNC_URL env var, defaulting to a
+ *   window.location-derived URL — see deriveDefaultSyncURL above)
  * - IndexedDB persistence for local-first operation
  * - JazzMessangerAccount as the AccountSchema (activates the migration hook)
  * - A centered "Loading..." fallback shown while the context initialises
