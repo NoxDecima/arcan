@@ -25,6 +25,10 @@
 - Unit: +4 tests in `tests/unit/jazz/provider.test.ts` covering the derivation matrix (SSR-undefined window, HTTPS host, HTTP host, non-standard port). 111 total.
 - Smoke: `docker compose config` validates; `docker compose build` completes. Full end-to-end run-on-a-real-domain test is operator-side (documented in `deploy/README.md`).
 
+#### Fixed (build hygiene, discovered while implementing this slice)
+
+- Strict-mode TypeScript breaks that had accumulated since around Slice 3 — `verbatimModuleSyntax` violations on React event imports (`composer.tsx`, `profile-section.tsx`); `erasableSyntaxOnly` violations in `AttachmentTooLargeError`; `MaybeLoaded<Account>` not narrowing into handler closures across `sidebar.tsx`, `members.tsx`, `contacts/detail.tsx`, `conversations/detail.tsx`; `Settled<Account>` Inaccessible variant in `loadAccountByID`; `knownConversations` access on a `never`-narrowed migration branch; unused `demoteToWriter` import in `members.tsx`. All masked by the documented "verify clean" step running `tsc --noEmit` against the root `tsconfig.json` (`files: []`) which type-checks nothing. `npm run build` now passes; **NOX-25** tracks switching every plan's verify step from `npx tsc --noEmit` to `npm run build` so this can't recur.
+
 #### Deferred
 
 - Backups of `./data/sync.sqlite` and the `caddy_data` volume — specced at high level in E1a §7.2 (weekly encrypted snapshots, off-site object storage). Out of scope for the first deploy.
