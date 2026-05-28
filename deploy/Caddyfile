@@ -1,0 +1,23 @@
+{$DOMAIN} {
+    encode zstd gzip
+
+    # WebSocket sync — strip /sync prefix, reverse-proxy to the sync container.
+    # Caddy's reverse_proxy handles the WS Upgrade handshake natively.
+    handle_path /sync/* {
+        reverse_proxy sync:4200
+    }
+
+    # SPA — serve built static assets with a client-side router fallback.
+    handle {
+        root * /usr/share/caddy
+        try_files {path} /index.html
+        file_server
+    }
+
+    log {
+        output stdout
+        format console
+    }
+
+    tls {$ACME_EMAIL}
+}
