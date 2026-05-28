@@ -9,8 +9,8 @@ export function ConversationsRoute() {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1" data-testid="home-main">
-        <div data-testid="conversations-main" className="h-full">
+      <main className="hidden md:flex flex-1" data-testid="home-main">
+        <div data-testid="conversations-main" className="h-full w-full">
           <EmptyState
             title="Select a conversation"
             description="Choose a conversation from the sidebar, or start a new one with the + button."
