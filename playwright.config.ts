@@ -28,7 +28,7 @@ export default defineConfig({
       // Rate limit raised so the e2e sweep doesn't trip on repeated failed
       // attempts during invalid-credentials / change-password specs.
       command:
-        "cd auth-server && BETTER_AUTH_SECRET=test-secret-for-e2e-only-not-prod-xyz BETTER_AUTH_URL=http://localhost:5173/api/auth PORT=4300 AUTH_RATE_LIMIT_MAX=1000 AUTH_RATE_LIMIT_WINDOW=60 npx tsx src/index.ts",
+        "BETTER_AUTH_SECRET=test-secret-for-e2e-only-not-prod-xyz BETTER_AUTH_URL=http://localhost:5173/api/auth PORT=4300 AUTH_RATE_LIMIT_MAX=1000 AUTH_RATE_LIMIT_WINDOW=60 ./scripts/auth-server-with-migrate.sh",
       port: 4300,
       reuseExistingServer: !process.env.CI,
       stdout: "ignore",

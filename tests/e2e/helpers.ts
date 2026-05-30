@@ -83,6 +83,12 @@ export async function createAccount(
   // Wait for home
   await page.getByTestId("home-main").waitFor({ timeout: 20_000 });
 
+  // Settle: give Jazz a moment to fully persist the auth state to localStorage
+  // + IndexedDB before the caller potentially reloads. Without this, on a
+  // very fast machine reload can race the persist and Jazz starts up
+  // anonymous instead of restoring the just-created account.
+  await page.waitForTimeout(1500);
+
   return { credentials, recoveryCode: words.join(" "), displayName };
 }
 
