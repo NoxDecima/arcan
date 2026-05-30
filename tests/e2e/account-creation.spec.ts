@@ -1,41 +1,53 @@
 import { test, expect } from "@playwright/test";
-import { capturePassphraseWords } from "./helpers";
+import { captureRecoveryCode, freshCredentials } from "./helpers";
 
 /**
  * E2E: Full account creation flow.
  *
  * Walks the complete onboarding path:
- *   welcome → passphrase display → passphrase confirm → profile → home
+ *   welcome → credentials → backup-display → backup-confirm → profile → home
  *
- * The passphrase confirm step presents 3 random words from the phrase; we
+ * The backup-confirm step presents 3 random words from the recovery code; we
  * read the label to determine which 1-based word number each slot requests,
  * then look it up in the captured words array.
  */
 test("account creation flow", async ({ page }) => {
-  // 1. Navigate to welcome screen
-  await page.goto("/");
+  const creds = freshCredentials("creation");
+
+  // 1. Navigate directly to /onboarding (the unauthenticated root now points
+  //    at /auth/login; "Create new account" link routes to /onboarding).
+  await page.goto("/onboarding");
 
   // 2. Assert welcome heading visible
-  await expect(page.getByRole("heading", { name: /Welcome to Jazz Messanger/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Welcome to Jazz Messanger/i }),
+  ).toBeVisible();
 
   // 3. Click "Create new account"
   await page.getByTestId("create-account-btn").click();
 
-  // 4. Capture 24 words from the passphrase grid
-  const words = await capturePassphraseWords(page);
+  // 4. Fill credentials step (email + username + password)
+  await page.getByTestId("credentials-email").fill(creds.email);
+  await page.getByTestId("credentials-username").fill(creds.username);
+  await page.getByTestId("credentials-password").fill(creds.password);
+  await page.getByTestId("credentials-confirm").fill(creds.password);
+  await page.getByTestId("credentials-continue").click();
+
+  // 5. Capture 24 words from the backup-display grid
+  const words = await captureRecoveryCode(page);
   expect(words).toHaveLength(24);
   // Sanity: all words are non-empty strings
   for (const word of words) {
     expect(word.trim().length).toBeGreaterThan(0);
   }
 
-  // 5. Check the "I have saved my passphrase" checkbox
+  // 6. Check the "I have saved my recovery code" checkbox
   await page.getByTestId("passphrase-saved-checkbox").check();
 
-  // 6. Click Continue to passphrase confirm step
+  // 7. Click Continue to backup-confirm step
   await page.getByTestId("passphrase-display-continue").click();
 
-  // 7. Fill in each of the 3 confirm inputs by reading the label for which word is requested
+  // 8. Fill in each of the 3 confirm inputs by reading the label for which word is requested
   for (let slot = 0; slot < 3; slot++) {
     const label = page.locator(`label[for="confirm-word-${slot}"]`);
     const labelText = (await label.textContent()) ?? "";
@@ -47,18 +59,18 @@ test("account creation flow", async ({ page }) => {
     await page.getByTestId(`confirm-word-${slot}`).fill(expectedWord);
   }
 
-  // 8. Click Confirm
+  // 9. Click Confirm
   await page.getByTestId("confirm-passphrase-btn").click();
 
-  // 9. Fill display name
+  // 10. Fill display name
   await page.getByTestId("display-name-input").fill("Test User");
 
-  // 10. Click Finish (creates the account)
+  // 11. Click Finish (creates the account via auth-server + Jazz)
   await page.getByTestId("finish-onboarding-btn").click();
 
-  // 11. Home screen should appear (timeout 10s for Jazz initialization)
-  await expect(page.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
+  // 12. Home screen should appear (Jazz init + auth-server signup takes a moment)
+  await expect(page.getByTestId("home-main")).toBeVisible({ timeout: 20_000 });
 
-  // 12. Sidebar should show the display name
+  // 13. Sidebar should show the display name
   await expect(page.getByTestId("sidebar-display-name")).toHaveText("Test User");
 });

@@ -7,13 +7,14 @@ import { createAccount, fillOnboardingForm } from "./helpers";
  * Bob creates an account and an invite link.
  * A fresh context (no account) navigates to the invite URL.
  * The InviteRoute detects no auth, stashes the fragment in sessionStorage,
- * and redirects to the welcome screen.
- * The fresh context completes account creation as "Alice".
- * The ProfileStep detects the stashed fragment, replays via window.location.assign,
- * and Alice lands on the invite accept screen showing Bob as the inviter.
+ * and redirects to "/" — which, since Slice 7, lands on /auth/login.
+ * From the login page Alice clicks "Create new account" and completes
+ * onboarding. The profile-step / signUp flow detects the stashed fragment,
+ * replays via window.location.assign, and Alice lands on the invite accept
+ * screen showing Bob as the inviter.
  *
  * Note: window.location.assign() triggers a full page reload; Playwright handles
- * this transparently. Use generous timeouts (15s) for Jazz sync after sign-in.
+ * this transparently. Use generous timeouts (20s) for Jazz sync after sign-in.
  */
 test("invite link opens onboarding then replays after sign-in", async ({ browser }) => {
   // Bob creates account + invite link
@@ -25,32 +26,30 @@ test("invite link opens onboarding then replays after sign-in", async ({ browser
   const pageA = await ctxA.newPage();
 
   try {
-    await pageB.goto("/");
     await createAccount(pageB, "Bob");
 
     await pageB.goto("/contacts/add");
     await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
     const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
 
-    // Alice (unauthenticated) opens the invite URL
+    // Alice (unauthenticated) opens the invite URL.
+    // InviteRoute stashes the fragment in sessionStorage and navigates to "/",
+    // which (unauthenticated) redirects to /auth/login.
     await pageA.goto(inviteUrl);
-
-    // Should redirect to welcome (onboarding) screen
-    await expect(
-      pageA.getByRole("heading", { name: /Welcome to Jazz Messanger/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    await pageA.waitForURL(/\/auth\/login/, { timeout: 10_000 });
 
     // Complete account creation as Alice.
-    // Use fillOnboardingForm (not createAccount) because ProfileStep will call
-    // window.location.assign("/invite#...") immediately after registerNewAccount,
-    // navigating away before home-main ever appears. We assert on the invite
-    // screen instead of home-main.
+    // Use fillOnboardingForm (not createAccount) because profile-step / signUp
+    // will call window.location.assign("/invite#...") immediately after the
+    // signup completes, navigating away before home-main ever appears. We
+    // assert on the invite screen instead of home-main.
     await fillOnboardingForm(pageA, "Alice");
 
-    // After sign-in, ProfileStep replays the stashed invite URL via location.assign.
-    // Alice should land on the invite accept screen showing Bob as inviter.
+    // After sign-in, profile-step replays the stashed invite URL via
+    // location.assign. Alice should land on the invite accept screen
+    // showing Bob as inviter.
     await expect(pageA.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 15_000,
+      timeout: 20_000,
     });
   } finally {
     await ctxA.close();
