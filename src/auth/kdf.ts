@@ -62,9 +62,9 @@ export async function encryptSeed(
   key: Uint8Array,
 ): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-  const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
+  const cryptoKey = await crypto.subtle.importKey("raw", toBuffer(key), "AES-GCM", false, ["encrypt"]);
   const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: TAG_BITS }, cryptoKey, seed),
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: TAG_BITS }, cryptoKey, toBuffer(seed)),
   );
   const envelope = new Uint8Array(iv.length + ciphertext.length);
   envelope.set(iv, 0);
@@ -86,11 +86,22 @@ export async function decryptSeed(
   }
   const iv = bytes.slice(0, IV_BYTES);
   const ciphertext = bytes.slice(IV_BYTES);
-  const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["decrypt"]);
+  const cryptoKey = await crypto.subtle.importKey("raw", toBuffer(key), "AES-GCM", false, ["decrypt"]);
   const plaintext = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv, tagLength: TAG_BITS },
     cryptoKey,
-    ciphertext,
+    toBuffer(ciphertext),
   );
   return new Uint8Array(plaintext);
+}
+
+/**
+ * Copy a Uint8Array into a fresh ArrayBuffer to satisfy WebCrypto's strict
+ * BufferSource overloads. Without this, TS 6.0 complains because Uint8Array
+ * may be backed by SharedArrayBuffer, which WebCrypto rejects.
+ */
+function toBuffer(view: Uint8Array): ArrayBuffer {
+  const buf = new ArrayBuffer(view.byteLength);
+  new Uint8Array(buf).set(view);
+  return buf;
 }

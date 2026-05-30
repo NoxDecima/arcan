@@ -1,5 +1,10 @@
 import { JazzReactProvider } from "jazz-tools/react";
 import { JazzMessangerAccount } from "./schema/JazzMessangerAccount";
+// Side-effect import: instantiate the Better Auth client singleton so its
+// nanostores are ready before any component calls authClient.useSession().
+// Better Auth 1.6 does not ship a provider component — auth state is a
+// global nanostore reached via authClient.useSession() / signIn() / etc.
+import "@/auth/client";
 
 /**
  * Derive a default sync-server URL from the current page origin.
