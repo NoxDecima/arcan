@@ -10,20 +10,25 @@ import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
 import { MembersRoute } from "./routes/conversations/members";
+import { LoginRoute } from "./routes/auth/login";
+import { RecoveryRoute } from "./routes/auth/recovery";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 
 /**
  * App: top-level route shell.
  *
- * Switches between the onboarding flow and the main application based on
- * whether the user has a signed-in Jazz account.
+ * Switches between the auth / onboarding flow and the main application
+ * based on whether the user has a signed-in Jazz account.
  *
  * Special cases before the auth gate:
  * - /pair → PairRoute (auth-optional; responders become authenticated here)
+ * - /invite → InviteRoute (auth-optional; component stashes fragment + redirects)
  *
- * - Not authenticated → <OnboardingRoute /> (passphrase creation / restore)
- * - Authenticated → react-router-dom <Routes> with "/" and "/settings/*"
+ * - Not authenticated → /auth/login by default; /auth/recovery and
+ *   /onboarding also reachable.
+ * - Authenticated → main app routes plus /auth/recovery for the recovery
+ *   stage-2 "set new password" flow after a 24-word recovery sign-in.
  *
  * The component is always rendered inside <MessangerProvider> (see main.tsx),
  * so `useIsAuthenticated` has access to the Jazz context.
@@ -64,7 +69,17 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <OnboardingRoute />;
+    // Routing inversion (Slice 7): the unauthenticated default is the
+    // /auth/login route, not the onboarding flow. /onboarding remains
+    // reachable via the "Create new account" link on the login screen.
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<OnboardingRoute />} />
+        <Route path="/auth/login" element={<LoginRoute />} />
+        <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        <Route path="*" element={<Navigate to="/auth/login" replace />} />
+      </Routes>
+    );
   }
 
   return (
@@ -77,6 +92,11 @@ function App() {
       <Route path="/contacts" element={<ContactsRoute />} />
       <Route path="/contacts/add" element={<ContactAddRoute />} />
       <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+      {/* /auth/recovery is reachable while authenticated so a user who
+          signed in via 24-word recovery code can complete stage 2 (set a
+          fresh password). The recovery route itself navigates to "/" on
+          completion or skip. */}
+      <Route path="/auth/recovery" element={<RecoveryRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { usePassphraseAuth } from "jazz-tools/react";
-import { wordlist } from "@scure/bip39/wordlists/english";
+import { useNavigate } from "react-router-dom";
 import { validatePassphrase } from "@/auth/passphrase";
+import { recoverWithCode } from "@/auth/flows";
+import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
 import { Button } from "@/components/ui/button";
 
 interface RestoreWithCodeStepProps {
@@ -9,27 +10,31 @@ interface RestoreWithCodeStepProps {
 }
 
 /**
- * RestoreWithCodeStep: signs into an existing account using a 24-word recovery
- * code.
+ * RestoreWithCodeStep: signs into an existing account using a 24-word
+ * recovery code (the BIP-39 encoding of the user's account seed).
  *
  * Validation sequence:
  *   1. Local structural validation via validatePassphrase() — returns a
  *      structured reason (invalid-length / invalid-word / invalid-checksum)
  *      so the user gets specific feedback without a network round-trip.
- *   2. Jazz auth.logIn(phrase) — decodes the mnemonic, derives the account
- *      secret, and restores credentials.
+ *   2. flows.recoverWithCode() decodes the mnemonic, derives the Jazz
+ *      AgentSecret via the bridge, and authenticates the local node.
+ *
+ * After Jazz sign-in succeeds we navigate to /auth/recovery so the user
+ * can set a fresh password — recovery-code-only sign-ins leave the
+ * account password unchanged, which means subsequent logins still need
+ * the recovery code. /auth/recovery's stage-2 form provides a "Skip for
+ * now" escape if the user just wanted in.
  *
  * Note: data-testids stay "restore-passphrase-input", "restore-btn",
  * "restore-error" for Phase C e2e compatibility.
- *
- * After logIn resolves, useIsAuthenticated in App flips to true and
- * OnboardingRoute unmounts automatically.
  */
 export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
-  const auth = usePassphraseAuth({ wordlist });
   const [phrase, setPhrase] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const signInToJazz = useSignInToJazzWithSeed();
 
   const canSubmit = phrase.trim().length > 0 && !isRestoring;
 
@@ -39,32 +44,40 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
 
     const trimmed = phrase.trim().replace(/\s+/g, " ");
 
-    // Step 1: local structural validation
+    // Step 1: local structural validation (cheap, no network)
     const validation = validatePassphrase(trimmed);
     if (!validation.ok) {
       const reasons: Record<typeof validation.reason, string> = {
         "invalid-length":
-          "The passphrase must be exactly 24 words. Please check your input.",
+          "The recovery code must be exactly 24 words. Please check your input.",
         "invalid-word":
           "One or more words are not in the BIP-39 word list. Check for typos.",
         "invalid-checksum":
-          "The passphrase checksum is invalid. Please check all 24 words carefully.",
+          "The recovery code checksum is invalid. Please check all 24 words carefully.",
       };
       setError(reasons[validation.reason]);
       return;
     }
 
-    // Step 2: Jazz logIn
+    // Step 2: recover via the auth flow + Jazz bridge
     setIsRestoring(true);
     try {
-      await auth.logIn(trimmed);
-      // Check for a stashed /invite fragment from a pre-auth invite visit.
-      const pendingInviteFragment = sessionStorage.getItem("pending-invite-fragment");
+      await recoverWithCode({
+        recoveryCode: trimmed,
+        signInToJazz,
+      });
+      // Replay any stashed /invite fragment from a pre-auth invite visit.
+      const pendingInviteFragment = sessionStorage.getItem(
+        "pending-invite-fragment",
+      );
       if (pendingInviteFragment) {
         sessionStorage.removeItem("pending-invite-fragment");
         window.location.assign(`/invite${pendingInviteFragment}`);
+        return;
       }
-      // Component will unmount as App's useIsAuthenticated flips to true.
+      // Recovery flow's stage-2 prompts the user to set a fresh password.
+      // The user is already signed in to Jazz at this point.
+      navigate("/auth/recovery", { replace: true });
     } catch (err) {
       setError(
         err instanceof Error
@@ -83,8 +96,8 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
             Restore account
           </h1>
           <p className="text-muted-foreground">
-            Type your 24-word passphrase to sign into this device. Words must
-            be separated by spaces.
+            Type your 24-word recovery code to sign into this device. Words
+            must be separated by spaces.
           </p>
         </div>
 
@@ -94,7 +107,7 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
               htmlFor="restore-passphrase-input"
               className="text-sm font-medium"
             >
-              Passphrase
+              Recovery code
             </label>
             <textarea
               id="restore-passphrase-input"
