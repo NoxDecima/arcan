@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { usePassphraseAuth } from "jazz-tools/react";
-import { wordlist } from "@scure/bip39/wordlists/english";
+import { signUp } from "@/auth/flows";
+import { decodeRecoveryCode } from "@/auth/recovery-code";
+import {
+  useCreateAccountWithSeed,
+  useSetDisplayNameOnMe,
+} from "@/jazz/createAccountFromSeed";
 import { Button } from "@/components/ui/button";
 import type { Credentials } from "./credentials-step";
 
@@ -11,73 +15,70 @@ interface ProfileStepProps {
 }
 
 /**
- * ProfileStep: collects a display name and creates the Jazz account.
+ * ProfileStep: collects a display name and runs the full sign-up flow.
  *
- * Account creation approach: `auth.registerNewAccount(phrase, name)`
- * -------------------------------------------------------------------
- * `usePassphraseAuth` exposes `registerNewAccount(passphrase, name)` which
- * derives the account secret directly from the caller-supplied passphrase
- * (BIP-39 mnemonic → entropy → Ed25519 key). This lets us show the user their
- * passphrase before any Jazz interaction (Tasks 21–22) and then use that same
- * phrase as the account key here.
+ * Sequence (all driven by `flows.signUp`):
+ *   1. Decode the user's 24-word recovery code back into its 32-byte seed.
+ *   2. Hand that seed to `createAccountWithSeed`, which derives the Jazz
+ *      AgentSecret and registers a new Account via the React context's
+ *      `register` function.
+ *   3. Inside the same callback, set the profile display name via
+ *      `setDisplayNameOnMe`.
+ *   4. `flows.signUp` derives the KDF key from the password, encrypts the
+ *      seed, computes the recovery proof, and POSTs everything to
+ *      /api/auth/sign-up/email. On any non-2xx, it invokes the rollback
+ *      callback returned from createAccountWithSeed (clears local creds).
  *
- * Alternative considered: `auth.signUp(name)` — upgrades the current anonymous
- * session, returning the BIP-39 encoding of the session's existing secret seed.
- * This cannot use a pre-generated passphrase, so it was rejected.
- *
- * Device record: added in the JazzMessangerAccount withMigration hook
- * -------------------------------------------------------------------
- * The `withMigration` callback fires synchronously as part of account
- * initialisation (before JazzReactProvider resolves its context). Placing the
- * first DeviceRecord there is architecturally cleaner than trying to mutate
- * `me.root.devices` from within this component, which would require
- * coordinating across an async boundary and a component unmount. The migration
- * is guarded by `!me.$jazz.has("root")` so it runs exactly once.
- *
- * sessionFingerprint: crypto.randomUUID() placeholder
- * -------------------------------------------------------------------
- * Jazz 0.20.18 does not expose the per-session identifier as a public API.
- * A fresh UUID is used instead and documented here as a deviation.
- *
- * After `registerNewAccount` resolves:
- *   - Jazz writes credentials to AuthSecretStorage
- *   - `useIsAuthenticated()` in App.tsx flips to true
- *   - App re-renders and unmounts OnboardingRoute / this component
- *   - No explicit navigation is needed here
+ * On success, the browser cookie + AuthSecretStorage are populated, App's
+ * useIsAuthenticated flips to true, and OnboardingRoute unmounts.
  */
-export function ProfileStep({ credentials, recoveryCode, onBack }: ProfileStepProps) {
-  const auth = usePassphraseAuth({ wordlist });
-  // Temporary alias while Task B4 rewires this to flows.signUp.
-  const phrase = recoveryCode;
-  // Suppress unused-credentials warning for the same window.
-  void credentials;
-  const [displayName, setDisplayName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
+export function ProfileStep({
+  credentials,
+  recoveryCode,
+  onBack,
+}: ProfileStepProps) {
+  const [displayName, setDisplayName] = useState(credentials.username);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = displayName.trim().length > 0 && !isCreating;
+  const createAccountWithSeed = useCreateAccountWithSeed();
+  const setDisplayNameOnMe = useSetDisplayNameOnMe();
+
+  const canSubmit = displayName.trim().length > 0 && !isSubmitting;
 
   async function handleFinish() {
     if (!canSubmit) return;
-    setIsCreating(true);
     setError(null);
+    setIsSubmitting(true);
     try {
-      await auth.registerNewAccount(phrase, displayName.trim());
-      // Check for a stashed /invite fragment from a pre-auth invite visit.
-      // If present, replay the invite URL after sign-in so the user lands
-      // directly on the invitation acceptance page.
-      const pendingInviteFragment = sessionStorage.getItem("pending-invite-fragment");
+      const seed = decodeRecoveryCode(recoveryCode);
+      await signUp({
+        email: credentials.email,
+        username: credentials.username,
+        password: credentials.password,
+        displayName: displayName.trim(),
+        seed,
+        createJazzAccount: async (s, name) => {
+          const handle = await createAccountWithSeed(s);
+          await setDisplayNameOnMe(handle, name);
+          return handle;
+        },
+      });
+      // Replay any stashed /invite fragment so the user lands on the invite
+      // acceptance page after sign-up.
+      const pendingInviteFragment = sessionStorage.getItem(
+        "pending-invite-fragment",
+      );
       if (pendingInviteFragment) {
         sessionStorage.removeItem("pending-invite-fragment");
         window.location.assign(`/invite${pendingInviteFragment}`);
       }
-      // Component will unmount as App's useIsAuthenticated flips to true.
-      // No explicit navigation needed.
+      // Otherwise: App's useIsAuthenticated flips, OnboardingRoute unmounts.
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Account creation failed. Please try again.",
+        err instanceof Error ? err.message : "Sign-up failed. Please try again.",
       );
-      setIsCreating(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -131,7 +132,7 @@ export function ProfileStep({ credentials, recoveryCode, onBack }: ProfileStepPr
           <Button
             variant="outline"
             onClick={onBack}
-            disabled={isCreating}
+            disabled={isSubmitting}
             className="flex-1"
           >
             Back
@@ -142,7 +143,7 @@ export function ProfileStep({ credentials, recoveryCode, onBack }: ProfileStepPr
             onClick={() => void handleFinish()}
             className="flex-1"
           >
-            {isCreating ? "Creating account…" : "Finish"}
+            {isSubmitting ? "Creating account…" : "Finish"}
           </Button>
         </div>
       </div>

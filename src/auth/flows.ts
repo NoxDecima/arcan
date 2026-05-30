@@ -15,6 +15,13 @@ type SignUpParams = {
   password: string;
   displayName: string;
   /**
+   * Optional pre-generated 32-byte seed. If provided, the recovery code
+   * returned by signUp is the BIP-39 encoding of this seed. Used by
+   * onboarding so the code shown on backup-display matches the code that
+   * profile-step ultimately commits to the Better Auth account.
+   */
+  seed?: Uint8Array;
+  /**
    * Inject the Jazz account creation. In production wires to a helper
    * around jazz-tools that creates an Account from a known secretSeed.
    * In tests, a mock returns a stub JazzHandle.
@@ -26,8 +33,11 @@ export async function signUp(params: SignUpParams): Promise<{
   accountID: string;
   recoveryCode: string;
 }> {
-  // 1. Fresh seed
-  const seed = crypto.getRandomValues(new Uint8Array(32));
+  // 1. Seed: either caller-provided (typical onboarding path) or fresh.
+  const seed = params.seed ?? crypto.getRandomValues(new Uint8Array(32));
+  if (seed.length !== 32) {
+    throw new Error(`signUp: seed must be 32 bytes (got ${seed.length})`);
+  }
   // 2. Recovery code = BIP-39 of seed
   const recoveryCode = entropyToMnemonic(seed, wordlist);
   // 3. KDF salt
