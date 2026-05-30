@@ -31,6 +31,8 @@ Thumbs.db
 # Local sync server data
 *.sqlite
 *.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
 *.db
 .jazz-data/
 
