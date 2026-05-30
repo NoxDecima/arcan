@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+# Build stage — install deps + transpile TS to dist/
+FROM node:22-alpine AS build
+WORKDIR /build
+
+# Install build toolchain for better-sqlite3 native module (compiled fresh
+# in this stage; the runtime stage reuses the compiled .node file).
+RUN apk add --no-cache python3 make g++
+
+COPY auth-server/package.json auth-server/package-lock.json ./
+RUN npm ci
+
+COPY auth-server/tsconfig.json ./
+COPY auth-server/src ./src
+RUN npx tsc -b
+
+# Runtime stage — minimal node + sqlite-libs + production deps + dist/
+FROM node:22-alpine
+RUN apk add --no-cache sqlite-libs python3 make g++
+
+WORKDIR /app
+COPY auth-server/package.json auth-server/package-lock.json ./
+# --omit=dev: skip tsx / vitest etc. better-sqlite3 still needs python3+make+g++
+# for its install hook; remove them after npm ci to keep the image smaller.
+RUN npm ci --omit=dev && apk del python3 make g++
+
+COPY --from=build /build/dist ./dist
+
+# Migration runner needs the original .ts source files (it imports them
+# directly via tsx in scripts/, but we ship a compiled wrapper here instead).
+COPY deploy/migrate.mjs ./migrate.mjs
+
+EXPOSE 4300
+
+# Run Better Auth migrations against the configured DB (creates user/session/
+# account/verification tables on first boot), then start the server.
+CMD ["sh", "-c", "node ./migrate.mjs && node dist/index.js"]

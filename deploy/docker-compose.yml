@@ -15,6 +15,7 @@ services:
       ACME_EMAIL: ${ACME_EMAIL}
     depends_on:
       - sync
+      - auth
 
   sync:
     build:
@@ -24,6 +25,24 @@ services:
     volumes:
       - ./data:/data          # SQLite file on the host for easy inspection / manual backup
     # NOT exposed on the host — internal docker network only.
+
+  auth:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.auth
+    restart: unless-stopped
+    environment:
+      # Generate with: openssl rand -base64 32
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env}
+      BETTER_AUTH_URL: https://${DOMAIN}/api/auth
+      DATABASE_URL: file:/data/auth.sqlite
+      PORT: "4300"
+      AUTH_RATE_LIMIT_MAX: "5"
+      AUTH_RATE_LIMIT_WINDOW: "900"
+    volumes:
+      - ./auth-data:/data     # Better Auth's user/session SQLite — losing this means every user must re-create their account.
+    # NOT exposed on the host — internal docker network only; reached via
+    # Caddy's /api/auth/* reverse_proxy route.
 
 volumes:
   caddy_data:

@@ -13,6 +13,8 @@ test-results/
 .jazz-data/
 .vite/
 deploy/data/
+deploy/auth-data/
+auth-server/auth.sqlite*
 
 # Env files — secrets, not for the image.
 .env
