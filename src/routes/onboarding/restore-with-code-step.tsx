@@ -4,25 +4,28 @@ import { wordlist } from "@scure/bip39/wordlists/english";
 import { validatePassphrase } from "@/auth/passphrase";
 import { Button } from "@/components/ui/button";
 
-interface RestoreStepProps {
+interface RestoreWithCodeStepProps {
   onBack: () => void;
 }
 
 /**
- * RestoreStep: signs into an existing account using a 24-word passphrase.
+ * RestoreWithCodeStep: signs into an existing account using a 24-word recovery
+ * code.
  *
  * Validation sequence:
  *   1. Local structural validation via validatePassphrase() — returns a
  *      structured reason (invalid-length / invalid-word / invalid-checksum)
  *      so the user gets specific feedback without a network round-trip.
  *   2. Jazz auth.logIn(phrase) — decodes the mnemonic, derives the account
- *      secret, and restores credentials. Throws Error("Invalid passphrase")
- *      on any parse failure not caught by step 1.
+ *      secret, and restores credentials.
+ *
+ * Note: data-testids stay "restore-passphrase-input", "restore-btn",
+ * "restore-error" for Phase C e2e compatibility.
  *
  * After logIn resolves, useIsAuthenticated in App flips to true and
  * OnboardingRoute unmounts automatically.
  */
-export function RestoreStep({ onBack }: RestoreStepProps) {
+export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
   const auth = usePassphraseAuth({ wordlist });
   const [phrase, setPhrase] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);

@@ -1,36 +1,36 @@
 import { useState } from "react";
 import { WelcomeStep } from "./welcome-step";
-import { PassphraseDisplayStep } from "./passphrase-display-step";
-import { PassphraseConfirmStep } from "./passphrase-confirm-step";
+import { BackupDisplayStep } from "./backup-display-step";
+import { BackupConfirmStep } from "./backup-confirm-step";
 import { ProfileStep } from "./profile-step";
-import { RestoreStep } from "./restore-step";
+import { RestoreWithCodeStep } from "./restore-with-code-step";
 
 /**
  * Discriminated union for the onboarding step state machine.
  *
  * Transitions:
  *   welcome
- *     → passphrase-display  (user clicks "Create new account"; phrase generated)
- *     → restore             (user clicks "Restore account")
- *   passphrase-display
- *     → passphrase-confirm  (user ticks checkbox + clicks "Continue")
+ *     → backup-display      (user clicks "Create new account"; phrase generated)
+ *     → restore-with-code   (user clicks "Sign in to existing account")
+ *   backup-display
+ *     → backup-confirm      (user ticks checkbox + clicks "Continue")
  *     → welcome             (back)
- *   passphrase-confirm
+ *   backup-confirm
  *     → profile             (all three challenge words correct)
- *     → passphrase-display  (back)
+ *     → backup-display      (back)
  *   profile
- *     → passphrase-display  (back — user wants to see phrase again)
+ *     → backup-display      (back — user wants to see phrase again)
  *     → [signed in]         (account created; App unmounts OnboardingRoute)
- *   restore
+ *   restore-with-code
  *     → welcome             (back)
  *     → [signed in]         (logIn succeeds; App unmounts OnboardingRoute)
  */
 type OnboardingStep =
   | { kind: "welcome" }
-  | { kind: "passphrase-display"; phrase: string }
-  | { kind: "passphrase-confirm"; phrase: string }
+  | { kind: "backup-display"; phrase: string }
+  | { kind: "backup-confirm"; phrase: string }
   | { kind: "profile"; phrase: string }
-  | { kind: "restore" };
+  | { kind: "restore-with-code" };
 
 /**
  * OnboardingRoute: top-level step router for the onboarding flow.
@@ -47,29 +47,29 @@ export function OnboardingRoute() {
       return (
         <WelcomeStep
           onCreateAccount={(phrase) =>
-            setStep({ kind: "passphrase-display", phrase })
+            setStep({ kind: "backup-display", phrase })
           }
-          onRestoreAccount={() => setStep({ kind: "restore" })}
+          onRestoreAccount={() => setStep({ kind: "restore-with-code" })}
         />
       );
 
-    case "passphrase-display":
+    case "backup-display":
       return (
-        <PassphraseDisplayStep
+        <BackupDisplayStep
           phrase={step.phrase}
           onBack={() => setStep({ kind: "welcome" })}
           onContinue={() =>
-            setStep({ kind: "passphrase-confirm", phrase: step.phrase })
+            setStep({ kind: "backup-confirm", phrase: step.phrase })
           }
         />
       );
 
-    case "passphrase-confirm":
+    case "backup-confirm":
       return (
-        <PassphraseConfirmStep
+        <BackupConfirmStep
           phrase={step.phrase}
           onBack={() =>
-            setStep({ kind: "passphrase-display", phrase: step.phrase })
+            setStep({ kind: "backup-display", phrase: step.phrase })
           }
           onConfirmed={() =>
             setStep({ kind: "profile", phrase: step.phrase })
@@ -82,12 +82,14 @@ export function OnboardingRoute() {
         <ProfileStep
           phrase={step.phrase}
           onBack={() =>
-            setStep({ kind: "passphrase-display", phrase: step.phrase })
+            setStep({ kind: "backup-display", phrase: step.phrase })
           }
         />
       );
 
-    case "restore":
-      return <RestoreStep onBack={() => setStep({ kind: "welcome" })} />;
+    case "restore-with-code":
+      return (
+        <RestoreWithCodeStep onBack={() => setStep({ kind: "welcome" })} />
+      );
   }
 }
