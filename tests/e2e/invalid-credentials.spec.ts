@@ -14,30 +14,11 @@ test.describe("invalid credentials", () => {
     await expect(page.getByTestId("login-error")).toBeVisible();
   });
 
-  test("taken email blocks sign-up at credentials step or server response", async ({ browser }) => {
-    const ctx1 = await browser.newContext();
-    const page1 = await ctx1.newPage();
-    const { credentials } = await createAccount(page1, "Alice");
-    await ctx1.close();
-
-    const ctx2 = await browser.newContext();
-    const page2 = await ctx2.newPage();
-    await page2.goto("/onboarding");
-    await page2.getByTestId("create-account-btn").click();
-    await page2.getByTestId("credentials-email").fill(credentials.email); // duplicate
-    await page2.getByTestId("credentials-username").fill("alice_other_user_42");
-    await page2.getByTestId("credentials-password").fill("password-long-enough");
-    await page2.getByTestId("credentials-confirm").fill("password-long-enough");
-    await page2.getByTestId("credentials-continue").click();
-    // Continue through backup steps, but profile submission will fail
-    await page2.getByTestId("passphrase-saved-checkbox").check();
-    await page2.getByTestId("passphrase-display-continue").click();
-    // For the duplicate-email test, we can stop at the credentials step — the
-    // server only sees it at sign-up time. So instead of completing flow,
-    // just verify duplicate is caught when we POST. Skip backup-confirm to
-    // shorten test; close context.
-    await ctx2.close();
-  });
+  // Duplicate-email / duplicate-username server rejection is covered at the
+  // unit level in auth-server/tests/plugin.test.ts (BA constraint violation).
+  // A full e2e walk through the onboarding flow that asserts the error
+  // appears in the UI is deferred (filed as followup); the prior no-op
+  // version of this test asserted nothing.
 
   test("weak password blocked client-side", async ({ page }) => {
     await page.goto("/onboarding");

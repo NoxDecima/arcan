@@ -161,12 +161,19 @@ export const jazzZkPlugin = (): BetterAuthPlugin => ({
   },
   hooks: {
     before: [
-      // Extract x-jazz-zk header on sign-up and stash on context
+      // Extract x-jazz-zk header on sign-up and stash on context.
+      // Always run on /sign-up* (don't pre-filter by header) so a request
+      // missing the header fails fast inside the handler — before BA hashes
+      // the password. Defense in depth.
       {
-        matcher: (ctx) => !!ctx.path?.startsWith("/sign-up") && !!ctx.headers?.get("x-jazz-zk"),
+        matcher: (ctx) => !!ctx.path?.startsWith("/sign-up"),
         handler: createAuthMiddleware(async (ctx) => {
           const header = ctx.headers?.get("x-jazz-zk");
-          if (!header) return;
+          if (!header) {
+            throw new APIError("UNPROCESSABLE_ENTITY", {
+              message: "x-jazz-zk header required for sign-up",
+            });
+          }
           let parsed: ZkFields;
           try {
             parsed = JSON.parse(header) as ZkFields;
