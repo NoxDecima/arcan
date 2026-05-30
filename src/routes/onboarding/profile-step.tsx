@@ -2,9 +2,11 @@ import { useState } from "react";
 import { usePassphraseAuth } from "jazz-tools/react";
 import { wordlist } from "@scure/bip39/wordlists/english";
 import { Button } from "@/components/ui/button";
+import type { Credentials } from "./credentials-step";
 
 interface ProfileStepProps {
-  phrase: string;
+  credentials: Credentials;
+  recoveryCode: string;
   onBack: () => void;
 }
 
@@ -43,8 +45,12 @@ interface ProfileStepProps {
  *   - App re-renders and unmounts OnboardingRoute / this component
  *   - No explicit navigation is needed here
  */
-export function ProfileStep({ phrase, onBack }: ProfileStepProps) {
+export function ProfileStep({ credentials, recoveryCode, onBack }: ProfileStepProps) {
   const auth = usePassphraseAuth({ wordlist });
+  // Temporary alias while Task B4 rewires this to flows.signUp.
+  const phrase = recoveryCode;
+  // Suppress unused-credentials warning for the same window.
+  void credentials;
   const [displayName, setDisplayName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
