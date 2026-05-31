@@ -1,5 +1,79 @@
 # Changelog
 
+## [Unreleased] — Slice 8: In-App Notifications
+
+### Added
+- `me.root.lastReadAt: co.record(z.string(), z.number())` — per-conversation
+  read cutoff synced across the user's own devices via Jazz. (The plan
+  documented this as `co.map(z.number())`; jazz-tools 0.20.18 requires
+  `co.record` for variable-key maps with `.create({}, ...)`. Runtime
+  accessors `me.root.lastReadAt[id]` and `.$jazz.set(id, ts)` are
+  identical between the two forms.)
+- `me.root.notificationPrefs: co.map({ sound, browser })` — per-account
+  preferences for sound + browser-notification opt-in. Both default to
+  `false`; the user must explicitly enable each.
+- `src/jazz/notifications.ts` — `getUnreadCount` + `markRead` pure helpers
+  (clock-skew defense via `max(Date.now(), latestSeenSentAt + 1)`).
+- `src/hooks/useNewMessageEvents.ts` — callback-based diff tracker that
+  fires `onNewMessage` exactly once per detected arrival (diff runs in
+  `useEffect`, not render — StrictMode-safe).
+- `src/hooks/useTabTitleBadge.ts` — sets `document.title` to
+  `(N) Jazz Messanger` when tab is hidden + unread > 0; cleanup on unmount.
+- `src/components/notification-manager.tsx` — single home for the
+  notification stack; aggregates total unread, drives the tab title,
+  fans out sound + browser-notification side effects.
+- `src/components/sidebar.tsx` — per-row unread badge (`unread-badge-N`
+  testid) + `font-semibold` styling when unread > 0. Existing
+  `conversation-row-N` testids preserved.
+- `src/routes/settings/notifications-section.tsx` — settings UI with
+  sound checkbox + "Enable browser notifications" button + permission flow.
+- `src/routes/conversations/detail.tsx` — `markRead` useEffect on mount
+  + messages-grow.
+- `public/notification.mp3` — short notification sound asset.
+
+### Changed
+- `JazzMessangerAccount.withMigration` — backfills `lastReadAt` and
+  `notificationPrefs` for existing post-Slice-7 accounts on next load
+  (guarded so the backfill is idempotent).
+- `src/App.tsx` — deepens `me` resolve to include
+  `knownConversations: { $each: { messages: true, $onError: "catch" } }`,
+  `lastReadAt`, and `notificationPrefs`; mounts `<NotificationManager />`
+  for authed users when `me.$isLoaded`.
+
+### Test coverage
+- Unit: +8 tests for `getUnreadCount` / `markRead`, +7 for
+  `useNewMessageEvents`, +6 for `useTabTitleBadge`, +8 for
+  `NotificationManager` fanout. 166 total Vitest tests (was 152).
+- E2E: +4 specs — `unread-badges`, `unread-cross-device`,
+  `tab-title-badge`, `notification-permission` (3 sub-tests).
+
+### Manual verification (run on real browser before merging)
+1. Open the app in two browser contexts (Alice + Bob).
+2. Pair them; have Alice send a message → Bob's sidebar shows a "1" badge
+   and the row goes bold.
+3. cmd-tab away from Bob's tab. Alice sends another message → Bob's tab
+   title becomes "(2) Jazz Messanger". Refocus Bob → title resets.
+4. In Bob's Settings → Notifications, toggle "Play sound" on. cmd-tab
+   away. Alice sends another message → Bob hears the sound.
+5. In Bob's Settings → Notifications, click "Enable browser
+   notifications", grant permission. cmd-tab away. Alice sends another
+   message → Bob sees an OS-level notification.
+6. Click that notification → Bob's main window focuses + navigates to the
+   conversation.
+7. Toggle sound off + click "Disable" on browser notifications. Repeat
+   step 4/5 — neither sound nor OS notification fires.
+
+### Deferred (filed as followups)
+- Closed-app push notifications via Web Push (Service Worker + VAPID).
+  Full architecture in **NOX-30**.
+
+### Known issues / pre-merge tasks
+- `public/notification.mp3` was created as a 0-byte placeholder because
+  the Phase B build environment had no `ffmpeg` to generate the sine-wave
+  tone described in the plan. Before tagging, replace with a real ~5-10 KB
+  CC0/CC-BY notification tone (e.g. from notificationsounds.com) or run:
+  `ffmpeg -f lavfi -i "sine=frequency=880:duration=0.2" -ar 44100 -ac 1 -b:a 64k public/notification.mp3`
+
 ## [Unreleased]
 
 ### Slice 7 — Zero-knowledge email + password auth
