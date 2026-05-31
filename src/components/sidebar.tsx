@@ -67,7 +67,9 @@ export function Sidebar() {
         // become inaccessible (e.g. after the user is kicked and Jazz revokes their
         // read access to the ConversationGroup). Without this, the whole
         // knownConversations resolve stalls indefinitely and me.$isLoaded stays false.
-        knownConversations: { $each: { $onError: "catch" } },
+        // Slice 8: also resolve `messages` so getUnreadCount can iterate them
+        // here without tripping on a NotLoaded list proxy.
+        knownConversations: { $each: { messages: true, $onError: "catch" } },
         // Slice 8: per-conversation read cutoff for unread-badge computation.
         lastReadAt: true,
       },
@@ -173,12 +175,20 @@ export function Sidebar() {
             sortedActive.map((c: any, i: number) => {
               const label = deriveConversationLabel(c.conversation, me);
               // Slice 8: per-row unread count + badge + bold styling.
+              // Wrap in try/catch — if Jazz hasn't fully hydrated the messages
+              // list yet, iterating it can throw "not iterable"; we'd rather
+              // render the row with no badge than crash the whole sidebar.
               const convID = c.conversation.$jazz.id;
               const myID = (me as any).$jazz?.id;
               const lastReadAt = (me.root as any).lastReadAt?.[convID];
-              const unread = myID
-                ? getUnreadCount(c.conversation, lastReadAt, myID)
-                : 0;
+              let unread = 0;
+              if (myID) {
+                try {
+                  unread = getUnreadCount(c.conversation, lastReadAt, myID);
+                } catch {
+                  unread = 0;
+                }
+              }
               return (
                 <Link
                   key={i}

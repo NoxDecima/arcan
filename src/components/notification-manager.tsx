@@ -45,8 +45,16 @@ export function NotificationManager({ me }: NotificationManagerProps): null {
       const id = conv.$jazz?.id;
       if (!id) continue;
       const label = deriveLabel(conv, me);
+      // Defensive: messages may be a NotLoaded proxy until Jazz hydrates it.
+      // length-read is safe; iteration in getUnreadCount may throw — catch
+      // and treat as 0 unread until the next render cycle.
       const messageCount = conv.messages?.length ?? 0;
-      const unread = getUnreadCount(conv, lastReadAt?.[id], myID);
+      let unread = 0;
+      try {
+        unread = getUnreadCount(conv, lastReadAt?.[id], myID);
+      } catch {
+        unread = 0;
+      }
       out.push({ id, label, messageCount, unread });
     }
     return out;

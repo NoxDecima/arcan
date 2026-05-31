@@ -50,14 +50,13 @@ export function NotificationsSection() {
       setRequestError("Browser notifications are not available in this environment.");
       return;
     }
-    if (Notification.permission === "denied") {
-      setRequestError(
-        "Notifications are blocked at the browser level. Re-enable them in your browser settings, then try again.",
-      );
-      setPermissionState("denied");
-      return;
-    }
     try {
+      // Call requestPermission unconditionally — checking
+      // Notification.permission first isn't reliable across browsers
+      // (Playwright e.g. reports "denied" via the getter even when the
+      // context will resolve a fresh request to "granted"). The browser
+      // itself decides whether to actually prompt or short-circuit to
+      // the previously-set value.
       const result = await Notification.requestPermission();
       setPermissionState(result);
       if (result === "granted") {
