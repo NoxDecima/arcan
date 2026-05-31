@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 
 export type Credentials = {
   email: string;
-  username: string;
   password: string;
 };
 
@@ -13,29 +12,23 @@ interface CredentialsStepProps {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/;
 const MIN_PASSWORD_LEN = 12;
 
 /**
- * CredentialsStep: collects the email, username, and password that drive the
- * new zero-knowledge sign-up.
+ * CredentialsStep: collects the email + password that drive the zero-knowledge
+ * sign-up. Display name is collected later on profile-step.
  *
- * The component does only local validation: regex-based email/username checks
- * and minimum password length. The Better Auth server will additionally
- * enforce uniqueness on email/username at the /sign-up call. Network errors
- * are surfaced one step later in profile-step.
+ * Local validation only — Better Auth enforces email uniqueness on /sign-up.
+ * Network errors are surfaced one step later in profile-step.
  */
 export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function validate(): string | null {
     if (!EMAIL_RE.test(email)) return "Please enter a valid email address.";
-    if (!USERNAME_RE.test(username))
-      return "Username must be 3–32 characters: letters, numbers, underscores.";
     if (password.length < MIN_PASSWORD_LEN)
       return `Password must be at least ${MIN_PASSWORD_LEN} characters.`;
     if (password !== confirm) return "Passwords do not match.";
@@ -50,7 +43,7 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
       return;
     }
     setError(null);
-    onContinue({ email: email.trim(), username: username.trim(), password });
+    onContinue({ email: email.trim(), password });
   }
 
   return (
@@ -63,7 +56,7 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
           <p className="text-muted-foreground">
-            Email is for sign-in. Username is your public handle.
+            Email is for sign-in. You'll pick a display name next.
           </p>
         </div>
 
@@ -76,18 +69,6 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              required
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Username</span>
-            <input
-              type="text"
-              data-testid="credentials-username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
               required
               className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />

@@ -24,7 +24,6 @@ describe("signUp", () => {
 
     const result = await signUp({
       email: "alice@example.com",
-      username: "alice",
       password: "correcthorsebattery1",
       displayName: "Alice",
       createJazzAccount: async (seed: Uint8Array) => {
@@ -53,7 +52,6 @@ describe("signUp", () => {
     await expect(
       signUp({
         email: "alice@example.com",
-        username: "alice",
         password: "correcthorsebattery1",
         displayName: "Alice",
         createJazzAccount: async () => ({ accountID: "co_zABC", rollback }),

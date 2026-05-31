@@ -11,8 +11,12 @@ type JazzHandle = {
 
 type SignUpParams = {
   email: string;
-  username: string;
   password: string;
+  /**
+   * Public-facing handle. Sent to Better Auth as the standard `name` field
+   * on the user row, and also written to the Jazz Profile.displayName by
+   * the caller via createJazzAccount.
+   */
   displayName: string;
   /**
    * Optional pre-generated 32-byte seed. If provided, the recovery code
@@ -68,7 +72,7 @@ export async function signUp(params: SignUpParams): Promise<{
       body: JSON.stringify({
         email: params.email,
         password: params.password,
-        name: params.username,
+        name: params.displayName,
       }),
       credentials: "include",
     });

@@ -12,7 +12,6 @@ test.describe("auth-server unreachable", () => {
     await page.goto("/onboarding");
     await page.getByTestId("create-account-btn").click();
     await page.getByTestId("credentials-email").fill(creds.email);
-    await page.getByTestId("credentials-username").fill(creds.username);
     await page.getByTestId("credentials-password").fill(creds.password);
     await page.getByTestId("credentials-confirm").fill(creds.password);
     await page.getByTestId("credentials-continue").click();

@@ -14,17 +14,15 @@ test.describe("invalid credentials", () => {
     await expect(page.getByTestId("login-error")).toBeVisible();
   });
 
-  // Duplicate-email / duplicate-username server rejection is covered at the
-  // unit level in auth-server/tests/plugin.test.ts (BA constraint violation).
-  // A full e2e walk through the onboarding flow that asserts the error
-  // appears in the UI is deferred (filed as followup); the prior no-op
-  // version of this test asserted nothing.
+  // Duplicate-email server rejection is covered at the unit level in
+  // auth-server/tests/plugin.test.ts (BA constraint violation). A full e2e
+  // walk through the onboarding flow that asserts the error appears in the
+  // UI is deferred (filed as followup).
 
   test("weak password blocked client-side", async ({ page }) => {
     await page.goto("/onboarding");
     await page.getByTestId("create-account-btn").click();
     await page.getByTestId("credentials-email").fill("weak@example.com");
-    await page.getByTestId("credentials-username").fill("weakpwuser");
     // Use a 12+ char password so HTML5 minLength passes, but mismatch the
     // confirm so the JS-level validate() trips and surfaces credentials-error.
     // (The spec's intent — that a too-short password is rejected before the

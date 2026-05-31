@@ -8,8 +8,7 @@ test.describe("signup with email + password", () => {
     // Sidebar should show displayName
     await expect(page.getByTestId("sidebar-display-name")).toHaveText(displayName);
 
-    // Username should be alice_<id> — sanity check we didn't accidentally
-    // submit something else
-    expect(credentials.username).toMatch(/^alice_/);
+    // Email is alice-<id>@example.com — sanity check the helper used a fresh fixture
+    expect(credentials.email).toMatch(/^alice-/);
   });
 });

@@ -37,7 +37,7 @@ export function ProfileStep({
   recoveryCode,
   onBack,
 }: ProfileStepProps) {
-  const [displayName, setDisplayName] = useState(credentials.username);
+  const [displayName, setDisplayName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +54,6 @@ export function ProfileStep({
       const seed = decodeRecoveryCode(recoveryCode);
       await signUp({
         email: credentials.email,
-        username: credentials.username,
         password: credentials.password,
         displayName: displayName.trim(),
         seed,

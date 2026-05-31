@@ -26,9 +26,8 @@ test("account creation flow", async ({ page }) => {
   // 3. Click "Create new account"
   await page.getByTestId("create-account-btn").click();
 
-  // 4. Fill credentials step (email + username + password)
+  // 4. Fill credentials step (email + password)
   await page.getByTestId("credentials-email").fill(creds.email);
-  await page.getByTestId("credentials-username").fill(creds.username);
   await page.getByTestId("credentials-password").fill(creds.password);
   await page.getByTestId("credentials-confirm").fill(creds.password);
   await page.getByTestId("credentials-continue").click();

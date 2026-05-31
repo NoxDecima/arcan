@@ -2,19 +2,17 @@ import { Page } from "@playwright/test";
 
 export type AccountCredentials = {
   email: string;
-  username: string;
   password: string;
 };
 
 /**
  * Generate unique-per-test credentials so concurrent e2e specs don't collide
- * on email/username uniqueness in the auth-server DB.
+ * on email uniqueness in the auth-server DB.
  */
 export function freshCredentials(prefix = "alice"): AccountCredentials {
   const id = Math.random().toString(36).slice(2, 10);
   return {
     email: `${prefix}-${id}@example.com`,
-    username: `${prefix}_${id}`,
     password: `correcthorsebattery${id}!`,
   };
 }
@@ -55,7 +53,6 @@ export async function createAccount(
 
   // Credentials step
   await page.getByTestId("credentials-email").fill(credentials.email);
-  await page.getByTestId("credentials-username").fill(credentials.username);
   await page.getByTestId("credentials-password").fill(credentials.password);
   await page.getByTestId("credentials-confirm").fill(credentials.password);
   await page.getByTestId("credentials-continue").click();
@@ -114,7 +111,6 @@ export async function fillOnboardingForm(
 
   // Credentials step
   await page.getByTestId("credentials-email").fill(credentials.email);
-  await page.getByTestId("credentials-username").fill(credentials.username);
   await page.getByTestId("credentials-password").fill(credentials.password);
   await page.getByTestId("credentials-confirm").fill(credentials.password);
   await page.getByTestId("credentials-continue").click();
