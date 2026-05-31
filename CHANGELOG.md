@@ -67,13 +67,6 @@
 - Closed-app push notifications via Web Push (Service Worker + VAPID).
   Full architecture in **NOX-30**.
 
-### Known issues / pre-merge tasks
-- `public/notification.mp3` was created as a 0-byte placeholder because
-  the Phase B build environment had no `ffmpeg` to generate the sine-wave
-  tone described in the plan. Before tagging, replace with a real ~5-10 KB
-  CC0/CC-BY notification tone (e.g. from notificationsounds.com) or run:
-  `ffmpeg -f lavfi -i "sine=frequency=880:duration=0.2" -ar 44100 -ac 1 -b:a 64k public/notification.mp3`
-
 ## [Unreleased]
 
 ### Slice 7 — Zero-knowledge email + password auth
