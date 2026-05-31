@@ -20,9 +20,9 @@
 - `src/routes/onboarding/index.tsx` state machine rewired to welcome → (credentials → backup-display → backup-confirm → profile) | (restore-choice → login / restore-with-code).
 - `src/routes/auth/login.tsx` + `src/routes/auth/recovery.tsx` — new auth routes; recovery is two-stage (decode code + sign in, then optionally set a new password).
 - `src/routes/settings/change-password-modal.tsx` + `view-recovery-code-modal.tsx` + buttons in `account-section.tsx`.
-- `deploy/Dockerfile.auth` + `deploy/migrate.mjs` + `auth` service in `docker-compose.yml` + `handle /api/auth/*` block in `Caddyfile` + `BETTER_AUTH_SECRET` in `.env.example`.
+- `deploy/Dockerfile.auth` + `auth` service in `docker-compose.yml` + `handle /api/auth/*` block in `Caddyfile` + `BETTER_AUTH_SECRET` in `.env.example`.
 - `vite.config.ts` server.proxy: `/api/auth → http://localhost:4300`, `/sync → ws://localhost:4200` (so the dev browser sees same-origin cookies for Better Auth).
-- `scripts/migrate-auth-server.mjs` + `scripts/auth-server-with-migrate.sh` — runs Better Auth migrations before booting the dev/e2e auth-server. Wired into `playwright.config.ts` webServer array so `npm run test:e2e` spins up the full sync + auth + dev stack with a clean schema.
+- `auth-server/src/index.ts` runs Better Auth migrations on boot via `getMigrations(config).runMigrations()` before serving — Better Auth declares schema in code but doesn't auto-create tables, so this guarantees the user/session/account/verification tables exist for the first request without a separate ops step.
 
 #### Changed
 

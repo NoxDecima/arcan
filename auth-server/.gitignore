@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.sqlite
 *.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal

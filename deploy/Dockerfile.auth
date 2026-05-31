@@ -26,12 +26,8 @@ RUN npm ci --omit=dev && apk del python3 make g++
 
 COPY --from=build /build/dist ./dist
 
-# Migration runner needs the original .ts source files (it imports them
-# directly via tsx in scripts/, but we ship a compiled wrapper here instead).
-COPY deploy/migrate.mjs ./migrate.mjs
-
 EXPOSE 4300
 
-# Run Better Auth migrations against the configured DB (creates user/session/
-# account/verification tables on first boot), then start the server.
-CMD ["sh", "-c", "node ./migrate.mjs && node dist/index.js"]
+# auth-server runs Better Auth migrations in-process on boot
+# (see auth-server/src/index.ts) — no separate migrate step required.
+CMD ["node", "dist/index.js"]
