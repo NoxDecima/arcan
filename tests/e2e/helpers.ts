@@ -77,14 +77,9 @@ export async function createAccount(
   await page.getByTestId("display-name-input").fill(displayName);
   await page.getByTestId("finish-onboarding-btn").click();
 
-  // Wait for home
+  // Wait for home. The bridge in src/jazz/createAccountFromSeed.ts awaits
+  // waitForAllCoValuesSync before resolving so no extra settle is needed.
   await page.getByTestId("home-main").waitFor({ timeout: 20_000 });
-
-  // Settle: give Jazz a moment to fully persist the auth state to localStorage
-  // + IndexedDB before the caller potentially reloads. Without this, on a
-  // very fast machine reload can race the persist and Jazz starts up
-  // anonymous instead of restoring the just-created account.
-  await page.waitForTimeout(1500);
 
   return { credentials, recoveryCode: words.join(" "), displayName };
 }

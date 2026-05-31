@@ -109,6 +109,16 @@ export function useCreateAccountWithSeed() {
       const accountID = await context.register(accountSecret, {
         name: "",
       });
+      // Block until cojson has flushed the newly created account's CoValues
+      // to IndexedDB. Without this, persistAuthMaterial below would write
+      // the accountID to localStorage while the account itself was still
+      // mid-flight to disk — a reload in that window would find a stale
+      // pointer in localStorage and fall back to anonymous, orphaning the
+      // just-created account. 5s is generous; under normal load this
+      // resolves within tens of ms.
+      await JazzMessangerAccount.getMe().$jazz.waitForAllCoValuesSync({
+        timeout: 5000,
+      });
       await persistAuthMaterial(
         authSecretStorage,
         accountID,
@@ -146,6 +156,10 @@ export function useSetDisplayNameOnMe() {
       });
       me.profile.$jazz.set("displayName", displayName);
       me.profile.$jazz.set("name", displayName);
+      // Ensure the profile mutations are durably persisted before returning
+      // — same reasoning as in useCreateAccountWithSeed. Sign-up resolves to
+      // the caller (profile-step → App) only after this completes.
+      await me.$jazz.waitForAllCoValuesSync({ timeout: 5000 });
     },
     [],
   );
