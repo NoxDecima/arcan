@@ -5,7 +5,14 @@ import { recoveryProof } from "./recovery-proof";
 
 type JazzHandle = {
   accountID: string;
-  /** Optional rollback if a downstream step fails before sync. */
+  /**
+   * Commit the auth credentials to local AuthSecretStorage. Called by
+   * flows.signUp only after the Better Auth POST succeeds, so a server-side
+   * rejection (e.g. duplicate email) does not silently unmount the caller's
+   * form component.
+   */
+  persist?: () => Promise<void> | void;
+  /** Defensive cleanup if a downstream step fails. */
   rollback?: () => Promise<void> | void;
 };
 
@@ -84,8 +91,28 @@ export async function signUp(params: SignUpParams): Promise<{
   if (!response.ok) {
     await jazz.rollback?.();
     const body = await safeJson(response);
-    throw new Error(body?.message ?? `Sign-up failed (${response.status})`);
+    // Better Auth returns errors as either { message } or { error: { message } }
+    // depending on layer (validation vs handler). Surface whichever exists so
+    // the user sees a real message like "User already exists" instead of a
+    // generic "Sign-up failed (422)".
+    const errorField = body?.error;
+    const detail =
+      body?.message ??
+      (typeof errorField === "object" ? errorField?.message : undefined) ??
+      (typeof errorField === "string" ? errorField : undefined);
+    throw new Error(
+      typeof detail === "string" && detail.length > 0
+        ? detail
+        : `Sign-up failed (${response.status})`,
+    );
   }
+
+  // POST succeeded — now (and only now) write the credentials to local
+  // AuthSecretStorage. This is what flips useIsAuthenticated() to true and
+  // unmounts the onboarding flow. If we had persisted earlier, a server
+  // rejection (e.g. duplicate email) would unmount ProfileStep before its
+  // catch handler could render the error.
+  await jazz.persist?.();
 
   return { accountID: jazz.accountID, recoveryCode };
 }
@@ -241,7 +268,12 @@ function base64ToBytes(s: string): Uint8Array {
   return Uint8Array.from(atob(s), c => c.charCodeAt(0));
 }
 
-async function safeJson(response: Response): Promise<{ message?: string } | undefined> {
+async function safeJson(
+  response: Response,
+): Promise<
+  | { message?: string; error?: string | { message?: string } }
+  | undefined
+> {
   try {
     return await response.json();
   } catch {

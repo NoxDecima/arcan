@@ -41,9 +41,16 @@ import { JazzMessangerAccount } from "./schema/JazzMessangerAccount";
 export type JazzAccountHandle = {
   accountID: string;
   /**
-   * If a downstream step fails after Jazz account creation but before the
-   * Better Auth POST succeeds, callers can invoke this to clear the local
-   * credentials so the user doesn't end up half-registered.
+   * Write the credentials into AuthSecretStorage, flipping
+   * useIsAuthenticated() to true. Callers MUST call this only after any
+   * downstream confirmation step (e.g. Better Auth /sign-up POST) has
+   * succeeded — otherwise an error on that step would leave the form
+   * component unmounted before the error could be rendered.
+   */
+  persist?: () => Promise<void>;
+  /**
+   * Defensive cleanup if a downstream step fails. Safe to call before or
+   * after persist; if persist hasn't fired, this is a no-op for storage.
    */
   rollback?: () => Promise<void>;
 };
@@ -85,15 +92,18 @@ async function persistAuthMaterial(
  * Hook: returns a `createAccountWithSeed(seed)` closure.
  *
  * Creates a brand-new Jazz account whose initial secret is deterministically
- * derived from the supplied seed. Returns the new account's CoValue ID and
- * a `rollback` closure that clears local credentials if the caller decides
- * the account should be undone.
+ * derived from the supplied seed. Does NOT write to AuthSecretStorage — the
+ * returned handle exposes a `persist` closure for that, which the caller
+ * (flows.signUp) invokes only after the Better Auth /sign-up POST has
+ * confirmed success. This ordering keeps ProfileStep mounted on error so
+ * the user sees the failure message (e.g. "Email already taken") rather
+ * than getting silently bounced back to the login screen.
  *
  * NB on rollback semantics: the account itself cannot be deleted from Jazz
- * once written to the local node — but clearing AuthSecretStorage makes the
- * user no longer authenticated as that account, which is sufficient to
- * un-stick the UI after a failed sign-up POST. The orphan CoValue lingers
- * locally until indexedDB is cleared but is unreachable to any other peer.
+ * once written to the local node, but clearing AuthSecretStorage (or never
+ * having written it) keeps the user un-authenticated. The orphan CoValue
+ * lingers locally until indexedDB is cleared but is unreachable to any
+ * peer (followup for a proper orphan-CoValue regression test).
  */
 export function useCreateAccountWithSeed() {
   const context = useAuthedJazzContext();
@@ -110,8 +120,8 @@ export function useCreateAccountWithSeed() {
         name: "",
       });
       // Block until cojson has flushed the newly created account's CoValues
-      // to IndexedDB. Without this, persistAuthMaterial below would write
-      // the accountID to localStorage while the account itself was still
+      // to IndexedDB. Without this, persist() below could write the
+      // accountID to localStorage while the account itself was still
       // mid-flight to disk — a reload in that window would find a stale
       // pointer in localStorage and fall back to anonymous, orphaning the
       // just-created account. 5s is generous; under normal load this
@@ -119,14 +129,16 @@ export function useCreateAccountWithSeed() {
       await JazzMessangerAccount.getMe().$jazz.waitForAllCoValuesSync({
         timeout: 5000,
       });
-      await persistAuthMaterial(
-        authSecretStorage,
-        accountID,
-        seed,
-        accountSecret,
-      );
       return {
         accountID,
+        persist: async () => {
+          await persistAuthMaterial(
+            authSecretStorage,
+            accountID,
+            seed,
+            accountSecret,
+          );
+        },
         rollback: async () => {
           await authSecretStorage.clear();
         },

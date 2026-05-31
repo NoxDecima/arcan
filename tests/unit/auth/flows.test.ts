@@ -49,16 +49,57 @@ describe("signUp", () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
 
     const rollback = vi.fn();
+    const persist = vi.fn();
     await expect(
       signUp({
         email: "alice@example.com",
         password: "correcthorsebattery1",
         displayName: "Alice",
-        createJazzAccount: async () => ({ accountID: "co_zABC", rollback }),
+        createJazzAccount: async () => ({ accountID: "co_zABC", rollback, persist }),
       }),
     ).rejects.toThrow();
 
     expect(rollback).toHaveBeenCalledOnce();
+    // Critical: persist must NOT fire on POST failure — otherwise the form
+    // unmounts before the error renders (regression test for the
+    // duplicate-email silent-failure bug).
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  test("calls persist only after POST returns 2xx", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ user: { id: "u1" }, jazzZk: { accountID: "co_zABC" } }),
+    });
+    const persist = vi.fn();
+    const rollback = vi.fn();
+    await signUp({
+      email: "alice@example.com",
+      password: "correcthorsebattery1",
+      displayName: "Alice",
+      createJazzAccount: async () => ({ accountID: "co_zABC", persist, rollback }),
+    });
+    expect(persist).toHaveBeenCalledOnce();
+    expect(rollback).not.toHaveBeenCalled();
+  });
+
+  test("surfaces server error.message when POST fails", async () => {
+    // Better Auth returns errors as { message } OR { error: { message } }
+    // depending on the layer. We support both — verify with the latter.
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => ({ error: { message: "User with this email already exists" } }),
+    });
+    await expect(
+      signUp({
+        email: "alice@example.com",
+        password: "correcthorsebattery1",
+        displayName: "Alice",
+        createJazzAccount: async () => ({ accountID: "co_zABC", rollback: vi.fn(), persist: vi.fn() }),
+      }),
+    ).rejects.toThrow(/User with this email already exists/);
   });
 });
 
