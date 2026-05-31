@@ -3,24 +3,28 @@ import { Button } from "@/components/ui/button";
 
 type CopyState = "idle" | "copied" | "error";
 
-interface PassphraseDisplayStepProps {
+interface BackupDisplayStepProps {
   phrase: string;
   onBack: () => void;
   onContinue: () => void;
 }
 
 /**
- * PassphraseDisplayStep: shows the user their 24-word recovery passphrase.
+ * BackupDisplayStep: shows the user their 24-word recovery code.
  *
  * The user must explicitly tick a checkbox to acknowledge they have saved the
- * phrase before the "Continue" button becomes active. This gates progression
- * to the confirm step where they must reproduce three random words.
+ * code before the "Continue" button becomes active. This gates progression to
+ * the confirm step where they must reproduce three random words.
+ *
+ * Note on data-testid attributes: the testids still say "passphrase-*" (rather
+ * than "backup-*") for compatibility with Phase C e2e selectors. The user-
+ * visible copy uses the new "recovery code" framing.
  */
-export function PassphraseDisplayStep({
+export function BackupDisplayStep({
   phrase,
   onBack,
   onContinue,
-}: PassphraseDisplayStepProps) {
+}: BackupDisplayStepProps) {
   const [acknowledged, setAcknowledged] = useState(false);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const words = phrase.trim().split(/\s+/);
@@ -41,19 +45,19 @@ export function PassphraseDisplayStep({
       ? "Copied to clipboard"
       : copyState === "error"
         ? "Copy failed — copy manually"
-        : "Copy passphrase";
+        : "Copy recovery code";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-lg space-y-8">
         <div className="space-y-3 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            Save your passphrase
+            Save your recovery code
           </h1>
           <p className="text-muted-foreground">
-            These 24 words are the <strong>only</strong> way to recover your
-            account. Store them somewhere safe — anyone who has them can sign in
-            as you.
+            These 24 words are the <strong>only</strong> way back into your
+            account if you forget your password. Store them somewhere safe —
+            anyone who has them can sign in as you.
           </p>
         </div>
 
@@ -99,8 +103,8 @@ export function PassphraseDisplayStep({
             className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
           />
           <span className="text-sm text-muted-foreground">
-            I have saved my passphrase in a secure location and understand that
-            it cannot be recovered if lost.
+            I have saved my recovery code in a secure location and understand
+            that it cannot be recovered if lost.
           </span>
         </label>
 

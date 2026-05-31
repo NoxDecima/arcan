@@ -1,7 +1,7 @@
 # Deploying jazz-messanger
 
-Single VPS, single domain, automatic TLS via Let's Encrypt. Two containers
-(Caddy + the Jazz sync server) running under Docker Compose.
+Single VPS, single domain, automatic TLS via Let's Encrypt. Three containers
+(Caddy + the Jazz sync server + the auth server) running under Docker Compose.
 
 ## Prerequisites
 
@@ -18,7 +18,8 @@ Single VPS, single domain, automatic TLS via Let's Encrypt. Two containers
 git clone <repo> jazz-messanger
 cd jazz-messanger/deploy
 cp .env.example .env
-# edit DOMAIN and ACME_EMAIL
+# edit DOMAIN and ACME_EMAIL, then generate a Better Auth secret:
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .env
 docker compose up -d --build
 ```
 
@@ -53,18 +54,27 @@ rebuilds, so updates don't hit Let's Encrypt's rate limit.
 - `./data/sync.sqlite` — every conversation's encrypted CoValue state. Back
   this up if you care about not losing message history. Plain file; safe to
   `cp` while the container is stopped.
+- `./auth-data/auth.sqlite` — Better Auth's user / session / account /
+  verification tables, plus each user's encrypted seed envelope. **Loss = every
+  user must re-create their account.** Back up alongside `./data/`. The
+  encrypted seed envelopes are useless without the user's password (Argon2id +
+  AES-GCM), so the file does not leak account secrets on its own.
 - Docker volume `caddy_data` — Caddy's issued certs + ACME state. **Don't
   delete this casually**; doing so triggers a full re-issue and risks
   hitting Let's Encrypt's rate limit (50 issuances per registered domain
   per week).
 
-## Reserved URL path
+## Reserved URL paths
 
-The frontend reserves `/sync/*` for the WebSocket reverse-proxy. Don't
-add client-side routes under that prefix — they'll be shadowed by the
-proxy. If we ever need that path back, the fix is either renaming the
-prefix (e.g. `/jazz-sync/*`) or splitting the sync server to its own
-subdomain.
+The frontend reserves the following prefixes for reverse-proxy use; don't
+add client-side routes under them, they'll be shadowed by Caddy's handlers.
+
+- `/sync/*` — the Jazz sync WebSocket (proxied to the `sync` container).
+- `/api/auth/*` — the Better Auth router (proxied to the `auth` container).
+  Cookies are scoped to `/api/auth` by the Better Auth server config.
+
+If we ever need either path back, the fix is renaming the prefix (e.g.
+`/jazz-sync/*`) or splitting the relevant service onto its own subdomain.
 
 ## Troubleshooting
 
@@ -74,3 +84,6 @@ subdomain.
 | `caddy` logs "HTTP-01 challenge failed" | Port 80 not reachable from the internet. Check firewall and any cloud-provider security group. |
 | Browser shows mixed-content warnings | `VITE_SYNC_URL` is hardcoded to `ws://` somewhere. Unset it (or set to `wss://...`) and rebuild. |
 | `docker compose ps` shows `sync` restarting | Check `docker compose logs sync`. The bind mount may be on a read-only filesystem, or the SQLite file may be locked from a prior run. |
+| `auth` container exits with "BETTER_AUTH_SECRET must be set" | The `.env` file is missing the secret. Generate one with `openssl rand -base64 32` and add it as `BETTER_AUTH_SECRET=…`. |
+| `auth` container restarts on every request | Migration step (in the entrypoint) failed. `docker compose logs auth` will show the underlying SQLite error — usually the bind-mounted `./auth-data/` directory isn't writable by the container user. |
+| Sign-up always returns 500 | First-boot migrations didn't run. Re-create the container with `docker compose up -d --build --force-recreate auth` so the entrypoint's migration step runs against a clean DB. |

@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+### Slice 7 — Zero-knowledge email + password auth
+
+**Closes:** E1a §9.4 / threat-model "Account recovery story" — replaces the bare 24-word passphrase as the primary credential with the email + password pair users actually expect, without giving up the zero-knowledge property (the server still cannot decrypt anyone's Jazz seed).
+
+#### Added
+
+- `auth-server/` — new Node service running Better Auth 1.6 on Hono + better-sqlite3, with a custom `jazzZkPlugin` that augments the `user` table with `kdfSalt` / `encryptedSeed` / `recoveryProofHmac` / `accountID` columns (all client-derived, opaque to the server). Endpoints: stock Better Auth `/sign-up/email` + `/sign-in/email` + `/sign-out` + `/change-password` plus custom `/me/auth-material` (session-gated) and `/reset-with-recovery` (HMAC-proof-gated).
+- `src/auth/kdf.ts` — Argon2id key derivation + AES-GCM envelope (`deriveKey`, `encryptSeed`, `decryptSeed`).
+- `src/auth/recovery-proof.ts` — HMAC-SHA256(seed, "jazz-messanger:recovery-reset") so the server can verify the user knows the seed at recovery time without ever seeing it.
+- `src/auth/flows.ts` — orchestration for `signUp` / `signIn` / `recoverWithCode` / `changePassword` / `getRecoveryCodeFromAuthMaterial`. Sequences Jazz account creation, KDF, AES envelope, and Better Auth POSTs; rolls back local Jazz credentials on a failed server POST.
+- `src/auth/client.ts` — Better Auth client singleton (plugin id-matches the server's `jazz-zk-plugin`). Imported for side-effects from `src/jazz/provider.tsx`.
+- `src/jazz/createAccountFromSeed.ts` — React-hook bridge (`useCreateAccountWithSeed`, `useSetDisplayNameOnMe`, `useSignInToJazzWithSeed`) that closes over the Jazz context's `register` / `authenticate` / `AuthSecretStorage` and persists the seed-derived account under provider tag `"better-auth"`.
+- `src/routes/onboarding/credentials-step.tsx` — new onboarding step: email + username + password + confirm, with local regex / length validation.
+- Renamed `passphrase-step` → `backup-display-step.tsx` + `backup-confirm-step.tsx`; new `restore-with-code-step.tsx` (sign-in via 24-word recovery code).
+- `src/routes/onboarding/restore-choice-step.tsx` — fork between "I have an email/password account" and "I have a 24-word recovery code".
+- `src/routes/onboarding/index.tsx` state machine rewired to welcome → (credentials → backup-display → backup-confirm → profile) | (restore-choice → login / restore-with-code).
+- `src/routes/auth/login.tsx` + `src/routes/auth/recovery.tsx` — new auth routes; recovery is two-stage (decode code + sign in, then optionally set a new password).
+- `src/routes/settings/change-password-modal.tsx` + `view-recovery-code-modal.tsx` + buttons in `account-section.tsx`.
+- `deploy/Dockerfile.auth` + `deploy/migrate.mjs` + `auth` service in `docker-compose.yml` + `handle /api/auth/*` block in `Caddyfile` + `BETTER_AUTH_SECRET` in `.env.example`.
+- `vite.config.ts` server.proxy: `/api/auth → http://localhost:4300`, `/sync → ws://localhost:4200` (so the dev browser sees same-origin cookies for Better Auth).
+- `scripts/migrate-auth-server.mjs` + `scripts/auth-server-with-migrate.sh` — runs Better Auth migrations before booting the dev/e2e auth-server. Wired into `playwright.config.ts` webServer array so `npm run test:e2e` spins up the full sync + auth + dev stack with a clean schema.
+
+#### Changed
+
+- App routing inversion (`src/App.tsx`): unauthenticated users now land on `/auth/login` (not `/onboarding`). `/onboarding` remains reachable via the "Create new account" link on the login screen. `/pair` and `/invite` keep their auth-optional carve-outs.
+- `src/jazz/provider.tsx` — side-effect imports `@/auth/client` so the Better Auth nanostore singleton is ready before any component calls `authClient.useSession()`.
+- `tests/e2e/helpers.ts` `createAccount` now walks the email/password onboarding flow and returns `{ credentials, recoveryCode, displayName }` (was `{ phrase, displayName }`). Adds `signIn(page, credentials)` helper, `freshCredentials(prefix)`, and `captureRecoveryCode(page)`. All Slice 1-5 e2e specs auto-migrated; `restore-account.spec.ts` was deleted in favor of `recovery-with-code.spec.ts` + `login-email-password.spec.ts` covering both restore paths.
+- `tests/e2e/account-creation.spec.ts` and `tests/e2e/invite-before-signin.spec.ts` updated for the new flow / routing inversion.
+
+#### Test coverage
+
+- Unit: +9 tests for `kdf.ts`, +3 for `recovery-proof.ts`, +7 for `flows.ts`, +1 password-leak regression scanning localStorage/sessionStorage. 132 total Vitest tests (was 111).
+- Server-side: +7 unit tests in `auth-server/tests/` covering plugin contract (`/sign-up`, `/sign-in`, `/reset-with-recovery`, missing-header rejection) plus a zero-knowledge regression that dumps every row of every table and asserts neither the plaintext password nor the seed bytes appear anywhere.
+- E2E: +6 new specs — `signup-email-password`, `login-email-password`, `recovery-with-code`, `change-password`, `invalid-credentials` (4 sub-tests), `auth-server-down`.
+
+#### Deferred (filed as followups, not in this slice)
+
+- OAuth providers + Passkey enrollment.
+- Strict ZK via PAKE / OPAQUE (current scheme leaks password to the server during sign-in; the trade-off is documented in the spec).
+- Email verification + transactional email.
+- Account deletion + username tombstoning.
+- Recovery-code rotation UI.
+- Multi-session UI.
+- Password strength meter, breach checks (HIBP).
+- Migration script for existing Slice 1-6 accounts (those users will see the new login screen on next reload and need to re-create — acceptable for pre-release; documented as known break).
+
 ### Slice 6 — Caddy + TLS Docker Compose deploy
 
 **Closes:** E1a §9.2 (Production deployment) — minimum viable VPS deploy story.

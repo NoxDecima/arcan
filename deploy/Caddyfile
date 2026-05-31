@@ -7,6 +7,15 @@
         reverse_proxy sync:4200
     }
 
+    # Better Auth — keep /api/auth/* on the URL path so Better Auth's own
+    # router (mounted on auth.handler at /api/auth/*) routes correctly.
+    # `handle` (not `handle_path`) preserves the URL prefix on the proxied
+    # request; the auth-server is configured with BETTER_AUTH_URL=https://
+    # ${DOMAIN}/api/auth so cookies are scoped to this path.
+    handle /api/auth/* {
+        reverse_proxy auth:4300
+    }
+
     # SPA — serve built static assets with a client-side router fallback.
     handle {
         root * /usr/share/caddy

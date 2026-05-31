@@ -1,26 +1,29 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-interface PassphraseConfirmStepProps {
+interface BackupConfirmStepProps {
   phrase: string;
   onBack: () => void;
   onConfirmed: () => void;
 }
 
 /**
- * PassphraseConfirmStep: challenges the user to type three random words from
- * their passphrase to confirm they saved it correctly.
+ * BackupConfirmStep: challenges the user to type three random words from their
+ * recovery code to confirm they saved it correctly.
  *
  * Three distinct indices (1-based display, 0-based internally) are chosen once
  * via useMemo and remain stable for the lifetime of the component. Each input
  * is validated case-insensitively and trimmed. The "Confirm" button is disabled
  * until all three match.
+ *
+ * Note on data-testid attributes: testids still say "confirm-word-N" and
+ * "confirm-passphrase-btn" for Phase C e2e compatibility.
  */
-export function PassphraseConfirmStep({
+export function BackupConfirmStep({
   phrase,
   onBack,
   onConfirmed,
-}: PassphraseConfirmStepProps) {
+}: BackupConfirmStepProps) {
   const words = useMemo(() => phrase.trim().split(/\s+/), [phrase]);
 
   // Pick three distinct indices, sorted ascending, generated once per mount.
@@ -54,11 +57,11 @@ export function PassphraseConfirmStep({
       <div className="w-full max-w-md space-y-8">
         <div className="space-y-3 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            Confirm your passphrase
+            Confirm your recovery code
           </h1>
           <p className="text-muted-foreground">
             Type the words at the positions shown below to confirm you have
-            recorded your passphrase correctly.
+            recorded your recovery code correctly.
           </p>
         </div>
 

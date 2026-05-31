@@ -1,78 +1,96 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { WelcomeStep } from "./welcome-step";
-import { PassphraseDisplayStep } from "./passphrase-display-step";
-import { PassphraseConfirmStep } from "./passphrase-confirm-step";
+import { CredentialsStep, type Credentials } from "./credentials-step";
+import { BackupDisplayStep } from "./backup-display-step";
+import { BackupConfirmStep } from "./backup-confirm-step";
 import { ProfileStep } from "./profile-step";
-import { RestoreStep } from "./restore-step";
+import { RestoreChoiceStep } from "./restore-choice-step";
+import { RestoreWithCodeStep } from "./restore-with-code-step";
+import { generateRecoveryCode } from "@/auth/recovery-code";
 
 /**
  * Discriminated union for the onboarding step state machine.
  *
- * Transitions:
- *   welcome
- *     → passphrase-display  (user clicks "Create new account"; phrase generated)
- *     → restore             (user clicks "Restore account")
- *   passphrase-display
- *     → passphrase-confirm  (user ticks checkbox + clicks "Continue")
- *     → welcome             (back)
- *   passphrase-confirm
- *     → profile             (all three challenge words correct)
- *     → passphrase-display  (back)
- *   profile
- *     → passphrase-display  (back — user wants to see phrase again)
- *     → [signed in]         (account created; App unmounts OnboardingRoute)
- *   restore
- *     → welcome             (back)
- *     → [signed in]         (logIn succeeds; App unmounts OnboardingRoute)
+ * Sign-up path:
+ *   welcome → credentials → backup-display → backup-confirm → profile
+ * Restore path:
+ *   welcome → restore-choice
+ *     → /auth/login (via navigate)
+ *     → restore-with-code (24-word recovery code)
  */
 type OnboardingStep =
   | { kind: "welcome" }
-  | { kind: "passphrase-display"; phrase: string }
-  | { kind: "passphrase-confirm"; phrase: string }
-  | { kind: "profile"; phrase: string }
-  | { kind: "restore" };
+  | { kind: "credentials" }
+  | { kind: "backup-display"; credentials: Credentials; recoveryCode: string }
+  | { kind: "backup-confirm"; credentials: Credentials; recoveryCode: string }
+  | { kind: "profile"; credentials: Credentials; recoveryCode: string }
+  | { kind: "restore-choice" }
+  | { kind: "restore-with-code" };
 
 /**
  * OnboardingRoute: top-level step router for the onboarding flow.
  *
- * Rendered by App when the user is not yet authenticated (`useIsAuthenticated`
- * returns false). Does not use react-router-dom — a simple useState-based
- * state machine is sufficient for the linear onboarding flow.
+ * Rendered by App at /onboarding. The recovery code is generated in the
+ * credentials → backup-display transition so the user sees the same code
+ * that profile-step later decodes and feeds into flows.signUp.
  */
 export function OnboardingRoute() {
   const [step, setStep] = useState<OnboardingStep>({ kind: "welcome" });
+  const navigate = useNavigate();
 
   switch (step.kind) {
     case "welcome":
       return (
         <WelcomeStep
-          onCreateAccount={(phrase) =>
-            setStep({ kind: "passphrase-display", phrase })
-          }
-          onRestoreAccount={() => setStep({ kind: "restore" })}
+          onCreateAccount={() => setStep({ kind: "credentials" })}
+          onRestoreAccount={() => setStep({ kind: "restore-choice" })}
         />
       );
 
-    case "passphrase-display":
+    case "credentials":
       return (
-        <PassphraseDisplayStep
-          phrase={step.phrase}
+        <CredentialsStep
           onBack={() => setStep({ kind: "welcome" })}
+          onContinue={(credentials) => {
+            const { recoveryCode } = generateRecoveryCode();
+            setStep({ kind: "backup-display", credentials, recoveryCode });
+          }}
+        />
+      );
+
+    case "backup-display":
+      return (
+        <BackupDisplayStep
+          phrase={step.recoveryCode}
+          onBack={() => setStep({ kind: "credentials" })}
           onContinue={() =>
-            setStep({ kind: "passphrase-confirm", phrase: step.phrase })
+            setStep({
+              kind: "backup-confirm",
+              credentials: step.credentials,
+              recoveryCode: step.recoveryCode,
+            })
           }
         />
       );
 
-    case "passphrase-confirm":
+    case "backup-confirm":
       return (
-        <PassphraseConfirmStep
-          phrase={step.phrase}
+        <BackupConfirmStep
+          phrase={step.recoveryCode}
           onBack={() =>
-            setStep({ kind: "passphrase-display", phrase: step.phrase })
+            setStep({
+              kind: "backup-display",
+              credentials: step.credentials,
+              recoveryCode: step.recoveryCode,
+            })
           }
           onConfirmed={() =>
-            setStep({ kind: "profile", phrase: step.phrase })
+            setStep({
+              kind: "profile",
+              credentials: step.credentials,
+              recoveryCode: step.recoveryCode,
+            })
           }
         />
       );
@@ -80,14 +98,32 @@ export function OnboardingRoute() {
     case "profile":
       return (
         <ProfileStep
-          phrase={step.phrase}
+          credentials={step.credentials}
+          recoveryCode={step.recoveryCode}
           onBack={() =>
-            setStep({ kind: "passphrase-display", phrase: step.phrase })
+            setStep({
+              kind: "backup-display",
+              credentials: step.credentials,
+              recoveryCode: step.recoveryCode,
+            })
           }
         />
       );
 
-    case "restore":
-      return <RestoreStep onBack={() => setStep({ kind: "welcome" })} />;
+    case "restore-choice":
+      return (
+        <RestoreChoiceStep
+          onBack={() => setStep({ kind: "welcome" })}
+          onSignInWithPassword={() => navigate("/auth/login")}
+          onRestoreWithCode={() => setStep({ kind: "restore-with-code" })}
+        />
+      );
+
+    case "restore-with-code":
+      return (
+        <RestoreWithCodeStep
+          onBack={() => setStep({ kind: "restore-choice" })}
+        />
+      );
   }
 }
