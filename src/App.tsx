@@ -14,6 +14,7 @@ import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
+import { NotificationManager } from "@/components/notification-manager";
 
 /**
  * App: top-level route shell.
@@ -44,8 +45,20 @@ function App() {
   // $jazz.push on the list (NotLoaded proxies don't have push).
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
+  // Slice 8: deepen the resolve so the NotificationManager can iterate
+  // knownConversations with their messages, and read lastReadAt +
+  // notificationPrefs without separate hooks. $each on knownConversations
+  // keeps the kicked-from-group case safe via $onError: "catch".
   const me = useAccount(JazzMessangerAccount, {
-    resolve: { profile: true, root: { contactBook: { $each: true }, knownConversations: true } },
+    resolve: {
+      profile: true,
+      root: {
+        contactBook: { $each: true },
+        knownConversations: { $each: { messages: true, $onError: "catch" } },
+        lastReadAt: true,
+        notificationPrefs: true,
+      },
+    },
   });
   useConversationInboxSubscription(me);
 
@@ -83,22 +96,28 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<ConversationsRoute />} />
-      <Route path="/conversations" element={<ConversationsRoute />} />
-      <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
-      <Route path="/conversations/:id/members" element={<MembersRoute />} />
-      <Route path="/settings/*" element={<SettingsRoute />} />
-      <Route path="/contacts" element={<ContactsRoute />} />
-      <Route path="/contacts/add" element={<ContactAddRoute />} />
-      <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
-      {/* /auth/recovery is reachable while authenticated so a user who
-          signed in via 24-word recovery code can complete stage 2 (set a
-          fresh password). The recovery route itself navigates to "/" on
-          completion or skip. */}
-      <Route path="/auth/recovery" element={<RecoveryRoute />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      {/* Slice 8: in-app notification manager — drives tab title badge,
+          sound, and browser-notification fanout. Mounted only when me is
+          loaded so its accessors on me.root never NPE. */}
+      {me.$isLoaded && <NotificationManager me={me} />}
+      <Routes>
+        <Route path="/" element={<ConversationsRoute />} />
+        <Route path="/conversations" element={<ConversationsRoute />} />
+        <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
+        <Route path="/conversations/:id/members" element={<MembersRoute />} />
+        <Route path="/settings/*" element={<SettingsRoute />} />
+        <Route path="/contacts" element={<ContactsRoute />} />
+        <Route path="/contacts/add" element={<ContactAddRoute />} />
+        <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+        {/* /auth/recovery is reachable while authenticated so a user who
+            signed in via 24-word recovery code can complete stage 2 (set a
+            fresh password). The recovery route itself navigates to "/" on
+            completion or skip. */}
+        <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 
