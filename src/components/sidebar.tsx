@@ -8,6 +8,7 @@ import { GroupCreateDialog } from "@/components/group-create-dialog";
 import { findOrCreate1to1Conversation, createGroupConversation, isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
+import { getUnreadCount } from "@/jazz/notifications";
 
 /**
  * Sidebar component for the main layout.
@@ -67,6 +68,8 @@ export function Sidebar() {
         // read access to the ConversationGroup). Without this, the whole
         // knownConversations resolve stalls indefinitely and me.$isLoaded stays false.
         knownConversations: { $each: { $onError: "catch" } },
+        // Slice 8: per-conversation read cutoff for unread-badge computation.
+        lastReadAt: true,
       },
     },
   });
@@ -169,14 +172,31 @@ export function Sidebar() {
           ) : (
             sortedActive.map((c: any, i: number) => {
               const label = deriveConversationLabel(c.conversation, me);
+              // Slice 8: per-row unread count + badge + bold styling.
+              const convID = c.conversation.$jazz.id;
+              const myID = (me as any).$jazz?.id;
+              const lastReadAt = (me.root as any).lastReadAt?.[convID];
+              const unread = myID
+                ? getUnreadCount(c.conversation, lastReadAt, myID)
+                : 0;
               return (
                 <Link
                   key={i}
-                  to={`/conversations/${c.conversation.$jazz.id}`}
-                  className="block p-2 hover:bg-accent rounded text-sm"
+                  to={`/conversations/${convID}`}
+                  className={`block p-2 hover:bg-accent rounded text-sm flex items-center justify-between gap-2 ${
+                    unread > 0 ? "font-semibold" : ""
+                  }`}
                   data-testid={`conversation-row-${i}`}
                 >
-                  {label}
+                  <span className="truncate flex-1">{label}</span>
+                  {unread > 0 && (
+                    <span
+                      data-testid={`unread-badge-${i}`}
+                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white"
+                    >
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
                 </Link>
               );
             })
