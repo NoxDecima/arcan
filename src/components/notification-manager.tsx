@@ -1,11 +1,21 @@
 import { useCallback, useMemo } from "react";
+import { useAccount } from "jazz-tools/react";
+import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useTabTitleBadge } from "@/hooks/useTabTitleBadge";
 import { useNewMessageEvents } from "@/hooks/useNewMessageEvents";
 import { getUnreadCount } from "@/jazz/notifications";
 import { resolveDisplayName } from "@/jazz/displayName";
 
 interface NotificationManagerProps {
-  me: any;
+  /**
+   * Optional `me` override — when provided, the component reads from this
+   * value directly (e.g. tests injecting a stub). When omitted, the
+   * component calls its own `useAccount` with the deep resolve it needs.
+   * Keeping the deep resolve scoped here (rather than at App.tsx) avoids
+   * triggering Jazz reconciliation churn during auth-state flips that
+   * would otherwise remount sibling routes like /auth/recovery.
+   */
+  me?: any;
 }
 
 /**
@@ -24,7 +34,23 @@ interface NotificationManagerProps {
  *
  * Returns null — purely side-effectful, no DOM output.
  */
-export function NotificationManager({ me }: NotificationManagerProps): null {
+export function NotificationManager({ me: meProp }: NotificationManagerProps = {}): null {
+  // Self-load when no `me` prop is provided. This keeps App.tsx's resolve
+  // shallow — important because the App-level deep resolve was observed
+  // to remount /auth/recovery on the post-recovery auth-state flip,
+  // losing the RecoveryRoute's `stage` useState.
+  const meFromHook = useAccount(JazzMessangerAccount, {
+    resolve: {
+      profile: true,
+      root: {
+        knownConversations: { $each: { messages: true, $onError: "catch" } },
+        lastReadAt: true,
+        notificationPrefs: true,
+      },
+    },
+  });
+  const me = meProp ?? meFromHook;
+
   const myID = me?.$jazz?.id ?? null;
   const knownConversations = me?.root?.knownConversations;
   const lastReadAt = me?.root?.lastReadAt;

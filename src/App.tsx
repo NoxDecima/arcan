@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
@@ -45,20 +46,14 @@ function App() {
   // $jazz.push on the list (NotLoaded proxies don't have push).
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
-  // Slice 8: deepen the resolve so the NotificationManager can iterate
-  // knownConversations with their messages, and read lastReadAt +
-  // notificationPrefs without separate hooks. $each on knownConversations
-  // keeps the kicked-from-group case safe via $onError: "catch".
+  // Keep this resolve shallow. The deeper graph the NotificationManager
+  // needs (knownConversations messages, lastReadAt, notificationPrefs) is
+  // pulled inside NotificationManager itself via its own useAccount.
+  // Lifting it here was observed to remount /auth/recovery after the
+  // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
+  // would reset back to "enter-code" mid-flow.
   const me = useAccount(JazzMessangerAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        contactBook: { $each: true },
-        knownConversations: { $each: { messages: true, $onError: "catch" } },
-        lastReadAt: true,
-        notificationPrefs: true,
-      },
-    },
+    resolve: { profile: true, root: { contactBook: { $each: true }, knownConversations: true } },
   });
   useConversationInboxSubscription(me);
 
@@ -81,11 +76,20 @@ function App() {
     );
   }
 
+  // Render the route table inline so the JSX shape ({fragment} +
+  // {NotificationManager?} + <Routes>) stays identical between the
+  // unauthenticated and authenticated branches. React's reconciliation
+  // matches sibling element types by position; if the unauthenticated
+  // branch returned a bare <Routes> while the authenticated branch
+  // returned <>{NotificationManager}{Routes}</>, React would treat the
+  // post-recovery auth flip as a parent-type swap and remount the entire
+  // route subtree — which would reset RecoveryRoute's stage-2 useState.
+  let routeTable: ReactElement;
   if (!isAuthenticated) {
     // Routing inversion (Slice 7): the unauthenticated default is the
     // /auth/login route, not the onboarding flow. /onboarding remains
     // reachable via the "Create new account" link on the login screen.
-    return (
+    routeTable = (
       <Routes>
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route path="/auth/login" element={<LoginRoute />} />
@@ -93,14 +97,8 @@ function App() {
         <Route path="*" element={<Navigate to="/auth/login" replace />} />
       </Routes>
     );
-  }
-
-  return (
-    <>
-      {/* Slice 8: in-app notification manager — drives tab title badge,
-          sound, and browser-notification fanout. Mounted only when me is
-          loaded so its accessors on me.root never NPE. */}
-      {me.$isLoaded && <NotificationManager me={me} />}
+  } else {
+    routeTable = (
       <Routes>
         <Route path="/" element={<ConversationsRoute />} />
         <Route path="/conversations" element={<ConversationsRoute />} />
@@ -117,6 +115,25 @@ function App() {
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    );
+  }
+
+  // Mount the NotificationManager only when authenticated AND not in the
+  // post-recovery /auth/recovery stage-2 flow. RecoveryRoute holds its
+  // current stage in local useState; mounting NotificationManager's own
+  // useAccount with a deep resolve at the same time as the
+  // useIsAuthenticated flip causes the entire route subtree to remount,
+  // resetting that state back to Stage 1.
+  const showNotificationManager =
+    isAuthenticated && location.pathname !== "/auth/recovery";
+
+  return (
+    <>
+      {/* Slice 8: in-app notification manager — drives tab title badge,
+          sound, and browser-notification fanout. Reads `me` via its own
+          useAccount call so App.tsx's resolve stays shallow. */}
+      {showNotificationManager && <NotificationManager />}
+      {routeTable}
     </>
   );
 }

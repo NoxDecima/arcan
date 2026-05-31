@@ -14,6 +14,12 @@ vi.mock("@/hooks/useNewMessageEvents", () => ({
 vi.mock("@/hooks/useTabTitleBadge", () => ({
   useTabTitleBadge: () => {},
 }));
+// Stub useAccount so the unit test can run without a Jazz provider. The
+// component prefers an explicit `me` prop when provided (the test pattern
+// below), so the value here just has to be non-throwing.
+vi.mock("jazz-tools/react", () => ({
+  useAccount: () => ({}),
+}));
 
 describe("NotificationManager — sound + browser notification fanout", () => {
   let originalAudio: any;
