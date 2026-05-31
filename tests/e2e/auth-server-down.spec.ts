@@ -36,13 +36,15 @@ test.describe("auth-server unreachable", () => {
     await page.getByTestId("display-name-input").fill("Offline Alice");
     await page.getByTestId("finish-onboarding-btn").click();
 
-    // After Finish click, signUp's fetch fails with 502 → flows.ts throws
-    // and rolls back the Jazz account via authSecretStorage.clear(). That
-    // flips useIsAuthenticated() to false; App re-renders and the user is
-    // redirected from /onboarding to /auth/login (the unauthenticated
-    // catch-all). So we should NOT reach home-main, and we SHOULD end up
-    // back on the login screen.
-    await page.waitForURL(/\/auth\/login/, { timeout: 10_000 });
+    // After Finish click, signUp's fetch fails with 502. Per the Slice 7
+    // pre-push silent-error fix (commit 798b2e4: defer persistAuthMaterial
+    // until POST succeeds), flows.ts throws BEFORE writing credentials to
+    // AuthSecretStorage — so useIsAuthenticated() never flips to true, the
+    // OnboardingRoute stays mounted, and ProfileStep's catch handler
+    // renders the error in `profile-error`. The user stays on the form;
+    // they do NOT get bounced back to /auth/login.
+    await expect(page.getByTestId("profile-error")).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/onboarding/);
     await expect(page.getByTestId("home-main")).toBeHidden();
   });
 });
