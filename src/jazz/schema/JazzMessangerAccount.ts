@@ -32,6 +32,15 @@ export const JazzMessangerAccountRoot = co.map({
   devices: co.list(DeviceRecord),
   invitesIssued: co.list(Invitation),
   knownConversations: co.list(Conversation),
+  // Slice 8 — per-conversation read cutoff (ms epoch). Keys are
+  // Conversation IDs; absent keys mean "never opened" (all unread).
+  lastReadAt: co.record(z.string(), z.number()),
+  // Slice 8 — per-account notification preferences. Both default to
+  // false (off) until the user explicitly enables.
+  notificationPrefs: co.map({
+    sound: z.boolean(),
+    browser: z.boolean(),
+  }),
 });
 
 export const JazzMessangerAccount = co.account({
@@ -84,11 +93,24 @@ export const JazzMessangerAccount = co.account({
     const devices = co.list(DeviceRecord).create([], { owner: me });
     const invitesIssued = co.list(Invitation).create([], { owner: me });
     const knownConversations = co.list(Conversation).create([], { owner: me });
+    const lastReadAt = co
+      .record(z.string(), z.number())
+      .create({} as Record<string, number>, { owner: me });
+    const notificationPrefs = co
+      .map({ sound: z.boolean(), browser: z.boolean() })
+      .create({ sound: false, browser: false }, { owner: me });
 
     me.$jazz.set(
       "root",
       JazzMessangerAccountRoot.create(
-        { contactBook, devices, invitesIssued, knownConversations },
+        {
+          contactBook,
+          devices,
+          invitesIssued,
+          knownConversations,
+          lastReadAt,
+          notificationPrefs,
+        },
         { owner: me },
       ),
     );
@@ -133,6 +155,33 @@ export const JazzMessangerAccount = co.account({
     (me.root as any).$jazz.set(
       "knownConversations",
       co.list(Conversation).create([], { owner: me }),
+    );
+  }
+
+  // -- 2c. lastReadAt + notificationPrefs backfill (existing accounts) --
+  // Both fields are Slice 8 additions; pre-Slice-8 accounts have me.root
+  // but neither field. Same guard pattern as the knownConversations
+  // backfill — runs only when me.root is a fully-loaded CoMap.
+  if (
+    me.root &&
+    !(me.root as any).lastReadAt &&
+    typeof (me.root as any).$jazz?.set === "function"
+  ) {
+    (me.root as any).$jazz.set(
+      "lastReadAt",
+      co.record(z.string(), z.number()).create({} as Record<string, number>, { owner: me }),
+    );
+  }
+  if (
+    me.root &&
+    !(me.root as any).notificationPrefs &&
+    typeof (me.root as any).$jazz?.set === "function"
+  ) {
+    (me.root as any).$jazz.set(
+      "notificationPrefs",
+      co
+        .map({ sound: z.boolean(), browser: z.boolean() })
+        .create({ sound: false, browser: false }, { owner: me }),
     );
   }
 
