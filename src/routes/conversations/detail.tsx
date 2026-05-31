@@ -38,6 +38,7 @@ import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
+import { markRead } from "@/jazz/notifications";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +47,12 @@ export function ConversationDetailRoute() {
   const me = useAccount(JazzMessangerAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true }, knownConversations: true },
+      // Slice 8: lastReadAt is required for markRead to write the cutoff.
+      root: {
+        contactBook: { $each: true },
+        knownConversations: true,
+        lastReadAt: true,
+      },
     },
   });
 
@@ -59,6 +65,15 @@ export function ConversationDetailRoute() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageCount]);
+
+  // Slice 8: mark conversation read on mount + whenever its message count
+  // grows while the route is mounted. Per spec §2.4: writes
+  // max(Date.now(), latestSeenMessageSentAt + 1) for clock-skew safety.
+  useEffect(() => {
+    if (me.$isLoaded && conversation && id) {
+      markRead(me as any, id);
+    }
+  }, [me.$isLoaded, conversation, id, messageCount]);
 
   // ---- derived values (safe to call before early returns) ----
 

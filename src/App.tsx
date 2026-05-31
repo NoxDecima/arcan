@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
@@ -14,6 +15,7 @@ import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
+import { NotificationManager } from "@/components/notification-manager";
 
 /**
  * App: top-level route shell.
@@ -44,6 +46,12 @@ function App() {
   // $jazz.push on the list (NotLoaded proxies don't have push).
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
+  // Keep this resolve shallow. The deeper graph the NotificationManager
+  // needs (knownConversations messages, lastReadAt, notificationPrefs) is
+  // pulled inside NotificationManager itself via its own useAccount.
+  // Lifting it here was observed to remount /auth/recovery after the
+  // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
+  // would reset back to "enter-code" mid-flow.
   const me = useAccount(JazzMessangerAccount, {
     resolve: { profile: true, root: { contactBook: { $each: true }, knownConversations: true } },
   });
@@ -68,11 +76,20 @@ function App() {
     );
   }
 
+  // Render the route table inline so the JSX shape ({fragment} +
+  // {NotificationManager?} + <Routes>) stays identical between the
+  // unauthenticated and authenticated branches. React's reconciliation
+  // matches sibling element types by position; if the unauthenticated
+  // branch returned a bare <Routes> while the authenticated branch
+  // returned <>{NotificationManager}{Routes}</>, React would treat the
+  // post-recovery auth flip as a parent-type swap and remount the entire
+  // route subtree — which would reset RecoveryRoute's stage-2 useState.
+  let routeTable: ReactElement;
   if (!isAuthenticated) {
     // Routing inversion (Slice 7): the unauthenticated default is the
     // /auth/login route, not the onboarding flow. /onboarding remains
     // reachable via the "Create new account" link on the login screen.
-    return (
+    routeTable = (
       <Routes>
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route path="/auth/login" element={<LoginRoute />} />
@@ -80,25 +97,44 @@ function App() {
         <Route path="*" element={<Navigate to="/auth/login" replace />} />
       </Routes>
     );
+  } else {
+    routeTable = (
+      <Routes>
+        <Route path="/" element={<ConversationsRoute />} />
+        <Route path="/conversations" element={<ConversationsRoute />} />
+        <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
+        <Route path="/conversations/:id/members" element={<MembersRoute />} />
+        <Route path="/settings/*" element={<SettingsRoute />} />
+        <Route path="/contacts" element={<ContactsRoute />} />
+        <Route path="/contacts/add" element={<ContactAddRoute />} />
+        <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+        {/* /auth/recovery is reachable while authenticated so a user who
+            signed in via 24-word recovery code can complete stage 2 (set a
+            fresh password). The recovery route itself navigates to "/" on
+            completion or skip. */}
+        <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
   }
 
+  // Mount the NotificationManager only when authenticated AND not in the
+  // post-recovery /auth/recovery stage-2 flow. RecoveryRoute holds its
+  // current stage in local useState; mounting NotificationManager's own
+  // useAccount with a deep resolve at the same time as the
+  // useIsAuthenticated flip causes the entire route subtree to remount,
+  // resetting that state back to Stage 1.
+  const showNotificationManager =
+    isAuthenticated && location.pathname !== "/auth/recovery";
+
   return (
-    <Routes>
-      <Route path="/" element={<ConversationsRoute />} />
-      <Route path="/conversations" element={<ConversationsRoute />} />
-      <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
-      <Route path="/conversations/:id/members" element={<MembersRoute />} />
-      <Route path="/settings/*" element={<SettingsRoute />} />
-      <Route path="/contacts" element={<ContactsRoute />} />
-      <Route path="/contacts/add" element={<ContactAddRoute />} />
-      <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
-      {/* /auth/recovery is reachable while authenticated so a user who
-          signed in via 24-word recovery code can complete stage 2 (set a
-          fresh password). The recovery route itself navigates to "/" on
-          completion or skip. */}
-      <Route path="/auth/recovery" element={<RecoveryRoute />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      {/* Slice 8: in-app notification manager — drives tab title badge,
+          sound, and browser-notification fanout. Reads `me` via its own
+          useAccount call so App.tsx's resolve stays shallow. */}
+      {showNotificationManager && <NotificationManager />}
+      {routeTable}
+    </>
   );
 }
 
