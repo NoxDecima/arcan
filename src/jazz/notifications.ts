@@ -1,3 +1,4 @@
+import { co, z } from "jazz-tools";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 
 /**
@@ -43,7 +44,7 @@ export function getUnreadCount(
  * floor makes the invariant explicit).
  */
 export function markRead(me: any, conversationID: string): void {
-  if (!me?.root?.lastReadAt?.$jazz?.set) return;
+  if (!me?.root?.$jazz?.set) return;
   const conv = (me.root.knownConversations ?? []).find(
     (c: any) => c?.$jazz?.id === conversationID,
   );
@@ -56,5 +57,19 @@ export function markRead(me: any, conversationID: string): void {
     }
   }
   const cutoff = Math.max(Date.now(), latestSentAt + 1);
+
+  // Self-heal: if me.root.lastReadAt is missing (migration race or
+  // never-ran), create the record inline with this entry rather than
+  // silently no-op'ing. Otherwise the user opens a conversation, sees
+  // the badge persist, and concludes the feature is broken.
+  if (!me.root.lastReadAt?.$jazz?.set) {
+    me.root.$jazz.set(
+      "lastReadAt",
+      co
+        .record(z.string(), z.number())
+        .create({ [conversationID]: cutoff }, { owner: me }),
+    );
+    return;
+  }
   me.root.lastReadAt.$jazz.set(conversationID, cutoff);
 }

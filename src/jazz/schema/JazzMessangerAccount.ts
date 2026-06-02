@@ -173,14 +173,39 @@ export const JazzMessangerAccount = co.account({
   // Both fields are Slice 8 additions; pre-Slice-8 accounts have me.root
   // but neither field. Same guard pattern as the knownConversations
   // backfill — runs only when me.root is a fully-loaded CoMap.
+  //
+  // For lastReadAt: seed with per-conversation latest-message timestamps
+  // so the user's existing conversations don't all appear unread on first
+  // sign-in post-migration. The user effectively "read everything that
+  // existed at migration time"; only newer messages count as unread.
+  // Empty conversations (or those whose messages aren't yet resolved
+  // when the migration runs) default to Date.now() — same effect.
   if (
     me.root &&
     !(me.root as any).lastReadAt &&
     typeof (me.root as any).$jazz?.set === "function"
   ) {
+    const initialLastRead: Record<string, number> = {};
+    const knownConvs = (me.root as any).knownConversations ?? [];
+    const now = Date.now();
+    for (const conv of knownConvs) {
+      const cid = conv?.$jazz?.id;
+      if (typeof cid !== "string") continue;
+      let latest = 0;
+      for (const m of conv?.messages ?? []) {
+        const ts =
+          m?.sentAt instanceof Date
+            ? m.sentAt.getTime()
+            : new Date(m?.sentAt ?? 0).getTime();
+        if (ts > latest) latest = ts;
+      }
+      initialLastRead[cid] = latest > 0 ? latest : now;
+    }
     (me.root as any).$jazz.set(
       "lastReadAt",
-      co.record(z.string(), z.number()).create({} as Record<string, number>, { owner: me }),
+      co
+        .record(z.string(), z.number())
+        .create(initialLastRead, { owner: me }),
     );
   }
   if (

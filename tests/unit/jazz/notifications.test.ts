@@ -19,6 +19,26 @@ vi.mock("@/jazz/messages", () => ({
   getAuthorAccountIDFromMessage: (m: any) => m?._testAuthor,
 }));
 
+// Stub co.record's .create so the self-heal path in markRead doesn't
+// need a real Jazz Group/Account context. We assert the call shape, not
+// the actual CoMap internals.
+vi.mock("jazz-tools", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jazz-tools")>();
+  return {
+    ...actual,
+    co: {
+      ...actual.co,
+      record: () => ({
+        create: (data: Record<string, number>) => ({
+          ...data,
+          __isStubbedCoRecord: true,
+          $jazz: { set: vi.fn() },
+        }),
+      }),
+    },
+  };
+});
+
 describe("getUnreadCount", () => {
   const myID = "co_zMe";
 
@@ -91,6 +111,7 @@ describe("markRead", () => {
 
     const me = {
       root: {
+        $jazz: { set: vi.fn() },
         lastReadAt: { $jazz: { set: setSpy } },
         knownConversations: [
           {
@@ -117,6 +138,7 @@ describe("markRead", () => {
 
     const me = {
       root: {
+        $jazz: { set: vi.fn() },
         lastReadAt: { $jazz: { set: setSpy } },
         knownConversations: [
           {
@@ -133,10 +155,47 @@ describe("markRead", () => {
     Date.now = oldNow;
   });
 
-  test("no-op when me.root.lastReadAt missing", () => {
+  test("no-op when me.root itself isn't a writable CoMap", () => {
+    // markRead requires at minimum me.root.$jazz.set to be a function;
+    // without it we can't self-heal or write. Defensive guard.
     expect(() => markRead({ root: {} } as any, "conv-X")).not.toThrow();
     expect(() => markRead({} as any, "conv-X")).not.toThrow();
     expect(() => markRead(null as any, "conv-X")).not.toThrow();
+  });
+
+  test("self-heals when me.root.lastReadAt is missing", () => {
+    // Migration race: me.root exists and is writable, but lastReadAt
+    // hasn't been populated yet. markRead should create the record
+    // inline rather than silently no-op'ing — otherwise the user opens
+    // a conversation and the badge persists forever.
+    const rootSetSpy = vi.fn();
+    const oldNow = Date.now;
+    Date.now = () => 5000;
+
+    const me = {
+      root: {
+        $jazz: { set: rootSetSpy },
+        // lastReadAt deliberately missing
+        knownConversations: [
+          {
+            $jazz: { id: "conv-X" },
+            messages: [{ sentAt: new Date(1000) }],
+          },
+        ],
+      },
+    } as any;
+
+    markRead(me, "conv-X");
+
+    // me.root.$jazz.set should have been called with "lastReadAt" + a
+    // freshly-created co.record holding our entry
+    expect(rootSetSpy).toHaveBeenCalledTimes(1);
+    expect(rootSetSpy.mock.calls[0][0]).toBe("lastReadAt");
+    // The value is a jazz CoMap instance; just sanity-check it's an object
+    expect(rootSetSpy.mock.calls[0][1]).toBeTruthy();
+    expect(typeof rootSetSpy.mock.calls[0][1]).toBe("object");
+
+    Date.now = oldNow;
   });
 
   test("conversation not in knownConversations → writes Date.now()", () => {
@@ -146,6 +205,7 @@ describe("markRead", () => {
 
     const me = {
       root: {
+        $jazz: { set: vi.fn() },
         lastReadAt: { $jazz: { set: setSpy } },
         knownConversations: [],
       },
