@@ -34,13 +34,24 @@ export const JazzMessangerAccountRoot = co.map({
   knownConversations: co.list(Conversation),
   // Slice 8 — per-conversation read cutoff (ms epoch). Keys are
   // Conversation IDs; absent keys mean "never opened" (all unread).
-  lastReadAt: co.record(z.string(), z.number()),
+  //
+  // OPTIONAL because pre-Slice-8 accounts in production don't have this
+  // field. Jazz validates required refs strictly at resolve time, BEFORE
+  // withMigration's backfill writes propagate to the subscription view —
+  // marking the field required broke existing accounts on sign-in. The
+  // backfill below is now a best-effort upgrade (populates the field when
+  // missing so subsequent writes have somewhere to land) rather than a
+  // load-blocker.
+  lastReadAt: co.record(z.string(), z.number()).optional(),
   // Slice 8 — per-account notification preferences. Both default to
   // false (off) until the user explicitly enables.
-  notificationPrefs: co.map({
-    sound: z.boolean(),
-    browser: z.boolean(),
-  }),
+  // OPTIONAL for the same reason as lastReadAt above.
+  notificationPrefs: co
+    .map({
+      sound: z.boolean(),
+      browser: z.boolean(),
+    })
+    .optional(),
 });
 
 export const JazzMessangerAccount = co.account({
