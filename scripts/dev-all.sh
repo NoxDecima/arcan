@@ -103,5 +103,5 @@ exec npx --no-install concurrently \
   -c "cyan,magenta,green" \
   --kill-others-on-fail \
   "npm run sync" \
-  "cd auth-server && PORT=${AUTH_PORT} npx tsx src/index.ts" \
+  "PORT=${AUTH_PORT} npm run auth" \
   "npx vite --host 0.0.0.0"
