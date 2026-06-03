@@ -5,7 +5,7 @@ import { editMessage, deleteMessage } from "@/jazz/messages";
 import { AttachmentTile } from "@/components/attachment-tile";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { Avatar } from "@/components/avatar";
-import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
+import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 
 interface MessageBubbleProps {
   message: any;
@@ -40,6 +40,24 @@ export function MessageBubble({
     };
   }, [lightboxSrc]);
 
+  // Avatar resolution: try the local fast path first (self only — the
+  // group-member branch in resolveAvatarFileBlob is unreliable for remote
+  // accounts because Jazz doesn't deeply auto-load nested refs from
+  // peer-fetched CoValues). For non-self authors, fall back to the
+  // reactive useRemoteAvatar which explicitly deep-resolves the FileBlob.
+  // Both hook calls must happen unconditionally (Rules of Hooks); the
+  // null-arg to useRemoteAvatar is a documented "skip the subscription"
+  // signal so we never fetch twice.
+  const isSelfAuthor = !!authorAccountID && authorAccountID === me?.$jazz?.id;
+  const localAuthorAvatar =
+    isSelfAuthor && authorAccountID
+      ? resolveAvatarFileBlob({ accountID: authorAccountID, me, group })
+      : undefined;
+  const remoteAuthorAvatar = useRemoteAvatar(
+    !isSelfAuthor && authorAccountID ? authorAccountID : null,
+  );
+  const authorAvatar = localAuthorAvatar ?? remoteAuthorAvatar;
+
   if (!authorAccountID) {
     return (
       <div
@@ -65,11 +83,7 @@ export function MessageBubble({
         data-testid="message-deleted"
       >
         <Avatar
-          src={
-            authorAccountID
-              ? resolveAvatarFileBlob({ accountID: authorAccountID, me, group })
-              : undefined
-          }
+          src={authorAvatar}
           initials={authorDisplayName}
           size="sm"
           loadAs={me}
@@ -111,9 +125,7 @@ export function MessageBubble({
     setLightboxSrc(null);
   }
 
-  const authorAvatar = authorAccountID
-    ? resolveAvatarFileBlob({ accountID: authorAccountID, me, group })
-    : undefined;
+  // authorAvatar already computed above (see Avatar resolution block).
 
   return (
     <div

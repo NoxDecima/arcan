@@ -75,10 +75,22 @@ export function resolveAvatarFileBlob(args: {
  * contact row is still loading).
  */
 export function useRemoteAvatar(accountID: string | null | undefined): any | undefined {
+  // Critical: deep-resolve `avatar` (not just `profile: true`). For the
+  // SELF profile Jazz eagerly loads everything from the local node, so a
+  // shallow profile resolve appears to work — but for REMOTE profiles
+  // the FileBlob ref under `profile.avatar` stays NotLoaded until the
+  // resolve query explicitly fetches it. Without deep-loading here,
+  // `account.profile.avatar` is undefined / a marker, and Avatar.tsx
+  // can't read `.data.$jazz.id` to trigger its loadAsBlob.
+  //
+  // We resolve the FileBlob itself (one level deep). The nested FileStream
+  // under `avatar.data` stays a ref; Avatar.tsx's useEffect imperatively
+  // loadAsBlob's it once it has the streamID, which works as long as the
+  // FileBlob itself is loaded.
   const account = useCoState(
     JazzMessangerAccount,
     accountID as any,
-    { resolve: { profile: true } },
+    { resolve: { profile: { avatar: true } } },
   );
   return (account as any)?.profile?.avatar ?? undefined;
 }

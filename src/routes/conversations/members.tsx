@@ -34,7 +34,86 @@ import {
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
-import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
+import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+
+/**
+ * Per-row component so each member row can call its own useRemoteAvatar
+ * hook. For SELF, we resolve via the local fast path (me.profile.avatar
+ * is already loaded). For OTHER members, the static resolver's group-
+ * direct-member branch is unreliable (Jazz doesn't deeply auto-load
+ * nested refs from peer-fetched CoValues), so we explicitly subscribe
+ * to the remote account's profile.avatar via useRemoteAvatar.
+ */
+function MemberRow(props: {
+  member: { accountID: string; displayName: string; role: "writer" | "admin" };
+  isMe: boolean;
+  me: any;
+  group: any;
+  iAmAdmin: boolean;
+  actionInProgress: boolean;
+  onPromote: () => void;
+  onRemove: () => void;
+}) {
+  const { member, isMe, me, group, iAmAdmin, actionInProgress, onPromote, onRemove } = props;
+  const localAvatar = isMe
+    ? resolveAvatarFileBlob({ accountID: member.accountID, me, group })
+    : undefined;
+  const remoteAvatar = useRemoteAvatar(isMe ? null : member.accountID);
+  const avatar = localAvatar ?? remoteAvatar;
+
+  return (
+    <li
+      className="flex items-center gap-3 px-3 py-2 rounded hover:bg-accent"
+      data-testid={`member-row-${member.accountID}`}
+    >
+      <Avatar
+        src={avatar}
+        initials={member.displayName[0] ?? "?"}
+        size="sm"
+        loadAs={me}
+        data-testid={`member-avatar-${member.accountID}`}
+      />
+
+      <span className="flex-1 text-sm font-medium text-gray-900 truncate">
+        {member.displayName}
+        {isMe && (
+          <span className="ml-1 text-xs text-muted-foreground">(you)</span>
+        )}
+      </span>
+
+      <RolePill role={member.role} />
+
+      {iAmAdmin && !isMe && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {member.role === "writer" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs h-7 px-2"
+              onClick={onPromote}
+              disabled={actionInProgress}
+              data-testid={`promote-${member.accountID}`}
+            >
+              Promote
+            </Button>
+          )}
+          {member.role === "writer" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
+              onClick={onRemove}
+              disabled={actionInProgress}
+              data-testid={`remove-${member.accountID}`}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
 
 export function MembersRoute() {
   const { id } = useParams<{ id: string }>();
@@ -333,65 +412,19 @@ export function MembersRoute() {
         {/* Member list */}
         <div className="flex-1 overflow-y-auto p-4">
           <ul className="space-y-1" data-testid="members-list">
-            {rawMembers.map((member) => {
-              const isMe = member.accountID === myAccountID;
-              return (
-                <li
-                  key={member.accountID}
-                  className="flex items-center gap-3 px-3 py-2 rounded hover:bg-accent"
-                  data-testid={`member-row-${member.accountID}`}
-                >
-                  <Avatar
-                    src={resolveAvatarFileBlob({ accountID: member.accountID, me, group })}
-                    initials={member.displayName[0] ?? "?"}
-                    size="sm"
-                    loadAs={me}
-                    data-testid={`member-avatar-${member.accountID}`}
-                  />
-
-                  {/* Display name */}
-                  <span className="flex-1 text-sm font-medium text-gray-900 truncate">
-                    {member.displayName}
-                    {isMe && (
-                      <span className="ml-1 text-xs text-muted-foreground">(you)</span>
-                    )}
-                  </span>
-
-                  {/* Role badge */}
-                  <RolePill role={member.role} />
-
-                  {/* Admin actions (only for other members, only if I'm admin) */}
-                  {iAmAdmin && !isMe && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {member.role === "writer" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs h-7 px-2"
-                          onClick={() => void handlePromote(member.accountID)}
-                          disabled={actionInProgress}
-                          data-testid={`promote-${member.accountID}`}
-                        >
-                          Promote
-                        </Button>
-                      )}
-                      {member.role === "writer" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
-                          onClick={() => void handleRemove(member.accountID)}
-                          disabled={actionInProgress}
-                          data-testid={`remove-${member.accountID}`}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
+            {rawMembers.map((member) => (
+              <MemberRow
+                key={member.accountID}
+                member={member}
+                isMe={member.accountID === myAccountID}
+                me={me}
+                group={group}
+                iAmAdmin={iAmAdmin}
+                actionInProgress={actionInProgress}
+                onPromote={() => void handlePromote(member.accountID)}
+                onRemove={() => void handleRemove(member.accountID)}
+              />
+            ))}
           </ul>
 
           {rawMembers.length === 0 && (
