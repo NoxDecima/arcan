@@ -48,4 +48,21 @@ describe("JazzMessangerAccount schema", () => {
     expect(me.root).toBeDefined();
     expect(me.root).not.toBeNull();
   });
+
+  // The migration self-register block is the sole writer of the signup
+  // device's DeviceRecord. Asserting "exactly one" guards against future
+  // refactors that might re-introduce a duplicate push (e.g. wiring up an
+  // initiator-side pre-registration during pairing).
+  it("signup produces exactly one DeviceRecord (self-register is idempotent)", async () => {
+    const me = await createJazzTestAccount({
+      AccountSchema: JazzMessangerAccount,
+      creationProps: { name: "Test User" },
+      isCurrentActiveAccount: true,
+    });
+
+    const loaded = await me.$jazz.ensureLoaded({
+      resolve: { root: { devices: { $each: true } } },
+    });
+    expect(loaded.root.devices.length).toBe(1);
+  });
 });

@@ -12,8 +12,8 @@ import { createAccount, getPairingUrl } from "./helpers";
  *   2. A pairs C (third device) — this was the failing scenario before the fix
  *
  * Both B and C should land on home showing the same display name as A.
- * A's Settings → Devices should show at least 2 entries (the original device
- * registered on home mount + potentially auto-registered devices).
+ * A's Settings → Devices should show 3 entries (the original device + the two
+ * paired devices that self-register via the migration on first startup).
  */
 test("pair two devices back-to-back from same initiator", async ({ browser }) => {
   const ctxA = await browser.newContext();
@@ -82,14 +82,17 @@ test("pair two devices back-to-back from same initiator", async ({ browser }) =>
           timeout: 15_000,
         });
 
-        // Verify A's Settings → Devices shows at least 2 entries
+        // Verify A's Settings → Devices shows all 3 devices.
+        // Each responder self-registers on first migration after authenticate;
+        // sync propagates the new DeviceRecord back to A within seconds.
         await pageA.goto("/settings");
         await expect(pageA.getByTestId("device-list")).toBeVisible({ timeout: 10_000 });
-        const deviceItems = pageA.getByTestId("device-list").locator("li");
-        const deviceCount = await deviceItems.count();
-        // The original device was registered on home mount; expect at least 1 visible entry
-        // (the responder is not auto-registered, which is a known limitation)
-        expect(deviceCount).toBeGreaterThanOrEqual(1);
+        await expect
+          .poll(
+            async () => pageA.getByTestId("device-list").locator("li").count(),
+            { timeout: 15_000 },
+          )
+          .toBe(3);
       } finally {
         await ctxC.close();
       }

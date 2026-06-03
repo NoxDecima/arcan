@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased] — Post-Slice-8 fixes
+
+### Fixed
+- Paired devices now appear in Settings → Devices. The migration's root-init
+  branch was the only writer of `DeviceRecord`s, so devices that authenticate
+  against an existing root (QR pairing, future passphrase-restore-on-new-
+  browser, etc.) were never registered — the responder side of the pairing
+  flow stopped at `authenticate()` and never wrote to `me.root.devices`. The
+  fix moves device registration into a self-register block inside
+  `withMigration` that runs on every node startup, idempotent on
+  `sessionFingerprint`. The signup device is now registered through the same
+  path (the previous explicit push in the root-init branch was removed).
+  Resolves the Slice 2 known limitation *"The responder device is not
+  automatically registered as a DeviceRecord after QR pairing"*.
+- Settings → Devices marks the current device with a "This device" badge.
+
+### Known follow-up
+- Logout + sign-in on the same browser rotates the Jazz `SessionID`, so the
+  self-register block would create a second `DeviceRecord` for the same
+  physical device. Soft-revoke covers cleanup; a future change can match on
+  a coarser fingerprint (e.g. `(accountID, navigator-derived UA hash)`).
+
 ## [Unreleased] — Slice 8: In-App Notifications
 
 ### Added

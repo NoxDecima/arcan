@@ -69,8 +69,16 @@ export function DevicesSection() {
             return (
               <li key={idx} className="px-4 py-3 flex items-center justify-between gap-2">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-gray-800">
+                  <span className="text-sm font-medium text-gray-800 flex items-center gap-2">
                     {device.label}
+                    {isCurrentDevice && (
+                      <span
+                        data-testid={`device-current-badge-${idx}`}
+                        className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                      >
+                        This device
+                      </span>
+                    )}
                   </span>
                   <span className="text-xs text-gray-500">
                     Added{" "}

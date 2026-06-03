@@ -125,28 +125,8 @@ export const JazzMessangerAccount = co.account({
         { owner: me },
       ),
     );
-
-    // Add a device record for the device on which the account was created.
-    // This runs only once (guarded by the has("root") check above).
-    // sessionFingerprint uses the Jazz SessionID, which is stable for the
-    // current device+account pair across page reloads (until local storage
-    // is cleared or the user logs out). See src/auth/session.ts.
-    const now = new Date();
-    const ua =
-      typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
-    const label = deriveDeviceLabel(ua);
-    devices.$jazz.push(
-      DeviceRecord.create(
-        {
-          label,
-          addedAt: now,
-          lastSeenAt: now,
-          sessionFingerprint: getCurrentSessionFingerprint(me),
-          revoked: false,
-        },
-        { owner: me },
-      ),
-    );
+    // First DeviceRecord for the signup device is pushed by the self-register
+    // block (step 2d) below — same code path used for paired devices.
   }
 
   // -- 2b. knownConversations backfill (existing accounts) --
@@ -219,6 +199,49 @@ export const JazzMessangerAccount = co.account({
         .map({ sound: z.boolean(), browser: z.boolean() })
         .create({ sound: false, browser: false }, { owner: me }),
     );
+  }
+
+  // -- 2d. Self-register the current device's session --
+  // Runs on every node startup. The root-init branch above pushes a
+  // DeviceRecord only at account creation, so devices paired later (via
+  // QR pairing or any future onboarding flow that authenticates against
+  // an existing root) would otherwise never appear in Settings → Devices.
+  //
+  // Idempotent: matches by sessionFingerprint, which is stable per
+  // (device + account + localStorage) per src/auth/session.ts. Skips if
+  // the current session already has a record.
+  //
+  // Awaits an explicit ensureLoaded so we can safely iterate `devices`
+  // and push to it — without this the list may be a NotLoaded proxy at
+  // migration time, leading to a false "no existing record" read and a
+  // duplicate push on the next startup.
+  try {
+    const loaded = await me.$jazz.ensureLoaded({
+      resolve: { root: { devices: { $each: true } } },
+    });
+    const sid = getCurrentSessionFingerprint(me);
+    const devices = loaded.root.devices;
+    const already = devices.find((d) => d?.sessionFingerprint === sid);
+    if (!already) {
+      const now = new Date();
+      const ua =
+        typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
+      devices.$jazz.push(
+        DeviceRecord.create(
+          {
+            label: deriveDeviceLabel(ua),
+            addedAt: now,
+            lastSeenAt: now,
+            sessionFingerprint: sid,
+            revoked: false,
+          },
+          { owner: me },
+        ),
+      );
+    }
+  } catch (e) {
+    console.warn("[devices] self-register skipped:", e);
+    // Non-fatal: the migration runs again on next startup and will retry.
   }
 
   // -- 3. Inbox initialization --

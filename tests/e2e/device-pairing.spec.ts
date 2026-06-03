@@ -50,9 +50,16 @@ test("device pairing flow", async ({ browser }) => {
         timeout: 15_000,
       });
 
-      // Note: the current implementation does not auto-register a DeviceRecord
-      // for the responder after pairing (tracked as a known limitation).
-      // The pairing itself (same account, same display name) is the acceptance criterion.
+      // After pairing, the responder's device self-registers via the migration
+      // self-register block. Both A's and B's device lists should show 2 entries
+      // (the original device + the newly paired one).
+      await pageA.goto("/settings");
+      await expect
+        .poll(
+          async () => pageA.getByTestId("device-list").locator("li").count(),
+          { timeout: 15_000 },
+        )
+        .toBe(2);
     } finally {
       await ctxB.close();
     }
