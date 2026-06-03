@@ -23,6 +23,14 @@
 #                            production default of 5 so e2e-style rapid
 #                            testing doesn't trip 429s).
 #   AUTH_RATE_LIMIT_WINDOW   Rate-limit window in seconds. Default: 60.
+#   BETTER_AUTH_TRUSTED_ORIGINS
+#                            Comma-separated allowlist of origins Better
+#                            Auth treats as trusted for CSRF / OAuth
+#                            callback purposes. Default trust covers the
+#                            BETTER_AUTH_URL origin; add tailnet HTTPS
+#                            origins here when accessing via Tailscale
+#                            Serve. dev-all.sh sets this automatically.
+#                            Read natively by Better Auth (no code change).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

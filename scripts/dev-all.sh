@@ -62,6 +62,12 @@ if [ -n "$TS_SERVE_URL" ]; then
   TS_SERVE_HOST="${TS_SERVE_URL#https://}"
   TS_SERVE_HOST="${TS_SERVE_HOST%%/*}"
   export VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS:-${TS_SERVE_HOST}}"
+  # Also extend Better Auth's trusted-origins allowlist with the tailnet
+  # HTTPS origin. Not strictly required for email/password flows (BA
+  # enforces trustedOrigins only on OAuth callbacks, and our /api/auth
+  # fetches are same-origin via Vite's proxy), but cheap defense-in-depth
+  # that makes OAuth integration painless when NOX-30 lands.
+  export BETTER_AUTH_TRUSTED_ORIGINS="${BETTER_AUTH_TRUSTED_ORIGINS:-${TS_SERVE_URL}}"
 elif [ -n "$TS_IP" ]; then
   export VITE_SYNC_URL="ws://${TS_IP}:4200"
 else
