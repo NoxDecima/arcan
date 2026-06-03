@@ -1,8 +1,19 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Diff tracker that detects per-conversation message-count increases and
- * fires a callback for each new arrival.
+ * Diff tracker that detects per-conversation UNREAD-count increases and
+ * fires a callback for each new arrival worth notifying about.
+ *
+ * Semantic: fires when unread > prev_unread for a given conversation.
+ * "Unread grew" captures "a new message I haven't read arrived from
+ * someone else" precisely:
+ *   - Self-sent messages bump messageCount but NOT unread (getUnreadCount
+ *     excludes own messages) → no fire. This matters when the same
+ *     account has multiple tabs open: sending in tab A must not trigger
+ *     a notification sound in tab B.
+ *   - Opening the conversation runs markRead → cutoff advances → unread
+ *     drops → no fire (the unread > prev_unread guard).
+ *   - A new foreign message arrives → unread grows → fire.
  *
  * Design notes
  * ------------
@@ -17,7 +28,11 @@ import { useEffect, useRef } from "react";
  *
  * A conversation is considered "new" on its first observation — we have
  * no baseline to compare against, so we don't fire. Only subsequent
- * growth triggers the callback.
+ * unread growth triggers the callback.
+ *
+ * The `messageCount` field is kept in the input shape for callers that
+ * also want it elsewhere (e.g. for the tab-title aggregate), but the
+ * trigger logic uses `unread` only.
  */
 export function useNewMessageEvents(args: {
   conversations: Array<{
@@ -31,18 +46,18 @@ export function useNewMessageEvents(args: {
     conversationLabel: string;
   }) => void;
 }): void {
-  const prevCounts = useRef<Map<string, number>>(new Map());
+  const prevUnread = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     for (const c of args.conversations) {
-      const prev = prevCounts.current.get(c.id);
-      if (prev !== undefined && c.messageCount > prev && c.unread > 0) {
+      const prev = prevUnread.current.get(c.id);
+      if (prev !== undefined && c.unread > prev) {
         args.onNewMessage({
           conversationID: c.id,
           conversationLabel: c.label,
         });
       }
-      prevCounts.current.set(c.id, c.messageCount);
+      prevUnread.current.set(c.id, c.unread);
     }
   });
 }
