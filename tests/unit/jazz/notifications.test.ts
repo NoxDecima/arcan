@@ -101,6 +101,37 @@ describe("getUnreadCount", () => {
     } as any;
     expect(getUnreadCount(conv, 0, myID)).toBe(1);
   });
+
+  test("in-flight message (undefined sentAt + undefined author) is NOT counted", () => {
+    // Regression: when a message arrives via Jazz sync, it can briefly
+    // appear in conversation.messages BEFORE its first transaction is
+    // validated. During that window both `m.sentAt` and `m.$jazz.createdBy`
+    // are undefined. Without defensive guards:
+    //   - new Date(undefined).getTime() yields NaN
+    //   - NaN <= cutoff is false → message slips past the cutoff filter
+    //   - undefined !== myID is true → message slips past the self check
+    //   - → counted as 1 unread → spurious notification on the same
+    //     account's other tabs when the user sends a message.
+    // Both guards (Number.isFinite + authorID == null skip) prevent this.
+    const conv = {
+      messages: [
+        { sentAt: undefined, _testAuthor: undefined },
+      ],
+    } as any;
+    expect(getUnreadCount(conv, 1000, myID)).toBe(0);
+  });
+
+  test("message with valid sentAt but unresolved author is NOT counted", () => {
+    // Subset of the above: a partially-validated message where sentAt is
+    // present but author hasn't been resolved yet. Until we know the
+    // author, treat as "skip" rather than spuriously counting.
+    const conv = {
+      messages: [
+        { sentAt: new Date(2000), _testAuthor: undefined },
+      ],
+    } as any;
+    expect(getUnreadCount(conv, 1000, myID)).toBe(0);
+  });
 });
 
 describe("markRead", () => {

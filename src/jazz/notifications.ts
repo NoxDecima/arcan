@@ -25,8 +25,19 @@ export function getUnreadCount(
       m.sentAt instanceof Date
         ? m.sentAt.getTime()
         : new Date(m.sentAt).getTime();
+    // Defensive: a newly-synced message can briefly have BOTH sentAt
+    // and $jazz.createdBy as undefined while cojson finishes validating
+    // its first transaction. Without the !isFinite guard, new Date(undefined)
+    // yields NaN, NaN <= cutoff is false, and the message slips past the
+    // cutoff filter. Without the author null guard, undefined !== myID is
+    // true and the message also slips past the self check. The two
+    // together mis-count an in-flight self-message as foreign unread,
+    // which fires a spurious notification on tabs of the same account.
+    // See the cross-tab self-send investigation 2026-06-03.
+    if (!Number.isFinite(sentAt)) continue;
     if (sentAt <= cutoff) continue;
     const authorID = getAuthorAccountIDFromMessage(m);
+    if (authorID == null) continue;
     if (authorID === myAccountID) continue;
     count++;
   }
