@@ -43,5 +43,14 @@ export PORT="${PORT:-4300}"
 export AUTH_RATE_LIMIT_MAX="${AUTH_RATE_LIMIT_MAX:-1000}"
 export AUTH_RATE_LIMIT_WINDOW="${AUTH_RATE_LIMIT_WINDOW:-60}"
 
+# Map the shared ALLOWED_ORIGINS env var into Better Auth's native
+# BETTER_AUTH_TRUSTED_ORIGINS unless the caller set the latter explicitly.
+# BA reads BETTER_AUTH_TRUSTED_ORIGINS natively from process.env at
+# getTrustedOrigins() time — comma-separated origins. Same format as
+# ALLOWED_ORIGINS, so straight pass-through.
+if [ -z "${BETTER_AUTH_TRUSTED_ORIGINS:-}" ] && [ -n "${ALLOWED_ORIGINS:-}" ]; then
+  export BETTER_AUTH_TRUSTED_ORIGINS="$ALLOWED_ORIGINS"
+fi
+
 cd "$REPO_ROOT/auth-server"
 exec npx tsx src/index.ts

@@ -3,24 +3,40 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 /**
- * Parse the VITE_ALLOWED_HOSTS env var into Vite's server.allowedHosts
- * shape. Lets `scripts/dev-all.sh` (or any caller) expand the default
- * localhost-only host allowlist without hardcoding tailnet names.
+ * Parse the unified ALLOWED_ORIGINS env var into Vite's server.allowedHosts
+ * shape. Same env var is consumed by Better Auth (via auth-server.sh).
  *
- *   VITE_ALLOWED_HOSTS=nox-work.tail06a0b7.ts.net         # one host
- *   VITE_ALLOWED_HOSTS=host-a.ts.net,host-b.ts.net        # multiple
- *   VITE_ALLOWED_HOSTS=.tail06a0b7.ts.net                 # whole tailnet
- *   VITE_ALLOWED_HOSTS=*                                  # allow any
+ * Accepts both full origins ("https://host:port/path") and bare hostnames
+ * ("host", ".host", "*.host"). Schemes + paths are stripped so we end up
+ * with just the hostname that Vite expects.
+ *
+ *   ALLOWED_ORIGINS=https://nox-work.tail06a0b7.ts.net    # one origin
+ *   ALLOWED_ORIGINS=host-a.ts.net,host-b.ts.net           # multiple
+ *   ALLOWED_ORIGINS=.tail06a0b7.ts.net                    # subdomain glob
+ *   ALLOWED_ORIGINS=*                                     # allow any
  *   (unset)                                               # Vite default
+ *
+ * Legacy fallback: VITE_ALLOWED_HOSTS is also honored if ALLOWED_ORIGINS
+ * isn't set, for callers that adopted the older name.
  */
 function parseAllowedHosts(): string[] | true | undefined {
-  const raw = process.env.VITE_ALLOWED_HOSTS;
+  const raw = process.env.ALLOWED_ORIGINS ?? process.env.VITE_ALLOWED_HOSTS;
   if (!raw) return undefined;
   if (raw.trim() === "*") return true;
   const hosts = raw
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((entry) => {
+      // Strip "scheme://" prefix and any "/path" / "?query" tail so we
+      // end up with the bare hostname. Works for full origins, bare
+      // hosts, and subdomain globs ("*.foo", ".foo") alike.
+      let host = entry;
+      const schemeIdx = host.indexOf("://");
+      if (schemeIdx !== -1) host = host.slice(schemeIdx + 3);
+      host = host.split("/")[0].split("?")[0];
+      return host;
+    });
   return hosts.length > 0 ? hosts : undefined;
 }
 

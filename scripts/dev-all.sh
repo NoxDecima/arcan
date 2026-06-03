@@ -55,19 +55,11 @@ fi
 
 if [ -n "$TS_SERVE_URL" ]; then
   unset VITE_SYNC_URL
-  # Vite defaults to localhost-only host allowlist. When Serve proxies
-  # the tailnet hostname, Vite blocks the request unless that host is
-  # explicitly allowed. Extract the host from the Serve URL and let
-  # vite.config.ts's parseAllowedHosts() pick it up.
-  TS_SERVE_HOST="${TS_SERVE_URL#https://}"
-  TS_SERVE_HOST="${TS_SERVE_HOST%%/*}"
-  export VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS:-${TS_SERVE_HOST}}"
-  # Also extend Better Auth's trusted-origins allowlist with the tailnet
-  # HTTPS origin. Not strictly required for email/password flows (BA
-  # enforces trustedOrigins only on OAuth callbacks, and our /api/auth
-  # fetches are same-origin via Vite's proxy), but cheap defense-in-depth
-  # that makes OAuth integration painless when NOX-30 lands.
-  export BETTER_AUTH_TRUSTED_ORIGINS="${BETTER_AUTH_TRUSTED_ORIGINS:-${TS_SERVE_URL}}"
+  # Unified env var: Vite (server.allowedHosts via vite.config.ts) and
+  # Better Auth (BETTER_AUTH_TRUSTED_ORIGINS via auth-server.sh) both
+  # pick this up. Full HTTPS origin works for both — Vite's parser
+  # strips the scheme to get the host, BA accepts the origin natively.
+  export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-${TS_SERVE_URL}}"
 elif [ -n "$TS_IP" ]; then
   export VITE_SYNC_URL="ws://${TS_IP}:4200"
 else
