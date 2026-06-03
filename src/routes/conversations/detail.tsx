@@ -66,14 +66,40 @@ export function ConversationDetailRoute() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageCount]);
 
-  // Slice 8: mark conversation read on mount + whenever its message count
-  // grows while the route is mounted. Per spec §2.4: writes
-  // max(Date.now(), latestSeenMessageSentAt + 1) for clock-skew safety.
+  // Slice 8: mark conversation read when the user is ACTIVELY viewing this
+  // conversation. "Actively viewing" means the route is mounted AND the
+  // tab is visible (document.hidden === false). Gating on document.hidden
+  // matters because lastReadAt syncs across all the user's tabs/devices:
+  // without the gate, having a conversation open in any background tab
+  // would mark messages as read even while the user looks at a different
+  // tab — making the unread badge disappear on the tab they're actually
+  // looking at.
+  //
+  // Two effects: one fires on mount/message-arrival (active tab only),
+  // one fires when the user tabs BACK to a hidden-but-mounted conv.
+  // Per spec §2.4: writes max(Date.now(), latestSeenMessageSentAt + 1)
+  // for clock-skew safety.
   useEffect(() => {
-    if (me.$isLoaded && conversation && id) {
-      markRead(me as any, id);
-    }
+    if (!me.$isLoaded || !conversation || !id) return;
+    if (document.hidden) return;
+    markRead(me as any, id);
   }, [me.$isLoaded, conversation, id, messageCount]);
+
+  useEffect(() => {
+    if (!me.$isLoaded || !conversation || !id) return;
+    // Capture the narrowed id into the closure (TS loses the narrowing
+    // across the inner function boundary otherwise).
+    const convID = id;
+    function onVisibilityChange() {
+      if (!document.hidden) {
+        markRead(me as any, convID);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [me.$isLoaded, conversation, id]);
 
   // ---- derived values (safe to call before early returns) ----
 
