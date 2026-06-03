@@ -55,6 +55,13 @@ fi
 
 if [ -n "$TS_SERVE_URL" ]; then
   unset VITE_SYNC_URL
+  # Vite defaults to localhost-only host allowlist. When Serve proxies
+  # the tailnet hostname, Vite blocks the request unless that host is
+  # explicitly allowed. Extract the host from the Serve URL and let
+  # vite.config.ts's parseAllowedHosts() pick it up.
+  TS_SERVE_HOST="${TS_SERVE_URL#https://}"
+  TS_SERVE_HOST="${TS_SERVE_HOST%%/*}"
+  export VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS:-${TS_SERVE_HOST}}"
 elif [ -n "$TS_IP" ]; then
   export VITE_SYNC_URL="ws://${TS_IP}:4200"
 else
