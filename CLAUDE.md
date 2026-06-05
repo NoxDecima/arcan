@@ -26,9 +26,9 @@ Jazz API surface in use: `docs/jazz-api-notes.md` (verified against jazz-tools 0
 
 ## Issue tracking
 
-Linear: team=Nox project=jazz-messanger
+Linear: team=Nox project=Arcan
 
-(The `followup-tracking` skill resolves to this destination without prompting per the user's global instructions. URL: <https://linear.app/nox-decima/project/jazz-messanger-c718904b5ef5>.)
+(The `followup-tracking` skill resolves to this destination without prompting per the user's global instructions. URL: <https://linear.app/nox-decima/project/arcan-c718904b5ef5>. The project was renamed from "jazz-messanger" to "Arcan" on 2026-06-05; the app rebrand itself is tracked as Unit 5.)
 
 ## Conventions
 

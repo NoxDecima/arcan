@@ -25,8 +25,10 @@ The original rough list (for traceability):
 9. Account QR code / invite valid duration
 10. Better invite duration management in general
 
-These collapse into **four design units**. Items 4, 6, 7, 9, 10 are one subsystem; 5 is its own
-trust surface; 8 is standalone; 1, 2, 3 are conversation display.
+These collapse into **five design units**. Items 4, 6, 7, 9, 10 are one subsystem (Unit 1); item 5 is
+its own trust surface (Unit 2); item 8 is standalone (Unit 3); items 1, 2, 3 are conversation display
+(Unit 4). A fifth unit — a codebase-wide rebrand to the app's permanent name **Arcan** — surfaced
+during brainstorming and is captured as Unit 5.
 
 ---
 
@@ -171,10 +173,38 @@ two dev scripts (`scripts/auth-server.sh`), the `npm run auth` script, `deploy/D
 
 ### Endpoint
 
-`POST /api/feedback` on the `api` service. Payload: **Message** (required), **Attachment** (optional),
-**Email** (optional → reply-to in the issue body), **Category** (optional → Linear label). Creates a
-Linear issue in **team=Nox / project=jazz-messanger**. Token server-side; reuse the existing Caddy
-routing, rate limiting, and deploy.
+`POST /api/feedback` on the `api` service. Token server-side; reuse the existing Caddy routing, rate
+limiting, and deploy.
+
+**Access control (authenticated + rate-limited):** require a valid Better Auth session (the `api`
+service already issues/validates these). Feedback is an in-app action by a signed-in user, so this
+naturally rate-limits per account and blocks drive-by spam against the tracker. Additionally apply a
+per-account/IP cap (belt-and-suspenders) on top of the existing IP-based limiter.
+
+**Submitter email — extracted server-side:** because the request carries a valid session, the `api`
+service looks up the submitter's **verified account email from its own user table** and attaches it to
+the issue as metadata for potential follow-up. The client never sends an email; it's the verified
+account email, not a typed-in value (spoof-proof). Consequently the **optional Email form field is
+dropped** — it would be redundant and ambiguous.
+
+**Form fields:** **Message** (required); **Category** (optional dropdown → **Bug / Improvement /
+Feature**, reusing the existing Nox team labels 1:1); **Attachments** (optional, **any file type**,
+**multiple files, ≤10 MB total**). No email field.
+
+**Attachment pipeline:** client uploads files to `POST /api/feedback` as multipart; the `api` service
+validates the **combined size ≤10 MB** (any MIME type allowed), then uploads each to Linear via
+Linear's attachment-upload flow and links them to the created issue. Upload token/credentials stay
+server-side. (Note: "any file type" makes the endpoint a small authenticated file relay — acceptable
+because it's session-gated and capped; the size limit is the primary abuse guard.)
+
+**Sink — Linear:** creates an issue in **team=Nox / project=Arcan**. The project was renamed from
+"jazz-messanger" to "Arcan" on 2026-06-05 (ID `79d46a12-7563-4e3c-833b-d49531d94bb1` unchanged); URL
+`https://linear.app/nox-decima/project/arcan-c718904b5ef5`. **Arcan is now the single destination for
+all issues** — both user feedback and followup-tracking (the split was rejected). Each feedback issue
+gets the **`Feedback`** label (created 2026-06-05, id `e4c59d7f-2ebb-4ea0-bc37-f4e863b5a694`) plus the
+optional Category label. Issue title: derive from the first line / first ~60 chars of the message
+(prefixed e.g. `[Feedback]`); body carries the full message, the verified submitter email, and
+category.
 
 ### UI-dependency
 
@@ -234,6 +264,31 @@ contact. **Logic lands now; rendering waits for the UI.**
 
 ---
 
+## Unit 5 — Rebrand jazz-messanger → Arcan
+
+*Surfaced during this brainstorming; not in the original ten-item list.*
+
+The app now has a permanent name, **Arcan**, replacing the temporary "jazz-messanger". This unit is a
+codebase-wide pass to find and change references, with one critical distinction:
+
+- **Cosmetic / user-facing strings — change freely:** app title, PWA manifest, `<title>` / meta tags,
+  README and docs prose, `package.json` `name`, repo/dir references, splash/branding copy.
+- **Load-bearing identifiers — change only with migration care:** on a local-first Jazz app, renaming
+  a CoValue **schema** (e.g. `JazzMessangerAccount`, file `src/jazz/schema/JazzMessangerAccount.ts`)
+  or Better Auth keys can **orphan existing stored account data**. These need either a migration path
+  or a deliberate decision to leave the internal identifier as-is while changing only the display name.
+  The rebrand pass must inventory each reference and classify it before changing it.
+
+**Coupling:** overlaps with Unit 3's `auth-server → api` rename (both touch deploy/config). Sequence
+them together to avoid two churns over the same files.
+
+**Already done (2026-06-05):** the Linear project was renamed jazz-messanger → Arcan; `CLAUDE.md`
+Linear destination and the assistant's memory were updated to match.
+
+**Needs its own clarification round + plan** (which identifiers are safe to rename vs. need migration).
+
+---
+
 ## UI-dependency & sequencing summary
 
 | Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
@@ -242,10 +297,13 @@ contact. **Logic lands now; rendering waits for the UI.**
 | 2 · Device pairing approval | ✅ two-phase handshake gating in `pairing.ts` | approval card |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ #2/#3 schema + admin-only writes + rename event; #1 read-semantics change | #1 divider entirely; #2/#3 rendering |
+| 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
 
-**Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency), then the headless
-backbones of Units 1, 2, and 4's read-semantics/schema in parallel with the UI work, filling in each
-visual surface once the refs land. **#1's divider is the one piece deferred entirely to UI time.**
+**Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency) — coordinate its
+`auth-server → api` rename with **Unit 5's** rebrand pass so the deploy/config files are touched once.
+Then the headless backbones of Units 1, 2, and 4's read-semantics/schema in parallel with the UI work,
+filling in each visual surface once the refs land. **#1's divider is the one piece deferred entirely
+to UI time.**
 
 ## Housekeeping note (not part of this work)
 
