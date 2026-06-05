@@ -122,31 +122,114 @@ UI refs.
 *Original item #5.*
 
 Today pairing (`src/jazz/pairing.ts`) transfers the **account secret** through the QR sealed-box
-handshake, so by the time a new device registers it already has full access — an approval tapped
-afterward would be cosmetic. We change the **gating of the existing QR flow** (no new async path):
+handshake — `wrapAccountSecretForResponder` runs the moment the responder writes `responderPubkey`,
+so by the time a new device registers it already has full access; an approval tapped afterward would
+be cosmetic. We change the **gating of the existing QR flow** (no new async path is introduced):
 secrets never seal/transfer until an already-trusted device approves.
 
-**Two-phase handshake:**
+### Three-phase handshake
 
-1. **Present** — the new (blank) device generates its ephemeral keypair and presents itself via the
-   existing `EphemeralPairing` rendezvous, carrying its device info.
-2. **Approve** — an already-trusted device sees an **enriched approval card** and taps Approve.
-3. **Transfer** — only then is the account secret sealed to the new device's pubkey and sent
-   (existing sealed-box mechanism); the device registers. Scanning alone no longer transfers anything.
+1. **Present.** The new (blank) device generates its ephemeral keypair and writes to the existing
+   `EphemeralPairing` rendezvous: `responderPubkey` (as today) **plus** new device-info fields
+   (below). Crucially, this no longer triggers any secret transfer on the initiator side.
+2. **Approve.** An already-trusted device (the QR-shower, or any other device already logged into the
+   same account — since the `EphemeralPairing` CoValue is account-scoped, all logged-in trusted
+   devices see it) sees an **enriched approval card** and taps Approve or Reject.
+3. **Transfer.** Only on approve is the account secret sealed to the new device's ephemeral pubkey
+   and written to `wrappedAccountSecret` via the existing `wrapAccountSecretForResponder`. The new
+   device picks it up, unseals, and authenticates as today. **Scanning alone no longer transfers
+   anything.**
 
-**Approval card fields:** label · browser/OS · first-seen · fingerprint (fingerprint is the
-cryptographically meaningful one). **Approximate location is deferred from v1** — it is derived from
-the device's IP, which is *transport* metadata the server sees in plaintext regardless of payload
-E2EE; it is server-attested and spoofable (VPN / same-region attacker / a lying server), so it adds a
-server-side IP→geo path and a false-confidence risk for a weak signal. The real protection is the
-out-of-band presentation + explicit approve on an already-trusted device.
+### Schema additions to `EphemeralPairing`
 
-**Scope:** change is localized to `src/jazz/pairing.ts` (insert the gate before secret-sealing) plus
-the approval-card UI.
+All new fields are **optional** so backward compatibility is trivial (no migration; pre-rework code
+paths are simply replaced):
+
+- **`responderUserAgent: string`** — raw `navigator.userAgent` from the new device. Label + OS are
+  derived client-side on the trusted device (label via the existing `deriveDeviceLabel`; a simple OS
+  extractor: Windows / macOS / Linux / Android / iOS / Unknown). Keeps schema small; rendering logic
+  colocated on the trusted side.
+- **`responderFirstSeenAt: date`** — `Date.now()` at the moment the responder writes its present.
+  Local clock; rendered as a relative time on the card.
+- **`responderFingerprint: string`** — **SHA-256(`responderPubkey` hex), first 8 hex chars**. The
+  **same value is rendered on both devices**: the new device's "Waiting for approval…" screen and
+  the trusted device's approval card. The user verifies the two match by eye — a physical-presence
+  check (8 hex = 32 bits, sufficient for in-person verification). Cryptographically bound to the
+  handshake's ephemeral key, so a swap would change it.
+- **`approvedAt: date`** — written by the trusted device on approve, **before** writing
+  `wrappedAccountSecret`. State/audit only; the responder reacts to `wrappedAccountSecret`'s
+  presence, not to this field.
+- **`rejectedAt: date`** — written by the trusted device on reject, alongside tombstoning
+  (`expiresAt = now`). Lets the responder distinguish **Rejected** from **Timed out** in its UI.
+
+### Approval card fields (rendered from the schema)
+
+- **Label** — derived from `responderUserAgent` via `deriveDeviceLabel` (e.g. "Firefox browser").
+- **OS** — derived from `responderUserAgent` (Windows / macOS / Linux / Android / iOS / Unknown).
+- **First-seen** — relative time from `responderFirstSeenAt` ("just now", "1 minute ago").
+- **Fingerprint** — `responderFingerprint`, shown verbatim. Same value the new device displays.
+
+### Responder-side state machine
+
+The responder subscribes to the `EphemeralPairing` and renders one of four states based on field
+presence:
+
+| State | Trigger |
+|---|---|
+| Presenting | `responderPubkey` written, nothing else from the trusted side yet → "Waiting for approval on the original device. Fingerprint: `A1B2C3D4`" (example value — the actual 8 hex chars derived from the responder's ephemeral pubkey) |
+| Approved & transferring | `wrappedAccountSecret` set → unseal, authenticate, register device (existing `claimAccountFromPairing` path) |
+| Rejected | `rejectedAt` set → "The request was rejected on the original device." |
+| Timed out | `expiresAt` passed without `wrappedAccountSecret` or `rejectedAt` → "The request timed out — try again." |
+
+### Trusted-side approve / reject actions
+
+- **Approve:** write `approvedAt`, then call the existing `wrapAccountSecretForResponder` (which
+  seals and writes `wrappedAccountSecret`). Two writes; the responder only acts on the second.
+- **Reject:** write `rejectedAt`, then set `expiresAt = now` (tombstone via the existing
+  `tombstonePairing`).
+
+### Race semantics
+
+- **Multiple trusted devices simultaneously approve:** any can approve; CoJSON last-write-wins makes
+  the race benign — `wrappedAccountSecret` ends up with one valid sealed payload either way. This is
+  a useful property, not a bug: if you scan from your laptop while holding your phone, both surfaces
+  show the prompt and either tap completes the flow.
+- **Responder disconnects after presenting:** trusted device may still approve; the responder picks
+  up `wrappedAccountSecret` on reconnect. Local-first behavior; no special handling required.
+- **Two responders scan the same QR** (edge case): `responderPubkey` is a single field — the second
+  scan overwrites the first. Same characteristic as today's implementation; not blocking, may be
+  addressed later (e.g. by rejecting writes after first present).
+
+### Timeout
+
+Reuse the existing `EphemeralPairing.expiresAt` (currently **10 minutes** in
+`createPairingInvite`). The approval gate lives inside that window; no separate approval clock.
+
+### Trust-signal value of approximate location — **deferred from v1**
+
+Approximate location is derived from the device's source IP. IP is *transport* metadata the server
+sees in plaintext on every TLS/WebSocket connection — it is not protected by payload E2EE because
+the server has to see it to route packets. As a security signal it is **weak and spoofable** (VPN /
+same-region attacker / a lying server), risking **false confidence** precisely in the scenario where
+a user would rely on it to spot an intruder. The real protection is the out-of-band QR presentation
++ explicit approve on an already-trusted device. Defer.
+
+### Scope of changes
+
+- `src/jazz/schema/EphemeralPairing.ts` — add the five optional fields above.
+- `src/jazz/pairing.ts` — split the trusted-side flow into `approvePairing()` and `rejectPairing()`
+  helpers; current `wrapAccountSecretForResponder` becomes called from `approvePairing` (not by an
+  automatic effect on `responderPubkey` change).
+- New trusted-side subscription/watcher to surface pending approvals across all logged-in trusted
+  devices.
+- Responder-side state-machine rendering.
+- Update pairing tests to cover the gate, reject, and timeout paths.
 
 ### UI-dependency
 
-Handshake gating logic is buildable/testable headless now; the approval card needs the UI refs.
+Buildable headless now: schema additions, the approve/reject helpers, the watcher, the responder
+state machine, and updated tests. **Needs UI refs:** the approval card, the new device's "Waiting…"
+screen, and surfacing the prompt to other already-logged-in trusted devices.
 
 ---
 
@@ -294,7 +377,7 @@ Linear destination and the assistant's memory were updated to match.
 | Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
 |------|---|---|
 | 1 · Connection subsystem | ✅ `ConnectionRequest`, three channels, approval gate, duration policy, expiry enforcement, return-ack, offline-conversation acceptance test | QR display, requester confirmation screen, pending/invite lists, live approval modal |
-| 2 · Device pairing approval | ✅ two-phase handshake gating in `pairing.ts` | approval card |
+| 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, updated tests | approval card, new-device "Waiting…" screen |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ #2/#3 schema + admin-only writes + rename event; #1 read-semantics change | #1 divider entirely; #2/#3 rendering |
 | 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
