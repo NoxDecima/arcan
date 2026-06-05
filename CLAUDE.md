@@ -14,7 +14,15 @@ Jazz API surface in use: `docs/jazz-api-notes.md` (verified against jazz-tools 0
 
 - Slice 1 (foundation + account creation) — merged, tag `slice-1-complete`.
 - Slice 2 (QR pairing + contact invitations) — merged, tag `slice-2-complete`.
-- Slice 3 (conversations + messaging) — not yet started.
+- Slice 3a (1:1 conversations + messaging) — merged, tag `slice-3a-complete`.
+- Slice 3b (group conversations + member management) — merged, tag `slice-3b-complete`.
+- Slice 3c (post-3b polish) — merged, tag `slice-3c-complete`.
+- Slice 4 (conversation lifecycle: archive + system events) — merged, tag `slice-4-complete`.
+- Slice 5 (inline media + profile avatars) — merged, tag `slice-5-complete`.
+- Slice 6 (Caddy + TLS Docker Compose deploy) — merged, tag `slice-6-complete`.
+- Slice 7 (zero-knowledge email + password auth) — merged, tag `slice-7-complete`.
+- Slice 8 (in-app notifications) — merged, tag `slice-8-complete`.
+- Next: UI rework + supporting features — see `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`.
 
 ## Issue tracking
 
