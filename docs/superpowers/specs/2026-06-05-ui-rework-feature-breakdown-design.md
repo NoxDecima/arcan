@@ -299,51 +299,165 @@ Rename + endpoint + Linear wiring buildable now; only the settings form needs th
 
 *Original items #1, #2, #3.*
 
-### #1 — New-messages indicator (in-conversation unread divider)
+### Data-layer enforcement of admin-only edits (foundation for #2 and #3)
 
-A "↓ new messages" divider rendered at the first unread message (`first message with
-sentAt > lastReadAt`). The backend already has `lastReadAt`; this is **pure render logic — fully
-UI-blocked, defer to the UI refs.**
+Per-field permissions are not a Jazz primitive — a CoMap is one permission domain. Conversation
+members already have write access to the conversation's group (so they can append messages to the
+sidecar lists), so making title/icon admin-only at the data layer requires them to live in a
+**sub-CoMap owned by an admin-write group**, not directly on `Conversation`.
 
-**But** the read semantics it depends on are being changed now (see below), because they affect where
-the divider anchors.
+**New schema — `ConversationMetadata`:**
 
-#### Read semantics change (buildable now)
+```text
+ConversationMetadata = co.map({
+  title: z.string().optional(),
+  icon: ImageDefinition (optional),       // reuse the image storage used for profile avatars (Slice 5)
+})
+```
 
-Today the app marks a conversation read **on open** (`src/routes/conversations/detail.tsx:82-102`:
-marks on mount when visible, re-marks on tab refocus). New rule: **do not mark read on open.** Update
-`lastReadAt[conversation]` on **either**:
+**Group structure for the metadata:**
 
-- **sending a message** in it → `max(now, latest)` (sending implies you're caught up), or
-- **leaving the conversation view** → set to the latest message seen. "Leaving" = **any navigation
-  away** from the conversation view: switching to another conversation, navigating to a
-  non-conversation screen (settings/contacts/list), or closing/backgrounding the tab.
+- The metadata CoMap is owned by a new **`ConversationAdminGroup`** where only the conversation's
+  admins are writers (members mirrored from the conversation group's admin role).
+- The existing **`ConversationGroup`** is added as a **reader parent** of the admin group, so
+  every member of the conversation can *read* the metadata but only admins can *write* it.
+- CoJSON enforces this — a non-admin client physically cannot write `metadata.title` or
+  `metadata.icon`; the write is rejected at the protocol layer. UI gating is a UX nicety, not the
+  security control.
 
-Rationale: marking on open would reset the #1 divider the instant you looked; deferring to leave keeps
-the divider anchored at where you started for the whole reading session, advancing only next time.
+**Reference from `Conversation`:**
 
-**Implementation:** move the mark-read from the mount effect to an unmount/cleanup effect plus a
-send handler; capture the latest-seen message at the moment of leaving.
+- Add an optional `metadata: ConversationMetadata` ref on `Conversation`.
+- Read precedence for the display title: `conversation.metadata?.title` wins; if absent, fall back
+  to the legacy `conversation.title`; if both absent, derive from members (existing
+  `displayName.ts` behavior).
 
-**Badge consequence (assumption — flag to change):** because we no longer mark on open, a conversation
-you're actively viewing could briefly show an unread badge when a new message lands. The
-currently-open conversation **suppresses its own sidebar badge while it's the active view**, so you
-never see "unread" on the chat you're looking at.
+**Migration — lazy, admin-driven:**
+
+- **New conversations** (post-rework): `createGroupConversation` creates `ConversationAdminGroup` +
+  the `metadata` CoMap as part of conversation creation, populating `metadata.title` with whatever
+  title was passed in. The legacy `Conversation.title` is left empty for new conversations.
+- **Existing conversations:** on first admin write to title or icon, the admin client creates the
+  `ConversationAdminGroup` + `metadata` CoMap, copies the current `conversation.title` into
+  `metadata.title`, then performs the requested update. Until that happens, the legacy field is
+  read; this avoids any forced bulk migration.
 
 ### #2 — Conversation icons
 
-Add an image/`FileBlob` ref field on `Conversation`, **for groups**; 1:1s keep borrowing the contact's
-avatar. **Admin-only** to set, enforced at the **data layer** (stored where only Jazz `admin`-role
-members have write access — `directAdminMembers`, `src/jazz/messages.ts:121` — so a non-admin client
-physically cannot change it; UI gating is not relied upon). Fallback when unset: a generated monogram
-from the title. **Schema lands now; rendering waits for the UI.**
+`metadata.icon` (above), for **group conversations**; 1:1s keep borrowing the contact's avatar
+(unchanged). **Constraints:**
+
+- **Types:** image only — PNG, JPEG, WebP.
+- **Size:** raw upload ≤ 5 MB; resized client-side to 256×256 before storing. Reuse the image
+  storage path used for profile avatars (Slice 5 — inline media).
+- **Set/clear:** any conversation admin can set or clear it (data-layer-enforced). Clearing
+  reverts to the monogram fallback.
+
+**Monogram fallback (when unset):** the first 1–2 graphemes of the resolved display title,
+rendered over a deterministic background color computed from a hash of the conversation ID — so the
+same conversation gets the same color across devices and reloads.
+
+Icon changes do **not** emit a `SystemEvent` (kept minimal — title rename does, see below).
 
 ### #3 — Conversation names
 
-Editable **shared group title** (the personal/local-nickname option was explicitly *not* chosen).
-`Conversation.title` already exists; this adds **admin-only** edit access (data-layer enforced, same
-mechanism as #2) plus a rename `SystemEvent` ("Alice renamed the group"). 1:1s keep deriving from the
-contact. **Logic lands now; rendering waits for the UI.**
+`metadata.title` (above), edited by any admin. **Constraints:**
+
+- 1–100 characters after trimming.
+- Cannot be all-whitespace (treated as "clear", which reverts to derived label).
+- Concurrent renames: CoJSON last-write-wins on `metadata.title`. The rename `SystemEvent` log is
+  not a serialization mechanism — see existing `SystemEvent` doc note that it's "for UX clarity,
+  not security."
+
+**`SystemEvent` schema addition:** extend the `kind` enum with **`renamed`**, and add an optional
+`newTitle: z.string()` field. The actor (admin doing the rename) writes the event into the
+conversation's `systemEvents` list with `kind="renamed"`, `actorAccountID`, `occurredAt`, and
+`newTitle`. `targetAccountID` is omitted for renames.
+
+### #1 — New-messages indicator (in-conversation unread divider)
+
+A "↓ new messages" divider rendered at the first unread message. The backend already has
+`lastReadAt`; the divider is **pure render — fully UI-blocked, defer to the UI refs.**
+
+**Divider semantics (locked now, so the UI work knows what to render against):**
+
+- **Anchor:** capture `lastReadAt[conv]` into a React ref at the moment the conversation detail view
+  **mounts**; do not update the anchor while the view is open. (Pairs with the read-semantics change
+  below: since `lastReadAt` no longer advances on open, the anchor stays put for the whole reading
+  session.)
+- **Render:** above the first message whose `sentAt > anchoredLastReadAt`.
+- **Excluded from the calculation:** self-authored messages and `SystemEvent`s — mirrors how
+  `getUnreadCount` in `src/jazz/notifications.ts` already excludes them.
+- **No unread on open** → no divider.
+- **All unread on open** (e.g. brand-new conversation) → divider at top.
+- **New messages arriving while viewing** appear below the divider; the divider does not move and
+  no new divider is inserted.
+- **Auto-scroll on mount:** if any unread on open, scroll to the divider so the user lands at the
+  read/unread boundary. (UI execution detail, but specified here for consistency.)
+
+### Read semantics change (buildable now)
+
+Today the app marks a conversation read **on open**
+(`src/routes/conversations/detail.tsx:82-102` — marks on mount when visible, re-marks on tab
+refocus). **New rule: do not mark read on open.** `lastReadAt[conv]` advances only on:
+
+- **Send.** After a message append succeeds, set
+  `lastReadAt[conv] = max(currentLastReadAt, now)`. Sending implies caught up.
+- **Leave.** Set `lastReadAt[conv] = max(currentLastReadAt, latestRenderedMessageSentAt + 1)`
+  where `latestRenderedMessageSentAt` is captured at the moment of leaving. **Note: `now` is
+  intentionally NOT used here** — if you open a chat and abandon without reading new arrivals,
+  unread should reflect what you actually rendered, not the wall-clock time you left.
+
+**Concrete "leave" triggers** — any one fires the mark-read:
+
+1. Route change away from the conversation-detail route (react-router cleanup effect).
+2. `visibilitychange` to `hidden` while still on the conversation route (tab backgrounded /
+   minimized / device locked).
+3. `beforeunload` (best-effort — may not land on hard crashes).
+
+If the leave write doesn't land (crash, force-quit), the conversation stays unread next session.
+Acceptable per local-first; no special recovery needed.
+
+### Active-conversation suppression (consequence of the new read semantics)
+
+Under the new rule, the conversation you're actively viewing accumulates "unread" between its
+mount-anchor and any new arrivals, because `lastReadAt` doesn't advance until leave. Three
+surfaces must suppress for the active conversation to avoid lying to the user:
+
+| Surface | Suppression rule |
+|---|---|
+| **Sidebar badge** | Hide the unread badge on the row matching the current active conversation route. |
+| **Tab title badge** | When summing total unread for the title, exclude the active conversation's contribution. |
+| **In-app notification toasts** | Skip toast firing when the new message's conversation matches the active route. |
+
+All three are driven by the same primitive — "is this the active conversation right now?" — read
+from react-router params. Implementation lives in the notification trigger and the sidebar / tab-title
+hooks.
+
+### Scope of changes (Unit 4)
+
+- `src/jazz/schema/Conversation.ts` — add optional `metadata: ConversationMetadata` ref.
+- New `src/jazz/schema/ConversationMetadata.ts` — `title` + `icon` fields.
+- `src/jazz/schema/SystemEvent.ts` — extend `kind` enum with `renamed`, add optional `newTitle`.
+- `src/jazz/conversation.ts` — on group conversation creation, create the admin group + metadata
+  CoMap. On admin rename / icon-set on a legacy conversation, lazy-migrate.
+- `src/routes/conversations/detail.tsx` — replace mount-mark-read with leave/send mark-read,
+  capture leaving message-sentAt.
+- Sidebar, `useTabTitleBadge`, notification trigger — add active-conversation suppression.
+- Display-title resolver — read `metadata.title` first, fall back to legacy `conversation.title`,
+  then to derived label.
+- Tests — read-semantics change (mount no longer writes; leave/send do); admin-only enforcement
+  (non-admin write should be rejected); migration of legacy `title`.
+
+### UI-dependency
+
+**Buildable now:** the schema additions (metadata sub-CoMap, admin group wiring, SystemEvent
+`renamed`, Conversation.metadata ref), the read-semantics change including leave/send triggers and
+active-conversation suppression, the lazy migration path, and tests for all of the above.
+
+**Needs UI refs:** the #1 divider rendering itself, the title-edit affordance and icon upload
+affordance (admin-gated UI surfaces), the monogram fallback rendering, and the rename-event timeline
+rendering.
 
 ---
 
@@ -379,7 +493,7 @@ Linear destination and the assistant's memory were updated to match.
 | 1 · Connection subsystem | ✅ `ConnectionRequest`, three channels, approval gate, duration policy, expiry enforcement, return-ack, offline-conversation acceptance test | QR display, requester confirmation screen, pending/invite lists, live approval modal |
 | 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, updated tests | approval card, new-device "Waiting…" screen |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
-| 4 · Conversation display | ✅ #2/#3 schema + admin-only writes + rename event; #1 read-semantics change | #1 divider entirely; #2/#3 rendering |
+| 4 · Conversation display | ✅ `ConversationMetadata` sub-CoMap + admin group wiring, SystemEvent `renamed`, lazy migration, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances, monogram fallback rendering, rename-event timeline |
 | 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
 
 **Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency) — coordinate its
