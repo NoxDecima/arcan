@@ -214,6 +214,27 @@ same-region attacker / a lying server), risking **false confidence** precisely i
 a user would rely on it to spot an intruder. The real protection is the out-of-band QR presentation
 + explicit approve on an already-trusted device. Defer.
 
+### Interim revocation UX honesty (small piggyback scope)
+
+Real cryptographic revocation is **not** part of Unit 2 — it is tracked as a separate slice in
+Linear (**NOX-10 · "Hard device revocation via per-device-account architecture (Shape 3)"**, High
+priority, sequenced to land immediately after the UI rework). Today's "Revoke" button is purely a
+UI filter on `DeviceRecord.revoked`; the revoked device retains the `AgentSecret` and full read/write
+access. Shipping the new Unit 2 approval gate without touching this label would compound the
+misleading-reassurance problem (a clearer approval-on-add UX with no real revoke-after-the-fact).
+
+Since Unit 2 is already touching the device-list area's UI, we piggyback two small honesty fixes:
+
+- **Rename the button** from "Revoke" to **"Forget this device"** (or equivalent — the UI refs may
+  refine the exact label). The action still flips `DeviceRecord.revoked = true`; the new label
+  accurately describes what it does.
+- **Add a one-paragraph explainer** under the device list: *"Forgetting a device hides it here, but
+  it can still read everything it has already synced. Full cryptographic revocation lands in the
+  upcoming overhaul — see NOX-10."* Wording can be tightened during UI work.
+
+These are minor copy + a small UI block; no schema or protocol change. They get retired/replaced
+when NOX-10 ships its real `removeMember`-backed revocation.
+
 ### Scope of changes
 
 - `src/jazz/schema/EphemeralPairing.ts` — add the five optional fields above.
@@ -223,6 +244,8 @@ a user would rely on it to spot an intruder. The real protection is the out-of-b
 - New trusted-side subscription/watcher to surface pending approvals across all logged-in trusted
   devices.
 - Responder-side state-machine rendering.
+- `src/routes/settings/devices-section.tsx` — relabel the revoke button to "Forget this device"
+  (or equivalent); add the honesty explainer block under the device list.
 - Update pairing tests to cover the gate, reject, and timeout paths.
 
 ### UI-dependency
@@ -491,7 +514,7 @@ Linear destination and the assistant's memory were updated to match.
 | Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
 |------|---|---|
 | 1 · Connection subsystem | ✅ `ConnectionRequest`, three channels, approval gate, duration policy, expiry enforcement, return-ack, offline-conversation acceptance test | QR display, requester confirmation screen, pending/invite lists, live approval modal |
-| 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, updated tests | approval card, new-device "Waiting…" screen |
+| 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, devices-section button relabel + honesty explainer copy, updated tests | approval card, new-device "Waiting…" screen, exact wording / placement of the explainer block |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
 | 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
