@@ -299,59 +299,42 @@ Rename + endpoint + Linear wiring buildable now; only the settings form needs th
 
 *Original items #1, #2, #3.*
 
-### Data-layer enforcement of admin-only edits (foundation for #2 and #3)
+### Enforcement model — app-layer, by deliberate choice (consistent with current precedent)
 
-Per-field permissions are not a Jazz primitive — a CoMap is one permission domain. Conversation
-members already have write access to the conversation's group (so they can append messages to the
-sidecar lists), so making title/icon admin-only at the data layer requires them to live in a
-**sub-CoMap owned by an admin-write group**, not directly on `Conversation`.
+**Decision:** title and icon are admin-only **at the application layer** (the edit affordance only
+appears for admins; non-admin attempts are rejected by the UI). They live **directly on the
+`Conversation` CoMap**, not in a sub-CoMap. A determined non-admin with developer tools could
+technically rename or change the icon by calling `$jazz.set` directly — that is an accepted gap.
 
-**New schema — `ConversationMetadata`:**
+**Why:** the existing `src/jazz/schema/SystemEvent.ts` docstring explicitly establishes this
+precedent for trust-circle UX features:
 
-```text
-ConversationMetadata = co.map({
-  title: z.string().optional(),
-  icon: ImageDefinition (optional),       // reuse the image storage used for profile avatars (Slice 5)
-})
-```
+> "The log is application-level: a determined actor calling cojson directly could change membership
+> without writing an event. This is consistent with the trust-circle threat model — the log is for
+> UX clarity, not security."
 
-**Group structure for the metadata:**
+The same reasoning applies to title and icon: in a small trust circle, every group member can
+already spam messages and (today) write SystemEvents however they like; renaming the conversation
+is within the same envelope of "things a determined misbehaving member could do." Promoting just
+title/icon to cojson-level enforcement would be inconsistent with that precedent without
+addressing the broader pattern.
 
-- The metadata CoMap is owned by a new **`ConversationAdminGroup`** where only the conversation's
-  admins are writers (members mirrored from the conversation group's admin role).
-- The existing **`ConversationGroup`** is added as a **reader parent** of the admin group, so
-  every member of the conversation can *read* the metadata but only admins can *write* it.
-- CoJSON enforces this — a non-admin client physically cannot write `metadata.title` or
-  `metadata.icon`; the write is rejected at the protocol layer. UI gating is a UX nicety, not the
-  security control.
-
-**Reference from `Conversation`:**
-
-- Add an optional `metadata: ConversationMetadata` ref on `Conversation`.
-- Read precedence for the display title: `conversation.metadata?.title` wins; if absent, fall back
-  to the legacy `conversation.title`; if both absent, derive from members (existing
-  `displayName.ts` behavior).
-
-**Migration — lazy, admin-driven:**
-
-- **New conversations** (post-rework): `createGroupConversation` creates `ConversationAdminGroup` +
-  the `metadata` CoMap as part of conversation creation, populating `metadata.title` with whatever
-  title was passed in. The legacy `Conversation.title` is left empty for new conversations.
-- **Existing conversations:** on first admin write to title or icon, the admin client creates the
-  `ConversationAdminGroup` + `metadata` CoMap, copies the current `conversation.title` into
-  `metadata.title`, then performs the requested update. Until that happens, the legacy field is
-  read; this avoids any forced bulk migration.
+**Future hardening — explicitly deferred.** A separate follow-up task captures the eventual
+secure-by-design refactor that would promote these (and the SystemEvent invariants, and message-list
+push rights) to data-layer enforcement together. That belongs as one coordinated pass after the UI
+rework lands, not piecemeal here.
 
 ### #2 — Conversation icons
 
-`metadata.icon` (above), for **group conversations**; 1:1s keep borrowing the contact's avatar
-(unchanged). **Constraints:**
+Add `icon` directly to `Conversation` (a new optional field). For **group conversations**; 1:1s
+keep borrowing the contact's avatar (unchanged). Set/cleared by any admin (app-layer gated).
+
+**Constraints:**
 
 - **Types:** image only — PNG, JPEG, WebP.
 - **Size:** raw upload ≤ 5 MB; resized client-side to 256×256 before storing. Reuse the image
   storage path used for profile avatars (Slice 5 — inline media).
-- **Set/clear:** any conversation admin can set or clear it (data-layer-enforced). Clearing
-  reverts to the monogram fallback.
+- Clearing reverts to the monogram fallback.
 
 **Monogram fallback (when unset):** the first 1–2 graphemes of the resolved display title,
 rendered over a deterministic background color computed from a hash of the conversation ID — so the
@@ -361,13 +344,21 @@ Icon changes do **not** emit a `SystemEvent` (kept minimal — title rename does
 
 ### #3 — Conversation names
 
-`metadata.title` (above), edited by any admin. **Constraints:**
+`Conversation.title` already exists; the existing `updateConversationTitle` (`conversation.ts:501`)
+already does `conversation.$jazz.set("title", newTitle)`. The change here is:
+
+- **Show the edit affordance only to admins** in the UI (the existing function's comment already
+  notes "The caller is responsible for admin-permission gating in the UI" — we just make that
+  contract real on the new title-edit surface).
+- **Emit a `SystemEvent`** when a rename actually happens, so the timeline shows "Alice renamed
+  the group."
+
+**Constraints:**
 
 - 1–100 characters after trimming.
 - Cannot be all-whitespace (treated as "clear", which reverts to derived label).
-- Concurrent renames: CoJSON last-write-wins on `metadata.title`. The rename `SystemEvent` log is
-  not a serialization mechanism — see existing `SystemEvent` doc note that it's "for UX clarity,
-  not security."
+- Concurrent renames: CoJSON last-write-wins on `title`. The rename `SystemEvent` log is not a
+  serialization mechanism (same disclaimer as existing events).
 
 **`SystemEvent` schema addition:** extend the `kind` enum with **`renamed`**, and add an optional
 `newTitle: z.string()` field. The actor (admin doing the rename) writes the event into the
@@ -436,28 +427,37 @@ hooks.
 
 ### Scope of changes (Unit 4)
 
-- `src/jazz/schema/Conversation.ts` — add optional `metadata: ConversationMetadata` ref.
-- New `src/jazz/schema/ConversationMetadata.ts` — `title` + `icon` fields.
+- `src/jazz/schema/Conversation.ts` — add optional `icon: FileBlob.optional()` field, mirroring
+  the avatar pattern on `Profile` (`src/jazz/schema/Profile.ts:19`); keep existing `title` field.
 - `src/jazz/schema/SystemEvent.ts` — extend `kind` enum with `renamed`, add optional `newTitle`.
-- `src/jazz/conversation.ts` — on group conversation creation, create the admin group + metadata
-  CoMap. On admin rename / icon-set on a legacy conversation, lazy-migrate.
+- `src/jazz/conversation.ts` — `updateConversationTitle` writes the `renamed` SystemEvent in
+  addition to setting the title; add `updateConversationIcon` (no SystemEvent). The
+  admin-permission check stays in callers (UI); no schema-side gating change.
 - `src/routes/conversations/detail.tsx` — replace mount-mark-read with leave/send mark-read,
   capture leaving message-sentAt.
 - Sidebar, `useTabTitleBadge`, notification trigger — add active-conversation suppression.
-- Display-title resolver — read `metadata.title` first, fall back to legacy `conversation.title`,
-  then to derived label.
-- Tests — read-semantics change (mount no longer writes; leave/send do); admin-only enforcement
-  (non-admin write should be rejected); migration of legacy `title`.
+- Display-title resolver — `conversation.title` if set, else derived label (no metadata fallback —
+  no metadata CoMap exists).
+- Tests — read-semantics change (mount no longer writes; leave/send do); rename SystemEvent
+  emission; UI gating (the affordance only renders for admins).
 
 ### UI-dependency
 
-**Buildable now:** the schema additions (metadata sub-CoMap, admin group wiring, SystemEvent
-`renamed`, Conversation.metadata ref), the read-semantics change including leave/send triggers and
-active-conversation suppression, the lazy migration path, and tests for all of the above.
+**Buildable now:** the schema additions (`Conversation.icon`, SystemEvent `renamed`), the
+`updateConversationTitle` + new `updateConversationIcon` mutations with SystemEvent emission, the
+read-semantics change including leave/send triggers and active-conversation suppression, and tests
+for all of the above.
 
 **Needs UI refs:** the #1 divider rendering itself, the title-edit affordance and icon upload
-affordance (admin-gated UI surfaces), the monogram fallback rendering, and the rename-event timeline
-rendering.
+affordance (admin-gated *in the UI*), the monogram fallback rendering, and the rename-event
+timeline rendering.
+
+### Known accepted gap
+
+Title/icon admin-only is **app-layer only** — a determined non-admin with developer tools could
+write either field directly via cojson. Captured as a follow-up to be hardened together with the
+broader trust-circle data-layer pass (SystemEvent invariants, message-list push rights). Consistent
+with the existing `SystemEvent.ts` precedent.
 
 ---
 
@@ -493,7 +493,7 @@ Linear destination and the assistant's memory were updated to match.
 | 1 · Connection subsystem | ✅ `ConnectionRequest`, three channels, approval gate, duration policy, expiry enforcement, return-ack, offline-conversation acceptance test | QR display, requester confirmation screen, pending/invite lists, live approval modal |
 | 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, updated tests | approval card, new-device "Waiting…" screen |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
-| 4 · Conversation display | ✅ `ConversationMetadata` sub-CoMap + admin group wiring, SystemEvent `renamed`, lazy migration, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances, monogram fallback rendering, rename-event timeline |
+| 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
 | 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
 
 **Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency) — coordinate its
