@@ -13,7 +13,11 @@
     # request; the auth-server is configured with BETTER_AUTH_URL=https://
     # ${DOMAIN}/api/auth so cookies are scoped to this path.
     handle /api/auth/* {
-        reverse_proxy auth:4300
+        reverse_proxy api:4300
+    }
+
+    handle /api/feedback {
+        reverse_proxy api:4300
     }
 
     # SPA — serve built static assets with a client-side router fallback.

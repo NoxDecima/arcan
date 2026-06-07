@@ -10,7 +10,7 @@
  */
 
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { revokeInvitation } from "@/jazz/invitations";
 import { Button } from "@/components/ui/button";
 
@@ -23,7 +23,7 @@ function formatDate(d: Date): string {
 }
 
 export function InvitesSection() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       root: { invitesIssued: { $each: true } },
     },

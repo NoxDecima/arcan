@@ -26,7 +26,7 @@
 import { useRef, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Sidebar } from "@/components/sidebar";
 import { Composer } from "@/components/composer";
@@ -44,7 +44,7 @@ export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       // Slice 8: lastReadAt is required for markRead to write the cutoff.

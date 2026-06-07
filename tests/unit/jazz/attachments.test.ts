@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createJazzTestAccount } from "jazz-tools/testing";
 import { Group } from "jazz-tools";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import {
   uploadAttachment,
   AttachmentTooLargeError,
@@ -10,7 +10,7 @@ import {
 
 describe("uploadAttachment", () => {
   it("creates a FileBlob with the right mimeType/size/filename and a loaded FileStream", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
 
     const bytes = new Uint8Array([1, 2, 3, 4, 5]);
@@ -25,7 +25,7 @@ describe("uploadAttachment", () => {
   });
 
   it("rejects files larger than MAX_ATTACHMENT_BYTES", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
 
     const oversized = new Uint8Array(MAX_ATTACHMENT_BYTES + 1);

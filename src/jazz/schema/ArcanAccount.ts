@@ -7,7 +7,7 @@ import { FileBlob } from "./FileBlob";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
- * JazzMessangerAccount: the root account schema for the application.
+ * ArcanAccount: the root account schema for the application.
  *
  * IMPORTANT DEVIATION FROM PLAN:
  * jazz-tools 0.20.18 `co.account()` accepts only `{ profile, root }` as
@@ -23,11 +23,11 @@ import { getCurrentSessionFingerprint } from "@/auth/session";
  * is kept for direct use in non-account contexts.
  *
  * Additional deviations:
- * - `class JazzMessangerAccount extends Account` → `co.account({...})`
+ * - `class ArcanAccount extends Account` → `co.account({...})`
  * - `co.ref(Profile)` → profile slot becomes `co.profile({...})`
  * - `co.ref(ContactBook)` etc. → moved into root map
  */
-export const JazzMessangerAccountRoot = co.map({
+export const ArcanAccountRoot = co.map({
   contactBook: ContactBook,
   devices: co.list(DeviceRecord),
   invitesIssued: co.list(Invitation),
@@ -54,13 +54,13 @@ export const JazzMessangerAccountRoot = co.map({
     .optional(),
 });
 
-export const JazzMessangerAccount = co.account({
+export const ArcanAccount = co.account({
   profile: co.profile({
     displayName: z.string(),
     bio: z.string().optional(),
     avatar: FileBlob.optional(),
   }),
-  root: JazzMessangerAccountRoot,
+  root: ArcanAccountRoot,
 }).withMigration(async (me, creationProps) => {
   /**
    * Migration: runs on every node startup (both new and existing accounts).
@@ -113,7 +113,7 @@ export const JazzMessangerAccount = co.account({
 
     me.$jazz.set(
       "root",
-      JazzMessangerAccountRoot.create(
+      ArcanAccountRoot.create(
         {
           contactBook,
           devices,

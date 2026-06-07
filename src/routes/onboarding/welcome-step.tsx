@@ -22,7 +22,7 @@ export function WelcomeStep({
       <div className="w-full max-w-md space-y-8 text-center">
         <div className="space-y-3">
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome to Jazz Messanger
+            Welcome to Arcan
           </h1>
           <p className="text-muted-foreground">
             A local-first, end-to-end encrypted messenger. Your account is

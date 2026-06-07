@@ -85,7 +85,7 @@ describe("NotificationManager — sound + browser notification fanout", () => {
     mostRecentArgs.onNewMessage({ conversationID: "c1", conversationLabel: "Alice" });
     expect(notifCtor).toHaveBeenCalledTimes(1);
     const [title, opts] = notifCtor.mock.calls[0];
-    expect(title).toBe("Jazz Messanger");
+    expect(title).toBe("Arcan");
     expect(opts.body).toBe("New message in Alice");
     expect(opts.tag).toBe("conv-c1");
   });

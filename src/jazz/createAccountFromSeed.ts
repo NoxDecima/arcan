@@ -6,7 +6,7 @@ import {
 import { Account, cojsonInternals } from "jazz-tools";
 import type { JazzAuthContext } from "jazz-tools";
 import type { AuthSecretStorage } from "jazz-tools";
-import { JazzMessangerAccount } from "./schema/JazzMessangerAccount";
+import { ArcanAccount } from "./schema/ArcanAccount";
 
 /**
  * Bridge between the Jazz-agnostic `src/auth/flows.ts` and the jazz-tools
@@ -126,7 +126,7 @@ export function useCreateAccountWithSeed() {
       // pointer in localStorage and fall back to anonymous, orphaning the
       // just-created account. 5s is generous; under normal load this
       // resolves within tens of ms.
-      await JazzMessangerAccount.getMe().$jazz.waitForAllCoValuesSync({
+      await ArcanAccount.getMe().$jazz.waitForAllCoValuesSync({
         timeout: 5000,
       });
       return {
@@ -163,7 +163,7 @@ export function useSetDisplayNameOnMe() {
   return useCallback(
     async (handle: JazzAccountHandle, displayName: string): Promise<void> => {
       void handle;
-      const me = await JazzMessangerAccount.getMe().$jazz.ensureLoaded({
+      const me = await ArcanAccount.getMe().$jazz.ensureLoaded({
         resolve: { profile: true },
       });
       me.profile.$jazz.set("displayName", displayName);

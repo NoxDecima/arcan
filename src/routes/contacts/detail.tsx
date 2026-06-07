@@ -7,7 +7,7 @@
 
 import { useNavigate, useParams } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
@@ -18,7 +18,7 @@ export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
   const navigate = useNavigate();
 
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       root: { contactBook: { $each: true }, knownConversations: true },
     },

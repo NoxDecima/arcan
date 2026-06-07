@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import type { Account } from "jazz-tools";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
@@ -12,7 +12,7 @@ import { getCurrentSessionFingerprint } from "@/auth/session";
  * Full cryptographic revocation (account secret rotation) is deferred to E1.1.
  */
 export function DevicesSection() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { root: { devices: { $each: true } } },
   });
 

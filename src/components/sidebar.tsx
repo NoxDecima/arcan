@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { Button } from "@/components/ui/button";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { ContactPicker } from "@/components/contact-picker";
 import { GroupCreateDialog } from "@/components/group-create-dialog";
 import { findOrCreate1to1Conversation, createGroupConversation, isArchived } from "@/jazz/conversation";
@@ -58,7 +58,7 @@ function deriveConversationLabel(conversation: any, me: any): string {
 }
 
 export function Sidebar() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: {

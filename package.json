@@ -1,5 +1,5 @@
 {
-  "name": "jazz-messanger",
+  "name": "arcan",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "sync": "./scripts/sync-server.sh",
-    "auth": "./scripts/auth-server.sh",
+    "api": "./scripts/api.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

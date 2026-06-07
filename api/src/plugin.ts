@@ -25,7 +25,7 @@ const USER_MODEL = "user" as const;
  *   - encryptedSeed:     AES-GCM envelope (base64) of the Jazz secretSeed,
  *                        encrypted under Argon2id(password, kdfSalt). Server
  *                        cannot decrypt it without the password.
- *   - recoveryProofHmac: HMAC-SHA256(seed, "jazz-messanger:recovery-reset")
+ *   - recoveryProofHmac: HMAC-SHA256(seed, "arcan:recovery-reset")
  *                        in base64. Server compares (constant-time) at reset
  *                        time to prove the requester knows the seed.
  *   - accountID:         Jazz account ID string.

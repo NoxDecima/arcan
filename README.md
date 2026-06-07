@@ -1,4 +1,4 @@
-# Jazz Messanger
+# Arcan
 
 A local-first, end-to-end-encrypted messenger for small trust circles. Built on Jazz/CoJSON.
 

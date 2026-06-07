@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createJazzTestAccount, linkAccounts } from "jazz-tools/testing";
 import { Group, co } from "jazz-tools";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { FileBlob } from "@/jazz/schema/FileBlob";
@@ -40,7 +40,7 @@ async function makeConversation(me: any) {
 describe("ensureMyWriteGroup", () => {
   it("creates a new WriteGroup with self as single direct writer + admin when none exists", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -63,7 +63,7 @@ describe("ensureMyWriteGroup", () => {
 
   it("is idempotent: returns the same WriteGroup on subsequent calls", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -93,12 +93,12 @@ describe("ensureMyWriteGroup", () => {
 describe("findOrCreate1to1Conversation", () => {
   it("creates a new Conversation and pushes to knownConversations", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -123,12 +123,12 @@ describe("findOrCreate1to1Conversation", () => {
 
   it("returns existing Conversation when one is already in knownConversations", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -157,8 +157,8 @@ describe("findOrCreate1to1Conversation", () => {
   });
 
   it("returns an existing 2-member conversation matching {me, contact} even if it lacks an explicit kind", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(me, bob);
 
     const bobContact = {
@@ -187,17 +187,17 @@ describe("findOrCreate1to1Conversation", () => {
 describe("createGroupConversation", () => {
   it("adds participants as 'writer' by default, pushes to knownConversations", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
     const carol = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Carol" },
       isCurrentActiveAccount: false,
     });
@@ -259,17 +259,17 @@ async function makeGroupConversation(alice: any, bob: any, carol?: any) {
 describe("addMemberToConversation", () => {
   it("adds with writer role by default", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
     const carol = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Carol" },
       isCurrentActiveAccount: false,
     });
@@ -287,17 +287,17 @@ describe("addMemberToConversation", () => {
 
   it("respects explicit admin role", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
     const carol = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Carol" },
       isCurrentActiveAccount: false,
     });
@@ -317,12 +317,12 @@ describe("addMemberToConversation", () => {
 describe("removeMemberFromConversation", () => {
   it("revokes the target member", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -341,12 +341,12 @@ describe("removeMemberFromConversation", () => {
 describe("promoteToAdmin and demoteToWriter", () => {
   it("promoteToAdmin changes role from writer to admin", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -367,12 +367,12 @@ describe("promoteToAdmin and demoteToWriter", () => {
     // the TARGET account calls it on themselves.
     // This test verifies the call succeeds when target is already a writer (no-op).
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -391,12 +391,12 @@ describe("promoteToAdmin and demoteToWriter", () => {
 describe("updateConversationTitle", () => {
   it("changes the title for group conversations", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -410,8 +410,8 @@ describe("updateConversationTitle", () => {
   });
 
   it("allows setting a title on a 2-person conversation (formerly DM)", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(me, bob);
 
     const conversationGroup = Group.create({ owner: me });
@@ -433,12 +433,12 @@ describe("updateConversationTitle", () => {
 describe("isLastAdmin", () => {
   it("returns true when me is the only admin", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -451,12 +451,12 @@ describe("isLastAdmin", () => {
 
   it("returns false when there are multiple admins", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -471,8 +471,8 @@ describe("isLastAdmin", () => {
 
 describe("leaveConversation", () => {
   it("removes the conversation from the leaver's knownConversations", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: alice });
@@ -499,9 +499,9 @@ describe("leaveConversation", () => {
 
 describe("Slice 4 systemEvents writes", () => {
   it("addMemberToConversation writes an 'added' event with actor=me, target=new member", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const charlie = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const charlie = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
     linkAccounts(alice, charlie);
 
@@ -528,8 +528,8 @@ describe("Slice 4 systemEvents writes", () => {
   });
 
   it("removeMemberFromConversation writes a 'removed' event", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: alice });
@@ -554,8 +554,8 @@ describe("Slice 4 systemEvents writes", () => {
   });
 
   it("leaveConversation writes a 'left' event BEFORE self-revoking (so the leaver still has write permission)", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: alice });
@@ -589,8 +589,8 @@ describe("Slice 4 systemEvents writes", () => {
   });
 
   it("promoteToAdmin writes a 'promoted' event", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: alice });
@@ -617,14 +617,14 @@ describe("Slice 4 systemEvents writes", () => {
 
 describe("isArchived", () => {
   it("returns false for a conversation where me is still a member", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const { conversation } = await makeConversation(me);
     expect(isArchived(me, conversation)).toBe(false);
   });
 
   it("returns true after me is removed from the conversation group", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: bob });
@@ -647,8 +647,8 @@ describe("isArchived", () => {
 
 describe("[recon] cojson admin-remove-admin behavior (Slice 3c)", () => {
   it("documents whether one admin can remove another admin", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const group = Group.create({ owner: alice });

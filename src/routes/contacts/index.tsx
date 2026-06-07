@@ -1,7 +1,7 @@
 import { useAccount } from "jazz-tools/react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 
@@ -53,7 +53,7 @@ function ContactRow({
 }
 
 export function ContactsRoute() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { root: { contactBook: { $each: true } } },
   });
 

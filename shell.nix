@@ -1,4 +1,4 @@
-# Development shell for jazz-messanger.
+# Development shell for arcan.
 #
 # Enter with:    nix-shell
 # Or with direnv: see .envrc (not provided by default)
@@ -28,7 +28,7 @@
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
-  name = "jazz-messanger-dev";
+  name = "arcan-dev";
 
   buildInputs = with pkgs; [
     # Node toolchain
@@ -57,7 +57,7 @@ pkgs.mkShell {
 
     # Friendly banner
     echo
-    echo "jazz-messanger dev shell"
+    echo "arcan dev shell"
     echo "  Node:    $(node --version)"
     echo "  npm:     $(npm --version)"
     echo "  sqlite:  $(sqlite3 --version | cut -d' ' -f1)"

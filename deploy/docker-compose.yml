@@ -15,7 +15,7 @@ services:
       ACME_EMAIL: ${ACME_EMAIL}
     depends_on:
       - sync
-      - auth
+      - api
 
   sync:
     build:
@@ -26,10 +26,10 @@ services:
       - ./data:/data          # SQLite file on the host for easy inspection / manual backup
     # NOT exposed on the host — internal docker network only.
 
-  auth:
+  api:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.auth
+      dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
     environment:
       # Generate with: openssl rand -base64 32

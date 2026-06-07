@@ -1,6 +1,6 @@
 // src/jazz/avatarResolver.ts
 import { useCoState } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 
 /**
  * Resolve the FileBlob for an account's avatar, mirroring resolveDisplayName.
@@ -68,7 +68,7 @@ export function resolveAvatarFileBlob(args: {
  * only knows by ID — primarily the contacts list/detail where the Contact
  * schema stores `contactAccountID: string` rather than an Account ref.
  *
- * Profiles are publicly readable (see JazzMessangerAccount migration), so any
+ * Profiles are publicly readable (see ArcanAccount migration), so any
  * member of the contact's account network can resolve this asynchronously.
  *
  * Pass `null`/`undefined` `accountID` to skip the subscription (e.g. while a
@@ -88,7 +88,7 @@ export function useRemoteAvatar(accountID: string | null | undefined): any | und
   // loadAsBlob's it once it has the streamID, which works as long as the
   // FileBlob itself is loaded.
   const account = useCoState(
-    JazzMessangerAccount,
+    ArcanAccount,
     accountID as any,
     { resolve: { profile: { avatar: true } } },
   );

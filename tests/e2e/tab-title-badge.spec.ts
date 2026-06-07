@@ -81,7 +81,7 @@ test("Slice 8 — title gains (N) prefix when hidden + unread > 0", async ({
       timeout: 5_000,
     });
 
-    // Bob's title should show "(2) Jazz Messanger".
+    // Bob's title should show "(2) Arcan".
     await expect
       .poll(async () => pageBob.title(), { timeout: 30_000 })
       .toMatch(/^\(2\)\s/);

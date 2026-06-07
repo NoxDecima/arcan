@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createJazzTestAccount } from "jazz-tools/testing";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 
 describe("setProfileAvatar", () => {
   it("writes a FileBlob to me.profile.avatar", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
     });
     const file = new File([new Uint8Array([1, 2, 3])], "me.png", { type: "image/png" });
@@ -21,7 +21,7 @@ describe("setProfileAvatar", () => {
 
   it("replaces an existing avatar on second call", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
     });
     const first = new File([new Uint8Array([1])], "a.png", { type: "image/png" });
@@ -36,7 +36,7 @@ describe("setProfileAvatar", () => {
 
   it("rejects oversized files via AttachmentTooLargeError", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
     });
     const oversized = new File(
@@ -54,7 +54,7 @@ describe("setProfileAvatar", () => {
 describe("clearProfileAvatar", () => {
   it("removes me.profile.avatar so the field becomes undefined", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
     });
     const file = new File([new Uint8Array([1])], "a.png", { type: "image/png" });

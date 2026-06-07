@@ -1,7 +1,7 @@
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha2";
 
-const PURPOSE = "jazz-messanger:recovery-reset";
+const PURPOSE = "arcan:recovery-reset";
 
 /**
  * recoveryProof: deterministic HMAC-SHA256(seed, PURPOSE) → base64.

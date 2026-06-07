@@ -5,6 +5,8 @@ import { serve } from "@hono/node-server";
 import { env } from "./env.js";
 import { createDatabase } from "./db.js";
 import { jazzZkPlugin } from "./plugin.js";
+import { LinearClient } from "./linear-client.js";
+import { registerFeedbackRoute } from "./feedback-route.js";
 
 const db = createDatabase();
 
@@ -36,7 +38,7 @@ export const auth = betterAuth(authConfig);
 // package.json + "module": "ESNext" in tsconfig).
 const { runMigrations } = await getMigrations(authConfig);
 await runMigrations();
-console.log("auth-server migrations applied");
+console.log("api service migrations applied");
 
 const app = new Hono();
 
@@ -45,9 +47,29 @@ app.all("/api/auth/*", async (c) => {
   return auth.handler(c.req.raw);
 });
 
+const linearClient = new LinearClient({
+  apiToken: env.LINEAR_API_TOKEN,
+  teamId: env.LINEAR_TEAM_ID,
+  projectId: env.LINEAR_PROJECT_ID,
+});
+
+registerFeedbackRoute(app, {
+  auth,
+  linearClient,
+  feedbackLabelId: env.LINEAR_LABEL_FEEDBACK_ID,
+  categoryLabels: {
+    Bug: env.LINEAR_LABEL_BUG_ID,
+    Improvement: env.LINEAR_LABEL_IMPROVEMENT_ID,
+    Feature: env.LINEAR_LABEL_FEATURE_ID,
+  },
+  maxTotalBytes: env.FEEDBACK_MAX_TOTAL_BYTES,
+  rateLimiterMax: env.FEEDBACK_RATE_LIMIT_MAX,
+  rateLimiterWindowSeconds: env.FEEDBACK_RATE_LIMIT_WINDOW,
+});
+
 // Health check
 app.get("/health", (c) => c.json({ ok: true }));
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }: { port: number }) => {
-  console.log(`auth-server listening on :${port}`);
+  console.log(`api service listening on :${port}`);
 });

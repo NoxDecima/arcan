@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAccount } from "jazz-tools/react";
 import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
 import { Link } from "react-router-dom";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,7 @@ type Phase =
 const POLL_INTERVAL_MS = 2000;
 
 export function InitiatorStep() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { profile: true },
   });
 
