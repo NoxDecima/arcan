@@ -5,6 +5,8 @@ import { serve } from "@hono/node-server";
 import { env } from "./env.js";
 import { createDatabase } from "./db.js";
 import { jazzZkPlugin } from "./plugin.js";
+import { LinearClient } from "./linear-client.js";
+import { registerFeedbackRoute } from "./feedback-route.js";
 
 const db = createDatabase();
 
@@ -43,6 +45,26 @@ const app = new Hono();
 // Better Auth exposes `auth.handler(request)` — wire it under /api/auth/*
 app.all("/api/auth/*", async (c) => {
   return auth.handler(c.req.raw);
+});
+
+const linearClient = new LinearClient({
+  apiToken: env.LINEAR_API_TOKEN,
+  teamId: env.LINEAR_TEAM_ID,
+  projectId: env.LINEAR_PROJECT_ID,
+});
+
+registerFeedbackRoute(app, {
+  auth,
+  linearClient,
+  feedbackLabelId: env.LINEAR_LABEL_FEEDBACK_ID,
+  categoryLabels: {
+    Bug: env.LINEAR_LABEL_BUG_ID,
+    Improvement: env.LINEAR_LABEL_IMPROVEMENT_ID,
+    Feature: env.LINEAR_LABEL_FEATURE_ID,
+  },
+  maxTotalBytes: env.FEEDBACK_MAX_TOTAL_BYTES,
+  rateLimiterMax: env.FEEDBACK_RATE_LIMIT_MAX,
+  rateLimiterWindowSeconds: env.FEEDBACK_RATE_LIMIT_WINDOW,
 });
 
 // Health check

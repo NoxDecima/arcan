@@ -16,6 +16,10 @@
         reverse_proxy api:4300
     }
 
+    handle /api/feedback {
+        reverse_proxy api:4300
+    }
+
     # SPA — serve built static assets with a client-side router fallback.
     handle {
         root * /usr/share/caddy
