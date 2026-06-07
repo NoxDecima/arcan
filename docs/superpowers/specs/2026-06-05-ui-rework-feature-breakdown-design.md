@@ -25,10 +25,39 @@ The original rough list (for traceability):
 9. Account QR code / invite valid duration
 10. Better invite duration management in general
 
-These collapse into **five design units**. Items 4, 6, 7, 9, 10 are one subsystem (Unit 1); item 5 is
+These collapse into **six design units**. Items 4, 6, 7, 9, 10 are one subsystem (Unit 1); item 5 is
 its own trust surface (Unit 2); item 8 is standalone (Unit 3); items 1, 2, 3 are conversation display
 (Unit 4). A fifth unit — a codebase-wide rebrand to the app's permanent name **Arcan** — surfaced
-during brainstorming and is captured as Unit 5.
+during brainstorming and is captured as Unit 5. A sixth unit — the hard cryptographic device
+revocation (Shape 3 / per-device-account architecture) — was decided during brainstorming as the
+next major slice after the rework lands; it is captured as Unit 6 here and tracked in detail as
+**NOX-10** in Linear.
+
+---
+
+## Foundational baseline — destructive rebuild (applies to all six units)
+
+**There is no pre-existing user data to preserve across this rework.** The current deployed state
+is wiped as part of this work. No unit plans migrations, dual-accept transitions, lazy
+backfills, or backwards-compatible identifier shims. Where a unit's design previously hedged on
+backward compatibility, the answer collapses to "no constraint — just change it."
+
+Concrete consequences this baseline produces, called out in each unit where relevant:
+
+- **Unit 1** (connection subsystem) — existing `Invitation` CoValues are wiped; the new schema
+  doesn't have to coexist with the old `everyone-writer` invite group pattern.
+- **Unit 2** (device pairing approval) — the new optional fields on `EphemeralPairing` and
+  `DeviceRecord` don't need to gracefully handle pre-rework records (there aren't any).
+- **Unit 3** (feedback + `api` rename) — the `auth-server` SQLite is wiped; no Better Auth user
+  rows to migrate.
+- **Unit 4** (conversation display) — no legacy `Conversation.title` data to fall back to; new
+  conventions apply unconditionally.
+- **Unit 5** (rebrand) — the `JazzMessangerAccount` → `ArcanAccount` rename, recovery-HMAC purpose
+  string change, and Better Auth wipe all happen outright.
+- **Unit 6** (Shape 3 revocation) — no existing shared-account-secret accounts to migrate; the
+  per-device-account architecture is the only architecture from day one of the rebuild.
+
+This baseline is the reason several units can be scoped down compared to where the spec started.
 
 ---
 
@@ -142,8 +171,10 @@ secrets never seal/transfer until an already-trusted device approves.
 
 ### Schema additions to `EphemeralPairing`
 
-All new fields are **optional** so backward compatibility is trivial (no migration; pre-rework code
-paths are simply replaced):
+Per the destructive baseline, there are no in-flight pre-rework pairings to coexist with — the
+fields could just as well be required. They're declared optional only because they're written by
+different actors at different lifecycle phases (responder writes some on present, trusted device
+writes others on approve), so the CoMap is in a partial state between phases:
 
 - **`responderUserAgent: string`** — raw `navigator.userAgent` from the new device. Label + OS are
   derived client-side on the trusted device (label via the existing `deriveDeviceLabel`; a simple OS
@@ -495,14 +526,10 @@ with the existing `SystemEvent.ts` precedent.
 The app now has a permanent name, **Arcan**, replacing the temporary "jazz-messanger". This unit is a
 codebase-wide rename pass.
 
-### Foundational decision — destructive rebrand
-
-**There is no pre-existing user data to preserve across any of the five units.** The current
-deployed state is wiped as part of this work, so this unit (and the other four) does **not** plan
-migration windows, dual-accept transitions, or backwards-compatible identifier shims. Internal
-identifiers that would otherwise be load-bearing become safe to rename outright.
-
 ### Decisions made (2026-06-06)
+
+(Per the doc-wide destructive baseline above, all internal identifiers that would otherwise be
+load-bearing are safe to rename outright — no migration planning required.)
 
 | # | Topic | Decision |
 |---|---|---|
@@ -594,6 +621,60 @@ manual step that the user will perform.
 
 ---
 
+## Unit 6 — Hard device revocation (Shape 3 / per-device-account architecture)
+
+*Promoted into a spec unit during this brainstorming; full design lives in Linear as **NOX-10**
+(High priority).*
+
+### Summary
+
+Replace the current "the account secret is shared across devices" model with **one Account per
+device**, all members of a shared **`UserGroup`**. The user identity becomes the group; each
+device is a cryptographically-distinct member.
+
+- **Pair** a device → create a fresh per-device `Account` on the new device (no secret transfer);
+  the trusted device admins it into the `UserGroup`. Composes with Unit 2's approval gate, which
+  now gates *admission into the UserGroup* rather than *secret sealing*.
+- **Revoke** a device → `UserGroup.removeMember(deviceAccount)`. Jazz auto-rotates the readKey on
+  member removal (the same primitive §6 already uses for conversation member removal). The revoked
+  device cannot decrypt content authored after revocation.
+- **Forward-rotation only** — the revoked device retains read access to content it already synced,
+  same documented property as §6.4.
+
+### Why this is a separate unit
+
+Hard revocation is a foundational architectural change that touches every place currently rooted on
+"the account" (account secret, schemas keyed on `me`, author derivation, all pairing flows). Doing
+it concurrently with the UI rework would mean the UI is built against a moving target. Doing it
+later means shipping the rework with a Unit-2 approval gate but no real revoke-after-the-fact —
+which is why Unit 2 includes the interim "Forget this device" relabel + honesty explainer
+(see Unit 2 → "Interim revocation UX honesty").
+
+### Sequencing
+
+**Land immediately after the five UI-rework units complete**, before any public launch. This is
+the user-set sequencing: rework first, then this slice. Per the doc-wide destructive baseline,
+there are no shared-secret accounts to migrate — the rebuilt system uses Shape 3 from day one of
+Unit 6's implementation.
+
+### Pointer to detail
+
+Full architectural detail, scope sketch, migration-options discussion, and references live in
+Linear: **NOX-10 — "Hard device revocation via per-device-account architecture (Shape 3)"**
+(<https://linear.app/nox-decima/issue/NOX-10/hard-device-revocation-via-per-device-account-architecture-shape-3>).
+That issue is the single source of truth for Unit 6's design; this spec section exists so the
+six-unit picture is captured in one place and so the cross-unit interactions (especially Unit 2's
+interim UX) are honest.
+
+### UI-dependency
+
+**Buildable backbone:** all schema and protocol work (UserGroup, per-device Account, pairing
+rewrite, real `removeMember`-backed revoke). **Needs UI refs:** updates to the Settings → Devices
+screen so the relabeled-and-honest UX from Unit 2 ("Forget this device") gets replaced by the real
+revocation flow.
+
+---
+
 ## UI-dependency & sequencing summary
 
 | Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
@@ -603,12 +684,14 @@ manual step that the user will perform.
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
 | 5 · Rebrand → Arcan | ✅ destructive rebrand (no migrations); schema-rename probe, `JazzMessangerAccount` → `ArcanAccount`, recovery HMAC purpose string, package names (`arcan` root / `@arcan/api` service — coordinated with Unit 3), PWA manifest, cosmetic strings, top-of-doc notes on historical specs/plans, repo-dir + GitHub-remote rename ceremony (manual GH step flagged for the user) | nothing — but new UI copy should be authored as "Arcan" from day one to avoid a second sweep |
+| 6 · Hard revocation (Shape 3) | ✅ all schema/protocol work — UserGroup, per-device Account, pairing rewrite, real `removeMember`-backed revoke. Lands **after** Units 1–5 complete (NOX-10) | Settings → Devices revocation flow replaces the Unit-2 interim "Forget this device" honesty UX with the real action |
 
-**Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency) — coordinate its
-`auth-server → api` rename with **Unit 5's** rebrand pass so the deploy/config files are touched once.
-Then the headless backbones of Units 1, 2, and 4's read-semantics/schema in parallel with the UI work,
-filling in each visual surface once the refs land. **#1's divider is the one piece deferred entirely
-to UI time.**
+**Recommended order:** **Units 3 + 5 coordinated first** (cleanest, almost no UI dependency, share
+deploy/config files so the combined pass touches each once). Then the headless backbones of Units 1,
+2, and 4's read-semantics/schema in parallel with the UI work, filling in each visual surface once
+the refs land. **#1's divider is the one piece deferred entirely to UI time.** **Unit 6 (Shape 3
+hard revocation) follows the five UI-rework units** as its own slice, sequenced before any public
+launch.
 
 ## Housekeeping note (not part of this work)
 
