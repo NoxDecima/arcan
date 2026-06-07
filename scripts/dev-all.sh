@@ -92,7 +92,7 @@ export SYNC_PORT="${SYNC_PORT:-4200}"
 # ---- 5. Friendly banner ----------------------------------------------------
 
 echo ""
-echo "╭─── jazz-messanger dev ──────────────────────────────────────"
+echo "╭─── arcan dev ───────────────────────────────────────────────"
 echo "│"
 if [ -n "$TS_SERVE_URL" ]; then
   echo "│  ★ Tailscale Serve (HTTPS, valid cert, Web Crypto works):"

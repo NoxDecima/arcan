@@ -20,7 +20,7 @@ test("account creation flow", async ({ page }) => {
 
   // 2. Assert welcome heading visible
   await expect(
-    page.getByRole("heading", { name: /Welcome to Jazz Messanger/i }),
+    page.getByRole("heading", { name: /Welcome to Arcan/i }),
   ).toBeVisible();
 
   // 3. Click "Create new account"

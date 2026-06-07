@@ -8,7 +8,7 @@ import { useEffect } from "react";
  * On unmount, restores the plain baseTitle. This prevents a stale "(3)"
  * prefix from lingering if the notification UI is torn down mid-session.
  */
-export function useTabTitleBadge(totalUnread: number, baseTitle = "Jazz Messanger") {
+export function useTabTitleBadge(totalUnread: number, baseTitle = "Arcan") {
   useEffect(() => {
     const sync = () => {
       if (document.hidden && totalUnread > 0) {

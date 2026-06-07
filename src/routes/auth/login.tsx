@@ -51,7 +51,7 @@ export function LoginRoute() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
           <p className="text-muted-foreground">
-            Welcome back to Jazz Messanger.
+            Welcome back to Arcan.
           </p>
         </div>
 

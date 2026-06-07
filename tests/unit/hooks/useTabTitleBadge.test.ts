@@ -21,43 +21,43 @@ describe("useTabTitleBadge", () => {
 
   test("title is plain when not hidden, regardless of unread", () => {
     setHidden(false);
-    renderHook(() => useTabTitleBadge(5, "Jazz Messanger"));
-    expect(document.title).toBe("Jazz Messanger");
+    renderHook(() => useTabTitleBadge(5, "Arcan"));
+    expect(document.title).toBe("Arcan");
   });
 
   test("title prefixed when hidden + unread > 0", () => {
     setHidden(true);
-    renderHook(() => useTabTitleBadge(3, "Jazz Messanger"));
-    expect(document.title).toBe("(3) Jazz Messanger");
+    renderHook(() => useTabTitleBadge(3, "Arcan"));
+    expect(document.title).toBe("(3) Arcan");
   });
 
   test("title stays plain when hidden + unread = 0", () => {
     setHidden(true);
-    renderHook(() => useTabTitleBadge(0, "Jazz Messanger"));
-    expect(document.title).toBe("Jazz Messanger");
+    renderHook(() => useTabTitleBadge(0, "Arcan"));
+    expect(document.title).toBe("Arcan");
   });
 
   test("99+ for very large counts", () => {
     setHidden(true);
-    renderHook(() => useTabTitleBadge(150, "Jazz Messanger"));
-    expect(document.title).toBe("(99+) Jazz Messanger");
+    renderHook(() => useTabTitleBadge(150, "Arcan"));
+    expect(document.title).toBe("(99+) Arcan");
   });
 
   test("visibilitychange re-syncs the title", () => {
     setHidden(false);
-    renderHook(() => useTabTitleBadge(4, "Jazz Messanger"));
-    expect(document.title).toBe("Jazz Messanger");
+    renderHook(() => useTabTitleBadge(4, "Arcan"));
+    expect(document.title).toBe("Arcan");
     setHidden(true);
-    expect(document.title).toBe("(4) Jazz Messanger");
+    expect(document.title).toBe("(4) Arcan");
     setHidden(false);
-    expect(document.title).toBe("Jazz Messanger");
+    expect(document.title).toBe("Arcan");
   });
 
   test("cleanup restores plain title on unmount", () => {
     setHidden(true);
-    const { unmount } = renderHook(() => useTabTitleBadge(5, "Jazz Messanger"));
-    expect(document.title).toBe("(5) Jazz Messanger");
+    const { unmount } = renderHook(() => useTabTitleBadge(5, "Arcan"));
+    expect(document.title).toBe("(5) Arcan");
     unmount();
-    expect(document.title).toBe("Jazz Messanger");
+    expect(document.title).toBe("Arcan");
   });
 });

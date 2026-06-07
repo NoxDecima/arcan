@@ -106,7 +106,7 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
         Notification.permission === "granted" &&
         document.hidden
       ) {
-        const n = new Notification("Jazz Messanger", {
+        const n = new Notification("Arcan", {
           body: `New message in ${event.conversationLabel}`,
           tag: `conv-${event.conversationID}`,
           renotify: false,

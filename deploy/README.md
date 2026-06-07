@@ -1,4 +1,4 @@
-# Deploying jazz-messanger
+# Deploying Arcan
 
 Single VPS, single domain, automatic TLS via Let's Encrypt. Three containers
 (Caddy + the Jazz sync server + the auth server) running under Docker Compose.
@@ -15,8 +15,8 @@ Single VPS, single domain, automatic TLS via Let's Encrypt. Three containers
 ## Quick start
 
 ```bash
-git clone <repo> jazz-messanger
-cd jazz-messanger/deploy
+git clone <repo> arcan
+cd arcan/deploy
 cp .env.example .env
 # edit DOMAIN and ACME_EMAIL, then generate a Better Auth secret:
 echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .env
