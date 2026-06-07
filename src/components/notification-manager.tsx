@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTabTitleBadge } from "@/hooks/useTabTitleBadge";
 import { useNewMessageEvents } from "@/hooks/useNewMessageEvents";
 import { getUnreadCount } from "@/jazz/notifications";
@@ -39,7 +39,7 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
   // shallow — important because the App-level deep resolve was observed
   // to remount /auth/recovery on the post-recovery auth-state flip,
   // losing the RecoveryRoute's `stage` useState.
-  const meFromHook = useAccount(JazzMessangerAccount, {
+  const meFromHook = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: {

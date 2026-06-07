@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { createJazzTestAccount } from "jazz-tools/testing";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 
 describe("getAccountPubkeyHex", () => {
   it("returns a 64-character lowercase hex string", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });
@@ -18,7 +18,7 @@ describe("getAccountPubkeyHex", () => {
 
   it("is deterministic for the same account", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });
@@ -30,14 +30,14 @@ describe("getAccountPubkeyHex", () => {
 
   it("differs for different accounts", async () => {
     const me1 = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const hex1 = getAccountPubkeyHex(me1);
 
     const me2 = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: true,
     });

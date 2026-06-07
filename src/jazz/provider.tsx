@@ -1,5 +1,5 @@
 import { JazzReactProvider } from "jazz-tools/react";
-import { JazzMessangerAccount } from "./schema/JazzMessangerAccount";
+import { ArcanAccount } from "./schema/ArcanAccount";
 // Side-effect import: instantiate the Better Auth client singleton so its
 // nanostores are ready before any component calls authClient.useSession().
 // Better Auth 1.6 does not ship a provider component — auth state is a
@@ -55,7 +55,7 @@ interface MessangerProviderProps {
  * - WebSocket sync (VITE_SYNC_URL env var, defaulting to a
  *   window.location-derived URL — see deriveDefaultSyncURL above)
  * - IndexedDB persistence for local-first operation
- * - JazzMessangerAccount as the AccountSchema (activates the migration hook)
+ * - ArcanAccount as the AccountSchema (activates the migration hook)
  * - A centered "Loading..." fallback shown while the context initialises
  *
  * Place this at the root of the React tree, above all consumers of
@@ -65,7 +65,7 @@ export function MessangerProvider({ children }: MessangerProviderProps) {
   return (
     <JazzReactProvider
       sync={{ peer: SYNC_URL }}
-      AccountSchema={JazzMessangerAccount}
+      AccountSchema={ArcanAccount}
       storage="indexedDB"
       fallback={
         <div

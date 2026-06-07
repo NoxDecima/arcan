@@ -16,7 +16,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Sidebar } from "@/components/sidebar";
 import { ContactPicker } from "@/components/contact-picker";
@@ -133,7 +133,7 @@ export function MembersRoute() {
     }
   }, [titleEditing]);
 
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: { contactBook: { $each: true }, knownConversations: true },

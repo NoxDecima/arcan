@@ -10,7 +10,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
 import { createInvitation, acceptInvitationAcceptance } from "@/jazz/invitations";
@@ -22,7 +22,7 @@ const POLL_INTERVAL_MS = 2000;
 
 export function ContactAddRoute() {
   const navigate = useNavigate();
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: { invitesIssued: { $each: true }, contactBook: { $each: true } },

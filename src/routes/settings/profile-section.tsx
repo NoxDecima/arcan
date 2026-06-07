@@ -1,14 +1,14 @@
 // src/routes/settings/profile-section.tsx
 import { useRef, useState, type ChangeEvent } from "react";
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 
 export function ProfileSection() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { profile: true },
   });
   const fileInputRef = useRef<HTMLInputElement>(null);

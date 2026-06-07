@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
  * Effective state shown: prefs.browser && Notification.permission === "granted".
  */
 export function NotificationsSection() {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { root: { notificationPrefs: true } },
   });
   const [permissionState, setPermissionState] = useState<NotificationPermission>(

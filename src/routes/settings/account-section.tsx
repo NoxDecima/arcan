@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAccount, useLogOut } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { authClient } from "@/auth/client";
@@ -19,7 +19,7 @@ import { ViewRecoveryCodeModal } from "./view-recovery-code-modal";
  * /auth/login route renders.
  */
 export function AccountSection() {
-  const me = useAccount(JazzMessangerAccount);
+  const me = useAccount(ArcanAccount);
   const logOut = useLogOut();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showRecoveryCode, setShowRecoveryCode] = useState(false);

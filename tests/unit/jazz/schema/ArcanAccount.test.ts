@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { JazzMessangerAccount, JazzMessangerAccountRoot } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount, ArcanAccountRoot } from "@/jazz/schema/ArcanAccount";
 import { createJazzTestAccount } from "jazz-tools/testing";
 
-describe("JazzMessangerAccount schema", () => {
+describe("ArcanAccount schema", () => {
   it("is defined and exported", () => {
-    expect(JazzMessangerAccount).toBeDefined();
+    expect(ArcanAccount).toBeDefined();
     // jazz-tools 0.20.18 co.account() returns an AccountSchema instance (object)
-    expect(JazzMessangerAccount).toHaveProperty("builtin", "Account");
-    expect(typeof JazzMessangerAccount.create).toBe("function");
+    expect(ArcanAccount).toHaveProperty("builtin", "Account");
+    expect(typeof ArcanAccount.create).toBe("function");
   });
 
-  it("JazzMessangerAccountRoot is defined and exported", () => {
-    expect(JazzMessangerAccountRoot).toBeDefined();
-    expect(typeof JazzMessangerAccountRoot.create).toBe("function");
+  it("ArcanAccountRoot is defined and exported", () => {
+    expect(ArcanAccountRoot).toBeDefined();
+    expect(typeof ArcanAccountRoot.create).toBe("function");
   });
 
   /**
@@ -35,7 +35,7 @@ describe("JazzMessangerAccount schema", () => {
    */
   it("migration initialises profile and root slots", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });
@@ -55,7 +55,7 @@ describe("JazzMessangerAccount schema", () => {
   // initiator-side pre-registration during pairing).
   it("signup produces exactly one DeviceRecord (self-register is idempotent)", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createJazzTestAccount, linkAccounts } from "jazz-tools/testing";
 import { Group, co } from "jazz-tools";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Message } from "@/jazz/schema/Message";
 import { FileBlob } from "@/jazz/schema/FileBlob";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -32,7 +32,7 @@ function makeWriteGroup(owner: any, conversationGroup: Group): Group {
 describe("getAuthorAccountIDFromMessage", () => {
   it("returns the create-transaction signer accountID for a message", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -62,7 +62,7 @@ describe("getAuthorAccountIDFromMessage", () => {
 describe("directWriterMembers", () => {
   it("returns direct writer members with role=writer", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -79,7 +79,7 @@ describe("directWriterMembers", () => {
 describe("directAdminMembers", () => {
   it("returns the owner as admin", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -96,7 +96,7 @@ describe("directAdminMembers", () => {
 describe("isWellFormedWriteGroup", () => {
   it("returns true for a properly-shaped WriteGroup (owner = admin, parent = reader)", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -108,7 +108,7 @@ describe("isWellFormedWriteGroup", () => {
 
   it("returns false when the parent mapping is wrong (extend instead of reader)", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -122,7 +122,7 @@ describe("isWellFormedWriteGroup", () => {
 
   it("returns false when the conversationGroup is not a parent at all", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
@@ -135,12 +135,12 @@ describe("isWellFormedWriteGroup", () => {
 
   it("returns false when there are multiple direct admins (additional admin granted)", async () => {
     const alice = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Alice" },
       isCurrentActiveAccount: true,
     });
     const bob = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Bob" },
       isCurrentActiveAccount: false,
     });
@@ -159,8 +159,8 @@ describe("isWellFormedWriteGroup", () => {
 
 describe("sendMessage with attachments", () => {
   it("attaches a FileBlob to the new Message", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
-    const bob = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
+    const bob = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     linkAccounts(alice, bob);
 
     const conversationGroup = Group.create({ owner: alice });
@@ -191,7 +191,7 @@ describe("sendMessage with attachments", () => {
   });
 
   it("accepts an empty attachments array (backward compatible)", async () => {
-    const alice = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const alice = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const conversationGroup = Group.create({ owner: alice });
     const conversation = Conversation.create(
       {

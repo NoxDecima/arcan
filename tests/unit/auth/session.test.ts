@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { createJazzTestAccount } from "jazz-tools/testing";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 
 describe("getCurrentSessionFingerprint", () => {
   it("returns a non-empty string", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });
@@ -18,7 +18,7 @@ describe("getCurrentSessionFingerprint", () => {
 
   it("is stable across multiple calls for the same account", async () => {
     const me = await createJazzTestAccount({
-      AccountSchema: JazzMessangerAccount,
+      AccountSchema: ArcanAccount,
       creationProps: { name: "Test User" },
       isCurrentActiveAccount: true,
     });

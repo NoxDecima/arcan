@@ -17,7 +17,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { useIsAuthenticated } from "jazz-tools/react";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ const PENDING_INVITE_KEY = "pending-invite-fragment";
 export function InviteRoute() {
   const navigate = useNavigate();
   const isAuthenticated = useIsAuthenticated();
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: { contactBook: { $each: true } },

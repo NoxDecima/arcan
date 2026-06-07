@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { createJazzTestAccount } from "jazz-tools/testing";
 import { Group } from "jazz-tools";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SystemEvent } from "@/jazz/schema/SystemEvent";
 
 describe("SystemEvent schema", () => {
   it("creates an 'added' event with actor + target", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
     const event = SystemEvent.create(
       {
@@ -24,7 +24,7 @@ describe("SystemEvent schema", () => {
   });
 
   it("creates a 'left' event with no target", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
     const event = SystemEvent.create(
       {
@@ -39,7 +39,7 @@ describe("SystemEvent schema", () => {
   });
 
   it("accepts all four kinds: added, removed, left, promoted", async () => {
-    const me = await createJazzTestAccount({ AccountSchema: JazzMessangerAccount });
+    const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
     const kinds = ["added", "removed", "left", "promoted"] as const;
     for (const kind of kinds) {

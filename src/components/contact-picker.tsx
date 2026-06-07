@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { JazzMessangerAccount } from "@/jazz/schema/JazzMessangerAccount";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 
 interface ContactPickerProps {
   onSelect: (contacts: any[]) => void;
@@ -11,7 +11,7 @@ interface ContactPickerProps {
 }
 
 export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactPickerProps) {
-  const me = useAccount(JazzMessangerAccount, {
+  const me = useAccount(ArcanAccount, {
     resolve: { root: { contactBook: { $each: true } } },
   });
   const [selected, setSelected] = useState<Set<number>>(new Set());
