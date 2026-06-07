@@ -56,7 +56,7 @@ fi
 if [ -n "$TS_SERVE_URL" ]; then
   unset VITE_SYNC_URL
   # Unified env var: Vite (server.allowedHosts via vite.config.ts) and
-  # Better Auth (BETTER_AUTH_TRUSTED_ORIGINS via auth-server.sh) both
+  # Better Auth (BETTER_AUTH_TRUSTED_ORIGINS via api.sh) both
   # pick this up. Full HTTPS origin works for both — Vite's parser
   # strips the scheme to get the host, BA accepts the origin natively.
   export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-${TS_SERVE_URL}}"
@@ -132,5 +132,5 @@ exec npx --no-install concurrently \
   -c "cyan,magenta,green" \
   --kill-others-on-fail \
   "npm run sync" \
-  "PORT=${AUTH_PORT} npm run auth" \
+  "PORT=${AUTH_PORT} npm run api" \
   "npx vite --host 0.0.0.0"

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# scripts/auth-server.sh — start ONLY the auth-server for local dev.
+# scripts/api.sh — start ONLY the api service for local dev.
 #
 # Mirrors the npm run sync / npm run dev split: this script starts the
-# Better Auth + jazzZkPlugin Node service in isolation, so you can run it
+# Hono service (formerly auth-server) in isolation, so you can run it
 # in its own terminal alongside `npm run sync` and `npm run dev`.
 #
-# Usage: npm run auth
+# Usage: npm run api
 #
 # Env knobs:
 #   BETTER_AUTH_SECRET       Session-signing secret. If unset, a random
@@ -52,5 +52,5 @@ if [ -z "${BETTER_AUTH_TRUSTED_ORIGINS:-}" ] && [ -n "${ALLOWED_ORIGINS:-}" ]; t
   export BETTER_AUTH_TRUSTED_ORIGINS="$ALLOWED_ORIGINS"
 fi
 
-cd "$REPO_ROOT/auth-server"
+cd "$REPO_ROOT/api"
 exec npx tsx src/index.ts

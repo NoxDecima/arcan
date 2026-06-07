@@ -36,7 +36,7 @@ export const auth = betterAuth(authConfig);
 // package.json + "module": "ESNext" in tsconfig).
 const { runMigrations } = await getMigrations(authConfig);
 await runMigrations();
-console.log("auth-server migrations applied");
+console.log("api service migrations applied");
 
 const app = new Hono();
 
@@ -49,5 +49,5 @@ app.all("/api/auth/*", async (c) => {
 app.get("/health", (c) => c.json({ ok: true }));
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }: { port: number }) => {
-  console.log(`auth-server listening on :${port}`);
+  console.log(`api service listening on :${port}`);
 });
