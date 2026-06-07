@@ -67,82 +67,303 @@ This baseline is the reason several units can be scoped down compared to where t
 
 ### Model
 
-One **pending-request pipeline**, three entry channels, a **universal approval gate**, time-bounded
-with no stray long-lived invites. A `ConnectionRequest` is delivered as a new **Inbox** message type
-alongside the existing conversation-notification type. The Inbox primitive already exists and already
-delivers to accounts you don't share a group with (`InboxSender.load(accountID, me)` +
-`createInboxMessage`, see `src/jazz/conversation.ts:151-166`). All three channels ride this same
-backbone.
+**Two CoValues, three channels, one pipeline, one universal approval gate.** Every channel ends up
+delivering a `ConnectionRequest` to the recipient's Inbox; the recipient mutates the same CoValue
+to signal approval; the requester subscribes and reacts. Mirrors the protocol shape we just
+designed for `EphemeralPairing` in Unit 2 (responder watches the CoValue for state change rather
+than waiting for a separate ack message).
 
 **Core invariant:** no `Contact` is written on either side until the recipient explicitly approves.
-The approver is always the **non-initiator**; the initiator has already consented through their action
-(scanning, opening a link, or tapping "request").
+The approver is the **non-initiator**; the initiator has already consented through their action
+(scanning, opening a link, or tapping "request"). Per Q6 (a), each side writes its **own** Contact
+locally once approval is observed — no cross-account writes.
 
-### Three entry channels
+The Inbox primitive already exists and already delivers to accounts you don't share a group with
+(`InboxSender.load(accountID, me)` + `createInboxMessage`, see `src/jazz/conversation.ts:151-166`).
+All three channels ride this same backbone.
 
-1. **In-person QR — directional.** One person shows a QR, the other scans it. Scanning lands a
-   pending request on the *shower's* device; the shower taps approve. One-way per scan; approving
-   writes both sides as contacts. Fast (one tap) while keeping the single approval gate intact.
+### CoValues
 
-2. **Async link — multi-use, revocable.** One link works for many people until its (capped) TTL
-   expires or it is revoked — the "static/reusable" link from item #4. Safe because every open still
-   hits the approval gate: a leaked link can only ever *produce a request you can reject*, never a
-   silent contact-list entry.
-   - **Duration policy:** preset choices only — **1 hour / 24 hours / 7 days**; default **24h**;
-     **hard cap 7 days**. No free-form field (the cap is a guardrail by construction).
-   - **Expiry is enforced** on the accept path. (Today expiry is *stored but not checked* — a real
-     gap, `src/jazz/invitations.ts`.)
+#### `Invitation` (reshaped — multi-use)
 
-3. **Group connection request.** From a group's member list you can already see co-members
-   (account ID + profile + fingerprint, via the shared group). Tap a co-member → **Request
-   connection** → mint a `ConnectionRequest` carrying your identity plus a trust hint
-   ("you're both in [Group Name]") and deliver it to **their** inbox. 1:1 delivery — only the two
-   parties see it, **not** the whole group. This is item #7; it is not a special case, just the
-   group-channel feed into the universal gate.
+Replaces the existing single-use `Invitation` in `src/jazz/schema/Invitation.ts`. Per the
+destructive baseline, this is a clean reshape — the legacy single-recipient fields and `consumed`
+flag are dropped. Per Q1 (a), the same primitive serves both **async links** and **in-person QR**;
+only the TTL differs.
 
-### Approval & confirmation
+```text
+Invitation = co.map({
+  inviterAccountID: z.string(),
+  inviterFingerprint: z.string(),
+  inviterDisplayName: z.string(),
+  channel: z.enum(["qr", "link"]),    // 'qr' = in-person ephemeral; 'link' = async multi-use
+  createdAt: z.date(),
+  expiresAt: z.date(),
+  revokedAt: z.date().optional(),     // explicit revoke (channel='link' only in practice)
+})
+```
 
-- **Requester-side confirmation screen** (QR + link channels): before the request is sent, the
-  requester sees the inviter's **profile (name, avatar, fingerprint)** loaded from the invite, with
-  Connect / Cancel. **Skipped for the group channel** (the requester tapped a member whose profile was
-  already in front of them). This is item #6, made symmetric — both parties see who they're connecting
-  to; the recipient still holds the gate.
-- **Approval surfaces** (the non-initiator):
-  - A persistent **"Pending connections" list** — single source of truth, badged; act whenever.
-    Also hosts outgoing requests and the live-invites management surface (item #10).
-  - A **live in-app notification** when online with the app open (reuse the existing notification
-    mechanism). For the **in-person QR** case specifically, an **immediate modal**, because both
-    people are physically present waiting on the one tap.
-- **On approve:** write the requester as a `Contact` (TOFU-pin their fingerprint) **and** fire a
-  return "approved" inbox message so the requester's client writes the approver as a `Contact` too.
-  One tap for the user; two messages under the hood. Mirrors today's mutual-append in
-  `src/jazz/invitations.ts`. Reject/ignore → nothing written.
+Owned by an "everyone-writer" group (same pattern as today) so guest nodes can load it before they
+have an account.
 
-### Eventual-consistency decision
+- **Multi-use:** the `Invitation` is **not consumed** on use. Many openings → many
+  `ConnectionRequest`s spawned from one `Invitation`. Per-opener data moves out of `Invitation`
+  entirely.
+- **Duration policy** (covers items #4, #9, #10):
+  - `channel='qr'` (in-person): fixed short TTL — **5 minutes**, not user-configurable. Shown
+    once in person, scanned within minutes, then dies. Not displayed in the management surface.
+  - `channel='link'` (async): TTL preset at creation — **1 hour / 24 hours / 7 days**; default
+    **24h**; **hard cap 7 days**. No free-form field. Listed in the management surface with
+    time-remaining + revoke + regenerate actions.
+- **Expiry is enforced** on the accept path: when a requester loads an `Invitation` to send a
+  request, `expiresAt > now` is checked (and `revokedAt` is absent). Today's code stores `expiresAt`
+  but does not check it — a real gap closed here.
 
-The sync lag is **accepted** (no optimistic pre-write of a pending-contact state). On approve, the
-requester is the approver's contact immediately; the approver becomes the requester's contact once the
-requester's client next syncs and processes the return ack. For in-person QR this is instant.
+#### `ConnectionRequest` (new — per opener)
 
-**Acceptance test (must not regress):** a conversation created between the two new contacts *while the
-requester was offline* is correctly detected once the requester comes back online. This already holds
-because conversation-creation notifications are durable inbox messages
+One `ConnectionRequest` CoValue per opening of a link / scanning of a QR / tapping of a member.
+Carries the requester's identity, the request's lifecycle state, and the channel it came through.
+
+```text
+ConnectionRequest = co.map({
+  // Identity of the person making the request
+  requesterAccountID: z.string(),
+  requesterFingerprint: z.string(),
+  requesterDisplayName: z.string(),
+  requesterAvatar: FileBlob.optional(),
+
+  // Who they're contacting
+  recipientAccountID: z.string(),
+
+  // Channel + provenance
+  channel: z.enum(["qr", "link", "group"]),
+  invitationID: z.string().optional(),  // present for 'qr' / 'link'; absent for 'group'
+
+  // Lifecycle
+  createdAt: z.date(),
+  expiresAt: z.date(),
+  approvedAt: z.date().optional(),       // recipient writes on approve
+})
+```
+
+**Ownership pattern:** owned by a fresh group the **requester** creates, with the **recipient**
+added as `writer` so they can write `approvedAt`. Requester is `admin`. Delivered via
+`InboxSender.load(recipientAccountID, me)` — same as today's `ConversationNotification` delivery
+(`src/jazz/conversation.ts:151-166`). 1:1 visibility — only the two parties can read it.
+
+**Expiry derivation (Q4 (a), plus a calibration for the group channel which has no parent link):**
+
+- `channel='qr'` or `channel='link'`: `expiresAt = invitation.expiresAt` — inherits the parent
+  link's clock. A link expiring in 1h, with a request opened at 30m remaining, leaves the request
+  30m to be acted on.
+- `channel='group'`: there is no parent invitation, so the request gets its own clock — **30 days
+  from `createdAt`**. This is a reasonable upper bound for "the recipient probably looked at it by
+  now"; pending requests don't pile up forever.
+
+**Notably absent: there is no `rejectedAt` field.** Per Q3 (c), the recipient's only options
+besides Approve are **Dismiss** (purely local — see "Dismiss semantics" below) or letting the
+request expire. The requester cannot distinguish dismissed-by-recipient from forgotten/expired;
+both surface as "timed out" on their side. This is a deliberate trust-circle property — a leaked
+link cannot confirm to the opener that they reached a real human.
+
+**Notably absent: no shared-group context field.** Per Q5 (c), the shared-group trust hint is
+**dynamic** and computed locally — see "Shared-group trust hint" below.
+
+### Three entry channels (UX layer over the unified protocol)
+
+1. **In-person QR — directional.** Initiator creates an `Invitation` with `channel='qr'` and a
+   5-minute TTL, renders the QR. Responder scans → loads the `Invitation` as a guest node → goes
+   through the **requester-confirmation screen** (next section) → creates a `ConnectionRequest`
+   with `channel='qr'` and delivers it via Inbox. Because both parties are physically present,
+   approval is surfaced as an **immediate modal** on the initiator's side (and on any other
+   already-logged-in trusted device on the same account).
+
+2. **Async link — multi-use, revocable.** Initiator creates an `Invitation` with `channel='link'`
+   and a preset TTL (1h / 24h / 7d). The link can be shared with multiple people; each opener
+   spawns a separate `ConnectionRequest`. The recipient acts on each request at their leisure from
+   the Pending Connections list.
+
+3. **Group connection request.** Inside a group's member list, tap a co-member → "Request
+   connection" → no `Invitation` is involved. Directly mint a `ConnectionRequest` with
+   `channel='group'`, `invitationID` unset, `expiresAt = createdAt + 30d`, and deliver via Inbox to
+   the target. Skips the requester-confirmation screen (per Q6 of the earlier brainstorming, the
+   requester already saw the member's profile when they tapped). 1:1 delivery — the rest of the
+   group is not informed.
+
+### Requester-side confirmation screen (QR + link channels only)
+
+Before a `ConnectionRequest` is sent, the requester sees a confirmation showing the inviter's
+profile loaded from the `Invitation` CoValue — **displayName, avatar (if any), fingerprint** —
+plus the dynamic shared-group hint (next section) if any applies. Actions: **Connect** /
+**Cancel**. Skipped entirely for `channel='group'`.
+
+### Shared-group trust hint — dynamic, bilateral, channel-agnostic
+
+(Per Q5 (c), with the user-stated extension.)
+
+The shared-group hint is **not** stored on any CoValue. It is **computed locally by each side at
+render time** by intersecting "groups I'm a member of" with "groups the other party is a member
+of." The hint appears whenever there is a non-empty intersection — regardless of what channel
+brought the request in, and on both the **requester's confirmation screen** and the **recipient's
+approval card**.
+
+**Computation:** for each group the local user is a member of (visible via `me.root` /
+existing membership accessors), check whether the other party's `accountID` appears in that
+group's member list. Render the names of all matching groups.
+
+**Properties:**
+
+- **No invitation field can lie about it** — the requester cannot forge a "you're both in [X]"
+  hint, because the hint is *not in the message*; it comes from the recipient's own view of
+  reality.
+- **Channel-agnostic** — a cold link opened by someone who happens to also be in one of your
+  groups still surfaces the hint. A group-channel request and a link-channel request both surface
+  exactly the same hint when applicable.
+- **Bilateral** — the requester sees the same hint on their confirmation screen (computed against
+  their own group memberships). If they share groups with the inviter, the confirmation shows it
+  before they commit to sending the request.
+- **No false positives** — the only way the hint can be wrong is if the *user's own* local view of
+  group membership is stale (lag), which heals on next sync.
+
+### Approval mechanic (Q2 (a) — mutate, don't ack-message)
+
+**Recipient approve:**
+
+1. Recipient writes `approvedAt = new Date()` on the `ConnectionRequest`.
+2. Recipient writes a `Contact` to **their own** ContactBook (Q6 (a)): captures
+   `requesterAccountID`, TOFU-pins `requesterFingerprint`, sets `displayNameLocal` from
+   `requesterDisplayName`, records `addedAt`.
+
+**Recipient dismiss (local-only, see "Dismiss semantics" below):**
+
+No write to the shared CoValue. The recipient's client suppresses the entry from their Pending
+Connections list locally. The requester sees nothing change.
+
+**Requester observation:**
+
+The requester subscribes to the `ConnectionRequest` after creating it. When `approvedAt` appears,
+the requester's client:
+
+1. Reads `recipientAccountID` and the inviter identity it already has (from the `Invitation`, for
+   qr/link channels) or the member it tapped (for group channel).
+2. Writes a `Contact` to **its own** ContactBook with the recipient's account info, TOFU-pinning
+   the recipient's fingerprint.
+
+Each side's ContactBook is therefore only written by its owner. No cross-account writes.
+
+### Dismiss semantics (local-only)
+
+The Pending Connections list keeps a `dismissedRequestIDs` set in `me.root` (not on the shared
+CoValue). When the recipient taps Dismiss on a `ConnectionRequest`, its ID is added to that set;
+the row stops rendering. The shared CoValue is untouched, so:
+
+- The requester sees no `approvedAt` and no signal of any kind. From their perspective the request
+  is pending until it expires.
+- On expiry, the requester transitions to "Timed out" — the same transition that happens whether
+  the recipient never saw it, dismissed it, or simply didn't act.
+- Dismiss is **purely local to one device** — same kind of UI state as a "I read this notification"
+  flag, except per-account: stored in `me.root` so it syncs across the user's own devices but
+  doesn't reach the requester.
+
+This makes Dismiss feel like the natural "no, but don't tell them why" — useful for any
+unsolicited request from a leaked link.
+
+### Lifecycle states summary
+
+The recipient's pending-connection card renders one of:
+
+| State | Trigger |
+|---|---|
+| Pending | `approvedAt` and the dismissed flag are both unset; `expiresAt > now` |
+| Approved (transient) | recipient just tapped Approve; written and visible until card is closed |
+| Dismissed (local) | request ID is in `me.root.dismissedRequestIDs` |
+| Expired | `expiresAt <= now` |
+
+The requester sees:
+
+| State | Trigger |
+|---|---|
+| Pending | `approvedAt` unset, `expiresAt > now` |
+| Approved | `approvedAt` set |
+| Timed out | `expiresAt <= now`, `approvedAt` unset |
+
+(Note: the requester cannot tell Dismissed from "Timed out" — by design.)
+
+### Eventual-consistency decision and acceptance test
+
+The sync lag for the requester-side Contact write is **accepted**. On approve, the recipient is
+immediately a Contact for the approver; the requester becomes a Contact for the recipient only
+once the requester's client next syncs and processes the `approvedAt` mutation. For in-person QR
+this is effectively instant; for async links it is "next time the requester opens the app."
+
+**Acceptance test (must not regress):** a conversation created between the two new contacts *while
+the requester was offline* must be detected once the requester comes back online. This already
+holds because conversation-creation notifications are durable Inbox messages
 (`src/jazz/conversation.ts:151`) that queue and are picked up by the inbox subscription into
-`me.root.knownConversations` on next sync — but it must be covered by a test so the rework can't
-silently break it.
+`me.root.knownConversations` on next sync — but it must be covered by a test so this rework
+cannot silently break it.
 
-### Management surface (item #10)
+### Management surfaces
 
-The Pending-connections / invites screen shows each live invite link with **time remaining**, a
-**revoke** action, and a **regenerate** action (for an expired-but-still-wanted link). All invites
-revocable; expiry enforced; pending incoming/outgoing requests visible and dismissible.
+**For the link owner — Live Invites screen** (item #10):
+
+- Lists active `Invitation`s with `channel='link'` (qr is too short-lived to surface here).
+- Per row: time remaining, **revoke** action (writes `revokedAt = now`), **regenerate** action
+  (creates a fresh `Invitation` with the same TTL preset, leaving the old one revoked).
+- All invites revocable; expiry enforced on accept; revoked invites refuse new requests.
+
+**For the recipient — Pending Connections list**:
+
+- Shows incoming `ConnectionRequest`s where `approvedAt` is unset, expiry has not passed, and the
+  request is not in `me.root.dismissedRequestIDs`.
+- Per row: requester identity + dynamic shared-group hint + **Approve** / **Dismiss**.
+- Live in-app notification when a request arrives and the app is open; **immediate modal** for
+  `channel='qr'` (both parties present).
+
+**For the requester — Outgoing Pending Requests**:
+
+- Shows outgoing `ConnectionRequest`s in pending state (`approvedAt` unset, `expiresAt > now`).
+- Surfaces "waiting on [name]" with the same dynamic shared-group hint if applicable.
+- When `approvedAt` appears, the row transitions to "Connected" and the local Contact is written.
+- When `expiresAt` passes, the row transitions to "Timed out."
+
+### Scope of changes
+
+- `src/jazz/schema/Invitation.ts` — reshape per the schema above (multi-use, channel, drop
+  single-recipient fields, drop `consumed`).
+- `src/jazz/schema/ConnectionRequest.ts` — **new file** for the per-opener request CoValue.
+- `src/jazz/schema/JazzMessangerAccount.ts` (becomes `ArcanAccount.ts` after Unit 5) — add
+  `dismissedRequestIDs: co.list(z.string())` or equivalent to `me.root`.
+- `src/jazz/invitations.ts` — significant rewrite:
+  - `createInvitation(channel, ttlPreset)` — generates per the channel rules above.
+  - `acceptInvitation` → `createConnectionRequest(invitation, me)` — creates+delivers the request
+    instead of writing recipient fields onto the Invitation.
+  - `approveConnectionRequest` / `dismissConnectionRequest` — the two recipient actions.
+  - Expiry enforcement on the accept path.
+- `src/jazz/conversation.ts` — group-channel: a new `requestConnectionFromGroupMember` helper that
+  builds and delivers a `ConnectionRequest` with `channel='group'`.
+- New `useSharedGroupsHint(otherAccountID)` hook: returns the names of groups the local user shares
+  with the other party. Used by both the requester confirmation screen and the recipient's
+  approval card.
+- New trusted-side / inbox subscription hook that surfaces incoming `ConnectionRequest`s into the
+  Pending Connections list and fires the live notification / QR modal.
+- Tests:
+  - Multi-use link: many openings → many requests; no `consumed` race.
+  - Expiry enforcement (qr 5min; link presets; per-request inherited expiry).
+  - Dismiss is local-only (requester never observes a signal).
+  - Group channel: request delivered 1:1, not visible to the group.
+  - Shared-group hint: computed correctly on both sides; updates when groups change.
+  - Acceptance test for the offline-conversation case above.
 
 ### UI-dependency
 
-Backbone (`ConnectionRequest`, the three channels, the approval gate, duration policy, enforcement,
-return-ack, acceptance test) is **buildable and testable headless now**. The user-facing surfaces —
-QR display, requester confirmation screen, pending/invite lists, the live approval modal — need the
-UI refs.
+**Buildable headless now:** the two CoValues, the three creation paths, the inbox delivery and
+subscription, the dismiss-local mechanic, expiry enforcement, the shared-groups hint computation,
+the approve mutation + local Contact write on both sides, and all tests above.
+
+**Needs UI refs:** QR display, requester-confirmation screen, Pending Connections list, Live
+Invites screen, Outgoing Pending Requests view, the immediate-modal for in-person QR, and the
+shared-group hint rendering on each surface.
 
 ---
 
@@ -679,7 +900,7 @@ revocation flow.
 
 | Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
 |------|---|---|
-| 1 · Connection subsystem | ✅ `ConnectionRequest`, three channels, approval gate, duration policy, expiry enforcement, return-ack, offline-conversation acceptance test | QR display, requester confirmation screen, pending/invite lists, live approval modal |
+| 1 · Connection subsystem | ✅ reshaped multi-use `Invitation` + new `ConnectionRequest` CoValues, three channels (qr / link / group), approval mutates the same CoValue, dismiss is local-only via `me.root.dismissedRequestIDs` (no rejection signal), duration policy (qr 5min / link 1h-24h-7d), expiry enforcement, each side writes its own Contact locally on observed approval, dynamic shared-groups hint hook (bilateral + channel-agnostic), offline-conversation acceptance test | QR display, requester confirmation screen, pending/outgoing requests + live invites screens, in-person QR immediate modal, shared-group hint rendering on each surface |
 | 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, devices-section button relabel + honesty explainer copy, updated tests | approval card, new-device "Waiting…" screen, exact wording / placement of the explainer block |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
