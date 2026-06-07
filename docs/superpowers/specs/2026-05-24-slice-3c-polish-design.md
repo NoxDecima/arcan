@@ -1,3 +1,4 @@
+> **Historical context (added 2026-06-07):** this document was written when the project was named **jazz-messanger**. The project was renamed to **Arcan** on 2026-06-05; the app rebrand itself is captured as Unit 5 in `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`. This file is preserved as-is for historical accuracy.
 # Slice 3c — Post-3b Polish (kind unification + author resolution + demote removal) Design
 
 **Goal.** Close three small wounds left after Slice 3b: (1) messages from group members who aren't yet contacts show "unknown" as author; (2) the `kind: "dm"|"group"` discriminator complicates the data model and breaks when a 1:1 grows to 3+ members; (3) the demote button on MembersRoute throws at runtime because cojson 0.20.18 forbids admin-to-admin demotion.

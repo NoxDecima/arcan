@@ -1,3 +1,4 @@
+> **Historical context (added 2026-06-07):** this document was written when the project was named **jazz-messanger**. The project was renamed to **Arcan** on 2026-06-05; the app rebrand itself is captured as Unit 5 in `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`. This file is preserved as-is for historical accuracy.
 # Slice 8 — In-App Notifications Design
 
 **Goal.** Give the user real-time indication that new messages have arrived in their conversations — in the sidebar, in the browser tab title, optionally as a sound, and optionally as a foreground OS notification when the tab is hidden. The slice covers ONLY notifications that fire while the app is open in some tab; closed-app push notifications via Web Push are deferred to NOX-30.

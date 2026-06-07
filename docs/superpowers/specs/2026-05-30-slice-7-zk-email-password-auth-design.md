@@ -1,3 +1,4 @@
+> **Historical context (added 2026-06-07):** this document was written when the project was named **jazz-messanger**. The project was renamed to **Arcan** on 2026-06-05; the app rebrand itself is captured as Unit 5 in `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`. This file is preserved as-is for historical accuracy.
 # Slice 7 — Zero-Knowledge Email + Password Auth Design
 
 **Goal.** Replace the 24-word passphrase as the user-facing credential with email + password, without softening the local-first / E2EE threat model. The Jazz seed never leaves the client; the auth server stores only material that requires an offline brute-force attack on the user's password to decrypt anything. The existing 24-word phrase is repurposed as a backup recovery code.
