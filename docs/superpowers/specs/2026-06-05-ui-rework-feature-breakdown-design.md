@@ -277,6 +277,10 @@ two dev scripts (`scripts/auth-server.sh`), the `npm run auth` script, `deploy/D
 `auth` compose service in `deploy/docker-compose.yml`, and the Caddy route. URL paths stay
 `/api/auth/*` and gain `/api/feedback`.
 
+The renamed package becomes **`@arcan/api`** (npm scope decided in Unit 5; replaces
+`@jazz-messanger/auth-server`). This rename and Unit 5's full brand pass are executed as a **single
+coordinated pass** — see Unit 5 for the combined touch-list — so each affected file is edited once.
+
 ### Endpoint
 
 `POST /api/feedback` on the `api` service. Token server-side; reuse the existing Caddy routing, rate
@@ -489,23 +493,104 @@ with the existing `SystemEvent.ts` precedent.
 *Surfaced during this brainstorming; not in the original ten-item list.*
 
 The app now has a permanent name, **Arcan**, replacing the temporary "jazz-messanger". This unit is a
-codebase-wide pass to find and change references, with one critical distinction:
+codebase-wide rename pass.
 
-- **Cosmetic / user-facing strings — change freely:** app title, PWA manifest, `<title>` / meta tags,
-  README and docs prose, `package.json` `name`, repo/dir references, splash/branding copy.
-- **Load-bearing identifiers — change only with migration care:** on a local-first Jazz app, renaming
-  a CoValue **schema** (e.g. `JazzMessangerAccount`, file `src/jazz/schema/JazzMessangerAccount.ts`)
-  or Better Auth keys can **orphan existing stored account data**. These need either a migration path
-  or a deliberate decision to leave the internal identifier as-is while changing only the display name.
-  The rebrand pass must inventory each reference and classify it before changing it.
+### Foundational decision — destructive rebrand
 
-**Coupling:** overlaps with Unit 3's `auth-server → api` rename (both touch deploy/config). Sequence
-them together to avoid two churns over the same files.
+**There is no pre-existing user data to preserve across any of the five units.** The current
+deployed state is wiped as part of this work, so this unit (and the other four) does **not** plan
+migration windows, dual-accept transitions, or backwards-compatible identifier shims. Internal
+identifiers that would otherwise be load-bearing become safe to rename outright.
 
-**Already done (2026-06-05):** the Linear project was renamed jazz-messanger → Arcan; `CLAUDE.md`
-Linear destination and the assistant's memory were updated to match.
+### Decisions made (2026-06-06)
 
-**Needs its own clarification round + plan** (which identifiers are safe to rename vs. need migration).
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Recovery-proof HMAC purpose string (`"jazz-messanger:recovery-reset"` in `src/auth/recovery-proof.ts:4` and `auth-server/src/plugin.ts:28`) | **Change** to `"arcan:recovery-reset"`. No migration; old proofs invalidated alongside the wipe. |
+| 2 | `JazzMessangerAccount` CoValue schema (file `src/jazz/schema/JazzMessangerAccount.ts`, two exported symbols, 14+ importing files) | **Rename to `ArcanAccount` / `ArcanAccountRoot`**. **Probe first** (see "Implementation gate" below) to confirm jazz-tools 0.20.18's storage layer doesn't encode the schema name in a way that makes the rename break future stored data even though current data is wiped. The probe is a knowledge gate, not a migration gate. |
+| 3 | Casing of the renamed schema | `ArcanAccount` (PascalCase brand, mirrors the existing `JazzMessangerAccount` pattern). |
+| 4 | npm package naming (couples Units 3 + 5) | Root `package.json` `name`: **`arcan`**. The renamed Unit-3 service package: **`@arcan/api`** (replaces `@jazz-messanger/auth-server`). |
+| 5 | PWA manifest | **Add a `manifest.webmanifest`** as part of this unit. No manifest exists today (`public/` has only `favicon.svg`, `icons.svg`, `notification.mp3`); the rebrand is the natural moment to introduce one with proper `name` / `short_name` / `description` / `theme_color` / icons. Wire it up via a `<link rel="manifest">` in `index.html`. |
+| 6 | Historical slice specs and plans (`docs/superpowers/specs/2026-05-15-jazz-messanger-design.md` and friends, `docs/superpowers/plans/*.md`) | **Leave files frozen** as historical artifacts (filename and content reflect the project's name at the time). Add a **top-of-doc note** to each pointing at the rename: *"This document was written when the project was named jazz-messanger. The project was renamed to Arcan on 2026-06-05; see Unit 5 of `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`."* No other edits to those files. |
+| 7 | `CHANGELOG.md` historical entries | **Leave verbatim.** Conventional practice; entries describe past state. |
+| 8 | Repo / workspace directory + GitHub remote | **Rename both.** Local: `/home/nox/Documents/Projects/Nox/jazz-messanger/` → `/home/nox/Documents/Projects/Nox/arcan/`. GitHub: the user will rename the remote manually — the implementation plan must flag this point so they can do it at the right moment (and the remote URL in `.git/config` then needs updating client-side). |
+| 9 | Coordination with Unit 3 (`auth-server → api` service rename) | **Single coordinated pass.** Both touch `auth-server/package.json`, `Dockerfile.auth`, `scripts/auth-server.sh`, the `auth` compose service, and the Caddy route — doing them as two separate sweeps would mean editing the same files twice. The rename pass touches each of those files exactly once: directory `auth-server/` → `api/`, package `@jazz-messanger/auth-server` → `@arcan/api`, all in one go. |
+| 10 | Sequencing relative to the UI rework | Flexible because there's no migration cost. Default proposal: **land Unit 3 + Unit 5 together before the heaviest UI-rework string work**, so new UI copy is written with "Arcan" from day one and doesn't need a second sweep. |
+
+### Inventory of references (categorized)
+
+**A · Pure cosmetic strings (mechanical swap):**
+- `index.html:7` — `<title>Jazz Messanger</title>`
+- `src/routes/onboarding/welcome-step.tsx:25` — "Welcome to Jazz Messanger"
+- `src/routes/auth/login.tsx:54` — "Welcome back to Jazz Messanger."
+- `src/components/notification-manager.tsx:109` — `new Notification("Jazz Messanger", ...)`
+- `src/hooks/useTabTitleBadge.ts:11` — default `baseTitle = "Jazz Messanger"`
+- Tests with literal strings: `tests/e2e/account-creation.spec.ts:23`, `tests/e2e/tab-title-badge.spec.ts`, `tests/unit/hooks/useTabTitleBadge.test.ts` (~10 literals).
+
+**B · Repo / project naming:**
+- `package.json:2` `"name"` → `"arcan"`.
+- `auth-server/package.json:2` `"name"` → `"@arcan/api"` (combined with the Unit 3 service rename, see #9).
+- `shell.nix:1, 31, 60` — nix shell name + comments + echo.
+- `scripts/dev-all.sh:95` — banner.
+
+**C · Documentation:**
+- `README.md` — top title + design-spec reference. (Linear URL already fixed.)
+- `deploy/README.md:1, 18, 19` — title + clone instructions.
+- `CLAUDE.md:1, 9, 36` — title, design-spec reference, schema-filename example. (Linear destination already fixed.)
+- Historical specs/plans get top-of-doc notes only, per #6.
+
+**D · Load-bearing internal identifiers (all safe to change outright per the destructive premise):**
+- `JazzMessangerAccount` schema (file + two exported symbols + 14+ importers) → `ArcanAccount` / `ArcanAccountRoot`. Gated on the probe.
+- Recovery HMAC purpose string in both client and server.
+- Better Auth — quick audit to confirm no embedded brand strings; expected to be a no-op.
+
+**E · New artifact:**
+- `public/manifest.webmanifest` + `<link rel="manifest">` wiring in `index.html`.
+
+### Implementation gate — schema-rename probe (must run before the rename pass)
+
+Before renaming `JazzMessangerAccount` → `ArcanAccount`, run a small probe to confirm:
+
+- A CoValue created under one schema **export name** is not encoded with that name in a way that
+  prevents reading it back after a rename.
+- Concretely: create an account under `JazzMessangerAccount`, rename the symbol/file to
+  `ArcanAccount` (no behavioural change), reload, verify the account still loads correctly.
+
+The destructive wipe means this isn't a *migration* concern — but knowing whether the rename is
+clean affects future renames too. If the probe shows the schema name IS load-bearing, document that
+characteristic for posterity; the immediate rename still proceeds (with the wipe).
+
+### Coordinated touch-list (Units 3 + 5 combined pass)
+
+Each file touched exactly once:
+
+- `auth-server/` directory → `api/`
+- `auth-server/package.json` → `api/package.json` with `"name": "@arcan/api"`
+- `deploy/Dockerfile.auth` → `deploy/Dockerfile.api`
+- `scripts/auth-server.sh` → `scripts/api.sh`
+- `package.json` root: `"name": "arcan"`; script `"auth": "./scripts/auth-server.sh"` → `"api": "./scripts/api.sh"`
+- `deploy/docker-compose.yml`: service `auth` → `api`; build context `auth-server` → `api`; `Dockerfile.auth` → `Dockerfile.api`
+- `deploy/Caddyfile`: `reverse_proxy auth:4300` → `reverse_proxy api:4300`
+- All `BETTER_AUTH_URL` paths stay `/api/auth/*` (URL paths are unaffected by the service rename — only the internal hostname changes)
+
+### Out of scope for Unit 5
+
+- Old historical doc filenames are not changed (decision #6).
+- CHANGELOG entries are not rewritten (decision #7).
+- The probe is part of this unit's implementation plan, but its *result* is documentation-only;
+  it does not block the rename.
+
+### Already done (2026-06-05/06)
+
+- Linear project renamed jazz-messanger → Arcan; `CLAUDE.md` and assistant memory updated.
+- `README.md` Linear destination updated to the Arcan URL.
+
+### Needs its own implementation plan
+
+This spec settles the *decisions*. The implementation plan still needs sequencing of touch points
+(probe first, then schema rename, then service+package rename, then string sweep, then PWA
+manifest, then directory + GitHub-remote rename ceremony), and a checklist for the GitHub-remote
+manual step that the user will perform.
 
 ---
 
@@ -517,7 +602,7 @@ Linear destination and the assistant's memory were updated to match.
 | 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, devices-section button relabel + honesty explainer copy, updated tests | approval card, new-device "Waiting…" screen, exact wording / placement of the explainer block |
 | 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
 | 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
-| 5 · Rebrand → Arcan | ✅ cosmetic string changes; identifier inventory | nothing (but coordinate user-facing strings with the new UI) |
+| 5 · Rebrand → Arcan | ✅ destructive rebrand (no migrations); schema-rename probe, `JazzMessangerAccount` → `ArcanAccount`, recovery HMAC purpose string, package names (`arcan` root / `@arcan/api` service — coordinated with Unit 3), PWA manifest, cosmetic strings, top-of-doc notes on historical specs/plans, repo-dir + GitHub-remote rename ceremony (manual GH step flagged for the user) | nothing — but new UI copy should be authored as "Arcan" from day one to avoid a second sweep |
 
 **Recommended order:** **Unit 3 first** (cleanest, almost no UI dependency) — coordinate its
 `auth-server → api` rename with **Unit 5's** rebrand pass so the deploy/config files are touched once.

@@ -11,7 +11,7 @@ E1a Slices 1 and 2 are complete and merged to `main` (tags `slice-1-complete`, `
 Followups, design decisions, and known limitations are tracked in Linear:
 
 - **Team:** Nox
-- **Project:** jazz-messanger (<https://linear.app/nox-decima/project/jazz-messanger-c718904b5ef5>)
+- **Project:** Arcan (<https://linear.app/nox-decima/project/arcan-c718904b5ef5>) — renamed from "jazz-messanger" 2026-06-05; the app rebrand itself is tracked as Unit 5 of the 2026-06-05 UI-rework spec.
 
 Items captured via the `followup-tracking` skill during development persist there automatically.
 
