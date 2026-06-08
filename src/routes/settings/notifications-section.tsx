@@ -6,28 +6,28 @@ import { Button } from "@/components/ui/button";
 /**
  * NotificationsSection: toggles for in-app notification preferences.
  *
- * Sound toggle: simple boolean write to me.root.notificationPrefs.sound.
+ * Sound toggle: simple boolean write to me.root.settings.notifications.sound.
  *
  * Browser notification enable: a click-to-enable flow that:
  *   1. Calls Notification.requestPermission()
- *   2. On "granted" → sets me.root.notificationPrefs.browser = true
+ *   2. On "granted" → sets me.root.settings.notifications.browser = true
  *   3. On "denied" → shows inline "blocked at browser level" hint
  *   4. On "default" (user dismissed) → no state change
  *
  * The user can independently toggle our app's use of browser notifications
- * off (notificationPrefs.browser = false) without revoking OS permission.
+ * off (settings.notifications.browser = false) without revoking OS permission.
  * Effective state shown: prefs.browser && Notification.permission === "granted".
  */
 export function NotificationsSection() {
   const me = useAccount(ArcanAccount, {
-    resolve: { root: { notificationPrefs: true } },
+    resolve: { root: { settings: { notifications: true } } },
   });
   const [permissionState, setPermissionState] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
   const [requestError, setRequestError] = useState<string | null>(null);
 
-  if (!me.$isLoaded || !(me.root as any)?.notificationPrefs) {
+  if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
       <section>
         <h2 className="text-base font-semibold text-gray-800 mb-2">Notifications</h2>
@@ -36,7 +36,7 @@ export function NotificationsSection() {
     );
   }
 
-  const prefs = (me.root as any).notificationPrefs;
+  const prefs = (me.root as any).settings.notifications;
   const apiSupported = typeof Notification !== "undefined";
   const browserEffective = prefs.browser && permissionState === "granted";
 

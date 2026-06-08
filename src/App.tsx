@@ -18,6 +18,7 @@ import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
+import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
 
 /**
@@ -50,7 +51,7 @@ function App() {
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
   // Keep this resolve shallow. The deeper graph the NotificationManager
-  // needs (knownConversations messages, lastReadAt, notificationPrefs) is
+  // needs (knownConversations messages, lastReadAt, settings.notifications) is
   // pulled inside NotificationManager itself via its own useAccount.
   // Lifting it here was observed to remount /auth/recovery after the
   // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
@@ -146,6 +147,10 @@ function App() {
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
+          {/* Unit 7: sync persisted appearance settings (theme + accent) into
+              ThemeProvider + AccentProvider on sign-in. Authenticated only —
+              SettingsSync depends on a logged-in Jazz account. */}
+          {isAuthenticated && <SettingsSync />}
           {/* Slice 8: in-app notification manager — drives tab title badge,
               sound, and browser-notification fanout. Reads `me` via its own
               useAccount call so App.tsx's resolve stays shallow. */}
