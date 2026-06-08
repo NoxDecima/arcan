@@ -16,6 +16,7 @@ import { RecoveryRoute } from "./routes/auth/recovery";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
+import { ThemeProvider } from "@/styles/use-theme";
 
 /**
  * App: top-level route shell.
@@ -60,9 +61,11 @@ function App() {
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
     return (
-      <Routes>
-        <Route path="/pair" element={<PairRoute />} />
-      </Routes>
+      <ThemeProvider>
+        <Routes>
+          <Route path="/pair" element={<PairRoute />} />
+        </Routes>
+      </ThemeProvider>
     );
   }
 
@@ -70,9 +73,11 @@ function App() {
   // internally (stashes fragment in sessionStorage and redirects to "/" if not authed).
   if (location.pathname === "/invite") {
     return (
-      <Routes>
-        <Route path="/invite" element={<InviteRoute />} />
-      </Routes>
+      <ThemeProvider>
+        <Routes>
+          <Route path="/invite" element={<InviteRoute />} />
+        </Routes>
+      </ThemeProvider>
     );
   }
 
@@ -128,13 +133,13 @@ function App() {
     isAuthenticated && location.pathname !== "/auth/recovery";
 
   return (
-    <>
+    <ThemeProvider>
       {/* Slice 8: in-app notification manager — drives tab title badge,
           sound, and browser-notification fanout. Reads `me` via its own
           useAccount call so App.tsx's resolve stays shallow. */}
       {showNotificationManager && <NotificationManager />}
       {routeTable}
-    </>
+    </ThemeProvider>
   );
 }
 
