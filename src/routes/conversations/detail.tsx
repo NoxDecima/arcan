@@ -237,7 +237,7 @@ export function ConversationDetailRoute() {
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
           <Link
             to="/conversations"
             className="text-sm text-muted-foreground hover:text-foreground"
@@ -246,7 +246,7 @@ export function ConversationDetailRoute() {
           </Link>
 
           <h1
-            className="flex-1 font-semibold text-gray-900 truncate"
+            className="flex-1 font-semibold text-text truncate"
             data-testid="conversation-title"
           >
             {conversationTitle}

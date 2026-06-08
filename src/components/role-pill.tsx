@@ -5,8 +5,8 @@ interface RolePillProps {
 export function RolePill({ role }: RolePillProps) {
   const styles =
     role === "admin"
-      ? "bg-blue-100 text-blue-800"
-      : "bg-panel-2 text-text-2";
+      ? "bg-accent-soft text-arcan-accent border border-accent-border"
+      : "bg-panel-2 text-text-2 border border-hairline";
 
   return (
     <span

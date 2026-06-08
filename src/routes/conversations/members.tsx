@@ -74,7 +74,7 @@ function MemberRow(props: {
         data-testid={`member-avatar-${member.accountID}`}
       />
 
-      <span className="flex-1 text-sm font-medium text-gray-900 truncate">
+      <span className="flex-1 text-sm font-medium text-text truncate">
         {member.displayName}
         {isMe && (
           <span className="ml-1 text-xs text-muted-foreground">(you)</span>
@@ -336,7 +336,7 @@ export function MembersRoute() {
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
           <Link
             to={`/conversations/${id}`}
             className="text-sm text-muted-foreground hover:text-foreground"
@@ -386,7 +386,7 @@ export function MembersRoute() {
               </div>
             ) : (
               <h1
-                className={`font-semibold text-gray-900 truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
+                className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
                 onClick={iAmAdmin ? startTitleEdit : undefined}
                 title={iAmAdmin ? "Click to edit title" : undefined}
                 data-testid="group-title-display"

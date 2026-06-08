@@ -39,6 +39,16 @@ Linear: team=Nox project=Arcan
 - Local dev requires running both `npm run sync` (Jazz sync server on `:4200`) and `npm run dev` (Vite on `:5173`).
 - A nix shell at `shell.nix` provides Node 22 + Playwright browsers + system deps; enter with `nix-shell` for reproducible dev/test environment.
 
+## Visual conventions
+
+- All colors, typography, spacing, and motion go through tokens defined in `src/styles/tokens.css`. Use the Tailwind utility names that map to them (`bg-panel`, `text-text`, `text-dim`, `border-hairline`, `font-mono`, etc.) — never raw `bg-white`, `text-gray-*`, `border-gray-*`, or font-family literals.
+- Theme is reactive: read via `useTheme()` from `@/styles/use-theme`. Persist via `me.root.settings.appearance.theme`. Light + dark only.
+- Accent is six values (tokyo/violet/teal/lime/amber/rose). Read via `useAccent()`; persist via `me.root.settings.appearance.accent`. To track the user-picked accent in a class, use `bg-arcan-accent` / `text-arcan-accent` (NOT `bg-accent` — shadcn still owns that name; we exposed our accent under the `arcan-accent` prefix to avoid the collision).
+- For brand surfaces, use `<Lattice size={n} />` from `@/components/lattice`. Tier auto-selected from `size`.
+- For success/error/copy confirmations, prefer `useToast({ tone })` over inline status messages.
+- For loading states, use the skeleton primitives from `@/components/skeleton` — not `"Loading…"` text.
+- The pre-commit guard `scripts/check-tokens.sh` (alias: `npm run check-tokens`) rejects ad-hoc Tailwind color/typography classes. `bg-black/N` overlays for modal scrims are intentionally allowed. Run locally before committing UI work.
+
 ## Process
 
 - Use the brainstorming → write-plan → subagent-driven-development workflow for each new slice.

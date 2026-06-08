@@ -42,17 +42,17 @@ export function ViewRecoveryCodeModal({ onClose }: ViewRecoveryCodeModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       data-testid="view-recovery-code-modal"
     >
-      <div className="bg-white rounded-lg p-6 w-full max-w-md space-y-4">
+      <div className="bg-panel rounded-lg p-6 w-full max-w-md space-y-4">
         <h2 className="text-lg font-semibold">View recovery code</h2>
         {code ? (
           <>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-2">
               Write this down somewhere safe. It's the only way back in if you
               forget your password.
             </p>
             <pre
               data-testid="recovery-code-display"
-              className="bg-gray-100 rounded p-3 text-sm font-mono whitespace-pre-wrap break-words"
+              className="bg-panel-2 rounded p-3 text-sm font-mono whitespace-pre-wrap break-words"
             >
               {code}
             </pre>
@@ -62,7 +62,7 @@ export function ViewRecoveryCodeModal({ onClose }: ViewRecoveryCodeModalProps) {
           </>
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-2">
               Confirm your password to view the code.
             </p>
             <input

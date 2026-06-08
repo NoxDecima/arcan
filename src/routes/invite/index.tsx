@@ -154,7 +154,7 @@ export function InviteRoute() {
         className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="invite-accepted"
       >
-        <p className="text-green-700 font-medium text-lg">
+        <p className="text-green font-medium text-lg">
           You are now connected with {inviterName}!
         </p>
         <p className="text-sm text-muted-foreground">

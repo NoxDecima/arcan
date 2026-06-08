@@ -55,13 +55,13 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
       data-testid="change-password-modal"
     >
       <form
-        className="bg-white rounded-lg p-6 w-full max-w-md space-y-4"
+        className="bg-panel rounded-lg p-6 w-full max-w-md space-y-4"
         onSubmit={handleSubmit}
       >
         <h2 className="text-lg font-semibold">Change password</h2>
         {done ? (
           <>
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-green">
               Password changed. Other devices were signed out.
             </p>
             <Button type="button" onClick={onClose} className="w-full">

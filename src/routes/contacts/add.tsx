@@ -132,7 +132,7 @@ export function ContactAddRoute() {
         className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="add-contact-accepted"
       >
-        <p className="text-green-700 font-medium text-lg">Contact added!</p>
+        <p className="text-green font-medium text-lg">Contact added!</p>
         <p className="text-sm text-muted-foreground">
           Your invitation was accepted. The contact is now in your contact list.
         </p>
@@ -147,7 +147,7 @@ export function ContactAddRoute() {
         className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="add-contact-cancelled"
       >
-        <p className="text-gray-700 font-medium">Invitation cancelled</p>
+        <p className="text-text-2 font-medium">Invitation cancelled</p>
         <Button variant="outline" onClick={() => navigate("/")}>
           Go home
         </Button>

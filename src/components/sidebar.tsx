@@ -202,7 +202,7 @@ export function Sidebar() {
                   {unread > 0 && (
                     <span
                       data-testid={`unread-badge-${i}`}
-                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white"
+                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-arcan-accent text-on-accent"
                     >
                       {unread > 99 ? "99+" : unread}
                     </span>

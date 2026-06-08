@@ -30,8 +30,8 @@ export function NotificationsSection() {
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
       <section>
-        <h2 className="text-base font-semibold text-gray-800 mb-2">Notifications</h2>
-        <p className="text-sm text-gray-400">Loading…</p>
+        <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
+        <p className="text-sm text-dim">Loading…</p>
       </section>
     );
   }
@@ -80,8 +80,8 @@ export function NotificationsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-800 mb-2">Notifications</h2>
-      <div className="bg-white rounded border border-gray-200 px-4 py-3 flex flex-col gap-3">
+      <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
+      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -97,7 +97,7 @@ export function NotificationsSection() {
             Browser notifications:{" "}
             <span
               data-testid="browser-status"
-              className={browserEffective ? "text-green-700" : "text-gray-500"}
+              className={browserEffective ? "text-green" : "text-dim"}
             >
               {browserEffective ? "Enabled" : "Not enabled"}
             </span>
@@ -133,11 +133,11 @@ export function NotificationsSection() {
             </p>
           )}
           {!apiSupported && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-dim">
               Browser notifications aren't available in this environment.
             </p>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-dim">
             Once enabled, you'll see system notifications when a new message
             arrives in a conversation while this tab is hidden.
           </p>

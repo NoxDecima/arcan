@@ -18,8 +18,8 @@ export function ProfileSection() {
   if (!me.$isLoaded) {
     return (
       <section>
-        <h2 className="text-base font-semibold text-gray-800 mb-2">Profile</h2>
-        <p className="text-sm text-gray-400">Loading…</p>
+        <h2 className="text-base font-semibold text-text mb-2">Profile</h2>
+        <p className="text-sm text-dim">Loading…</p>
       </section>
     );
   }
@@ -63,8 +63,8 @@ export function ProfileSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-800 mb-2">Profile</h2>
-      <div className="bg-white rounded border border-gray-200 px-4 py-3 flex flex-col gap-3">
+      <h2 className="text-base font-semibold text-text mb-2">Profile</h2>
+      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Avatar
             src={(me as any).profile.avatar}
@@ -110,11 +110,11 @@ export function ProfileSection() {
             {error}
           </p>
         )}
-        <div className="border-t border-gray-100 pt-3">
-          <p className="text-xs text-gray-500 mb-1">Display name</p>
+        <div className="border-t border-hairline pt-3">
+          <p className="text-xs text-dim mb-1">Display name</p>
           <p
             data-testid="settings-display-name"
-            className="text-sm font-medium text-gray-800"
+            className="text-sm font-medium text-text"
           >
             {(me as any).profile.displayName}
           </p>
