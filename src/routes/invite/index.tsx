@@ -171,7 +171,7 @@ export function InviteRoute() {
         className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="invite-declined"
       >
-        <p className="text-gray-700 font-medium">Invitation declined</p>
+        <p className="text-text-2 font-medium">Invitation declined</p>
         <Button variant="outline" onClick={() => navigate("/")}>
           Go home
         </Button>
