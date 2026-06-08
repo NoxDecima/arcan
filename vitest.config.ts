@@ -11,5 +11,7 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/unit/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["tests/e2e/**", "node_modules/**", "dist/**"],
+    // Enable CSS processing so ?raw imports return actual file content
+    css: true,
   },
 });

@@ -17,6 +17,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@radix-ui/react-slot": "^1.2.4",
     "better-auth": "^1.6.12",
     "class-variance-authority": "^0.7.1",
