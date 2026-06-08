@@ -18,6 +18,7 @@ import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
+import { ToastProvider } from "@/components/toast";
 
 /**
  * App: top-level route shell.
@@ -64,9 +65,11 @@ function App() {
     return (
       <ThemeProvider>
         <AccentProvider>
-          <Routes>
-            <Route path="/pair" element={<PairRoute />} />
-          </Routes>
+          <ToastProvider>
+            <Routes>
+              <Route path="/pair" element={<PairRoute />} />
+            </Routes>
+          </ToastProvider>
         </AccentProvider>
       </ThemeProvider>
     );
@@ -78,9 +81,11 @@ function App() {
     return (
       <ThemeProvider>
         <AccentProvider>
-          <Routes>
-            <Route path="/invite" element={<InviteRoute />} />
-          </Routes>
+          <ToastProvider>
+            <Routes>
+              <Route path="/invite" element={<InviteRoute />} />
+            </Routes>
+          </ToastProvider>
         </AccentProvider>
       </ThemeProvider>
     );
@@ -140,11 +145,13 @@ function App() {
   return (
     <ThemeProvider>
       <AccentProvider>
-        {/* Slice 8: in-app notification manager — drives tab title badge,
-            sound, and browser-notification fanout. Reads `me` via its own
-            useAccount call so App.tsx's resolve stays shallow. */}
-        {showNotificationManager && <NotificationManager />}
-        {routeTable}
+        <ToastProvider>
+          {/* Slice 8: in-app notification manager — drives tab title badge,
+              sound, and browser-notification fanout. Reads `me` via its own
+              useAccount call so App.tsx's resolve stays shallow. */}
+          {showNotificationManager && <NotificationManager />}
+          {routeTable}
+        </ToastProvider>
       </AccentProvider>
     </ThemeProvider>
   );
