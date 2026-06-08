@@ -27,7 +27,13 @@ export function SettingsSync() {
         // unknown accent — ignore
       }
     }
-  }, [me.$isLoaded, me.root?.settings?.appearance?.theme, me.root?.settings?.appearance?.accent, setTheme, setAccent]);
+  }, [
+    me.$isLoaded,
+    (me as any).root?.settings?.appearance?.theme,
+    (me as any).root?.settings?.appearance?.accent,
+    setTheme,
+    setAccent,
+  ]);
 
   return null;
 }

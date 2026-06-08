@@ -29,13 +29,15 @@ export function AppearanceSection() {
   }
 
   const apply = (next: { theme?: Theme; accent?: Accent }) => {
+    const appearance = me.root.settings?.appearance;
+    if (!appearance) return;
     if (next.theme) {
       setTheme(next.theme);
-      (me.root.settings.appearance as any).$jazz.set("theme", next.theme);
+      (appearance as any).$jazz.set("theme", next.theme);
     }
     if (next.accent) {
       setAccent(next.accent);
-      (me.root.settings.appearance as any).$jazz.set("accent", next.accent);
+      (appearance as any).$jazz.set("accent", next.accent);
     }
   };
 
