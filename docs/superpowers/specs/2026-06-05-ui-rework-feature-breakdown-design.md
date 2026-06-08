@@ -1,16 +1,14 @@
 # UI-rework supporting features — breakdown & design
 
-**Date:** 2026-06-05
-**Status:** Design agreed; capturing for staged implementation. UI reference files are still
-forthcoming — this doc deliberately separates *backbone work buildable now* from *surfaces blocked
-on the UI refs*.
+**Date:** 2026-06-05 (last revised 2026-06-08 — see Decisions changelog)
+**Status:** Design and discrepancy alignment with hi-fi UI references agreed. Implementation pending.
 
 ## Purpose
 
 A major UI rework surfaced a rough list of ten features needed for it to work nicely. This document
 clarifies what each one is, groups them into coherent **design units**, records the design decisions
 we settled, and flags what must wait for the UI to land. Each unit gets its own focused
-implementation plan later (via the writing-plans flow), built in the recommended sequence below.
+implementation plan (via the writing-plans flow), built in the recommended sequence below.
 
 The original rough list (for traceability):
 
@@ -25,62 +23,260 @@ The original rough list (for traceability):
 9. Account QR code / invite valid duration
 10. Better invite duration management in general
 
-These collapse into **six design units**. Items 4, 6, 7, 9, 10 are one subsystem (Unit 1); item 5 is
-its own trust surface (Unit 2); item 8 is standalone (Unit 3); items 1, 2, 3 are conversation display
-(Unit 4). A fifth unit — a codebase-wide rebrand to the app's permanent name **Arcan** — surfaced
-during brainstorming and is captured as Unit 5. A sixth unit — the hard cryptographic device
-revocation (Shape 3 / per-device-account architecture) — was decided during brainstorming as the
-next major slice after the rework lands; it is captured as Unit 6 here and tracked in detail as
-**NOX-10** in Linear.
+These collapsed into **six design units** (May/June discrepancy pass), and a seventh was added
+during the 2026-06-08 hi-fi alignment pass:
+
+- **Unit 1** — connection subsystem (items 4, 6, 7, 9, 10)
+- **Unit 2** — device pairing approval gate (item 5)
+- **Unit 3** — feedback endpoint + `api` rename (item 8) **[SHIPPED — small design follow-up]**
+- **Unit 4** — conversation display (items 1, 2, 3)
+- **Unit 5** — codebase-wide rebrand jazz-messanger → Arcan **[SHIPPED — tiny color touch]**
+- **Unit 6** — hard cryptographic device revocation (Shape 3 / per-device-account architecture) — tracked as **NOX-10**, sequenced after the UI rework
+- **Unit 7** — design system foundation (added 2026-06-08; runs first)
 
 ---
 
-## Foundational baseline — destructive rebuild (applies to all six units)
+## Foundational baseline — destructive rebuild (applies to all seven units)
 
 **There is no pre-existing user data to preserve across this rework.** The current deployed state
-is wiped as part of this work. No unit plans migrations, dual-accept transitions, lazy
-backfills, or backwards-compatible identifier shims. Where a unit's design previously hedged on
-backward compatibility, the answer collapses to "no constraint — just change it."
+is wiped as part of this work. No unit plans migrations, dual-accept transitions, lazy backfills,
+or backwards-compatible identifier shims. Where a unit's design previously hedged on backward
+compatibility, the answer collapses to "no constraint — just change it."
 
 Concrete consequences this baseline produces, called out in each unit where relevant:
 
-- **Unit 1** (connection subsystem) — existing `Invitation` CoValues are wiped; the new schema
-  doesn't have to coexist with the old `everyone-writer` invite group pattern.
-- **Unit 2** (device pairing approval) — the new optional fields on `EphemeralPairing` and
-  `DeviceRecord` don't need to gracefully handle pre-rework records (there aren't any).
-- **Unit 3** (feedback + `api` rename) — the `auth-server` SQLite is wiped; no Better Auth user
-  rows to migrate.
-- **Unit 4** (conversation display) — no legacy `Conversation.title` data to fall back to; new
-  conventions apply unconditionally.
-- **Unit 5** (rebrand) — the `JazzMessangerAccount` → `ArcanAccount` rename, recovery-HMAC purpose
-  string change, and Better Auth wipe all happen outright.
-- **Unit 6** (Shape 3 revocation) — no existing shared-account-secret accounts to migrate; the
-  per-device-account architecture is the only architecture from day one of the rebuild.
+- **Unit 1** — existing `Invitation` CoValues are wiped; the new schema doesn't have to coexist
+  with the old `everyone-writer` invite group pattern.
+- **Unit 2** — the new optional fields on `EphemeralPairing` and `DeviceRecord` don't need to
+  gracefully handle pre-rework records (there aren't any).
+- **Unit 3** — the `auth-server` SQLite was wiped during the rename; no Better Auth user rows to
+  migrate. Linear label set will be reshaped outright.
+- **Unit 4** — no legacy `Conversation.title` data to fall back to; new conventions apply
+  unconditionally. Existing `me.root.notificationPrefs` becomes `me.root.settings.notifications`.
+- **Unit 5** — completed under destructive baseline.
+- **Unit 6** — no existing shared-account-secret accounts to migrate; per-device-account
+  architecture is the only architecture from day one of the Shape 3 slice.
+- **Unit 7** — `me.root` schema gains a `settings` CoMap outright; no migration shim from the
+  current `notificationPrefs` field.
 
-This baseline is the reason several units can be scoped down compared to where the spec started.
+---
+
+## Decisions changelog (2026-06-08)
+
+The hi-fi UI references (`Jazz Hi-Fi App.html`, `Jazz Hi-Fi Chat.html`, `Arcan Prototype.html`,
+plus the `hf-*.jsx` and `proto.jsx` files) were reviewed against the unit bodies and the discrepancies
+were settled in a focused brainstorming pass. The resolutions are now folded into each unit body
+below. Summary for the audit trail:
+
+- **Unit 1** — keep duration policy (1h/24h/7d, cap 7d); reuse existing `formatSafetyNumber` rendered
+  as 3×4 grid (no verified-state concept); "dismiss" copy with local-only semantics; unified
+  Add-Contact screen; shared-group hint above the safety number on the approval card.
+- **Unit 2** — fingerprint replaces location on the approval card; responder-side waiting / rejected
+  / timed-out screens added; subscription-based prompts so any logged-in trusted device sees pending
+  pairings; "Approve / Deny" copy.
+- **Unit 3** — Linear labels reshaped to `Bug / Idea / Question / Note` (drop `Improvement` and
+  `Feature`); drop the email form field (verified account email already extracted server-side);
+  attachment UI relaxes to multi-file with neutral copy.
+- **Unit 4** — sidebar tabs (chats/contacts) + mobile bottom tab bar on root screens; hash-based
+  per-conversation colors for both 1:1 and group (no global violet); display names rendered verbatim;
+  no `@` prefix; **in-scope additions**: shared-conversations on the unified profile route +
+  multi-select "new conversation" promotion-to-group + polymorphic profile route.
+- **Unit 5** — adopt `#0a0b11` body/theme color; keep separate `/pair` and `/invite` URL schemes.
+- **Unit 7 (new)** — design system foundation: generic `tokens.css`, self-hosted Inter + JetBrains
+  Mono, nested `me.root.settings`, theme toggle + 6-color accent picker, Lattice logo component,
+  toast + skeleton primitives, full component-library restyle + cross-route token audit + lint
+  convention.
+
+**Deferred to Linear (Low priority):**
+
+- **NOX-31** — online presence indicator (metadata-leak concerns; opt-in design when revisited)
+- **NOX-32** — typing indicator (same family as presence; defer together)
+- **NOX-33** — message delivery states (sending/sent/failed; requires real ack protocol)
+
+---
+
+## Unit 7 — Design system foundation
+
+*Added 2026-06-08. Runs first; gates every other unit's UI work.*
+
+The hi-fi references encode a complete visual language ("Nox Noir": dark-first, JetBrains Mono +
+Inter, sharp radii, hairline borders, accent gradient, Lattice mark, cosmic watermark). The current
+implementation is Tailwind defaults with no theme system. Building any of Units 1, 2, or 4 against
+the current visual baseline would mean two restyle passes. This unit lays the foundation that all
+other unit UIs consume.
+
+### Tokens and fonts
+
+- **`src/styles/tokens.css`** — global CSS custom-property tokens for palette (dark + light),
+  typography, spacing, radii, borders, shadows, motion, layout. Modeled on the design's
+  `nox-tokens.css` but with the "Nox" naming dropped — generic token names so the file can grow
+  without brand entanglement.
+- **Self-hosted fonts** in `public/fonts/`:
+  - Inter — weights 300, 400, 500, 600, 700, woff2, Latin subset
+  - JetBrains Mono — weights 400, 500, 600, 700, woff2, Latin subset
+  - `@font-face` declarations in `tokens.css`. No Google Fonts CDN dependency.
+- **Font tokens:**
+  - `--font-body: 'Inter', system-ui, -apple-system, sans-serif`
+  - `--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace`
+  - `--font-display: 'JetBrains Mono', ui-monospace, monospace` (display is mono in this system)
+
+### Theme system
+
+Light + dark themes, with dark as the primary surface. Theme is reactive — toggling reflows
+immediately. Persisted on `me.root.settings.appearance.theme`. Defaults to system preference for
+first-time accounts.
+
+### Accent picker
+
+Six curated accents — **tokyo · violet · teal · lime · amber · rose**. User-selectable via Settings →
+Appearance. Each accent supplies both a solid fill and a 2-stop gradient (matching the design's
+`ACCENTS` constant in `hf-kit.jsx`). Accent is persisted on `me.root.settings.appearance.accent`.
+Defaults to `tokyo` for first-time accounts.
+
+### `me.root.settings` — nested settings CoMap
+
+Schema addition (replaces the current `notificationPrefs` outright per the destructive baseline):
+
+```ts
+settings: co.map({
+  appearance: co.map({
+    theme: z.enum(["light", "dark"]),
+    accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+  }),
+  notifications: co.map({
+    sound: z.boolean(),
+    browser: z.boolean(),
+  }),
+})
+```
+
+Future opt-in groups (privacy, presence per NOX-31, typing per NOX-32) will land as new sub-maps
+under `settings`. Migration is destructive — `notificationPrefs` is removed; `notifications` lives
+under `settings`.
+
+### Lattice logo component
+
+`src/components/lattice.tsx` — React component rendering the Arcan "Lattice" mark using the
+mathematical primitives from the design's `lattice.js`. Four detail tiers chosen by render size:
+
+- **full** (≥ 44px) — engraved instrument: outer ring + 24 fine ticks + 6 spokes + inner ring + nested hex
+- **reduced** (26–43px) — outer ring + spokes + inner ring + nested hex
+- **minimal** (18–25px) — outer ring + spokes + nested hex (no inner ring)
+- **glyph** (≤ 17px) — outer ring + solid gem + 6 spoke connectors
+
+Accent-aware: fills with the accent gradient by default; `mono` prop for single-color contexts.
+Used in: app header, auth surface watermark, empty-state cosmic backdrop, settings.
+
+### Toast component + provider
+
+`src/components/toast/` — a provider + hook + component that renders timed toasts (~2s). Variants:
+**neutral · success · accent · error**. Replaces ad-hoc inline status messages. Used in: copy-link
+confirmation, contact-added confirmation, failed-action errors. API:
+
+```tsx
+const toast = useToast();
+toast({ icon: "copy", text: "invite link copied", tone: "accent" });
+```
+
+### Skeleton primitives
+
+`src/components/skeletons/` — focused components for the most-loaded surfaces:
+
+- `<NavListSkeleton />` — for the conversation/contact list while `me.root` is resolving
+- `<ChatHeaderSkeleton />`, `<ChatMessagesSkeleton />` — for the chat surface before messages stream in
+- Generic `<Skel w="…" h="…" />` primitive for ad-hoc use
+
+Replaces every "Loading…" text fallback currently in the codebase.
+
+### Component-library restyle (the big chunk)
+
+Every primitive in `src/components/ui/` (shadcn-derived) gets rewritten to **consume tokens** rather
+than hard-coded Tailwind values:
+
+- `Button` — variants `primary` / `ghost` / `outline` / `danger`, sized by token spacing,
+  background by accent or panel token, radius from `--r-2` or `--r-pill` based on `s.soft` equivalent
+- `Input`, `Textarea` — panel background, border hairline, monospace caret
+- `Card` — panel background, hairline border, `--r-3`
+- `Avatar` — accent-soft background, accent text, configurable radius
+- `Toggle`, `Tabs`, `Chip` — same accent + panel treatment
+
+Same component API; new internals. Shadcn's pattern (component + props) is preserved so existing
+call sites don't break; visual identity becomes token-driven.
+
+### Cross-route token-audit pass
+
+Routes outside Units 1/2/4's direct scope still need to use tokens consistently:
+
+- `src/routes/auth/` (login, recovery)
+- `src/routes/onboarding/` (welcome, credentials, backup-display, backup-confirm, profile,
+  restore-choice, restore-with-code)
+- `src/routes/pair/` (initiator, responder)
+- `src/routes/invite/` (accept invitation)
+- `src/components/sidebar.tsx`, `src/components/notification-manager.tsx`, the App shell
+- Global error boundaries / 404 / unauthenticated states
+
+Pass replaces every hard-coded Tailwind color/typography class (`bg-white`, `text-gray-800`,
+`border-gray-200`, font-family literals) with token-based equivalents.
+
+### Drift prevention
+
+A simple pre-commit grep or ESLint rule flags ad-hoc color/typography Tailwind classes outside of
+token consumption. Cheap to add; prevents recurring restyle work.
+
+### CLAUDE.md convention update
+
+Add a "Visual conventions" subsection to CLAUDE.md noting: use `var(--token-name)` for colors,
+spacing, typography; never `bg-white`/`text-gray-*` literals; consult `tokens.css` for available
+tokens.
+
+### Scope of changes (Unit 7)
+
+- `src/styles/tokens.css` (new) — palette + typography + spacing + radii + borders + motion + layout tokens
+- `public/fonts/` (new) — woff2 files for Inter + JetBrains Mono
+- `src/components/lattice.tsx` (new) — Lattice logo, 4 tiers
+- `src/components/toast/` (new) — Toast provider + component + hook
+- `src/components/skeletons/` (new) — skeleton primitives
+- `src/components/ui/*` — rewrite all primitives to consume tokens (same API)
+- `src/jazz/schema/ArcanAccount.ts` — add `settings: co.map({ appearance, notifications })`;
+  remove the old `notificationPrefs` map (destructive baseline)
+- `src/routes/settings/` — new Appearance card (theme toggle + accent picker), update notification
+  reads/writes from `notificationPrefs` to `settings.notifications`
+- All routes outside Units 1/2/4 scope — token-audit pass (color + typography literals → tokens)
+- `index.html` — `<link rel="manifest">` already wired; `theme-color` meta becomes `#0a0b11`
+  (coordinated with Unit 5)
+- `CLAUDE.md` — add "Visual conventions" section
+- ESLint config or pre-commit hook — drift-prevention rule
+- Tests — theme reactivity (toggle changes CSS), accent persistence (`me.root.settings.appearance`
+  round-trips), token-resolution sanity (token CSS file loads + key tokens are non-empty),
+  skeleton render snapshots
+
+### UI-dependency
+
+This unit IS the foundation; everything Unit 1 / 2 / 4 needs from a visual perspective comes from
+here. Independent of UI refs (the hi-fi files provide the design source of truth) — Unit 7 is
+buildable in full.
 
 ---
 
 ## Unit 1 — Connection subsystem rework
 
-*Absorbs original items #4, #6, #7, #9, #10. The largest unit.*
+*Absorbs original items #4, #6, #7, #9, #10. Largest unit by surface area.*
 
 ### Model
 
 **Two CoValues, three channels, one pipeline, one universal approval gate.** Every channel ends up
 delivering a `ConnectionRequest` to the recipient's Inbox; the recipient mutates the same CoValue
-to signal approval; the requester subscribes and reacts. Mirrors the protocol shape we just
-designed for `EphemeralPairing` in Unit 2 (responder watches the CoValue for state change rather
-than waiting for a separate ack message).
+to signal approval; the requester subscribes and reacts. Mirrors the protocol shape of
+`EphemeralPairing` in Unit 2 (responder watches the CoValue for state change rather than waiting
+for a separate ack message).
 
 **Core invariant:** no `Contact` is written on either side until the recipient explicitly approves.
-The approver is the **non-initiator**; the initiator has already consented through their action
-(scanning, opening a link, or tapping "request"). Per Q6 (a), each side writes its **own** Contact
-locally once approval is observed — no cross-account writes.
+The approver is the **non-initiator**; the initiator has already consented through their action.
+Per the each-side-writes-its-own-Contact decision, each side writes its own Contact locally once
+approval is observed — no cross-account writes.
 
-The Inbox primitive already exists and already delivers to accounts you don't share a group with
-(`InboxSender.load(accountID, me)` + `createInboxMessage`, see `src/jazz/conversation.ts:151-166`).
-All three channels ride this same backbone.
+The Inbox primitive already exists in `src/jazz/conversation.ts:151-166` (`InboxSender.load` +
+`createInboxMessage`). All three channels ride this same backbone.
 
 ### CoValues
 
@@ -88,282 +284,235 @@ All three channels ride this same backbone.
 
 Replaces the existing single-use `Invitation` in `src/jazz/schema/Invitation.ts`. Per the
 destructive baseline, this is a clean reshape — the legacy single-recipient fields and `consumed`
-flag are dropped. Per Q1 (a), the same primitive serves both **async links** and **in-person QR**;
-only the TTL differs.
+flag are dropped. One primitive serves both **async links** (channel='link') and **in-person QR**
+(channel='qr'); only the TTL differs.
 
-```text
+```ts
 Invitation = co.map({
   inviterAccountID: z.string(),
   inviterFingerprint: z.string(),
   inviterDisplayName: z.string(),
-  channel: z.enum(["qr", "link"]),    // 'qr' = in-person ephemeral; 'link' = async multi-use
+  channel: z.enum(["qr", "link"]),
   createdAt: z.date(),
   expiresAt: z.date(),
-  revokedAt: z.date().optional(),     // explicit revoke (channel='link' only in practice)
+  revokedAt: z.date().optional(),
 })
 ```
 
-Owned by an "everyone-writer" group (same pattern as today) so guest nodes can load it before they
-have an account.
+Owned by an "everyone-writer" group (same pattern as today) so guest nodes can load it.
 
-- **Multi-use:** the `Invitation` is **not consumed** on use. Many openings → many
-  `ConnectionRequest`s spawned from one `Invitation`. Per-opener data moves out of `Invitation`
-  entirely.
-- **Duration policy** (covers items #4, #9, #10):
-  - `channel='qr'` (in-person): fixed short TTL — **5 minutes**, not user-configurable. Shown
-    once in person, scanned within minutes, then dies. Not displayed in the management surface.
-  - `channel='link'` (async): TTL preset at creation — **1 hour / 24 hours / 7 days**; default
-    **24h**; **hard cap 7 days**. No free-form field. Listed in the management surface with
-    time-remaining + revoke + regenerate actions.
-- **Expiry is enforced** on the accept path: when a requester loads an `Invitation` to send a
-  request, `expiresAt > now` is checked (and `revokedAt` is absent). Today's code stores `expiresAt`
-  but does not check it — a real gap closed here.
+- **Multi-use:** the `Invitation` is **not consumed** on use; many openings → many
+  `ConnectionRequest`s. Per-opener data lives on the `ConnectionRequest`.
+- **Duration policy** (items #4, #9, #10):
+  - `channel='qr'` — fixed short TTL (**5 minutes**, not user-configurable). Not listed in the
+    management surface.
+  - `channel='link'` — TTL preset at creation: **1 hour / 24 hours / 7 days**; default **24h**;
+    **hard cap 7 days**. **No `30d`, no `∞`** — the cap is a deliberate guardrail per the trust-circle
+    threat model. (The hi-fi designs render `30d` and `∞` options; those are dropped at implementation.)
+- **Expiry enforcement** on the accept path: when a requester loads an `Invitation`,
+  `expiresAt > now` AND `revokedAt` absent are checked. Today the field is stored but not checked —
+  a real gap closed here.
 
 #### `ConnectionRequest` (new — per opener)
 
-One `ConnectionRequest` CoValue per opening of a link / scanning of a QR / tapping of a member.
-Carries the requester's identity, the request's lifecycle state, and the channel it came through.
+One CoValue per opening of a link / scanning of a QR / tapping of a member.
 
-```text
+```ts
 ConnectionRequest = co.map({
-  // Identity of the person making the request
   requesterAccountID: z.string(),
   requesterFingerprint: z.string(),
   requesterDisplayName: z.string(),
   requesterAvatar: FileBlob.optional(),
 
-  // Who they're contacting
   recipientAccountID: z.string(),
 
-  // Channel + provenance
   channel: z.enum(["qr", "link", "group"]),
-  invitationID: z.string().optional(),  // present for 'qr' / 'link'; absent for 'group'
+  invitationID: z.string().optional(),  // present for 'qr'/'link'; absent for 'group'
 
-  // Lifecycle
   createdAt: z.date(),
   expiresAt: z.date(),
   approvedAt: z.date().optional(),       // recipient writes on approve
 })
 ```
 
-**Ownership pattern:** owned by a fresh group the **requester** creates, with the **recipient**
-added as `writer` so they can write `approvedAt`. Requester is `admin`. Delivered via
-`InboxSender.load(recipientAccountID, me)` — same as today's `ConversationNotification` delivery
-(`src/jazz/conversation.ts:151-166`). 1:1 visibility — only the two parties can read it.
+**Ownership:** owned by a fresh group the **requester** creates, with the **recipient** added as
+`writer` so they can write `approvedAt`. Requester is `admin`. Delivered via
+`InboxSender.load(recipientAccountID, me)`.
 
-**Expiry derivation (Q4 (a), plus a calibration for the group channel which has no parent link):**
-
+**Expiry derivation:**
 - `channel='qr'` or `channel='link'`: `expiresAt = invitation.expiresAt` — inherits the parent
-  link's clock. A link expiring in 1h, with a request opened at 30m remaining, leaves the request
-  30m to be acted on.
-- `channel='group'`: there is no parent invitation, so the request gets its own clock — **30 days
-  from `createdAt`**. This is a reasonable upper bound for "the recipient probably looked at it by
-  now"; pending requests don't pile up forever.
+- `channel='group'`: no parent — independent clock of **30 days from `createdAt`**
 
-**Notably absent: there is no `rejectedAt` field.** Per Q3 (c), the recipient's only options
-besides Approve are **Dismiss** (purely local — see "Dismiss semantics" below) or letting the
-request expire. The requester cannot distinguish dismissed-by-recipient from forgotten/expired;
-both surface as "timed out" on their side. This is a deliberate trust-circle property — a leaked
-link cannot confirm to the opener that they reached a real human.
-
-**Notably absent: no shared-group context field.** Per Q5 (c), the shared-group trust hint is
-**dynamic** and computed locally — see "Shared-group trust hint" below.
+**Notably absent:**
+- **No `rejectedAt`.** The recipient's only options besides Approve are **Dismiss** (purely local
+  — `me.root.dismissedRequestIDs`) or letting the request expire. The requester cannot distinguish
+  dismissed from forgotten/expired. Trust-circle privacy property. The hi-fi designs render a
+  "decline" button — that maps to **dismiss** semantics with the **"dismiss"** copy.
+- **No shared-group context field.** The hint is **dynamic and bilateral**, computed locally — see
+  Trust hint below.
+- **No `verifiedAt` or verified-status concept.** Safety numbers are for out-of-band reading only.
 
 ### Three entry channels (UX layer over the unified protocol)
 
-1. **In-person QR — directional.** Initiator creates an `Invitation` with `channel='qr'` and a
-   5-minute TTL, renders the QR. Responder scans → loads the `Invitation` as a guest node → goes
-   through the **requester-confirmation screen** (next section) → creates a `ConnectionRequest`
-   with `channel='qr'` and delivers it via Inbox. Because both parties are physically present,
-   approval is surfaced as an **immediate modal** on the initiator's side (and on any other
-   already-logged-in trusted device on the same account).
+1. **In-person QR.** Initiator creates an `Invitation` with `channel='qr'` and a 5-minute TTL,
+   renders the QR. Responder scans → loads the `Invitation` as a guest → goes through the
+   requester-confirmation screen → creates a `ConnectionRequest` with `channel='qr'` and delivers
+   via Inbox. Both parties physically present, so approval surfaces as an **immediate modal** on
+   the initiator's side and on any other already-logged-in trusted device on the same account.
 
-2. **Async link — multi-use, revocable.** Initiator creates an `Invitation` with `channel='link'`
-   and a preset TTL (1h / 24h / 7d). The link can be shared with multiple people; each opener
-   spawns a separate `ConnectionRequest`. The recipient acts on each request at their leisure from
-   the Pending Connections list.
+2. **Async link.** Initiator creates an `Invitation` with `channel='link'` and a preset TTL.
+   Sharable with many people; each opener spawns a separate `ConnectionRequest`. The recipient
+   acts on each request at their leisure from the Pending Connections list.
 
 3. **Group connection request.** Inside a group's member list, tap a co-member → "Request
-   connection" → no `Invitation` is involved. Directly mint a `ConnectionRequest` with
-   `channel='group'`, `invitationID` unset, `expiresAt = createdAt + 30d`, and deliver via Inbox to
-   the target. Skips the requester-confirmation screen (per Q6 of the earlier brainstorming, the
-   requester already saw the member's profile when they tapped). 1:1 delivery — the rest of the
-   group is not informed.
+   connection" → no `Invitation` involved. Mint a `ConnectionRequest` with `channel='group'`,
+   `invitationID` unset, `expiresAt = createdAt + 30d`, delivered via Inbox to the target.
+   Requester-confirmation screen is skipped (they already saw the member's profile when they tapped).
+   1:1 delivery — the rest of the group is not informed.
+
+### Unified Add-Contact page
+
+Per the 2026-06-08 alignment, all entry points to the connection subsystem live on **one screen**
+(matching `proto.jsx AddContactScreen` and `hf-extra.jsx AddContactBody`):
+
+- **"your code"** card with QR display + truncated account ID + copy-link + share buttons + the
+  duration picker (1h / 24h / 7d).
+- Divider "add someone".
+- **"scan their code"** primary action.
+- **"or paste a link"** secondary affordance.
 
 ### Requester-side confirmation screen (QR + link channels only)
 
 Before a `ConnectionRequest` is sent, the requester sees a confirmation showing the inviter's
-profile loaded from the `Invitation` CoValue — **displayName, avatar (if any), fingerprint** —
-plus the dynamic shared-group hint (next section) if any applies. Actions: **Connect** /
-**Cancel**. Skipped entirely for `channel='group'`.
+profile loaded from the `Invitation` CoValue — **displayName, avatar (if any), safety number** —
+plus the dynamic shared-group hint (next section) if any applies. Actions: **Connect** / **Cancel**.
+Skipped for `channel='group'`.
+
+### Approval card layout
+
+Per 1E, the recipient's approval card stacks **two trust signals** vertically:
+
+1. **Shared-group hint (always visible, top)** — rendered from the local `useSharedGroups()`
+   computation (see below). When non-empty, lists the names of groups both parties are in.
+   ("You're both in: retrieval-squad · jun-mori-collab")
+2. **Safety number (collapsed under, expandable)** — rendered as a **3-column × 4-row grid** of the
+   12 BLAKE3-derived 4-digit groups (reusing `formatSafetyNumber` + `SafetyNumber` from
+   `src/auth/fingerprint.ts` + `src/components/safety-number.tsx`). Mono font. Header reads
+   "view security code"; expand reveals the grid + caption "compare in person to confirm it's
+   really them". No action buttons attached — viewing only.
 
 ### Shared-group trust hint — dynamic, bilateral, channel-agnostic
 
-(Per Q5 (c), with the user-stated extension.)
+The hint is **not stored** on any CoValue. It is computed locally by each side at render time via
+a `useSharedGroups(otherAccountID)` hook:
 
-The shared-group hint is **not** stored on any CoValue. It is **computed locally by each side at
-render time** by intersecting "groups I'm a member of" with "groups the other party is a member
-of." The hint appears whenever there is a non-empty intersection — regardless of what channel
-brought the request in, and on both the **requester's confirmation screen** and the **recipient's
-approval card**.
-
-**Computation:** for each group the local user is a member of (visible via `me.root` /
-existing membership accessors), check whether the other party's `accountID` appears in that
-group's member list. Render the names of all matching groups.
+- For each group the local user is a member of (visible via `me.root` accessors), check whether the
+  other party's `accountID` appears in that group's member list.
+- Return the matching groups' names.
 
 **Properties:**
+- No invitation field can lie about it — the hint is not in the message, it comes from the
+  recipient's own view of reality.
+- Channel-agnostic — a cold link opened by someone who happens to share a group still surfaces it.
+- Bilateral — same hook on the requester's confirmation screen.
+- The hook is **shared with Unit 4's shared-conversations section on the unified profile route**
+  (replaces the design's "shared conversations · soon" placeholder).
 
-- **No invitation field can lie about it** — the requester cannot forge a "you're both in [X]"
-  hint, because the hint is *not in the message*; it comes from the recipient's own view of
-  reality.
-- **Channel-agnostic** — a cold link opened by someone who happens to also be in one of your
-  groups still surfaces the hint. A group-channel request and a link-channel request both surface
-  exactly the same hint when applicable.
-- **Bilateral** — the requester sees the same hint on their confirmation screen (computed against
-  their own group memberships). If they share groups with the inviter, the confirmation shows it
-  before they commit to sending the request.
-- **No false positives** — the only way the hint can be wrong is if the *user's own* local view of
-  group membership is stale (lag), which heals on next sync.
-
-### Approval mechanic (Q2 (a) — mutate, don't ack-message)
+### Approval mechanic (mutate, don't ack-message)
 
 **Recipient approve:**
+1. Write `approvedAt = new Date()` on the `ConnectionRequest`.
+2. Write a `Contact` to **their own** ContactBook: captures `requesterAccountID`, TOFU-pins
+   `requesterFingerprint`, sets `displayNameLocal` from `requesterDisplayName`, records `addedAt`.
 
-1. Recipient writes `approvedAt = new Date()` on the `ConnectionRequest`.
-2. Recipient writes a `Contact` to **their own** ContactBook (Q6 (a)): captures
-   `requesterAccountID`, TOFU-pins `requesterFingerprint`, sets `displayNameLocal` from
-   `requesterDisplayName`, records `addedAt`.
+**Recipient dismiss (local-only):** the request ID is added to `me.root.dismissedRequestIDs`; the
+row stops rendering. The shared CoValue is untouched, so the requester sees no `approvedAt` and the
+request remains pending until it expires.
 
-**Recipient dismiss (local-only, see "Dismiss semantics" below):**
+**Requester observation:** the requester subscribes to the `ConnectionRequest`. When `approvedAt`
+appears, the requester's client writes a `Contact` to its own ContactBook with the recipient's
+account info, TOFU-pinning the recipient's fingerprint.
 
-No write to the shared CoValue. The recipient's client suppresses the entry from their Pending
-Connections list locally. The requester sees nothing change.
-
-**Requester observation:**
-
-The requester subscribes to the `ConnectionRequest` after creating it. When `approvedAt` appears,
-the requester's client:
-
-1. Reads `recipientAccountID` and the inviter identity it already has (from the `Invitation`, for
-   qr/link channels) or the member it tapped (for group channel).
-2. Writes a `Contact` to **its own** ContactBook with the recipient's account info, TOFU-pinning
-   the recipient's fingerprint.
-
-Each side's ContactBook is therefore only written by its owner. No cross-account writes.
-
-### Dismiss semantics (local-only)
-
-The Pending Connections list keeps a `dismissedRequestIDs` set in `me.root` (not on the shared
-CoValue). When the recipient taps Dismiss on a `ConnectionRequest`, its ID is added to that set;
-the row stops rendering. The shared CoValue is untouched, so:
-
-- The requester sees no `approvedAt` and no signal of any kind. From their perspective the request
-  is pending until it expires.
-- On expiry, the requester transitions to "Timed out" — the same transition that happens whether
-  the recipient never saw it, dismissed it, or simply didn't act.
-- Dismiss is **purely local to one device** — same kind of UI state as a "I read this notification"
-  flag, except per-account: stored in `me.root` so it syncs across the user's own devices but
-  doesn't reach the requester.
-
-This makes Dismiss feel like the natural "no, but don't tell them why" — useful for any
-unsolicited request from a leaked link.
+Each side's ContactBook is written only by its owner. No cross-account writes.
 
 ### Lifecycle states summary
 
-The recipient's pending-connection card renders one of:
+**Recipient pending card:**
 
 | State | Trigger |
 |---|---|
 | Pending | `approvedAt` and the dismissed flag are both unset; `expiresAt > now` |
 | Approved (transient) | recipient just tapped Approve; written and visible until card is closed |
 | Dismissed (local) | request ID is in `me.root.dismissedRequestIDs` |
-| Expired | `expiresAt <= now` |
+| Expired | `expiresAt ≤ now` |
 
-The requester sees:
+**Requester view:**
 
 | State | Trigger |
 |---|---|
 | Pending | `approvedAt` unset, `expiresAt > now` |
 | Approved | `approvedAt` set |
-| Timed out | `expiresAt <= now`, `approvedAt` unset |
+| Timed out | `expiresAt ≤ now`, `approvedAt` unset |
 
-(Note: the requester cannot tell Dismissed from "Timed out" — by design.)
+Note: the requester cannot distinguish Dismissed from "Timed out" — by design.
 
 ### Eventual-consistency decision and acceptance test
 
-The sync lag for the requester-side Contact write is **accepted**. On approve, the recipient is
-immediately a Contact for the approver; the requester becomes a Contact for the recipient only
-once the requester's client next syncs and processes the `approvedAt` mutation. For in-person QR
-this is effectively instant; for async links it is "next time the requester opens the app."
+Sync lag for the requester-side Contact write is **accepted**. In-person QR is effectively instant;
+async links are "next time the requester opens the app."
 
-**Acceptance test (must not regress):** a conversation created between the two new contacts *while
-the requester was offline* must be detected once the requester comes back online. This already
-holds because conversation-creation notifications are durable Inbox messages
-(`src/jazz/conversation.ts:151`) that queue and are picked up by the inbox subscription into
-`me.root.knownConversations` on next sync — but it must be covered by a test so this rework
-cannot silently break it.
+**Acceptance test (must not regress):** a conversation created between the two new contacts while
+the requester was offline must be detected once the requester comes back online. Already holds
+because conversation-creation notifications are durable Inbox messages
+(`src/jazz/conversation.ts:151`).
 
 ### Management surfaces
 
-**For the link owner — Live Invites screen** (item #10):
+**For the link owner — Live Invites screen** (item #10): lists active `Invitation`s with
+`channel='link'`. Per row: time remaining, **revoke** action (writes `revokedAt = now`),
+**regenerate** action (creates a fresh `Invitation` with the same TTL preset).
 
-- Lists active `Invitation`s with `channel='link'` (qr is too short-lived to surface here).
-- Per row: time remaining, **revoke** action (writes `revokedAt = now`), **regenerate** action
-  (creates a fresh `Invitation` with the same TTL preset, leaving the old one revoked).
-- All invites revocable; expiry enforced on accept; revoked invites refuse new requests.
+**For the recipient — Pending Connections list**: shows incoming requests where `approvedAt` is
+unset, expiry has not passed, and the request is not in `me.root.dismissedRequestIDs`. Per row:
+requester identity + dynamic shared-group hint + **Approve** / **Dismiss**. Live in-app
+**toast** when a request arrives and the app is open (Unit 7's toast component); **immediate modal**
+for `channel='qr'` (both parties present).
 
-**For the recipient — Pending Connections list**:
-
-- Shows incoming `ConnectionRequest`s where `approvedAt` is unset, expiry has not passed, and the
-  request is not in `me.root.dismissedRequestIDs`.
-- Per row: requester identity + dynamic shared-group hint + **Approve** / **Dismiss**.
-- Live in-app notification when a request arrives and the app is open; **immediate modal** for
-  `channel='qr'` (both parties present).
-
-**For the requester — Outgoing Pending Requests**:
-
-- Shows outgoing `ConnectionRequest`s in pending state (`approvedAt` unset, `expiresAt > now`).
-- Surfaces "waiting on [name]" with the same dynamic shared-group hint if applicable.
-- When `approvedAt` appears, the row transitions to "Connected" and the local Contact is written.
-- When `expiresAt` passes, the row transitions to "Timed out."
+**For the requester — Outgoing Pending Requests**: outgoing `ConnectionRequest`s in pending state.
+Surfaces "waiting on [name]" with the same shared-group hint if applicable. When `approvedAt`
+appears, the row transitions to "Connected" and the local Contact is written. When `expiresAt`
+passes, the row transitions to "Timed out."
 
 ### Scope of changes
 
-- `src/jazz/schema/Invitation.ts` — reshape per the schema above (multi-use, channel, drop
-  single-recipient fields, drop `consumed`).
-- `src/jazz/schema/ConnectionRequest.ts` — **new file** for the per-opener request CoValue.
-- `src/jazz/schema/JazzMessangerAccount.ts` (becomes `ArcanAccount.ts` after Unit 5) — add
-  `dismissedRequestIDs: co.list(z.string())` or equivalent to `me.root`.
+- `src/jazz/schema/Invitation.ts` — reshape per the schema above
+- `src/jazz/schema/ConnectionRequest.ts` (new)
+- `src/jazz/schema/ArcanAccount.ts` — add `dismissedRequestIDs: co.list(z.string())` (or equivalent)
 - `src/jazz/invitations.ts` — significant rewrite:
-  - `createInvitation(channel, ttlPreset)` — generates per the channel rules above.
-  - `acceptInvitation` → `createConnectionRequest(invitation, me)` — creates+delivers the request
-    instead of writing recipient fields onto the Invitation.
-  - `approveConnectionRequest` / `dismissConnectionRequest` — the two recipient actions.
-  - Expiry enforcement on the accept path.
-- `src/jazz/conversation.ts` — group-channel: a new `requestConnectionFromGroupMember` helper that
-  builds and delivers a `ConnectionRequest` with `channel='group'`.
-- New `useSharedGroupsHint(otherAccountID)` hook: returns the names of groups the local user shares
-  with the other party. Used by both the requester confirmation screen and the recipient's
-  approval card.
-- New trusted-side / inbox subscription hook that surfaces incoming `ConnectionRequest`s into the
-  Pending Connections list and fires the live notification / QR modal.
-- Tests:
-  - Multi-use link: many openings → many requests; no `consumed` race.
-  - Expiry enforcement (qr 5min; link presets; per-request inherited expiry).
-  - Dismiss is local-only (requester never observes a signal).
-  - Group channel: request delivered 1:1, not visible to the group.
-  - Shared-group hint: computed correctly on both sides; updates when groups change.
-  - Acceptance test for the offline-conversation case above.
+  - `createInvitation(channel, ttlPreset)`
+  - `createConnectionRequest(invitation, me)` (replaces `acceptInvitation`)
+  - `approveConnectionRequest` / `dismissConnectionRequest`
+  - Expiry enforcement
+- `src/jazz/conversation.ts` — group-channel helper `requestConnectionFromGroupMember`
+- `src/hooks/useSharedGroups.ts` (new) — used by both the connection-request UI and Unit 4's
+  unified profile shared-conversations section
+- Inbox subscription hook surfacing incoming `ConnectionRequest`s into the Pending Connections list,
+  firing a Unit-7 toast on arrival, immediate modal for QR
+- Unified `AddContactScreen` (`src/routes/contacts/add.tsx` or similar)
+- Approval card component with shared-group hint on top + safety-number expander beneath
+- Tests: multi-use link (no consumed-race); expiry enforcement (qr 5min / link presets); dismiss
+  local-only (requester never observes a signal); group-channel 1:1 delivery; shared-group hint
+  correctness; offline-conversation acceptance test
 
 ### UI-dependency
 
-**Buildable headless now:** the two CoValues, the three creation paths, the inbox delivery and
-subscription, the dismiss-local mechanic, expiry enforcement, the shared-groups hint computation,
-the approve mutation + local Contact write on both sides, and all tests above.
+**Buildable headless (after Unit 7):** the two CoValues, three creation paths, inbox delivery and
+subscription, dismiss-local mechanic, expiry enforcement, shared-groups hint, approve mutation +
+local Contact writes, all tests.
 
-**Needs UI refs:** QR display, requester-confirmation screen, Pending Connections list, Live
-Invites screen, Outgoing Pending Requests view, the immediate-modal for in-person QR, and the
-shared-group hint rendering on each surface.
+**Visual surfaces (consume Unit 7's tokens/components):** QR display, requester-confirmation
+screen, Pending Connections list, Live Invites screen, Outgoing Pending Requests view, in-person QR
+immediate modal, the approval card with stacked shared-group hint + safety-number grid.
 
 ---
 
@@ -371,550 +520,536 @@ shared-group hint rendering on each surface.
 
 *Original item #5.*
 
-Today pairing (`src/jazz/pairing.ts`) transfers the **account secret** through the QR sealed-box
-handshake — `wrapAccountSecretForResponder` runs the moment the responder writes `responderPubkey`,
-so by the time a new device registers it already has full access; an approval tapped afterward would
-be cosmetic. We change the **gating of the existing QR flow** (no new async path is introduced):
-secrets never seal/transfer until an already-trusted device approves.
+Today pairing transfers the **account secret** through the QR sealed-box handshake — the moment the
+responder writes `responderPubkey`, `wrapAccountSecretForResponder` runs automatically and the new
+device has full access. The Unit 2 gate inserts an approval step in between. The state machines
+exist on both sides today (`src/routes/pair/initiator-step.tsx` and `responder-step.tsx`) with phases
+`awaiting-approval` and `waiting-approval` respectively, and `handleApprove()` is wired on the
+initiator. What's missing is the enriched approval card, fingerprint match on both sides, reject
+path, and the broadcast-to-other-trusted-devices behavior.
 
 ### Three-phase handshake
 
-1. **Present.** The new (blank) device generates its ephemeral keypair and writes to the existing
-   `EphemeralPairing` rendezvous: `responderPubkey` (as today) **plus** new device-info fields
-   (below). Crucially, this no longer triggers any secret transfer on the initiator side.
-2. **Approve.** An already-trusted device (the QR-shower, or any other device already logged into the
-   same account — since the `EphemeralPairing` CoValue is account-scoped, all logged-in trusted
-   devices see it) sees an **enriched approval card** and taps Approve or Reject.
-3. **Transfer.** Only on approve is the account secret sealed to the new device's ephemeral pubkey
-   and written to `wrappedAccountSecret` via the existing `wrapAccountSecretForResponder`. The new
-   device picks it up, unseals, and authenticates as today. **Scanning alone no longer transfers
-   anything.**
+1. **Present.** New (blank) device generates its ephemeral keypair and writes to
+   `EphemeralPairing`: `responderPubkey`, `responderUserAgent`, `responderFirstSeenAt`,
+   `responderFingerprint`. **No** secret transfer here.
+2. **Approve.** An already-trusted device (the QR-shower, or any other device already logged into
+   the same account — the CoValue is account-scoped, so all logged-in trusted devices see it) sees
+   the enriched card and taps Approve or Deny.
+3. **Transfer.** Only on approve is the account secret sealed and written to
+   `wrappedAccountSecret` via `wrapAccountSecretForResponder`. The new device picks it up,
+   unseals, and authenticates.
 
 ### Schema additions to `EphemeralPairing`
 
-Per the destructive baseline, there are no in-flight pre-rework pairings to coexist with — the
-fields could just as well be required. They're declared optional only because they're written by
-different actors at different lifecycle phases (responder writes some on present, trusted device
-writes others on approve), so the CoMap is in a partial state between phases:
+All new fields are optional only because the CoValue is in a partial state between phases (different
+actors write at different times). Per destructive baseline, no compat concerns.
 
-- **`responderUserAgent: string`** — raw `navigator.userAgent` from the new device. Label + OS are
-  derived client-side on the trusted device (label via the existing `deriveDeviceLabel`; a simple OS
-  extractor: Windows / macOS / Linux / Android / iOS / Unknown). Keeps schema small; rendering logic
-  colocated on the trusted side.
-- **`responderFirstSeenAt: date`** — `Date.now()` at the moment the responder writes its present.
-  Local clock; rendered as a relative time on the card.
-- **`responderFingerprint: string`** — **SHA-256(`responderPubkey` hex), first 8 hex chars**. The
-  **same value is rendered on both devices**: the new device's "Waiting for approval…" screen and
-  the trusted device's approval card. The user verifies the two match by eye — a physical-presence
-  check (8 hex = 32 bits, sufficient for in-person verification). Cryptographically bound to the
-  handshake's ephemeral key, so a swap would change it.
-- **`approvedAt: date`** — written by the trusted device on approve, **before** writing
-  `wrappedAccountSecret`. State/audit only; the responder reacts to `wrappedAccountSecret`'s
-  presence, not to this field.
-- **`rejectedAt: date`** — written by the trusted device on reject, alongside tombstoning
-  (`expiresAt = now`). Lets the responder distinguish **Rejected** from **Timed out** in its UI.
+- **`responderUserAgent: string`** — raw `navigator.userAgent` from the new device. Label + OS
+  derived client-side on the trusted device (via existing `deriveDeviceLabel` + a simple OS
+  extractor: Windows / macOS / Linux / Android / iOS / Unknown).
+- **`responderFirstSeenAt: date`** — `Date.now()` at responder present time.
+- **`responderFingerprint: string`** — first 8 hex chars of SHA-256(`responderPubkey` hex). The
+  same value is rendered on **both** the new-device "Waiting…" screen and the trusted-device
+  approval card. User verifies they match by eye — physical-presence check.
+- **`approvedAt: date`** — written by trusted device on approve, before `wrappedAccountSecret`.
+- **`rejectedAt: date`** — written by trusted device on reject, alongside tombstoning
+  (`expiresAt = now`).
 
-### Approval card fields (rendered from the schema)
+### Approval card field set
 
-- **Label** — derived from `responderUserAgent` via `deriveDeviceLabel` (e.g. "Firefox browser").
-- **OS** — derived from `responderUserAgent` (Windows / macOS / Linux / Android / iOS / Unknown).
-- **First-seen** — relative time from `responderFirstSeenAt` ("just now", "1 minute ago").
-- **Fingerprint** — `responderFingerprint`, shown verbatim. Same value the new device displays.
+Per 2A, the card shows:
+
+- **Label** — derived from `responderUserAgent` via `deriveDeviceLabel`
+- **OS** — derived from `responderUserAgent` (Windows / macOS / Linux / Android / iOS / Unknown)
+- **First-seen** — relative time from `responderFirstSeenAt`
+- **Fingerprint** — `responderFingerprint` verbatim. **Same value the new device displays.**
+
+**`location` is explicitly NOT shown** (the hi-fi design's `ScApproveDevice` includes it; that is
+overridden). Source IP is server-attested transport metadata, spoofable (VPN / region), and risks
+false confidence. Real protection is the out-of-band QR presentation + explicit approve on an
+already-trusted device + the fingerprint match.
 
 ### Responder-side state machine
 
-The responder subscribes to the `EphemeralPairing` and renders one of four states based on field
-presence:
+The responder subscribes to the `EphemeralPairing` and renders one of four states. Existing
+`waiting-approval` screen gets enriched; `rejected` and `timed-out` are new.
 
-| State | Trigger |
-|---|---|
-| Presenting | `responderPubkey` written, nothing else from the trusted side yet → "Waiting for approval on the original device. Fingerprint: `A1B2C3D4`" (example value — the actual 8 hex chars derived from the responder's ephemeral pubkey) |
-| Approved & transferring | `wrappedAccountSecret` set → unseal, authenticate, register device (existing `claimAccountFromPairing` path) |
-| Rejected | `rejectedAt` set → "The request was rejected on the original device." |
-| Timed out | `expiresAt` passed without `wrappedAccountSecret` or `rejectedAt` → "The request timed out — try again." |
+| State | Trigger | UI |
+|---|---|---|
+| Presenting | `responderPubkey` written, nothing else from trusted side yet | `ScLinkWaiting` — large mono fingerprint (e.g. `A1B2C3D4`), caption "match this with the code shown on your other device", subtle spinner. Cosmic `AuthSurface` shell |
+| Approved & transferring | `wrappedAccountSecret` set | unseal, authenticate, register device (existing `claimAccountFromPairing` path) |
+| Rejected | `rejectedAt` set | `ScLinkRejected` — "the request was rejected on the original device · try again" |
+| Timed out | `expiresAt` passed without `wrappedAccountSecret` or `rejectedAt` | `ScLinkTimedOut` — "the request timed out · try again" |
 
 ### Trusted-side approve / reject actions
 
-- **Approve:** write `approvedAt`, then call the existing `wrapAccountSecretForResponder` (which
-  seals and writes `wrappedAccountSecret`). Two writes; the responder only acts on the second.
-- **Reject:** write `rejectedAt`, then set `expiresAt = now` (tombstone via the existing
-  `tombstonePairing`).
+- **Approve:** write `approvedAt`, then call the existing `wrapAccountSecretForResponder`.
+- **Deny:** write `rejectedAt`, then `expiresAt = now` (tombstone via existing `tombstonePairing`).
 
-### Race semantics
+Button copy: **"Approve / Deny"** (2C).
 
-- **Multiple trusted devices simultaneously approve:** any can approve; CoJSON last-write-wins makes
-  the race benign — `wrappedAccountSecret` ends up with one valid sealed payload either way. This is
-  a useful property, not a bug: if you scan from your laptop while holding your phone, both surfaces
-  show the prompt and either tap completes the flow.
-- **Responder disconnects after presenting:** trusted device may still approve; the responder picks
-  up `wrappedAccountSecret` on reconnect. Local-first behavior; no special handling required.
-- **Two responders scan the same QR** (edge case): `responderPubkey` is a single field — the second
-  scan overwrites the first. Same characteristic as today's implementation; not blocking, may be
-  addressed later (e.g. by rejecting writes after first present).
+### Multi-trusted-device pattern (2B-iii)
+
+Replace the current polling on the initiator's session with a **subscription** on `me`'s pending
+`EphemeralPairing`s, so:
+
+- Any logged-in trusted device on the same account sees a pending pairing as a Unit-7 toast/modal
+  showing the enriched approval card.
+- First device to approve wins; CoJSON last-write-wins resolves the race benignly
+  (`wrappedAccountSecret` ends up with one valid sealed payload either way).
+
+Useful when you scan from your laptop while holding your phone — both surfaces show the prompt and
+either tap completes the flow.
+
+### Race semantics (unchanged from prior spec)
+
+- **Multiple trusted devices simultaneously approve:** benign via LWW.
+- **Responder disconnects after presenting:** trusted device may still approve; responder picks up
+  `wrappedAccountSecret` on reconnect.
+- **Two responders scan the same QR:** the second overwrites the first's `responderPubkey`. Same
+  characteristic as today; not blocking.
 
 ### Timeout
 
-Reuse the existing `EphemeralPairing.expiresAt` (currently **10 minutes** in
-`createPairingInvite`). The approval gate lives inside that window; no separate approval clock.
+Reuse the existing `EphemeralPairing.expiresAt` (currently 10 minutes in `createPairingInvite`).
+The approval gate lives inside that window.
 
-### Trust-signal value of approximate location — **deferred from v1**
+### Interim revocation UX honesty (unchanged from prior spec)
 
-Approximate location is derived from the device's source IP. IP is *transport* metadata the server
-sees in plaintext on every TLS/WebSocket connection — it is not protected by payload E2EE because
-the server has to see it to route packets. As a security signal it is **weak and spoofable** (VPN /
-same-region attacker / a lying server), risking **false confidence** precisely in the scenario where
-a user would rely on it to spot an intruder. The real protection is the out-of-band QR presentation
-+ explicit approve on an already-trusted device. Defer.
+Real cryptographic revocation lives in Unit 6 / NOX-10. Today's "Revoke" button is purely a UI
+filter on `DeviceRecord.revoked`. To avoid a misleading-reassurance compound with the new
+approval-gate UX:
 
-### Interim revocation UX honesty (small piggyback scope)
-
-Real cryptographic revocation is **not** part of Unit 2 — it is tracked as a separate slice in
-Linear (**NOX-10 · "Hard device revocation via per-device-account architecture (Shape 3)"**, High
-priority, sequenced to land immediately after the UI rework). Today's "Revoke" button is purely a
-UI filter on `DeviceRecord.revoked`; the revoked device retains the `AgentSecret` and full read/write
-access. Shipping the new Unit 2 approval gate without touching this label would compound the
-misleading-reassurance problem (a clearer approval-on-add UX with no real revoke-after-the-fact).
-
-Since Unit 2 is already touching the device-list area's UI, we piggyback two small honesty fixes:
-
-- **Rename the button** from "Revoke" to **"Forget this device"** (or equivalent — the UI refs may
-  refine the exact label). The action still flips `DeviceRecord.revoked = true`; the new label
-  accurately describes what it does.
+- **Rename the button** from "Revoke" to **"Forget this device"** (or equivalent).
 - **Add a one-paragraph explainer** under the device list: *"Forgetting a device hides it here, but
   it can still read everything it has already synced. Full cryptographic revocation lands in the
-  upcoming overhaul — see NOX-10."* Wording can be tightened during UI work.
+  upcoming overhaul — see NOX-10."*
 
-These are minor copy + a small UI block; no schema or protocol change. They get retired/replaced
-when NOX-10 ships its real `removeMember`-backed revocation.
+These ride out when Unit 6 ships.
 
 ### Scope of changes
 
-- `src/jazz/schema/EphemeralPairing.ts` — add the five optional fields above.
-- `src/jazz/pairing.ts` — split the trusted-side flow into `approvePairing()` and `rejectPairing()`
-  helpers; current `wrapAccountSecretForResponder` becomes called from `approvePairing` (not by an
-  automatic effect on `responderPubkey` change).
-- New trusted-side subscription/watcher to surface pending approvals across all logged-in trusted
-  devices.
-- Responder-side state-machine rendering.
-- `src/routes/settings/devices-section.tsx` — relabel the revoke button to "Forget this device"
-  (or equivalent); add the honesty explainer block under the device list.
-- Update pairing tests to cover the gate, reject, and timeout paths.
+- `src/jazz/schema/EphemeralPairing.ts` — add the five optional fields above
+- `src/jazz/pairing.ts` — split trusted-side into `approvePairing()` and `rejectPairing()` helpers;
+  `wrapAccountSecretForResponder` becomes called from `approvePairing` (not auto-fired on
+  `responderPubkey` change)
+- New trusted-side subscription replacing polling — surfaces pending pairings as toasts/modals
+  app-wide
+- Responder-side state-machine rendering: enriched `ScLinkWaiting` with fingerprint, new
+  `ScLinkRejected`, new `ScLinkTimedOut`
+- `src/routes/settings/devices-section.tsx` — button relabel to "Forget this device"; add the
+  honesty explainer block
+- Pairing tests — gate, reject, timeout, multi-trusted-device, fingerprint match
 
 ### UI-dependency
 
-Buildable headless now: schema additions, the approve/reject helpers, the watcher, the responder
-state machine, and updated tests. **Needs UI refs:** the approval card, the new device's "Waiting…"
-screen, and surfacing the prompt to other already-logged-in trusted devices.
+**Buildable headless (after Unit 7):** schema additions, approve/reject helpers, watcher,
+responder state machine, devices-section relabel + explainer.
+
+**Visual surfaces (consume Unit 7):** enriched approval card on the trusted side (rendered as a
+Unit-7 toast/modal), new-device "Waiting…" / Rejected / Timed-out screens in the cosmic
+`AuthSurface` shell.
 
 ---
 
-## Unit 3 — Feedback + backend service rename
+## Unit 3 — Feedback endpoint + `api` rename
 
-*Original item #8. The cleanest build-now unit — almost no UI dependency.*
+*Original item #8. **SHIPPED** as commits `15cb67b` + `f983c77` + the Phase 2 service rename. The
+design-driven follow-up below restructures the form and the Linear taxonomy.*
 
-### Decision: proxy through our own backend → Linear
+### What shipped
 
-Feedback must leave the local-first system to reach the maintainer. Sending directly to Linear or
-email from the client would ship an API token in the browser bundle — unacceptable. We already run a
-**Hono backend** (currently `auth-server/`, port 4300, behind Caddy, env-based secrets, rate limiting,
-SQLite, docker-compose) — a natural home for a proxy endpoint. The client `POST`s feedback; the Linear
-token lives **only** server-side. This satisfies "no client token" and "no in-app triage" (feedback
-lands as triageable Linear issues in the project we already manage).
+- `auth-server/` renamed to `api/`; npm package `@arcan/api`; Caddy/compose/Dockerfile/scripts
+  updated in one coordinated pass.
+- `LinearClient` (issueCreate + two-step fileUpload).
+- `InMemoryRateLimiter`.
+- `POST /api/feedback` route — session-gated (Better Auth), per-account rate-limited, multipart
+  with any-file-type / multi-file / 10 MB total cap, attachments uploaded to Linear and embedded
+  as markdown links in the issue description.
+- Server-side verified email extraction from the Better Auth `user` table — client never sends an
+  email.
+- Linear issue created in **team=Nox · project=Arcan** with the **`Feedback`** label + optional
+  category label. Title prefixed `[Feedback]`.
 
-### Service rename
+### Design-driven follow-up (2026-06-08)
 
-The backend has outgrown "auth," so rename `auth-server/` → **`api`** (it serves the `/api/*` paths;
-no collisions — there is no existing `api/` dir or `api` script today). Touches: the directory, the
-two dev scripts (`scripts/auth-server.sh`), the `npm run auth` script, `deploy/Dockerfile.auth`, the
-`auth` compose service in `deploy/docker-compose.yml`, and the Caddy route. URL paths stay
-`/api/auth/*` and gain `/api/feedback`.
+The hi-fi feedback form differs from what shipped in three ways. Resolutions:
 
-The renamed package becomes **`@arcan/api`** (npm scope decided in Unit 5; replaces
-`@jazz-messanger/auth-server`). This rename and Unit 5's full brand pass are executed as a **single
-coordinated pass** — see Unit 5 for the combined touch-list — so each affected file is edited once.
+**Category taxonomy — reshape Linear labels.**
 
-### Endpoint
+- Workspace pass:
+  - **Rename** `Improvement` → `Idea` (kept the existing label UUID; the label name moves)
+  - **Drop** `Feature` from the workspace label set (no orphaned issues — confirm during execution)
+  - **Create** new `Question` label
+  - **Create** new `Note` label
+- All four kept **Title-case** in Linear (matching workspace convention); rendered **lowercase** in
+  the in-app form to match the design voice: `bug · idea · question · note`.
 
-`POST /api/feedback` on the `api` service. Token server-side; reuse the existing Caddy routing, rate
-limiting, and deploy.
+Final form: optional Category dropdown maps to `Bug / Idea / Question / Note`.
 
-**Access control (authenticated + rate-limited):** require a valid Better Auth session (the `api`
-service already issues/validates these). Feedback is an in-app action by a signed-in user, so this
-naturally rate-limits per account and blocks drive-by spam against the tracker. Additionally apply a
-per-account/IP cap (belt-and-suspenders) on top of the existing IP-based limiter.
+**Email field — dropped from the form.**
 
-**Submitter email — extracted server-side:** because the request carries a valid session, the `api`
-service looks up the submitter's **verified account email from its own user table** and attaches it to
-the issue as metadata for potential follow-up. The client never sends an email; it's the verified
-account email, not a typed-in value (spoof-proof). Consequently the **optional Email form field is
-dropped** — it would be redundant and ambiguous.
+The hi-fi form has "email · optional" with "leave blank to stay anonymous" copy that implies
+unauthenticated submission. The shipped endpoint requires a session (decision Q-auth: C); the email
+is already extracted server-side from the authenticated user. The form drops the input and shows a
+small note instead — "we'll know it's from your account · `<email>`" (final wording finalized at UI
+implementation).
 
-**Form fields:** **Message** (required); **Category** (optional dropdown → **Bug / Improvement /
-Feature**, reusing the existing Nox team labels 1:1); **Attachments** (optional, **any file type**,
-**multiple files, ≤10 MB total**). No email field.
+**Attachment UI — multi-file, neutral copy.**
 
-**Attachment pipeline:** client uploads files to `POST /api/feedback` as multipart; the `api` service
-validates the **combined size ≤10 MB** (any MIME type allowed), then uploads each to Linear via
-Linear's attachment-upload flow and links them to the created issue. Upload token/credentials stay
-server-side. (Note: "any file type" makes the endpoint a small authenticated file relay — acceptable
-because it's session-gated and capped; the size limit is the primary abuse guard.)
+Shipped accepts any file type / multiple files / 10 MB total. The design's "add a screenshot" copy
+is narrowed. Final form:
 
-**Sink — Linear:** creates an issue in **team=Nox / project=Arcan**. The project was renamed from
-"jazz-messanger" to "Arcan" on 2026-06-05 (ID `79d46a12-7563-4e3c-833b-d49531d94bb1` unchanged); URL
-`https://linear.app/nox-decima/project/arcan-c718904b5ef5`. **Arcan is now the single destination for
-all issues** — both user feedback and followup-tracking (the split was rejected). Each feedback issue
-gets the **`Feedback`** label (created 2026-06-05, id `e4c59d7f-2ebb-4ea0-bc37-f4e863b5a694`) plus the
-optional Category label. Issue title: derive from the first line / first ~60 chars of the message
-(prefixed e.g. `[Feedback]`); body carries the full message, the verified submitter email, and
-category.
+- Label: "attachments · optional"
+- Empty: dashed-border drop zone with paperclip icon + "attach files"
+- Populated: list of attached files (filename + remove button per row)
+- Total-size readout under the list
+
+### Backend changes for the follow-up
+
+- `api/src/env.ts` — replace label UUIDs:
+  - Remove `LINEAR_LABEL_IMPROVEMENT_ID`, `LINEAR_LABEL_FEATURE_ID`
+  - Add `LINEAR_LABEL_IDEA_ID`, `LINEAR_LABEL_QUESTION_ID`, `LINEAR_LABEL_NOTE_ID`
+  - Keep `LINEAR_LABEL_BUG_ID` (only the name changes if at all)
+- `api/src/feedback-route.ts` — `categoryLabels` map becomes `Bug / Idea / Question / Note`
+- `api/tests/feedback.test.ts` — update category-label assertions
+
+### Scope of changes (follow-up)
+
+- Linear workspace label reshape (programmatic via MCP or manual; done as a workspace pass)
+- `api/src/env.ts`, `api/src/feedback-route.ts`, `api/tests/feedback.test.ts` (label set changes)
+- Settings → Feedback form: render lowercase categories, drop email input, multi-file attachments
 
 ### UI-dependency
 
-Rename + endpoint + Linear wiring buildable now; only the settings form needs the UI refs.
+**Settings form** consumes Unit 7's tokens, Card, Button, Input, Toast (on submit-success), and the
+new category-chip styling. No new schema; all backend changes are localized.
 
 ---
 
 ## Unit 4 — Conversation display
 
-*Original items #1, #2, #3.*
+*Original items #1, #2, #3 + the 2026-06-08 IA shift, polymorphic profile route, multi-select new-conversation flow, and shared-conversations section.*
 
-### Enforcement model — app-layer, by deliberate choice (consistent with current precedent)
+### Enforcement model — app-layer, by deliberate choice
 
-**Decision:** title and icon are admin-only **at the application layer** (the edit affordance only
-appears for admins; non-admin attempts are rejected by the UI). They live **directly on the
-`Conversation` CoMap**, not in a sub-CoMap. A determined non-admin with developer tools could
-technically rename or change the icon by calling `$jazz.set` directly — that is an accepted gap.
+Per the existing precedent (`src/jazz/schema/SystemEvent.ts` documents app-layer-only enforcement
+for trust-circle UX features), title and icon are admin-only at the application layer (UI affordance
+only appears for admins; non-admin attempts are rejected by the UI). A determined non-admin with
+developer tools could technically rename or change the icon by calling `$jazz.set` directly — that
+is an accepted gap, captured for a future hardening pass (see "Future hardening — replace
+trust-circle app-layer enforcement" follow-up task).
 
-**Why:** the existing `src/jazz/schema/SystemEvent.ts` docstring explicitly establishes this
-precedent for trust-circle UX features:
+### IA shift — sidebar tabs + mobile bottom tab bar (4M)
 
-> "The log is application-level: a determined actor calling cojson directly could change membership
-> without writing an event. This is consistent with the trust-circle threat model — the log is for
-> UX clarity, not security."
+Chats and contacts are no longer separate top-level routes. They become **tabs in a single
+persistent sidebar** on desktop, and a **bottom tab bar** on mobile (rendered only on **root**
+screens, i.e. the chats list and contacts list — not on chat/profile/settings, where it would
+compete with the composer or other actions).
 
-The same reasoning applies to title and icon: in a small trust circle, every group member can
-already spam messages and (today) write SystemEvents however they like; renaming the conversation
-is within the same envelope of "things a determined misbehaving member could do." Promoting just
-title/icon to cojson-level enforcement would be inconsistent with that precedent without
-addressing the broader pattern.
+**Routes after the shift:**
 
-**Future hardening — explicitly deferred.** A separate follow-up task captures the eventual
-secure-by-design refactor that would promote these (and the SystemEvent invariants, and message-list
-push rights) to data-layer enforcement together. That belongs as one coordinated pass after the UI
-rework lands, not piecemeal here.
+- `/` — chats list (default tab)
+- `/contacts` — contacts list
+- `/conversations/:id` — chat detail
+- `/profile/:accountID` — **polymorphic profile** (own or other; see below)
+- `/settings` and subroutes — settings
+- `/pair`, `/invite` — unchanged
 
-### #2 — Conversation icons
+The sidebar's `chats | contacts` tabs are stateful — the active tab persists per session. Mobile
+bottom tab bar mirrors the same active state.
 
-Add `icon` directly to `Conversation` (a new optional field). For **group conversations**; 1:1s
-keep borrowing the contact's avatar (unchanged). Set/cleared by any admin (app-layer gated).
+### Polymorphic profile route (4 — in-scope addition)
 
-**Constraints:**
+**One** route — `/profile/:accountID` — rendered by a single `<ProfileRoute>` component that
+branches on `accountID === me.$jazz.id`:
 
-- **Types:** image only — PNG, JPEG, WebP.
-- **Size:** raw upload ≤ 5 MB; resized client-side to 256×256 before storing. Reuse the image
-  storage path used for profile avatars (Slice 5 — inline media).
-- Clearing reverts to the monogram fallback.
+**Standard contact profile (other account):**
+- Avatar + display name + truncated account ID
+- Primary action: **`message`** (opens or creates a 1:1 conversation)
+- **Shared conversations section** — list of conversations both parties are in (uses
+  `useSharedGroups()` from Unit 1; replaces the design's "soon" badge)
+- **Safety number** — collapsed under "view security code"; expands to the 3×4 mono grid
+- No edit affordances
 
-**Monogram fallback (when unset):** the first 1–2 graphemes of the resolved display title,
-rendered over a deterministic background color computed from a hash of the conversation ID — so the
-same conversation gets the same color across devices and reloads.
+**Own profile (`accountID === me`):**
+- Same shell, but:
+  - Avatar has a **camera-overlay** for editing
+  - Display name has an inline **pencil-edit** affordance
+  - Primary action becomes **`add a contact`** (opens the unified Add-Contact screen from Unit 1)
+  - Shared-conversations section still applies (shows your own groups for completeness)
+  - Safety number still applies (this is the value others scan)
+  - Footer row: **"account & settings"** → routes to `/settings`
 
-Icon changes do **not** emit a `SystemEvent` (kept minimal — title rename does, see below).
+**Entry points (matching the hi-fi prototype):**
+1. Tap your avatar/name in the chat-list header → `/profile/<me-id>`
+2. Tap your avatar/name in the contacts-list header → `/profile/<me-id>`
+3. Tap the profile row in Settings → `/profile/<me-id>`
+4. Tap any contact row → `/profile/<their-id>`
 
-### #3 — Conversation names
+This unifies what was previously split across `src/routes/contacts/detail.tsx` (other contacts)
+and `src/routes/settings/profile-section.tsx` (own profile editing inside settings).
+`contacts/detail.tsx` becomes the polymorphic component; `settings/profile-section.tsx` reduces to
+a thin "go to your profile" row.
 
-`Conversation.title` already exists; the existing `updateConversationTitle` (`conversation.ts:501`)
-already does `conversation.$jazz.set("title", newTitle)`. The change here is:
+### Multi-select new-conversation flow (4 — in-scope addition)
 
-- **Show the edit affordance only to admins** in the UI (the existing function's comment already
-  notes "The caller is responsible for admin-permission gating in the UI" — we just make that
-  contract real on the new title-edit surface).
-- **Emit a `SystemEvent`** when a rename actually happens, so the timeline shows "Alice renamed
-  the group."
+`NewConvoScreen` (matches `proto.jsx`): a single screen with a checklist of contacts. Behavior keyed
+to selection count:
 
-**Constraints:**
+- **0 selected** — primary button disabled, label "select contacts"
+- **1 selected** — primary button label "message", action: open or create 1:1 conversation with that contact
+- **2+ selected** — primary button label "create group · N members", action: create group conversation
+  with an optional title field that appears at the top of the screen (placeholder "group name (optional)")
 
-- 1–100 characters after trimming.
-- Cannot be all-whitespace (treated as "clear", which reverts to derived label).
-- Concurrent renames: CoJSON last-write-wins on `title`. The rename `SystemEvent` log is not a
-  serialization mechanism (same disclaimer as existing events).
-
-**`SystemEvent` schema addition:** extend the `kind` enum with **`renamed`**, and add an optional
-`newTitle: z.string()` field. The actor (admin doing the rename) writes the event into the
-conversation's `systemEvents` list with `kind="renamed"`, `actorAccountID`, `occurredAt`, and
-`newTitle`. `targetAccountID` is omitted for renames.
+Routed at `/conversations/new`.
 
 ### #1 — New-messages indicator (in-conversation unread divider)
 
-A "↓ new messages" divider rendered at the first unread message. The backend already has
-`lastReadAt`; the divider is **pure render — fully UI-blocked, defer to the UI refs.**
+The hi-fi `NewMark` component aligns exactly with the spec. A "↓ new messages" divider rendered at
+the first unread message — pure render, fully UI-blocked until Unit 7's typography tokens land.
 
-**Divider semantics (locked now, so the UI work knows what to render against):**
+**Divider semantics (locked):**
+- Anchor: capture `lastReadAt[conv]` into a React ref at the moment the conversation detail view
+  **mounts**; do not update the anchor while the view is open.
+- Render: above the first message whose `sentAt > anchoredLastReadAt`.
+- **Excluded:** self-authored messages and `SystemEvent`s.
+- No unread on open → no divider. All unread on open → divider at top. New messages arriving while
+  viewing appear below; the divider does not move.
+- Auto-scroll to the divider on mount when any unread.
 
-- **Anchor:** capture `lastReadAt[conv]` into a React ref at the moment the conversation detail view
-  **mounts**; do not update the anchor while the view is open. (Pairs with the read-semantics change
-  below: since `lastReadAt` no longer advances on open, the anchor stays put for the whole reading
-  session.)
-- **Render:** above the first message whose `sentAt > anchoredLastReadAt`.
-- **Excluded from the calculation:** self-authored messages and `SystemEvent`s — mirrors how
-  `getUnreadCount` in `src/jazz/notifications.ts` already excludes them.
-- **No unread on open** → no divider.
-- **All unread on open** (e.g. brand-new conversation) → divider at top.
-- **New messages arriving while viewing** appear below the divider; the divider does not move and
-  no new divider is inserted.
-- **Auto-scroll on mount:** if any unread on open, scroll to the divider so the user lands at the
-  read/unread boundary. (UI execution detail, but specified here for consistency.)
+### Read semantics change
 
-### Read semantics change (buildable now)
+Replace the current mount-mark-read with leave/send mark-read. `lastReadAt[conv]` advances only on:
 
-Today the app marks a conversation read **on open**
-(`src/routes/conversations/detail.tsx:82-102` — marks on mount when visible, re-marks on tab
-refocus). **New rule: do not mark read on open.** `lastReadAt[conv]` advances only on:
+- **Send.** After a message append succeeds, `lastReadAt[conv] = max(currentLastReadAt, now)`.
+- **Leave.** Set `lastReadAt[conv] = max(currentLastReadAt, latestRenderedMessageSentAt + 1)`. **Not**
+  `now` — abandoned-without-reading should reflect what was actually rendered.
 
-- **Send.** After a message append succeeds, set
-  `lastReadAt[conv] = max(currentLastReadAt, now)`. Sending implies caught up.
-- **Leave.** Set `lastReadAt[conv] = max(currentLastReadAt, latestRenderedMessageSentAt + 1)`
-  where `latestRenderedMessageSentAt` is captured at the moment of leaving. **Note: `now` is
-  intentionally NOT used here** — if you open a chat and abandon without reading new arrivals,
-  unread should reflect what you actually rendered, not the wall-clock time you left.
+**"Leave" triggers** — any one fires the mark-read: route change away from the conversation detail
+route; `visibilitychange` to `hidden` while still on the conversation route; `beforeunload`
+(best-effort).
 
-**Concrete "leave" triggers** — any one fires the mark-read:
+### Active-conversation suppression
 
-1. Route change away from the conversation-detail route (react-router cleanup effect).
-2. `visibilitychange` to `hidden` while still on the conversation route (tab backgrounded /
-   minimized / device locked).
-3. `beforeunload` (best-effort — may not land on hard crashes).
+Under the new rule, the conversation you're actively viewing accumulates "unread" between mount-anchor
+and any new arrivals, because `lastReadAt` doesn't advance until leave. Three surfaces suppress:
 
-If the leave write doesn't land (crash, force-quit), the conversation stays unread next session.
-Acceptable per local-first; no special recovery needed.
-
-### Active-conversation suppression (consequence of the new read semantics)
-
-Under the new rule, the conversation you're actively viewing accumulates "unread" between its
-mount-anchor and any new arrivals, because `lastReadAt` doesn't advance until leave. Three
-surfaces must suppress for the active conversation to avoid lying to the user:
-
-| Surface | Suppression rule |
+| Surface | Rule |
 |---|---|
-| **Sidebar badge** | Hide the unread badge on the row matching the current active conversation route. |
-| **Tab title badge** | When summing total unread for the title, exclude the active conversation's contribution. |
-| **In-app notification toasts** | Skip toast firing when the new message's conversation matches the active route. |
+| Sidebar badge | Hide the unread badge on the row matching the current active conversation route |
+| Tab title badge | Exclude the active conversation's contribution from the total |
+| In-app notification toasts | Skip toast firing when the new message's conversation matches the active route |
 
-All three are driven by the same primitive — "is this the active conversation right now?" — read
-from react-router params. Implementation lives in the notification trigger and the sidebar / tab-title
-hooks.
+All three driven by react-router params.
+
+### #2 — Conversation icons
+
+Add `icon: FileBlob.optional()` to `Conversation`, mirroring the avatar pattern on `Profile`
+(`src/jazz/schema/Profile.ts:19`). For **group conversations**; 1:1s keep borrowing the contact's
+avatar (unchanged).
+
+**Constraints:**
+- Image only (PNG / JPEG / WebP).
+- Raw upload ≤ 5 MB; resized client-side to 256×256 before storing. Reuse the avatar storage path
+  from Slice 5.
+- Set/cleared by any admin (app-layer gated). Clearing reverts to the monogram fallback.
+
+**Monogram fallback (when unset):** the first 1–2 graphemes of the resolved display title, rendered
+over a **deterministic background color computed from a hash of the conversation ID** drawing from
+the accent-family palette. **Both 1:1 and group conversations use this same hash-based scheme** —
+no global violet treatment for groups (the design's violet group tint is overridden per 4O).
+
+Icon changes do **not** emit a `SystemEvent`.
+
+### #3 — Conversation names
+
+`Conversation.title` already exists; the existing `updateConversationTitle` mutation already does
+`conversation.$jazz.set("title", newTitle)`. Changes:
+
+- Show the title-edit affordance only to admins in the UI.
+- Emit a `SystemEvent` when a rename actually happens, so the timeline shows "Alice renamed the group."
+
+**Constraints:**
+- 1–100 characters after trimming.
+- Cannot be all-whitespace (treated as "clear", which reverts to derived label).
+- Concurrent renames: CoJSON LWW. The rename `SystemEvent` log is not a serialization mechanism.
+
+**`SystemEvent` schema addition:** extend the `kind` enum with **`renamed`**, add optional
+`newTitle: z.string()`.
+
+### Display name conventions (4P)
+
+- **Rendered verbatim.** No CSS-lowercasing. Users see names as they were entered.
+- **No `@` prefix** on names anywhere — the hi-fi mono variants render `@ada · keyring`; that is
+  not adopted.
 
 ### Scope of changes (Unit 4)
 
-- `src/jazz/schema/Conversation.ts` — add optional `icon: FileBlob.optional()` field, mirroring
-  the avatar pattern on `Profile` (`src/jazz/schema/Profile.ts:19`); keep existing `title` field.
-- `src/jazz/schema/SystemEvent.ts` — extend `kind` enum with `renamed`, add optional `newTitle`.
-- `src/jazz/conversation.ts` — `updateConversationTitle` writes the `renamed` SystemEvent in
-  addition to setting the title; add `updateConversationIcon` (no SystemEvent). The
-  admin-permission check stays in callers (UI); no schema-side gating change.
-- `src/routes/conversations/detail.tsx` — replace mount-mark-read with leave/send mark-read,
-  capture leaving message-sentAt.
-- Sidebar, `useTabTitleBadge`, notification trigger — add active-conversation suppression.
-- Display-title resolver — `conversation.title` if set, else derived label (no metadata fallback —
-  no metadata CoMap exists).
-- Tests — read-semantics change (mount no longer writes; leave/send do); rename SystemEvent
-  emission; UI gating (the affordance only renders for admins).
-
-### UI-dependency
-
-**Buildable now:** the schema additions (`Conversation.icon`, SystemEvent `renamed`), the
-`updateConversationTitle` + new `updateConversationIcon` mutations with SystemEvent emission, the
-read-semantics change including leave/send triggers and active-conversation suppression, and tests
-for all of the above.
-
-**Needs UI refs:** the #1 divider rendering itself, the title-edit affordance and icon upload
-affordance (admin-gated *in the UI*), the monogram fallback rendering, and the rename-event
-timeline rendering.
+- `src/jazz/schema/Conversation.ts` — add `icon: FileBlob.optional()`
+- `src/jazz/schema/SystemEvent.ts` — extend `kind` with `renamed`; add optional `newTitle`
+- `src/jazz/conversation.ts` — `updateConversationTitle` writes the `renamed` SystemEvent; add
+  `updateConversationIcon`
+- `src/routes/conversations/detail.tsx` — replace mount-mark-read with leave/send; capture
+  leaving message-sentAt; render the unread divider; auto-scroll
+- Sidebar component + tabs (chats/contacts) + mobile bottom tab bar
+- `useTabTitleBadge` + sidebar + notification trigger — active-conversation suppression
+- Display-title resolver — `conversation.title` if set, else derived label
+- `src/routes/conversations/new.tsx` (or refactor of existing) — multi-select promotion-to-group
+- **Polymorphic profile**:
+  - `src/routes/profile/index.tsx` (new) — `/profile/:accountID` route
+  - `src/components/profile-view.tsx` (new) — the polymorphic component
+  - `src/routes/contacts/detail.tsx` — replaced by routing to `/profile/<id>` (or kept as a thin
+    redirect)
+  - `src/routes/settings/profile-section.tsx` — reduces to a "go to your profile" navigation row
+- Tests — read-semantics change; rename SystemEvent; UI gating; multi-select flow; polymorphic
+  profile branches; shared-conversations rendering
 
 ### Known accepted gap
 
-Title/icon admin-only is **app-layer only** — a determined non-admin with developer tools could
-write either field directly via cojson. Captured as a follow-up to be hardened together with the
-broader trust-circle data-layer pass (SystemEvent invariants, message-list push rights). Consistent
-with the existing `SystemEvent.ts` precedent.
+Title/icon admin-only is **app-layer only** — captured for the broader trust-circle data-layer pass
+(future hardening follow-up task).
+
+### UI-dependency
+
+**Buildable headless (after Unit 7):** schema additions, mutations, read-semantics change,
+suppression logic, lazy migration paths, multi-select flow logic, profile-route polymorphism,
+shared-conversations integration via Unit 1's `useSharedGroups()`, tests.
+
+**Visual surfaces (consume Unit 7):** chat detail, sidebar tabs + bottom tab bar, conversation list
+row treatment, monogram avatar generation, divider rendering, icon-upload affordance, title-edit
+affordance, rename-event timeline rendering, polymorphic profile screen (both modes),
+shared-conversations section rendering.
 
 ---
 
 ## Unit 5 — Rebrand jazz-messanger → Arcan
 
-*Surfaced during this brainstorming; not in the original ten-item list.*
+*Original brainstorming surfaced this. **SHIPPED** as commit `d0b67f4` + Phase 7 historical notes
++ rest of the rename pass. The design-driven touch below is a single-value adjustment.*
 
-The app now has a permanent name, **Arcan**, replacing the temporary "jazz-messanger". This unit is a
-codebase-wide rename pass.
+### What shipped
 
-### Decisions made (2026-06-06)
+- `JazzMessangerAccount` → `ArcanAccount` across the file, 20 importers, tests.
+- Recovery-HMAC purpose string → `arcan:recovery-reset` on both client and server.
+- Root `package.json` name `arcan`; service package `@arcan/api`.
+- PWA manifest (`public/manifest.webmanifest`) wired via `<link rel="manifest">` in `index.html`.
+- All user-facing brand strings updated (index.html title, welcome, login, notifications, tab title
+  default, README, deploy/README, CLAUDE.md, e2e + unit test literals).
+- Top-of-doc historical-context notes prepended to all 20 historical slice specs and plans.
 
-(Per the doc-wide destructive baseline above, all internal identifiers that would otherwise be
-load-bearing are safe to rename outright — no migration planning required.)
+### Design-driven touch (2026-06-08)
 
-| # | Topic | Decision |
-|---|---|---|
-| 1 | Recovery-proof HMAC purpose string (`"jazz-messanger:recovery-reset"` in `src/auth/recovery-proof.ts:4` and `auth-server/src/plugin.ts:28`) | **Change** to `"arcan:recovery-reset"`. No migration; old proofs invalidated alongside the wipe. |
-| 2 | `JazzMessangerAccount` CoValue schema (file `src/jazz/schema/JazzMessangerAccount.ts`, two exported symbols, 14+ importing files) | **Rename to `ArcanAccount` / `ArcanAccountRoot`**. **Probe first** (see "Implementation gate" below) to confirm jazz-tools 0.20.18's storage layer doesn't encode the schema name in a way that makes the rename break future stored data even though current data is wiped. The probe is a knowledge gate, not a migration gate. |
-| 3 | Casing of the renamed schema | `ArcanAccount` (PascalCase brand, mirrors the existing `JazzMessangerAccount` pattern). |
-| 4 | npm package naming (couples Units 3 + 5) | Root `package.json` `name`: **`arcan`**. The renamed Unit-3 service package: **`@arcan/api`** (replaces `@jazz-messanger/auth-server`). |
-| 5 | PWA manifest | **Add a `manifest.webmanifest`** as part of this unit. No manifest exists today (`public/` has only `favicon.svg`, `icons.svg`, `notification.mp3`); the rebrand is the natural moment to introduce one with proper `name` / `short_name` / `description` / `theme_color` / icons. Wire it up via a `<link rel="manifest">` in `index.html`. |
-| 6 | Historical slice specs and plans (`docs/superpowers/specs/2026-05-15-jazz-messanger-design.md` and friends, `docs/superpowers/plans/*.md`) | **Leave files frozen** as historical artifacts (filename and content reflect the project's name at the time). Add a **top-of-doc note** to each pointing at the rename: *"This document was written when the project was named jazz-messanger. The project was renamed to Arcan on 2026-06-05; see Unit 5 of `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`."* No other edits to those files. |
-| 7 | `CHANGELOG.md` historical entries | **Leave verbatim.** Conventional practice; entries describe past state. |
-| 8 | Repo / workspace directory + GitHub remote | **Rename both.** Local: `/home/nox/Documents/Projects/Nox/jazz-messanger/` → `/home/nox/Documents/Projects/Nox/arcan/`. GitHub: the user will rename the remote manually — the implementation plan must flag this point so they can do it at the right moment (and the remote URL in `.git/config` then needs updating client-side). |
-| 9 | Coordination with Unit 3 (`auth-server → api` service rename) | **Single coordinated pass.** Both touch `auth-server/package.json`, `Dockerfile.auth`, `scripts/auth-server.sh`, the `auth` compose service, and the Caddy route — doing them as two separate sweeps would mean editing the same files twice. The rename pass touches each of those files exactly once: directory `auth-server/` → `api/`, package `@jazz-messanger/auth-server` → `@arcan/api`, all in one go. |
-| 10 | Sequencing relative to the UI rework | Flexible because there's no migration cost. Default proposal: **land Unit 3 + Unit 5 together before the heaviest UI-rework string work**, so new UI copy is written with "Arcan" from day one and doesn't need a second sweep. |
+The hi-fi prototype uses `#0a0b11` for the body background; the shipped PWA manifest uses `#0a0a0a`.
 
-### Inventory of references (categorized)
+- Update `public/manifest.webmanifest` `theme_color` and `background_color` from `#0a0a0a` to
+  `#0a0b11`.
+- Update `index.html` `<meta name="theme-color">` from `#0a0a0a` to `#0a0b11`.
 
-**A · Pure cosmetic strings (mechanical swap):**
-- `index.html:7` — `<title>Jazz Messanger</title>`
-- `src/routes/onboarding/welcome-step.tsx:25` — "Welcome to Jazz Messanger"
-- `src/routes/auth/login.tsx:54` — "Welcome back to Jazz Messanger."
-- `src/components/notification-manager.tsx:109` — `new Notification("Jazz Messanger", ...)`
-- `src/hooks/useTabTitleBadge.ts:11` — default `baseTitle = "Jazz Messanger"`
-- Tests with literal strings: `tests/e2e/account-creation.spec.ts:23`, `tests/e2e/tab-title-badge.spec.ts`, `tests/unit/hooks/useTabTitleBadge.test.ts` (~10 literals).
+This is a one-line-each tweak; folds naturally into Unit 7's deploy.
 
-**B · Repo / project naming:**
-- `package.json:2` `"name"` → `"arcan"`.
-- `auth-server/package.json:2` `"name"` → `"@arcan/api"` (combined with the Unit 3 service rename, see #9).
-- `shell.nix:1, 31, 60` — nix shell name + comments + echo.
-- `scripts/dev-all.sh:95` — banner.
+### URL scheme — `/pair#…` and `/invite#…` kept separate
 
-**C · Documentation:**
-- `README.md` — top title + design-spec reference. (Linear URL already fixed.)
-- `deploy/README.md:1, 18, 19` — title + clone instructions.
-- `CLAUDE.md:1, 9, 36` — title, design-spec reference, schema-filename example. (Linear destination already fixed.)
-- Historical specs/plans get top-of-doc notes only, per #6.
-
-**D · Load-bearing internal identifiers (all safe to change outright per the destructive premise):**
-- `JazzMessangerAccount` schema (file + two exported symbols + 14+ importers) → `ArcanAccount` / `ArcanAccountRoot`. Gated on the probe.
-- Recovery HMAC purpose string in both client and server.
-- Better Auth — quick audit to confirm no embedded brand strings; expected to be a no-op.
-
-**E · New artifact:**
-- `public/manifest.webmanifest` + `<link rel="manifest">` wiring in `index.html`.
-
-### Implementation gate — schema-rename probe (must run before the rename pass)
-
-Before renaming `JazzMessangerAccount` → `ArcanAccount`, run a small probe to confirm:
-
-- A CoValue created under one schema **export name** is not encoded with that name in a way that
-  prevents reading it back after a rename.
-- Concretely: create an account under `JazzMessangerAccount`, rename the symbol/file to
-  `ArcanAccount` (no behavioural change), reload, verify the account still loads correctly.
-
-The destructive wipe means this isn't a *migration* concern — but knowing whether the rename is
-clean affects future renames too. If the probe shows the schema name IS load-bearing, document that
-characteristic for posterity; the immediate rename still proceeds (with the wipe).
-
-### Coordinated touch-list (Units 3 + 5 combined pass)
-
-Each file touched exactly once:
-
-- `auth-server/` directory → `api/`
-- `auth-server/package.json` → `api/package.json` with `"name": "@arcan/api"`
-- `deploy/Dockerfile.auth` → `deploy/Dockerfile.api`
-- `scripts/auth-server.sh` → `scripts/api.sh`
-- `package.json` root: `"name": "arcan"`; script `"auth": "./scripts/auth-server.sh"` → `"api": "./scripts/api.sh"`
-- `deploy/docker-compose.yml`: service `auth` → `api`; build context `auth-server` → `api`; `Dockerfile.auth` → `Dockerfile.api`
-- `deploy/Caddyfile`: `reverse_proxy auth:4300` → `reverse_proxy api:4300`
-- All `BETTER_AUTH_URL` paths stay `/api/auth/*` (URL paths are unaffected by the service rename — only the internal hostname changes)
-
-### Out of scope for Unit 5
-
-- Old historical doc filenames are not changed (decision #6).
-- CHANGELOG entries are not rewritten (decision #7).
-- The probe is part of this unit's implementation plan, but its *result* is documentation-only;
-  it does not block the rename.
-
-### Already done (2026-06-05/06)
-
-- Linear project renamed jazz-messanger → Arcan; `CLAUDE.md` and assistant memory updated.
-- `README.md` Linear destination updated to the Arcan URL.
-
-### Needs its own implementation plan
-
-This spec settles the *decisions*. The implementation plan still needs sequencing of touch points
-(probe first, then schema rename, then service+package rename, then string sweep, then PWA
-manifest, then directory + GitHub-remote rename ceremony), and a checklist for the GitHub-remote
-manual step that the user will perform.
+The hi-fi design shows a unified `arcan.app/link#…` scheme. The shipped/implemented paths
+(`/pair#…` for device pairing, `/invite#…` for contact invitations) are kept — the two flows have
+meaningfully different schemas and lifecycles, and the distinct paths are already implemented and
+tested. Design copy updates to the right path per context.
 
 ---
 
 ## Unit 6 — Hard device revocation (Shape 3 / per-device-account architecture)
 
-*Promoted into a spec unit during this brainstorming; full design lives in Linear as **NOX-10**
-(High priority).*
+*Promoted into a spec unit during the original brainstorming; full design lives in Linear as
+**NOX-10** (High priority).*
 
-### Summary
+### Summary (unchanged from previous revision)
 
-Replace the current "the account secret is shared across devices" model with **one Account per
-device**, all members of a shared **`UserGroup`**. The user identity becomes the group; each
-device is a cryptographically-distinct member.
+Replace "the account secret is shared across devices" with **one Account per device**, all members
+of a shared **`UserGroup`**. The user identity becomes the group; each device is a
+cryptographically-distinct member.
 
-- **Pair** a device → create a fresh per-device `Account` on the new device (no secret transfer);
-  the trusted device admins it into the `UserGroup`. Composes with Unit 2's approval gate, which
-  now gates *admission into the UserGroup* rather than *secret sealing*.
-- **Revoke** a device → `UserGroup.removeMember(deviceAccount)`. Jazz auto-rotates the readKey on
-  member removal (the same primitive §6 already uses for conversation member removal). The revoked
-  device cannot decrypt content authored after revocation.
-- **Forward-rotation only** — the revoked device retains read access to content it already synced,
-  same documented property as §6.4.
+- **Pair** → create a fresh per-device `Account` on the new device (no secret transfer); the
+  trusted device admins it into the `UserGroup`. Composes with Unit 2's approval gate, which now
+  gates *admission into the UserGroup* rather than *secret sealing*.
+- **Revoke** → `UserGroup.removeMember(deviceAccount)`. Jazz auto-rotates the readKey on member
+  removal. The revoked device cannot decrypt content authored after revocation.
+- **Forward-rotation only** — the revoked device retains read access to content it already synced
+  (consistent with §6.4's documented property for conversation member removal).
 
-### Why this is a separate unit
+### Why a separate unit
 
-Hard revocation is a foundational architectural change that touches every place currently rooted on
+Hard revocation is a foundational architectural change touching every place currently rooted on
 "the account" (account secret, schemas keyed on `me`, author derivation, all pairing flows). Doing
-it concurrently with the UI rework would mean the UI is built against a moving target. Doing it
-later means shipping the rework with a Unit-2 approval gate but no real revoke-after-the-fact —
-which is why Unit 2 includes the interim "Forget this device" relabel + honesty explainer
-(see Unit 2 → "Interim revocation UX honesty").
+it concurrently with the UI rework would mean the UI is built against a moving target.
 
 ### Sequencing
 
-**Land immediately after the five UI-rework units complete**, before any public launch. This is
-the user-set sequencing: rework first, then this slice. Per the doc-wide destructive baseline,
-there are no shared-secret accounts to migrate — the rebuilt system uses Shape 3 from day one of
-Unit 6's implementation.
+**Land immediately after the five UI-rework units complete**, before any public launch. Pairing
+UX from Unit 2 carries over (the approval gate stays; under-the-hood mechanism changes). The
+Settings → Devices card grows from a single-row design into a multi-row list with the Unit 2
+interim "Forget this device" relabel transitioning to "Revoke" (real cryptographic revocation) at
+that point.
 
 ### Pointer to detail
 
 Full architectural detail, scope sketch, migration-options discussion, and references live in
-Linear: **NOX-10 — "Hard device revocation via per-device-account architecture (Shape 3)"**
-(<https://linear.app/nox-decima/issue/NOX-10/hard-device-revocation-via-per-device-account-architecture-shape-3>).
-That issue is the single source of truth for Unit 6's design; this spec section exists so the
-six-unit picture is captured in one place and so the cross-unit interactions (especially Unit 2's
-interim UX) are honest.
+Linear: **NOX-10 — "Hard device revocation via per-device-account architecture (Shape 3)"**.
+That issue is the single source of truth for Unit 6's design.
 
 ### UI-dependency
 
-**Buildable backbone:** all schema and protocol work (UserGroup, per-device Account, pairing
-rewrite, real `removeMember`-backed revoke). **Needs UI refs:** updates to the Settings → Devices
-screen so the relabeled-and-honest UX from Unit 2 ("Forget this device") gets replaced by the real
-revocation flow.
+**Buildable backbone:** all schema and protocol work.
+**Needs UI:** the Settings → Devices revocation flow at the point Unit 6 ships; replaces the Unit-2
+interim "Forget this device" honesty UX with the real action.
 
 ---
 
 ## UI-dependency & sequencing summary
 
-| Unit | Backbone buildable now (headless + tested) | Needs UI refs for |
-|------|---|---|
-| 1 · Connection subsystem | ✅ reshaped multi-use `Invitation` + new `ConnectionRequest` CoValues, three channels (qr / link / group), approval mutates the same CoValue, dismiss is local-only via `me.root.dismissedRequestIDs` (no rejection signal), duration policy (qr 5min / link 1h-24h-7d), expiry enforcement, each side writes its own Contact locally on observed approval, dynamic shared-groups hint hook (bilateral + channel-agnostic), offline-conversation acceptance test | QR display, requester confirmation screen, pending/outgoing requests + live invites screens, in-person QR immediate modal, shared-group hint rendering on each surface |
-| 2 · Device pairing approval | ✅ schema additions, approve/reject helpers, trusted-side watcher, responder state machine, devices-section button relabel + honesty explainer copy, updated tests | approval card, new-device "Waiting…" screen, exact wording / placement of the explainer block |
-| 3 · Feedback + `api` rename | ✅ rename, `POST /api/feedback`, Linear wiring | settings feedback form |
-| 4 · Conversation display | ✅ `Conversation.icon` field, SystemEvent `renamed`, `updateConversationTitle`/`updateConversationIcon` mutations + rename-event emission, read-semantics change (leave/send), active-conversation suppression (sidebar/tab/toast) | #1 divider rendering, title-edit & icon-upload affordances (admin-gated in UI), monogram fallback rendering, rename-event timeline |
-| 5 · Rebrand → Arcan | ✅ destructive rebrand (no migrations); schema-rename probe, `JazzMessangerAccount` → `ArcanAccount`, recovery HMAC purpose string, package names (`arcan` root / `@arcan/api` service — coordinated with Unit 3), PWA manifest, cosmetic strings, top-of-doc notes on historical specs/plans, repo-dir + GitHub-remote rename ceremony (manual GH step flagged for the user) | nothing — but new UI copy should be authored as "Arcan" from day one to avoid a second sweep |
-| 6 · Hard revocation (Shape 3) | ✅ all schema/protocol work — UserGroup, per-device Account, pairing rewrite, real `removeMember`-backed revoke. Lands **after** Units 1–5 complete (NOX-10) | Settings → Devices revocation flow replaces the Unit-2 interim "Forget this device" honesty UX with the real action |
+| Unit | Status | Buildable now (post Unit 7) | UI surface consumers |
+|---|---|---|---|
+| 7 · Design system foundation | NEW · RUNS FIRST | tokens, fonts, Lattice, settings CoMap, theme + accent, toasts, skeletons, component-library restyle, cross-route audit, lint convention | every screen below |
+| 1 · Connection subsystem | new build | CoValues, channels, gate, durations, enforcement, dismiss-local, shared-group hint, offline acceptance test | unified Add-Contact, approval card (hint + safety grid), pending/outgoing lists, live invites screen, QR modal |
+| 2 · Device pairing approval | gate exists, needs enrich + reject + broadcast | enriched approval card (fingerprint not location), responder waiting/rejected/timed-out screens, subscription-based prompts | toast/modal on trusted side, cosmic AuthSurface screens on responder side, devices-section relabel + explainer |
+| 3 · Feedback (follow-up) | shipped; follow-up | label reshape in Linear + env + route map, drop email field, multi-file attachment UX | restyled settings feedback form |
+| 4 · Conversation display | mostly buildable | schema (icon, SystemEvent rename), read-semantics change, suppression, multi-select flow, polymorphic profile route, shared-conversations integration | chat detail with divider, sidebar tabs + mobile bottom tab bar, monograms, polymorphic profile (both modes), rename timeline |
+| 5 · Rebrand touch | shipped + tiny tweak | `#0a0b11` value swap in manifest + index.html | trivial |
+| 6 · Hard revocation (Shape 3 / NOX-10) | scheduled after the rework | all schema/protocol work | Settings → Devices revocation flow at ship time |
 
-**Recommended order:** **Units 3 + 5 coordinated first** (cleanest, almost no UI dependency, share
-deploy/config files so the combined pass touches each once). Then the headless backbones of Units 1,
-2, and 4's read-semantics/schema in parallel with the UI work, filling in each visual surface once
-the refs land. **#1's divider is the one piece deferred entirely to UI time.** **Unit 6 (Shape 3
-hard revocation) follows the five UI-rework units** as its own slice, sequenced before any public
-launch.
+**Recommended execution order:**
 
-## Housekeeping note (not part of this work)
+```
+Unit 7 (design system foundation) — RUN FIRST
+    ↓
+Parallel after Unit 7:
+    ├── Unit 1 — connection subsystem (largest)
+    ├── Unit 2 — device pairing approval gate enrichments
+    ├── Unit 3 — Linear label reshape + form revision
+    ├── Unit 4 — conversation display + IA shift + polymorphic profile + multi-select
+    └── Unit 5 touch — `#0a0b11` swap (rolls in with Unit 7's deploy)
+    ↓
+Unit 6 (Shape 3 / NOX-10) — after the UI rework lands
+```
 
-The `Status` section in the repo `CLAUDE.md` is stale — it states Slice 3 is "not yet started," but
-Slices 3–8 are merged. Worth correcting separately so future sessions work from reality.
+**Why Unit 7 first:** every other unit's UI surface depends on tokens, fonts, the theme/accent
+system, toast pipeline, and skeleton primitives. Building Units 1, 2, or 4 against current Tailwind
+defaults would mean two restyle passes.
+
+**Why parallel after Unit 7:** Units 1, 2, 3-follow-up, 4 touch different surfaces and can each be
+its own implementation pass without conflict.
+
+---
+
+## Deferred items (tracked in Linear)
+
+These surfaces were considered during the 2026-06-08 alignment pass but explicitly deferred. Each
+has a dedicated Linear issue with rationale and a suggested opt-in design for when it's revisited.
+
+- **NOX-31** — Online presence indicator (Low). Metadata-leak concerns; opt-in design.
+- **NOX-32** — Typing indicator (Low). Same family as presence; defer together.
+- **NOX-33** — Message delivery states (sending/sent/failed) (Low). Requires real per-recipient
+  acknowledgment protocol; couples with future read receipts.
+
+These do **not** block the seven-unit UI rework. They will be considered after Unit 6 ships, when
+the overall surface is stable enough to evaluate opt-in privacy features deliberately.
