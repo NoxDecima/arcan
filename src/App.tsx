@@ -17,6 +17,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
 import { ThemeProvider } from "@/styles/use-theme";
+import { AccentProvider } from "@/styles/use-accent";
 
 /**
  * App: top-level route shell.
@@ -62,9 +63,11 @@ function App() {
   if (location.pathname === "/pair") {
     return (
       <ThemeProvider>
-        <Routes>
-          <Route path="/pair" element={<PairRoute />} />
-        </Routes>
+        <AccentProvider>
+          <Routes>
+            <Route path="/pair" element={<PairRoute />} />
+          </Routes>
+        </AccentProvider>
       </ThemeProvider>
     );
   }
@@ -74,9 +77,11 @@ function App() {
   if (location.pathname === "/invite") {
     return (
       <ThemeProvider>
-        <Routes>
-          <Route path="/invite" element={<InviteRoute />} />
-        </Routes>
+        <AccentProvider>
+          <Routes>
+            <Route path="/invite" element={<InviteRoute />} />
+          </Routes>
+        </AccentProvider>
       </ThemeProvider>
     );
   }
@@ -134,11 +139,13 @@ function App() {
 
   return (
     <ThemeProvider>
-      {/* Slice 8: in-app notification manager — drives tab title badge,
-          sound, and browser-notification fanout. Reads `me` via its own
-          useAccount call so App.tsx's resolve stays shallow. */}
-      {showNotificationManager && <NotificationManager />}
-      {routeTable}
+      <AccentProvider>
+        {/* Slice 8: in-app notification manager — drives tab title badge,
+            sound, and browser-notification fanout. Reads `me` via its own
+            useAccount call so App.tsx's resolve stays shallow. */}
+        {showNotificationManager && <NotificationManager />}
+        {routeTable}
+      </AccentProvider>
     </ThemeProvider>
   );
 }
