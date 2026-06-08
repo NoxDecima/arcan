@@ -6,7 +6,7 @@ export function RolePill({ role }: RolePillProps) {
   const styles =
     role === "admin"
       ? "bg-blue-100 text-blue-800"
-      : "bg-gray-100 text-gray-700";
+      : "bg-panel-2 text-text-2";
 
   return (
     <span

@@ -16,7 +16,7 @@ export function SafetyNumber({ fingerprintHex }: SafetyNumberProps) {
   return (
     <code
       data-testid="safety-number"
-      className="block font-mono text-sm bg-gray-100 rounded px-3 py-2 tracking-widest text-gray-700 break-all"
+      className="block font-mono text-sm bg-panel-2 rounded px-3 py-2 tracking-widest text-text-2 break-all"
     >
       {formatted}
     </code>
