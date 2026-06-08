@@ -43,15 +43,18 @@ export const ArcanAccountRoot = co.map({
   // missing so subsequent writes have somewhere to land) rather than a
   // load-blocker.
   lastReadAt: co.record(z.string(), z.number()).optional(),
-  // Slice 8 — per-account notification preferences. Both default to
-  // false (off) until the user explicitly enables.
+  // Unit 7 — per-account settings (appearance + notifications).
   // OPTIONAL for the same reason as lastReadAt above.
-  notificationPrefs: co
-    .map({
+  settings: co.map({
+    appearance: co.map({
+      theme: z.enum(["light", "dark"]),
+      accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+    }),
+    notifications: co.map({
       sound: z.boolean(),
       browser: z.boolean(),
-    })
-    .optional(),
+    }),
+  }).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -107,9 +110,28 @@ export const ArcanAccount = co.account({
     const lastReadAt = co
       .record(z.string(), z.number())
       .create({} as Record<string, number>, { owner: me });
-    const notificationPrefs = co
-      .map({ sound: z.boolean(), browser: z.boolean() })
-      .create({ sound: false, browser: false }, { owner: me });
+    const settings = co
+      .map({
+        appearance: co.map({
+          theme: z.enum(["light", "dark"]),
+          accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+        }),
+        notifications: co.map({ sound: z.boolean(), browser: z.boolean() }),
+      })
+      .create(
+        {
+          appearance: co
+            .map({
+              theme: z.enum(["light", "dark"]),
+              accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+            })
+            .create({ theme: "dark", accent: "tokyo" }, { owner: me }),
+          notifications: co
+            .map({ sound: z.boolean(), browser: z.boolean() })
+            .create({ sound: false, browser: false }, { owner: me }),
+        },
+        { owner: me },
+      );
 
     me.$jazz.set(
       "root",
@@ -120,7 +142,7 @@ export const ArcanAccount = co.account({
           invitesIssued,
           knownConversations,
           lastReadAt,
-          notificationPrefs,
+          settings,
         },
         { owner: me },
       ),
@@ -149,10 +171,10 @@ export const ArcanAccount = co.account({
     );
   }
 
-  // -- 2c. lastReadAt + notificationPrefs backfill (existing accounts) --
-  // Both fields are Slice 8 additions; pre-Slice-8 accounts have me.root
-  // but neither field. Same guard pattern as the knownConversations
-  // backfill — runs only when me.root is a fully-loaded CoMap.
+  // -- 2c. lastReadAt + settings backfill (existing accounts) --
+  // lastReadAt is a Slice 8 addition; settings replaces the old notificationPrefs
+  // field from Slice 8 (Unit 7 destructive baseline). Same guard pattern as the
+  // knownConversations backfill — runs only when me.root is a fully-loaded CoMap.
   //
   // For lastReadAt: seed with per-conversation latest-message timestamps
   // so the user's existing conversations don't all appear unread on first
@@ -188,17 +210,37 @@ export const ArcanAccount = co.account({
         .create(initialLastRead, { owner: me }),
     );
   }
+  // -- 2c. settings backfill (existing accounts) --
+  // Per the destructive baseline this is a clean rebuild; backfill still runs
+  // defensively so any in-flight dev accounts pick up the new shape.
   if (
     me.root &&
-    !(me.root as any).notificationPrefs &&
-    typeof (me.root as any).$jazz?.set === "function"
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).settings
   ) {
-    (me.root as any).$jazz.set(
-      "notificationPrefs",
-      co
-        .map({ sound: z.boolean(), browser: z.boolean() })
-        .create({ sound: false, browser: false }, { owner: me }),
-    );
+    const settings = co
+      .map({
+        appearance: co.map({
+          theme: z.enum(["light", "dark"]),
+          accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+        }),
+        notifications: co.map({ sound: z.boolean(), browser: z.boolean() }),
+      })
+      .create(
+        {
+          appearance: co
+            .map({
+              theme: z.enum(["light", "dark"]),
+              accent: z.enum(["tokyo", "violet", "teal", "lime", "amber", "rose"]),
+            })
+            .create({ theme: "dark", accent: "tokyo" }, { owner: me }),
+          notifications: co
+            .map({ sound: z.boolean(), browser: z.boolean() })
+            .create({ sound: false, browser: false }, { owner: me }),
+        },
+        { owner: me },
+      );
+    (me.root as any).$jazz.set("settings", settings);
   }
 
   // -- 2d. Self-register the current device's session --
