@@ -32,7 +32,8 @@ during the 2026-06-08 hi-fi alignment pass:
 - **Unit 4** — conversation display (items 1, 2, 3)
 - **Unit 5** — codebase-wide rebrand jazz-messanger → Arcan **[SHIPPED — tiny color touch]**
 - **Unit 6** — hard cryptographic device revocation (Shape 3 / per-device-account architecture) — tracked as **NOX-10**, sequenced after the UI rework
-- **Unit 7** — design system foundation (added 2026-06-08; runs first)
+- **Unit 7** — design system foundation (added 2026-06-08; runs first) **[SHIPPED — see Decisions changelog]**
+- **Unit 8** — final UI alignment sweep (added 2026-06-09; runs after Units 1/2/3-follow-up/4)
 
 ---
 
@@ -1005,17 +1006,121 @@ interim "Forget this device" honesty UX with the real action.
 
 ---
 
+## Unit 8 — Final UI alignment sweep
+
+*Added 2026-06-09. Runs after Units 1, 2, 3-follow-up, and 4 have landed. Before Unit 6.*
+
+### Why this exists
+
+Unit 7 delivered the **foundation** (tokens, fonts, theme + accent, Lattice component, toast +
+skeleton primitives, component-library restyle, cross-route token audit). Units 1, 2, 4, and the
+Unit 3 follow-up each redraw their specific surfaces to the hi-fi designs. But Units 1/2/4 are
+scoped to *their* features — they don't necessarily touch every surrounding screen, and they don't
+catch hi-fi patterns that are unique to other contexts (e.g. the cosmic **AuthSurface** shell for
+welcome/sign-in/onboarding/restore, the empty-pane Lattice watermark, modal restyling, mobile
+layout chrome, etc.).
+
+Without an explicit sweep at the end, gaps end up living forever — half the app looks like the
+hi-fi reference, half is old-layout-but-with-new-tokens. Unit 8 makes that mismatch unacceptable
+by inventorying it once and closing it.
+
+### Scope — two phases
+
+**Phase A · Audit.** Walk through every screen present in the hi-fi reference files
+(`Jazz Hi-Fi App.html`, `Jazz Hi-Fi Chat.html`, `Arcan Prototype.html`, `hf-*.jsx`, `proto.jsx`)
+and every screen present in the implementation. For each, classify:
+
+- **Matches** — the implementation visually corresponds to the hi-fi treatment (within reasonable
+  tolerance).
+- **Partial** — the implementation uses the right tokens but the layout / composition still
+  doesn't match the hi-fi treatment.
+- **Not started** — no transition applied.
+
+Produce a markdown report `docs/superpowers/specs/2026-XX-XX-unit-8-audit.md` with the inventory
+table + a prioritised work list for Phase B.
+
+**Phase B · Transition.** Build any missing layout components and rewire screens. Each surface
+gets a small focused task in the Phase B plan.
+
+### Known-likely candidates (starter list — Phase A confirms)
+
+- **`<AuthSurface>` component** — cosmic Lattice watermark bleeding off the corner (low opacity)
+  + 2–4 scattered cosmic dots + centered narrow card (~300px). Used by welcome, sign-in,
+  credentials, backup-display, backup-confirm, profile-step, restore-choice, restore-with-code,
+  recovery — 9 routes total. This was scoped to Unit 7 in spirit but only the token pass landed;
+  the layout component itself was not built. It also gets reused by Unit 2's responder-side
+  waiting / rejected / timed-out screens; if Unit 2 ships first it may build the component, in
+  which case Unit 8 just adopts it.
+- **Empty-pane cosmic backdrop** — the design's `EmptyPane` with oversized Lattice + cosmic dots.
+  Appears on the desktop reading-pane "pick a conversation" / "pick a contact" empty states. Unit
+  4 *may* build this as part of the IA shift; if it doesn't, Unit 8 picks it up.
+- **Modal shells** — `change-password-modal`, `view-recovery-code-modal`, `leave-with-promote-dialog`,
+  `group-create-dialog`, `contact-picker`, `image-lightbox`. Currently tokens are right; layout
+  is the old centered-card-in-scrim. The hi-fi designs use a consistent modal shell (`Card` over
+  scrim with hairline header + action footer) — may or may not need formalising.
+- **Mobile chrome** — the design renders a phone frame with notch + status bar + bottom indicator
+  in the hi-fi files. Whether to apply mobile-chrome adjustments (safe-area inset for the bottom
+  tab bar, status-bar transparency hints, etc.) needs decision during Phase A.
+- **Top app header** — the design's desktop window chrome shows `arcan · local-first` pill with a
+  small Lattice. Worth checking the current implementation header against this.
+- **Lattice placement** — the component is built but unused. Phase A confirms where it should land
+  (welcome screen, app header on initial paint, empty-pane backdrop, etc.).
+- **Sidebar separation treatment** — Unit 4 picks one of A/B/C/D from the design's
+  `SidebarOptions` mock. Confirm during Phase A.
+- **Toast call sites** — the toast component exists; only consumer code that explicitly calls
+  `useToast()` actually surfaces toasts. Many existing user actions still use inline status
+  messages. Phase A inventories which actions should fire a toast; Phase B wires them.
+- **Skeleton call sites** — same as toasts. The components exist; existing surfaces still render
+  "Loading…" text. Phase A inventories which surfaces should use skeletons; Phase B wires them.
+- **Any other gaps surfaced by the audit.**
+
+### Why this slots after Units 1/2/3/4
+
+- Units 1/2/4 each redraw substantial surfaces. Doing Unit 8's audit before they ship would
+  inventory work that's about to be redone anyway.
+- Most of Unit 8's likely candidates either land naturally in Units 1/2/4 or are explicitly
+  out-of-scope for them — easier to detect after-the-fact.
+- The Phase A audit produces a complete picture in one place; Phase B work-list flows from it,
+  not from guesswork.
+
+### Why it runs before Unit 6
+
+- Unit 6 (Shape 3 / NOX-10) is a foundational architectural change — pre-rebuild UI work would be
+  thrown away. Unit 8 is the final UI alignment **of the pre-Shape-3 application**.
+- After Unit 6 lands its own UI changes (Settings → Devices revocation flow, the per-device-account
+  pairing rewrite), a smaller second pass may be needed; that's part of Unit 6's scope, not Unit 8.
+
+### Out of scope for Unit 8
+
+- New features (defer to their own units).
+- Anything that requires backend / schema changes (Units 1/2/4 territory).
+- The deferred items NOX-31 (presence) / NOX-32 (typing) / NOX-33 (delivery states) — those stay
+  deferred per the 2026-06-08 decisions.
+
+### Deliverables
+
+- `docs/superpowers/specs/2026-XX-XX-unit-8-audit.md` — Phase A audit report
+- `docs/superpowers/plans/2026-XX-XX-unit-8-final-alignment.md` — Phase B implementation plan
+- The actual transitions in code
+
+### UI-dependency
+
+Unit 8 IS the UI catch-up; no further refs needed beyond the existing hi-fi files.
+
+---
+
 ## UI-dependency & sequencing summary
 
 | Unit | Status | Buildable now (post Unit 7) | UI surface consumers |
 |---|---|---|---|
-| 7 · Design system foundation | NEW · RUNS FIRST | tokens, fonts, Lattice, settings CoMap, theme + accent, toasts, skeletons, component-library restyle, cross-route audit, lint convention | every screen below |
+| 7 · Design system foundation | SHIPPED (2026-06-09) | tokens, fonts, Lattice, settings CoMap, theme + accent, toasts, skeletons, component-library restyle, cross-route token audit, lint convention | every screen below |
 | 1 · Connection subsystem | new build | CoValues, channels, gate, durations, enforcement, dismiss-local, shared-group hint, offline acceptance test | unified Add-Contact, approval card (hint + safety grid), pending/outgoing lists, live invites screen, QR modal |
 | 2 · Device pairing approval | gate exists, needs enrich + reject + broadcast | enriched approval card (fingerprint not location), responder waiting/rejected/timed-out screens, subscription-based prompts | toast/modal on trusted side, cosmic AuthSurface screens on responder side, devices-section relabel + explainer |
 | 3 · Feedback (follow-up) | shipped; follow-up | label reshape in Linear + env + route map, drop email field, multi-file attachment UX | restyled settings feedback form |
 | 4 · Conversation display | mostly buildable | schema (icon, SystemEvent rename), read-semantics change, suppression, multi-select flow, polymorphic profile route, shared-conversations integration | chat detail with divider, sidebar tabs + mobile bottom tab bar, monograms, polymorphic profile (both modes), rename timeline |
 | 5 · Rebrand touch | shipped + tiny tweak | `#0a0b11` value swap in manifest + index.html | trivial |
-| 6 · Hard revocation (Shape 3 / NOX-10) | scheduled after the rework | all schema/protocol work | Settings → Devices revocation flow at ship time |
+| 8 · Final UI alignment sweep | NEW · RUNS AFTER 1/2/3/4 | Phase A audit report + Phase B transitions for any surface still off-design (AuthSurface, empty-pane cosmic backdrop, modal shells, mobile chrome, Lattice placement, toast/skeleton call-site wiring, anything else surfaced) | all leftover surfaces |
+| 6 · Hard revocation (Shape 3 / NOX-10) | scheduled after Unit 8 | all schema/protocol work | Settings → Devices revocation flow at ship time |
 
 **Recommended execution order:**
 
@@ -1027,7 +1132,9 @@ Parallel after Unit 7:
     ├── Unit 2 — device pairing approval gate enrichments
     ├── Unit 3 — Linear label reshape + form revision
     ├── Unit 4 — conversation display + IA shift + polymorphic profile + multi-select
-    └── Unit 5 touch — `#0a0b11` swap (rolls in with Unit 7's deploy)
+    └── Unit 5 touch — `#0a0b11` swap (already done in Unit 7's deploy)
+    ↓
+Unit 8 — final UI alignment sweep (audit + transition leftover surfaces, AuthSurface, etc.)
     ↓
 Unit 6 (Shape 3 / NOX-10) — after the UI rework lands
 ```
@@ -1038,6 +1145,12 @@ defaults would mean two restyle passes.
 
 **Why parallel after Unit 7:** Units 1, 2, 3-follow-up, 4 touch different surfaces and can each be
 its own implementation pass without conflict.
+
+**Why Unit 8 before Unit 6:** Unit 8 is the final UI alignment of the pre-Shape-3 application. It
+sweeps up anything Units 1/2/3/4 didn't touch (most notably the cosmic `AuthSurface` shell for
+welcome / sign-in / onboarding / restore, where Unit 7 applied token-level treatment but did not
+build the layout component). Doing this before Unit 6's architectural rewrite means the UI is
+visually complete when Unit 6 begins.
 
 ---
 
