@@ -43,8 +43,8 @@ export function AccountSection() {
   if (!me.$isLoaded) {
     return (
       <section>
-        <h2 className="text-base font-semibold text-gray-800 mb-2">Account</h2>
-        <p className="text-sm text-gray-400">Loading…</p>
+        <h2 className="text-base font-semibold text-text mb-2">Account</h2>
+        <p className="text-sm text-dim">Loading…</p>
       </section>
     );
   }
@@ -53,9 +53,9 @@ export function AccountSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-800 mb-2">Account</h2>
-      <div className="bg-white rounded border border-gray-200 px-4 py-3 flex flex-col gap-2">
-        <p className="text-sm text-gray-600">Your safety number:</p>
+      <h2 className="text-base font-semibold text-text mb-2">Account</h2>
+      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
+        <p className="text-sm text-text-2">Your safety number:</p>
         <SafetyNumber fingerprintHex={fingerprintHex} />
       </div>
       <div className="mt-4 flex flex-col gap-2">

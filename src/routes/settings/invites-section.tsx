@@ -74,7 +74,7 @@ export function InvitesSection() {
               className="flex items-center justify-between gap-2 rounded-md border p-3"
             >
               <div className="text-sm space-y-0.5">
-                <p className="text-gray-700">
+                <p className="text-text-2">
                   Created:{" "}
                   <span className="font-medium">
                     {formatDate((inv as any).createdAt as Date)}

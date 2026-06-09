@@ -9,7 +9,7 @@ interface QRDisplayProps {
 export function QRDisplay({ url, size = 256, showText = false }: QRDisplayProps) {
   return (
     <div className="flex flex-col items-center gap-3" data-testid="qr-display">
-      <div className="rounded-lg border bg-white p-4">
+      <div className="rounded-lg border bg-panel p-4">
         <QRCodeSVG value={url} size={size} level="M" />
       </div>
       {showText && (

@@ -26,9 +26,9 @@ interface NotificationManagerProps {
  *     useNewMessageEvents callback
  *
  * Gating contract (per spec §3.3 / §3.4):
- *   • Sound: requires me.root.notificationPrefs.sound === true
+ *   • Sound: requires me.root.settings.notifications.sound === true
  *            AND document.hidden === true
- *   • Browser notification: requires me.root.notificationPrefs.browser === true
+ *   • Browser notification: requires me.root.settings.notifications.browser === true
  *            AND Notification.permission === "granted"
  *            AND document.hidden === true
  *
@@ -45,7 +45,7 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
       root: {
         knownConversations: { $each: { messages: true, $onError: "catch" } },
         lastReadAt: true,
-        notificationPrefs: true,
+        settings: { notifications: true },
       },
     },
   });
@@ -54,7 +54,7 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
   const myID = me?.$jazz?.id ?? null;
   const knownConversations = me?.root?.knownConversations;
   const lastReadAt = me?.root?.lastReadAt;
-  const prefs = me?.root?.notificationPrefs;
+  const prefs = me?.root?.settings?.notifications;
 
   // Aggregate { id, label, messageCount, unread } per conversation for both
   // the title badge (sum unread) and the diff tracker (per-conv arrival).

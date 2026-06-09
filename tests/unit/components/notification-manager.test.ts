@@ -55,7 +55,7 @@ describe("NotificationManager — sound + browser notification fanout", () => {
       root: {
         knownConversations: [{ $jazz: { id: "c1" }, messages: [] }],
         lastReadAt: {},
-        notificationPrefs: prefs,
+        settings: { notifications: prefs },
       },
     };
     render(React.createElement(NotificationManager, { me }));

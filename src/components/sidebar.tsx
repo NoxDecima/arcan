@@ -82,9 +82,9 @@ export function Sidebar() {
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
     return (
-      <aside className="w-full md:w-64 flex flex-col border-r border-gray-200 bg-white">
-        <div className="p-4 border-b border-gray-200">
-          <span className="text-sm text-gray-400">Loading…</span>
+      <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
+        <div className="p-4 border-b border-hairline">
+          <span className="text-sm text-dim">Loading…</span>
         </div>
       </aside>
     );
@@ -127,9 +127,9 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="w-full md:w-64 flex flex-col border-r border-gray-200 bg-white">
+      <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
         {/* Header: avatar + display name + new chat button */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-2">
+        <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Avatar
               src={(me as any).profile.avatar}
@@ -140,7 +140,7 @@ export function Sidebar() {
             />
             <span
               data-testid="sidebar-display-name"
-              className="font-semibold text-gray-800 truncate"
+              className="font-semibold text-text truncate"
             >
               {me.profile.displayName}
             </span>
@@ -202,7 +202,7 @@ export function Sidebar() {
                   {unread > 0 && (
                     <span
                       data-testid={`unread-badge-${i}`}
-                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white"
+                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-arcan-accent text-on-accent"
                     >
                       {unread > 99 ? "99+" : unread}
                     </span>
@@ -214,7 +214,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer: contacts + settings links */}
-        <div className="p-4 border-t border-gray-200 flex flex-col gap-2">
+        <div className="p-4 border-t border-hairline flex flex-col gap-2">
           <Link
             to="/contacts"
             data-testid="contacts-link"

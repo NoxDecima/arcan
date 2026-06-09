@@ -18,8 +18,8 @@ export function PairRoute() {
   const role = params.get("role");
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-sm border">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-panel-2">
+      <div className="w-full max-w-md bg-panel rounded-lg shadow-sm border">
         <div className="p-6 border-b">
           <h1 className="text-xl font-bold">
             {role === "initiator" ? "Link new device" : "Join account"}

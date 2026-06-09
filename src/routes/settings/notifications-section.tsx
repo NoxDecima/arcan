@@ -6,37 +6,37 @@ import { Button } from "@/components/ui/button";
 /**
  * NotificationsSection: toggles for in-app notification preferences.
  *
- * Sound toggle: simple boolean write to me.root.notificationPrefs.sound.
+ * Sound toggle: simple boolean write to me.root.settings.notifications.sound.
  *
  * Browser notification enable: a click-to-enable flow that:
  *   1. Calls Notification.requestPermission()
- *   2. On "granted" → sets me.root.notificationPrefs.browser = true
+ *   2. On "granted" → sets me.root.settings.notifications.browser = true
  *   3. On "denied" → shows inline "blocked at browser level" hint
  *   4. On "default" (user dismissed) → no state change
  *
  * The user can independently toggle our app's use of browser notifications
- * off (notificationPrefs.browser = false) without revoking OS permission.
+ * off (settings.notifications.browser = false) without revoking OS permission.
  * Effective state shown: prefs.browser && Notification.permission === "granted".
  */
 export function NotificationsSection() {
   const me = useAccount(ArcanAccount, {
-    resolve: { root: { notificationPrefs: true } },
+    resolve: { root: { settings: { notifications: true } } },
   });
   const [permissionState, setPermissionState] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
   const [requestError, setRequestError] = useState<string | null>(null);
 
-  if (!me.$isLoaded || !(me.root as any)?.notificationPrefs) {
+  if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
       <section>
-        <h2 className="text-base font-semibold text-gray-800 mb-2">Notifications</h2>
-        <p className="text-sm text-gray-400">Loading…</p>
+        <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
+        <p className="text-sm text-dim">Loading…</p>
       </section>
     );
   }
 
-  const prefs = (me.root as any).notificationPrefs;
+  const prefs = (me.root as any).settings.notifications;
   const apiSupported = typeof Notification !== "undefined";
   const browserEffective = prefs.browser && permissionState === "granted";
 
@@ -80,8 +80,8 @@ export function NotificationsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-800 mb-2">Notifications</h2>
-      <div className="bg-white rounded border border-gray-200 px-4 py-3 flex flex-col gap-3">
+      <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
+      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -97,7 +97,7 @@ export function NotificationsSection() {
             Browser notifications:{" "}
             <span
               data-testid="browser-status"
-              className={browserEffective ? "text-green-700" : "text-gray-500"}
+              className={browserEffective ? "text-green" : "text-dim"}
             >
               {browserEffective ? "Enabled" : "Not enabled"}
             </span>
@@ -133,11 +133,11 @@ export function NotificationsSection() {
             </p>
           )}
           {!apiSupported && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-dim">
               Browser notifications aren't available in this environment.
             </p>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-dim">
             Once enabled, you'll see system notifications when a new message
             arrives in a conversation while this tab is hidden.
           </p>

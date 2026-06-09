@@ -97,7 +97,7 @@ export function ContactDetailRoute() {
           />
           <h1
             data-testid="contact-detail-name"
-            className="text-2xl font-bold text-gray-900"
+            className="text-2xl font-bold text-text"
           >
             {(contact as any).displayNameLocal}
           </h1>

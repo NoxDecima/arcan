@@ -253,7 +253,7 @@ export function ResponderStep() {
         className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="pair-resp-complete"
       >
-        <p className="text-green-700 font-medium">Account paired!</p>
+        <p className="text-green font-medium">Account paired!</p>
         <p className="text-sm text-muted-foreground">
           You now have access to your account on this device.
         </p>

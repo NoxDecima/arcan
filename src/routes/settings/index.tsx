@@ -4,6 +4,7 @@ import { DevicesSection } from "./devices-section";
 import { AccountSection } from "./account-section";
 import { InvitesSection } from "./invites-section";
 import { NotificationsSection } from "./notifications-section";
+import { AppearanceSection } from "./appearance-section";
 
 /**
  * SettingsRoute: settings page with profile, devices, and account sections.
@@ -13,7 +14,7 @@ import { NotificationsSection } from "./notifications-section";
  */
 export function SettingsRoute() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-panel-2">
       <div className="max-w-xl mx-auto px-4 py-6">
         {/* Back navigation */}
         <Link
@@ -23,10 +24,11 @@ export function SettingsRoute() {
           ← Home
         </Link>
 
-        <h1 className="text-xl font-bold text-gray-900 mb-6">Settings</h1>
+        <h1 className="text-xl font-bold text-text mb-6">Settings</h1>
 
         <div className="flex flex-col gap-6">
           <ProfileSection />
+          <AppearanceSection />
           <NotificationsSection />
           <DevicesSection />
           <InvitesSection />

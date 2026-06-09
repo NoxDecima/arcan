@@ -16,6 +16,10 @@ import { RecoveryRoute } from "./routes/auth/recovery";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
+import { ThemeProvider } from "@/styles/use-theme";
+import { AccentProvider } from "@/styles/use-accent";
+import { SettingsSync } from "@/styles/settings-sync";
+import { ToastProvider } from "@/components/toast";
 
 /**
  * App: top-level route shell.
@@ -47,7 +51,7 @@ function App() {
   // Called unconditionally (hook rules) but the subscription itself is
   // guarded on me.$isLoaded so it's a no-op when not authenticated.
   // Keep this resolve shallow. The deeper graph the NotificationManager
-  // needs (knownConversations messages, lastReadAt, notificationPrefs) is
+  // needs (knownConversations messages, lastReadAt, settings.notifications) is
   // pulled inside NotificationManager itself via its own useAccount.
   // Lifting it here was observed to remount /auth/recovery after the
   // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
@@ -60,9 +64,15 @@ function App() {
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
     return (
-      <Routes>
-        <Route path="/pair" element={<PairRoute />} />
-      </Routes>
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <Routes>
+              <Route path="/pair" element={<PairRoute />} />
+            </Routes>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>
     );
   }
 
@@ -70,9 +80,15 @@ function App() {
   // internally (stashes fragment in sessionStorage and redirects to "/" if not authed).
   if (location.pathname === "/invite") {
     return (
-      <Routes>
-        <Route path="/invite" element={<InviteRoute />} />
-      </Routes>
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <Routes>
+              <Route path="/invite" element={<InviteRoute />} />
+            </Routes>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>
     );
   }
 
@@ -128,13 +144,21 @@ function App() {
     isAuthenticated && location.pathname !== "/auth/recovery";
 
   return (
-    <>
-      {/* Slice 8: in-app notification manager — drives tab title badge,
-          sound, and browser-notification fanout. Reads `me` via its own
-          useAccount call so App.tsx's resolve stays shallow. */}
-      {showNotificationManager && <NotificationManager />}
-      {routeTable}
-    </>
+    <ThemeProvider>
+      <AccentProvider>
+        <ToastProvider>
+          {/* Unit 7: sync persisted appearance settings (theme + accent) into
+              ThemeProvider + AccentProvider on sign-in. Authenticated only —
+              SettingsSync depends on a logged-in Jazz account. */}
+          {isAuthenticated && <SettingsSync />}
+          {/* Slice 8: in-app notification manager — drives tab title badge,
+              sound, and browser-notification fanout. Reads `me` via its own
+              useAccount call so App.tsx's resolve stays shallow. */}
+          {showNotificationManager && <NotificationManager />}
+          {routeTable}
+        </ToastProvider>
+      </AccentProvider>
+    </ThemeProvider>
   );
 }
 

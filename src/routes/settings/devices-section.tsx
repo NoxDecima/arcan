@@ -19,8 +19,8 @@ export function DevicesSection() {
   if (!me.$isLoaded) {
     return (
       <section>
-        <h2 className="text-base font-semibold text-gray-800 mb-2">Devices</h2>
-        <p className="text-sm text-gray-400">Loading…</p>
+        <h2 className="text-base font-semibold text-text mb-2">Devices</h2>
+        <p className="text-sm text-dim">Loading…</p>
       </section>
     );
   }
@@ -50,17 +50,17 @@ export function DevicesSection() {
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-semibold text-gray-800">Devices</h2>
+        <h2 className="text-base font-semibold text-text">Devices</h2>
         <Button asChild variant="outline" size="sm" data-testid="link-new-device-btn">
           <Link to="/pair?role=initiator">Link new device</Link>
         </Button>
       </div>
       <ul
         data-testid="device-list"
-        className="bg-white rounded border border-gray-200 divide-y divide-gray-100"
+        className="bg-panel rounded border border-hairline divide-y divide-hairline"
       >
         {devices.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-gray-400">No devices found</li>
+          <li className="px-4 py-3 text-sm text-dim">No devices found</li>
         ) : (
           devices.map((device, idx) => {
             const isCurrentDevice =
@@ -69,18 +69,18 @@ export function DevicesSection() {
             return (
               <li key={idx} className="px-4 py-3 flex items-center justify-between gap-2">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-gray-800 flex items-center gap-2">
+                  <span className="text-sm font-medium text-text flex items-center gap-2">
                     {device.label}
                     {isCurrentDevice && (
                       <span
                         data-testid={`device-current-badge-${idx}`}
-                        className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                        className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-panel-2 text-text-2 border border-hairline"
                       >
                         This device
                       </span>
                     )}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-dim">
                     Added{" "}
                     {device.addedAt instanceof Date
                       ? device.addedAt.toLocaleDateString()
