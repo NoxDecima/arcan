@@ -484,14 +484,27 @@ export function MembersRoute() {
                 </Button>
               </div>
             ) : (
-              <h1
-                className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
-                onClick={iAmAdmin ? startTitleEdit : undefined}
-                title={iAmAdmin ? "Click to edit title" : undefined}
-                data-testid="group-title-display"
-              >
-                {conversationTitle}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1
+                  className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
+                  onClick={iAmAdmin ? startTitleEdit : undefined}
+                  title={iAmAdmin ? "Click to edit title" : undefined}
+                  data-testid="group-title-display"
+                >
+                  {conversationTitle}
+                </h1>
+                {iAmAdmin && (
+                  <button
+                    type="button"
+                    onClick={startTitleEdit}
+                    aria-label="Edit conversation title"
+                    data-testid="group-title-edit-btn"
+                    className="text-dim hover:text-text text-sm"
+                  >
+                    ✎
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

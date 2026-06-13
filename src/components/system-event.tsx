@@ -2,13 +2,39 @@ import { resolveDisplayName } from "@/jazz/displayName";
 
 interface SystemEventProps {
   event: {
-    kind: "added" | "removed" | "left" | "promoted";
+    kind: "added" | "removed" | "left" | "promoted" | "renamed";
     actorAccountID: string;
     targetAccountID?: string;
+    newTitle?: string;
     occurredAt: Date;
   };
   me: any;
   group?: any;
+}
+
+/**
+ * Build the human-readable text for a SystemEvent. Extracted so unit tests
+ * can exercise the rename / membership messages without mounting a JSX tree.
+ */
+export function formatSystemEventMessage(args: {
+  kind: SystemEventProps["event"]["kind"];
+  actorName: string;
+  targetName?: string;
+  newTitle?: string;
+}): string {
+  const { kind, actorName, targetName, newTitle } = args;
+  switch (kind) {
+    case "added":
+      return `${actorName} added ${targetName ?? "someone"} to the chat`;
+    case "removed":
+      return `${actorName} removed ${targetName ?? "someone"} from the chat`;
+    case "left":
+      return `${actorName} left the chat`;
+    case "promoted":
+      return `${actorName} promoted ${targetName ?? "someone"} to admin`;
+    case "renamed":
+      return `${actorName} renamed the group to "${newTitle ?? "—"}"`;
+  }
 }
 
 /**
@@ -32,21 +58,12 @@ export function SystemEvent({ event, me, group }: SystemEventProps) {
       })
     : undefined;
 
-  let message: string;
-  switch (event.kind) {
-    case "added":
-      message = `${actorName} added ${targetName ?? "someone"} to the chat`;
-      break;
-    case "removed":
-      message = `${actorName} removed ${targetName ?? "someone"} from the chat`;
-      break;
-    case "left":
-      message = `${actorName} left the chat`;
-      break;
-    case "promoted":
-      message = `${actorName} promoted ${targetName ?? "someone"} to admin`;
-      break;
-  }
+  const message = formatSystemEventMessage({
+    kind: event.kind,
+    actorName,
+    targetName,
+    newTitle: event.newTitle,
+  });
 
   return (
     <div
