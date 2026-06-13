@@ -15,6 +15,7 @@ import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { PendingConnectionsRoute } from "@/routes/connections/pending";
 import { LiveInvitesRoute } from "@/routes/connections/live-invites";
+import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
@@ -159,6 +160,10 @@ function App() {
               sound, and browser-notification fanout. Reads `me` via its own
               useAccount call so App.tsx's resolve stays shallow. */}
           {showNotificationManager && <NotificationManager />}
+          {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
+              an in-person ConnectionRequest arrives (channel="qr"). Other
+              channels land silently on the Pending Connections list. */}
+          {isAuthenticated && <IncomingConnectionPrompt />}
           {routeTable}
         </ToastProvider>
       </AccentProvider>
