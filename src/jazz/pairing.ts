@@ -110,6 +110,25 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 // ---------------------------------------------------------------------------
+// Fingerprint helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the 8-char hex display fingerprint from the responder's ephemeral pubkey hex.
+ * SHA-256(pubkey hex) → first 8 hex chars, uppercased for the visual block.
+ */
+export async function deriveResponderFingerprint(pubkeyHex: string): Promise<string> {
+  const bytes = new TextEncoder().encode(pubkeyHex);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const view = new Uint8Array(digest);
+  let hex = "";
+  for (let i = 0; i < 4; i++) {
+    hex += view[i].toString(16).padStart(2, "0");
+  }
+  return hex.toUpperCase();
+}
+
+// ---------------------------------------------------------------------------
 // Task 12 — pure parsing / crypto primitives (tested by pairing.test.ts)
 // ---------------------------------------------------------------------------
 
@@ -260,6 +279,24 @@ export async function createPairingInvite(
 
   const url = `${baseUrl}/pair#${fragment}`;
 
+  // Make the pairing discoverable by every logged-in trusted device on this account.
+  try {
+    const rootAny = (account as any).root;
+    if (rootAny?.pendingPairings && typeof rootAny.pendingPairings.$jazz?.push === "function") {
+      rootAny.pendingPairings.$jazz.push(pairing);
+    }
+  } catch (e) {
+    console.warn("[pairing] could not push to pendingPairings:", e);
+  }
+
+  // Persist the eph private key so the initiating device's TrustedDevicePrompt can complete the seal.
+  // Other already-logged-in trusted devices won't have this and the prompt will fall back to Reject-only.
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(`arcan-pair-eph-${(pairing as any).$jazz.id}`, ephemeralPrivkeyHex);
+    }
+  } catch {/* sessionStorage might not be available */}
+
   return { pairing: pairing as ReturnType<typeof EphemeralPairing.create>, url, ephemeralPrivkeyHex };
 }
 
@@ -302,6 +339,48 @@ export async function wrapAccountSecretForResponder(
   // Seal the AgentSecret string directly (it is already a string)
   const wrapped = sealForRecipient(accountSecret as string, responderPubkey, initiatorPrivkey);
   (pairing as any).$jazz.set("wrappedAccountSecret", wrapped);
+}
+
+/**
+ * Approve a pending pairing on the trusted side.
+ *
+ * Writes `approvedAt` then calls wrapAccountSecretForResponder to seal +
+ * publish the account secret. Idempotent within the same caller (caller
+ * should guard against double-tap).
+ */
+export async function approvePairing(
+  account: Account,
+  pairing: ReturnType<typeof EphemeralPairing.create>,
+  ephemeralPrivkeyHex: string,
+  authContext: PairingAuthContext,
+): Promise<void> {
+  (pairing as any).$jazz.set("approvedAt", new Date());
+  await wrapAccountSecretForResponder(account, pairing, ephemeralPrivkeyHex, authContext);
+}
+
+/**
+ * Reject a pending pairing on the trusted side. Writes rejectedAt and tombstones expiresAt = now.
+ */
+export async function rejectPairing(
+  pairing: ReturnType<typeof EphemeralPairing.create>,
+): Promise<void> {
+  (pairing as any).$jazz.set("rejectedAt", new Date());
+  (pairing as any).$jazz.set("expiresAt", new Date());
+}
+
+/**
+ * Next-phase derivation for the responder's waiting-approval polling.
+ * Pure function over observable signals — separated for unit testing.
+ */
+export function nextPairingPhase(r: {
+  wrappedAccountSecret?: string;
+  rejectedAt?: Date;
+  expiresAt?: Date;
+}): "claiming" | "rejected" | "timed-out" | "waiting-approval" {
+  if (r.wrappedAccountSecret) return "claiming";
+  if (r.rejectedAt) return "rejected";
+  if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) return "timed-out";
+  return "waiting-approval";
 }
 
 /**
@@ -358,13 +437,17 @@ export async function loadPairingAsAgent(
 export async function respondToPairing(
   pairing: ReturnType<typeof EphemeralPairing.create>,
 ): Promise<{ responderPrivkeyHex: string }> {
-  // Generate responder's ephemeral nacl keypair
   const responderKeypair = nacl.box.keyPair();
   const responderPrivkeyHex = bytesToHex(responderKeypair.secretKey);
   const responderPubkeyHex = bytesToHex(responderKeypair.publicKey);
 
-  // Write the pubkey to the pairing CoValue so the initiator can see it
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const fingerprint = await deriveResponderFingerprint(responderPubkeyHex);
+
   (pairing as any).$jazz.set("responderPubkey", responderPubkeyHex);
+  (pairing as any).$jazz.set("responderUserAgent", ua);
+  (pairing as any).$jazz.set("responderFirstSeenAt", new Date());
+  (pairing as any).$jazz.set("responderFingerprint", fingerprint);
 
   return { responderPrivkeyHex };
 }

@@ -17,11 +17,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
 import { QRScanner } from "@/qr/scanner";
 import { Button } from "@/components/ui/button";
+import { Lattice } from "@/components/lattice";
 import {
   parsePairingURL,
   loadPairingAsAgent,
   respondToPairing,
   claimAccountFromPairing,
+  nextPairingPhase,
 } from "@/jazz/pairing";
 import type { PairingAuthContext } from "@/jazz/pairing";
 import type { AgentSecret } from "cojson";
@@ -31,6 +33,8 @@ type Phase =
   | "scanning"
   | "loaded"
   | "waiting-approval"
+  | "rejected"
+  | "timed-out"
   | "claiming"
   | "complete"
   | "error";
@@ -54,9 +58,10 @@ export function ResponderStep() {
     return null;
   });
   const [responderPrivkeyHex, setResponderPrivkeyHex] = useState<string | null>(null);
-  const [initiatorName, setInitiatorName] = useState<string | null>(null);
   const [initiatorNaclPubkeyHex, setInitiatorNaclPubkeyHex] = useState<string | null>(null);
   const [pairingCoValueID, setPairingCoValueID] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pairing, setPairing] = useState<any>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -107,7 +112,7 @@ export function ResponderStep() {
 
         if (cancelled) return;
 
-        setInitiatorName((pairing as { initiatorDisplayName?: string }).initiatorDisplayName ?? "Unknown device");
+        setPairing(pairing);
 
         const { responderPrivkeyHex: privkey } = await respondToPairing(
           pairing as Parameters<typeof respondToPairing>[0],
@@ -116,6 +121,9 @@ export function ResponderStep() {
         if (cancelled) return;
 
         setResponderPrivkeyHex(privkey);
+        // Reload to pick up fingerprint written by respondToPairing
+        const refreshed = await loadPairingAsAgent(parsed.pairingCoValueID, parsed.pairingAgentSecret, "");
+        if (!cancelled && refreshed) setPairing(refreshed);
         setPhase("waiting-approval");
         // Polling for wrappedAccountSecret is handled by a dedicated useEffect below
       } catch (err: unknown) {
@@ -130,7 +138,7 @@ export function ResponderStep() {
     return () => { cancelled = true; };
   }, [phase, pairingUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 1b: poll for wrappedAccountSecret while in waiting-approval phase.
+  // Step 1b: poll for wrappedAccountSecret / rejectedAt / expiresAt while in waiting-approval phase.
   // Separate effect so the cancelled flag doesn't bleed in from submitPubkey.
   useEffect(() => {
     if (phase !== "waiting-approval" || !pairingCoValueID) return;
@@ -138,9 +146,12 @@ export function ResponderStep() {
     const intervalId = setInterval(async () => {
       try {
         const reloaded = await loadPairingAsAgent(pairingCoValueID, "", "");
-        if ((reloaded as { wrappedAccountSecret?: string }).wrappedAccountSecret) {
+        if (!reloaded) return;
+        const r = reloaded as any;
+        const next = nextPairingPhase(r);
+        if (next !== "waiting-approval") {
           clearInterval(intervalId);
-          setPhase("claiming");
+          setPhase(next);
         }
       } catch {
         // CoValue not ready — keep polling
@@ -213,25 +224,63 @@ export function ResponderStep() {
   }
 
   if (phase === "waiting-approval") {
+    const fp = (pairing as any)?.responderFingerprint as string | undefined;
     return (
       <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
         data-testid="pair-resp-waiting"
+        className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center bg-bg"
       >
-        <h2 className="text-base font-semibold">Waiting for approval…</h2>
-        <p className="text-sm text-muted-foreground">
-          Your other device ({initiatorName ?? "initiator"}) needs to approve this connection.
+        <Lattice size={64} />
+        <h2 className="text-lg font-semibold text-text">Waiting for approval</h2>
+        <p className="text-sm text-text-2 max-w-xs">
+          On your other device, you should see a request to link this one.
         </p>
-        <Button
-          variant="outline"
-          data-testid="pair-resp-continue"
-          onClick={() => {
-            // Allow manual continue (for paste + skip scanner flow)
-            setPhase("claiming");
-          }}
-        >
-          Already approved — continue
-        </Button>
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-dim font-semibold">Fingerprint</span>
+          <span
+            data-testid="responder-fingerprint"
+            className="font-mono text-2xl tracking-widest text-text bg-panel border border-hairline rounded-r-3 px-4 py-2"
+          >
+            {fp ?? "…"}
+          </span>
+          <p className="text-[11px] text-dim max-w-xs leading-relaxed">
+            Match this code with what's shown on your other device before tapping Approve there.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-text-2 text-sm">
+          <span className="w-2 h-2 rounded-full bg-arcan-accent" />
+          <span>waiting…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "rejected") {
+    return (
+      <div
+        data-testid="pair-resp-rejected"
+        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-bg"
+      >
+        <Lattice size={48} mono />
+        <h2 className="text-lg font-semibold text-text">Request rejected</h2>
+        <p className="text-sm text-text-2 max-w-xs">
+          The other device declined this link. Ask them to retry, or start over.
+        </p>
+      </div>
+    );
+  }
+
+  if (phase === "timed-out") {
+    return (
+      <div
+        data-testid="pair-resp-timed-out"
+        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-bg"
+      >
+        <Lattice size={48} mono />
+        <h2 className="text-lg font-semibold text-text">Request timed out</h2>
+        <p className="text-sm text-text-2 max-w-xs">
+          The request wasn't approved in time. Start a new pairing on your other device.
+        </p>
       </div>
     );
   }

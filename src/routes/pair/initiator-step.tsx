@@ -18,9 +18,11 @@ import { Link } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
+import { DeviceApprovalCard } from "@/components/device-approval-card";
 import {
   createPairingInvite,
-  wrapAccountSecretForResponder,
+  approvePairing,
+  rejectPairing,
   tombstonePairing,
 } from "@/jazz/pairing";
 import type { PairingInitiation } from "@/jazz/pairing";
@@ -126,8 +128,8 @@ export function InitiatorStep() {
     setPhase("approved");
     try {
       const authCtx = getAuthContext();
-      await wrapAccountSecretForResponder(
-        me as unknown as Account, // kept for API signature; not used internally
+      await approvePairing(
+        me as unknown as Account,
         invitation.pairing,
         invitation.ephemeralPrivkeyHex,
         authCtx,
@@ -137,6 +139,18 @@ export function InitiatorStep() {
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
       setPhase("error");
+    }
+  }
+
+  async function handleReject() {
+    if (!invitation) return;
+    try {
+      await rejectPairing(invitation.pairing);
+      setPhase("error");
+      setErrorMsg("Rejected.");
+    } catch (e) {
+      setPhase("error");
+      setErrorMsg(String(e));
     }
   }
 
@@ -198,29 +212,17 @@ export function InitiatorStep() {
   }
 
   if (phase === "awaiting-approval") {
+    const p = invitation?.pairing as any;
     return (
-      <div
-        className="flex flex-col gap-4 p-6"
-        data-testid="pair-approval-prompt"
-      >
-        <h2 className="text-base font-semibold">Approve new device?</h2>
-        <p className="text-sm text-muted-foreground">
-          A new device wants to join your account. Approve to grant full
-          account access.
-        </p>
-        <Button onClick={handleApprove} data-testid="pair-approve-btn">
-          Approve
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            if (invitation) await tombstonePairing(invitation.pairing);
-            setPhase("error");
-            setErrorMsg("Pairing rejected by initiator");
-          }}
-        >
-          Reject
-        </Button>
+      <div className="p-6 flex justify-center" data-testid="pair-approval-prompt">
+        <DeviceApprovalCard
+          userAgent={p?.responderUserAgent}
+          firstSeenAt={p?.responderFirstSeenAt}
+          fingerprint={p?.responderFingerprint}
+          onApprove={handleApprove}
+          onDeny={handleReject}
+          pending={false}
+        />
       </div>
     );
   }
