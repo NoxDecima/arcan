@@ -13,6 +13,7 @@ import { ConversationDetailRoute } from "./routes/conversations/detail";
 import { MembersRoute } from "./routes/conversations/members";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
+import { PendingConnectionsRoute } from "@/routes/connections/pending";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
@@ -128,6 +129,7 @@ function App() {
             signed in via 24-word recovery code can complete stage 2 (set a
             fresh password). The recovery route itself navigates to "/" on
             completion or skip. */}
+        <Route path="/connections/pending" element={<PendingConnectionsRoute />} />
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
