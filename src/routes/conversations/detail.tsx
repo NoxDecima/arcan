@@ -38,6 +38,31 @@ import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
+import {
+  findNewMarkIndex,
+  type DividerTimelineItem,
+} from "@/routes/conversations/newMarkPosition";
+
+/**
+ * Unit 4 Phase 7: divider inserted into the timeline immediately before the
+ * first incoming (non-self, non-SystemEvent) message whose sentAt exceeds
+ * the lastReadAt cutoff captured at mount. Anchored — won't move as new
+ * messages arrive during the reading session.
+ */
+function NewMark() {
+  return (
+    <div
+      className="flex items-center gap-2 my-2 px-3"
+      data-testid="new-messages-divider"
+    >
+      <div className="flex-1 h-px bg-arcan-accent opacity-50" />
+      <span className="text-[9px] uppercase tracking-widest font-semibold text-arcan-accent font-mono">
+        new
+      </span>
+      <div className="flex-1 h-px bg-arcan-accent opacity-50" />
+    </div>
+  );
+}
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -124,6 +149,20 @@ export function ConversationDetailRoute() {
       // route-change cleanup
       markLeave();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
+
+  // Phase 7: auto-scroll the new-messages divider into view on mount.
+  // Runs once per conversation switch; if there's no divider we no-op.
+  // Uses a slight tick delay so the timeline has rendered before query.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-testid="new-messages-divider"]');
+      if (el) {
+        (el as HTMLElement).scrollIntoView({ block: "center", behavior: "auto" });
+      }
+    }, 0);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(conversation as any)?.$jazz?.id]);
 
@@ -345,7 +384,33 @@ export function ConversationDetailRoute() {
               );
             }
 
-            return items.map((item) => {
+            // Phase 7: find the first incoming, non-event message whose
+            // sentAt exceeds the lastReadAt anchor captured at mount.
+            // Place the NewMark immediately before that item.
+            // - No unread → divider omitted.
+            // - All unread → divider at top (before first qualifying item).
+            const dividerInput: DividerTimelineItem[] = items.map((item) => {
+              if (item.kind === "message") {
+                return {
+                  kind: "message" as const,
+                  sortAt: item.sortAt,
+                  authorAccountID: getAuthorAccountIDFromMessage(item.data),
+                };
+              }
+              return { kind: "event" as const, sortAt: item.sortAt };
+            });
+            const dividerBeforeIndex = findNewMarkIndex(
+              dividerInput,
+              anchorRef.current,
+              myAccountID,
+            );
+
+            const rendered: any[] = [];
+            for (let i = 0; i < items.length; i++) {
+              if (i === dividerBeforeIndex) {
+                rendered.push(<NewMark key="new-mark" />);
+              }
+              const item = items[i];
               if (item.kind === "message") {
                 const message = item.data;
                 const authorAccountID = getAuthorAccountIDFromMessage(message);
@@ -357,7 +422,7 @@ export function ConversationDetailRoute() {
                       group: conversationGroup,
                     })
                   : "Unknown";
-                return (
+                rendered.push(
                   <MessageBubble
                     key={item.key}
                     message={message}
@@ -366,18 +431,20 @@ export function ConversationDetailRoute() {
                     isMine={isMine}
                     me={me}
                     group={conversationGroup}
-                  />
+                  />,
+                );
+              } else {
+                rendered.push(
+                  <SystemEvent
+                    key={item.key}
+                    event={item.data}
+                    me={me}
+                    group={conversationGroup}
+                  />,
                 );
               }
-              return (
-                <SystemEvent
-                  key={item.key}
-                  event={item.data}
-                  me={me}
-                  group={conversationGroup}
-                />
-              );
-            });
+            }
+            return rendered;
           })()}
 
           <div ref={bottomRef} />
