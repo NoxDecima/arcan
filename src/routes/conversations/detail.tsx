@@ -38,7 +38,6 @@ import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
-import { markRead } from "@/jazz/notifications";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -66,40 +65,67 @@ export function ConversationDetailRoute() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageCount]);
 
-  // Slice 8: mark conversation read when the user is ACTIVELY viewing this
-  // conversation. "Actively viewing" means the route is mounted AND the
-  // tab is visible (document.hidden === false). Gating on document.hidden
-  // matters because lastReadAt syncs across all the user's tabs/devices:
-  // without the gate, having a conversation open in any background tab
-  // would mark messages as read even while the user looks at a different
-  // tab — making the unread badge disappear on the tab they're actually
-  // looking at.
-  //
-  // Two effects: one fires on mount/message-arrival (active tab only),
-  // one fires when the user tabs BACK to a hidden-but-mounted conv.
-  // Per spec §2.4: writes max(Date.now(), latestSeenMessageSentAt + 1)
-  // for clock-skew safety.
-  useEffect(() => {
-    if (!me.$isLoaded || !conversation || !id) return;
-    if (document.hidden) return;
-    markRead(me as any, id);
-  }, [me.$isLoaded, conversation, id, messageCount]);
+  // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
+  // anchorRef captures lastReadAt at mount for the "new messages" divider
+  // (rendered in a later phase). latestRenderedSentAtRef tracks the newest
+  // message currently rendered so mark-on-leave can advance the cutoff.
+  const anchorRef = useRef<number | null>(null);
+  const latestRenderedSentAtRef = useRef<number>(0);
 
+  // Capture anchor lastReadAt at mount.
   useEffect(() => {
-    if (!me.$isLoaded || !conversation || !id) return;
-    // Capture the narrowed id into the closure (TS loses the narrowing
-    // across the inner function boundary otherwise).
-    const convID = id;
-    function onVisibilityChange() {
-      if (!document.hidden) {
-        markRead(me as any, convID);
-      }
+    const lastReadMap = (me as any)?.root?.lastReadAt;
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    if (!convId) return;
+    const prev = lastReadMap?.[convId];
+    anchorRef.current = typeof prev === "number" ? prev : 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
+
+  // Track the latest rendered message's sentAt.
+  useEffect(() => {
+    const messages = (conversation as any)?.messages ?? [];
+    let maxT = latestRenderedSentAtRef.current;
+    for (const m of messages) {
+      const t = m?.sentAt instanceof Date ? m.sentAt.getTime() : (typeof m?.sentAt === "number" ? m.sentAt : 0);
+      if (t > maxT) maxT = t;
     }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+    latestRenderedSentAtRef.current = maxT;
+  }, [(conversation as any)?.messages?.length]);
+
+  // Mark on leave: fires on route change (cleanup), visibilitychange-to-hidden,
+  // and beforeunload. Advances lastReadAt to latestRenderedSentAt + 1.
+  useEffect(() => {
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    if (!convId) return;
+
+    const markLeave = () => {
+      const latest = latestRenderedSentAtRef.current;
+      if (latest <= 0) return;
+      const next = latest + 1;
+      const lastReadMap = (me as any)?.root?.lastReadAt;
+      const cur = lastReadMap?.[convId] ?? 0;
+      if (next > cur && lastReadMap && typeof lastReadMap.$jazz?.set === "function") {
+        lastReadMap.$jazz.set(convId, next);
+      }
     };
-  }, [me.$isLoaded, conversation, id]);
+
+    const onVis = () => {
+      if (document.visibilityState === "hidden") markLeave();
+    };
+    const onBeforeUnload = () => markLeave();
+
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      // route-change cleanup
+      markLeave();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
 
   // ---- derived values (safe to call before early returns) ----
 
@@ -221,6 +247,15 @@ export function ConversationDetailRoute() {
 
   async function handleSend(body: string, attachments: any[]) {
     await sendMessage(me as any, conversation, body, attachments);
+    // Mark-on-send: advance lastReadAt to now so the message I just sent
+    // doesn't appear as unread on my other devices/tabs.
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    const lastReadMap = (me as any)?.root?.lastReadAt;
+    if (convId && lastReadMap && typeof lastReadMap.$jazz?.set === "function") {
+      const cur = lastReadMap?.[convId] ?? 0;
+      const next = Date.now();
+      if (next > cur) lastReadMap.$jazz.set(convId, next);
+    }
   }
 
   async function handleGetWriteGroup() {

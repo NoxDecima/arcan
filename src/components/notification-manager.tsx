@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useAccount } from "jazz-tools/react";
+import { useLocation } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTabTitleBadge } from "@/hooks/useTabTitleBadge";
 import { useNewMessageEvents } from "@/hooks/useNewMessageEvents";
@@ -51,6 +52,12 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
   });
   const me = meProp ?? meFromHook;
 
+  // Detect the currently active conversation from the URL so we can suppress
+  // its unread contribution from the tab-title badge and in-app notifications.
+  const { pathname } = useLocation();
+  const activeMatch = pathname.match(/^\/conversations\/([^/]+)/);
+  const activeConvId = activeMatch ? activeMatch[1] : null;
+
   const myID = me?.$jazz?.id ?? null;
   const knownConversations = me?.root?.knownConversations;
   const lastReadAt = me?.root?.lastReadAt;
@@ -87,14 +94,22 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
   }, [knownConversations, lastReadAt, myID, me]);
 
   const totalUnread = useMemo(
-    () => conversations.reduce((sum, c) => sum + c.unread, 0),
-    [conversations],
+    () => conversations.reduce((sum, c) => {
+      // Suppress unread for the conversation the user is currently viewing.
+      if (c.id === activeConvId) return sum;
+      return sum + c.unread;
+    }, 0),
+    [conversations, activeConvId],
   );
 
   useTabTitleBadge(totalUnread);
 
   const onNewMessage = useCallback(
     (event: { conversationID: string; conversationLabel: string }) => {
+      // Suppress in-app notifications for the active conversation.
+      if (event.conversationID === activeConvId) {
+        return;
+      }
       // Gate: sound requires pref + hidden
       if (prefs?.sound && document.hidden) {
         void new Audio("/notification.mp3").play().catch(() => {});
@@ -118,7 +133,7 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
         };
       }
     },
-    [prefs?.sound, prefs?.browser],
+    [prefs?.sound, prefs?.browser, activeConvId],
   );
 
   useNewMessageEvents({ conversations, onNewMessage });

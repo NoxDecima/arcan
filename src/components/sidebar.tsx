@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { Button } from "@/components/ui/button";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -76,6 +76,7 @@ export function Sidebar() {
     },
   });
   const navigate = useNavigate();
+  const { id: activeConvId } = useParams<{ id: string }>();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
 
@@ -181,8 +182,9 @@ export function Sidebar() {
               const convID = c.conversation.$jazz.id;
               const myID = (me as any).$jazz?.id;
               const lastReadAt = (me.root as any).lastReadAt?.[convID];
+              const isActive = convID === activeConvId;
               let unread = 0;
-              if (myID) {
+              if (myID && !isActive) {
                 try {
                   unread = getUnreadCount(c.conversation, lastReadAt, myID);
                 } catch {
@@ -199,7 +201,7 @@ export function Sidebar() {
                   data-testid={`conversation-row-${i}`}
                 >
                   <span className="truncate flex-1">{label}</span>
-                  {unread > 0 && (
+                  {!isActive && unread > 0 && (
                     <span
                       data-testid={`unread-badge-${i}`}
                       className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-arcan-accent text-on-accent"
