@@ -55,6 +55,10 @@ export const ArcanAccountRoot = co.map({
       browser: z.boolean(),
     }),
   }).optional(),
+  // Unit 1 — local list of ConnectionRequest IDs the recipient dismissed
+  // without acting. The shared CoValue is never mutated; requester sees nothing.
+  // OPTIONAL for back-compat with pre-Unit-1 accounts (backfill below).
+  dismissedRequestIDs: co.list(z.string()).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -132,6 +136,7 @@ export const ArcanAccount = co.account({
         },
         { owner: me },
       );
+    const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
 
     me.$jazz.set(
       "root",
@@ -143,6 +148,7 @@ export const ArcanAccount = co.account({
           knownConversations,
           lastReadAt,
           settings,
+          dismissedRequestIDs,
         },
         { owner: me },
       ),
@@ -243,7 +249,20 @@ export const ArcanAccount = co.account({
     (me.root as any).$jazz.set("settings", settings);
   }
 
-  // -- 2d. Self-register the current device's session --
+  // -- 2d. dismissedRequestIDs backfill (existing accounts) --
+  // Unit 1 addition; same guard pattern as the settings backfill above.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).dismissedRequestIDs
+  ) {
+    (me.root as any).$jazz.set(
+      "dismissedRequestIDs",
+      co.list(z.string()).create([], { owner: me }),
+    );
+  }
+
+  // -- 2e. Self-register the current device's session --
   // Runs on every node startup. The root-init branch above pushes a
   // DeviceRecord only at account creation, so devices paired later (via
   // QR pairing or any future onboarding flow that authenticates against
