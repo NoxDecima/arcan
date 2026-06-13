@@ -11,6 +11,7 @@ import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
 import { MembersRoute } from "./routes/conversations/members";
+import { NewConversationRoute } from "./routes/conversations/new";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { PendingConnectionsRoute } from "@/routes/connections/pending";
@@ -136,6 +137,7 @@ function App() {
       <Routes>
         <Route path="/" element={<ConversationsRoute />} />
         <Route path="/conversations" element={<ConversationsRoute />} />
+        <Route path="/conversations/new" element={<NewConversationRoute />} />
         <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
         <Route path="/conversations/:id/members" element={<MembersRoute />} />
         <Route path="/settings/*" element={<SettingsRoute />} />
