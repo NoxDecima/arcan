@@ -279,6 +279,24 @@ export async function createPairingInvite(
 
   const url = `${baseUrl}/pair#${fragment}`;
 
+  // Make the pairing discoverable by every logged-in trusted device on this account.
+  try {
+    const rootAny = (account as any).root;
+    if (rootAny?.pendingPairings && typeof rootAny.pendingPairings.$jazz?.push === "function") {
+      rootAny.pendingPairings.$jazz.push(pairing);
+    }
+  } catch (e) {
+    console.warn("[pairing] could not push to pendingPairings:", e);
+  }
+
+  // Persist the eph private key so the initiating device's TrustedDevicePrompt can complete the seal.
+  // Other already-logged-in trusted devices won't have this and the prompt will fall back to Reject-only.
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(`arcan-pair-eph-${(pairing as any).$jazz.id}`, ephemeralPrivkeyHex);
+    }
+  } catch {/* sessionStorage might not be available */}
+
   return { pairing: pairing as ReturnType<typeof EphemeralPairing.create>, url, ephemeralPrivkeyHex };
 }
 

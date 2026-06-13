@@ -1,6 +1,7 @@
 import { co, z, Group, Inbox } from "jazz-tools";
 import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
+import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
@@ -55,6 +56,10 @@ export const ArcanAccountRoot = co.map({
       browser: z.boolean(),
     }),
   }).optional(),
+  // Unit 2 — device pairing approval gate. All pending EphemeralPairings are
+  // pushed here so every logged-in trusted device on the account can surface
+  // the approval prompt. OPTIONAL so pre-Unit-2 accounts don't break.
+  pendingPairings: co.list(EphemeralPairing).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -107,6 +112,7 @@ export const ArcanAccount = co.account({
     const devices = co.list(DeviceRecord).create([], { owner: me });
     const invitesIssued = co.list(Invitation).create([], { owner: me });
     const knownConversations = co.list(Conversation).create([], { owner: me });
+    const pendingPairings = co.list(EphemeralPairing).create([], { owner: me });
     const lastReadAt = co
       .record(z.string(), z.number())
       .create({} as Record<string, number>, { owner: me });
@@ -141,6 +147,7 @@ export const ArcanAccount = co.account({
           devices,
           invitesIssued,
           knownConversations,
+          pendingPairings,
           lastReadAt,
           settings,
         },
@@ -241,6 +248,19 @@ export const ArcanAccount = co.account({
         { owner: me },
       );
     (me.root as any).$jazz.set("settings", settings);
+  }
+
+  // -- 2e. pendingPairings backfill (existing accounts) --
+  // Unit 2 addition. Same guard pattern as the other backfills.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).pendingPairings
+  ) {
+    (me.root as any).$jazz.set(
+      "pendingPairings",
+      co.list(EphemeralPairing).create([], { owner: me }),
+    );
   }
 
   // -- 2d. Self-register the current device's session --

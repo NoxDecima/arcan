@@ -16,6 +16,7 @@ import { RecoveryRoute } from "./routes/auth/recovery";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
+import { TrustedDevicePrompt } from "@/components/trusted-device-prompt";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
@@ -155,6 +156,9 @@ function App() {
               sound, and browser-notification fanout. Reads `me` via its own
               useAccount call so App.tsx's resolve stays shallow. */}
           {showNotificationManager && <NotificationManager />}
+          {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
+              only renders when a pending pairing is detected. Authenticated only. */}
+          {isAuthenticated && <TrustedDevicePrompt />}
           {routeTable}
         </ToastProvider>
       </AccentProvider>
