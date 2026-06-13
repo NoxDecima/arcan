@@ -58,7 +58,6 @@ export function ResponderStep() {
     return null;
   });
   const [responderPrivkeyHex, setResponderPrivkeyHex] = useState<string | null>(null);
-  const [initiatorName, setInitiatorName] = useState<string | null>(null);
   const [initiatorNaclPubkeyHex, setInitiatorNaclPubkeyHex] = useState<string | null>(null);
   const [pairingCoValueID, setPairingCoValueID] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,7 +112,6 @@ export function ResponderStep() {
 
         if (cancelled) return;
 
-        setInitiatorName((pairing as { initiatorDisplayName?: string }).initiatorDisplayName ?? "Unknown device");
         setPairing(pairing);
 
         const { responderPrivkeyHex: privkey } = await respondToPairing(
