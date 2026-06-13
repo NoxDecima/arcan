@@ -351,6 +351,21 @@ export async function rejectPairing(
 }
 
 /**
+ * Next-phase derivation for the responder's waiting-approval polling.
+ * Pure function over observable signals — separated for unit testing.
+ */
+export function nextPairingPhase(r: {
+  wrappedAccountSecret?: string;
+  rejectedAt?: Date;
+  expiresAt?: Date;
+}): "claiming" | "rejected" | "timed-out" | "waiting-approval" {
+  if (r.wrappedAccountSecret) return "claiming";
+  if (r.rejectedAt) return "rejected";
+  if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) return "timed-out";
+  return "waiting-approval";
+}
+
+/**
  * Tombstone a pairing CoValue by setting expiresAt to now.
  * The CoValue remains readable but signals completion / expiry.
  */
