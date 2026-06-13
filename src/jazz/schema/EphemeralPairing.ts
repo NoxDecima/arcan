@@ -41,4 +41,14 @@ export const EphemeralPairing = co.map({
   wrappedAccountSecret: z.string().optional(),
   /** Session fingerprint of the responding device; set by responder */
   responderSessionFingerprint: z.string().optional(),
+  /** Raw User-Agent from the new device; trusted side derives label + OS for the approval card. */
+  responderUserAgent: z.string().optional(),
+  /** UTC timestamp of when the responder published its present. Rendered as relative time. */
+  responderFirstSeenAt: z.date().optional(),
+  /** First 8 hex chars of SHA-256(responderPubkey hex). Rendered identically on both sides for eye-verification. */
+  responderFingerprint: z.string().optional(),
+  /** Set by the trusted device on approve. Audit/state field; responder reacts to wrappedAccountSecret presence. */
+  approvedAt: z.date().optional(),
+  /** Set by the trusted device on reject (with expiresAt also tombstoned). Responder distinguishes rejected from timed-out. */
+  rejectedAt: z.date().optional(),
 });
