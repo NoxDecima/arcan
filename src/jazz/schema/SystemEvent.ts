@@ -15,8 +15,9 @@ import { co, z } from "jazz-tools";
  * `targetAccountID` is omitted for kind="left" (actor IS target).
  */
 export const SystemEvent = co.map({
-  kind: z.enum(["added", "removed", "left", "promoted"]),
+  kind: z.enum(["added", "removed", "left", "promoted", "renamed"]),
   actorAccountID: z.string(),
   targetAccountID: z.string().optional(),
+  newTitle: z.string().optional(),
   occurredAt: z.date(),
 });

@@ -33,12 +33,37 @@ import { Composer } from "@/components/composer";
 import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { Button } from "@/components/ui/button";
+import { ConversationAvatar } from "@/components/conversation-avatar";
 import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
-import { markRead } from "@/jazz/notifications";
+import {
+  findNewMarkIndex,
+  type DividerTimelineItem,
+} from "@/routes/conversations/newMarkPosition";
+
+/**
+ * Unit 4 Phase 7: divider inserted into the timeline immediately before the
+ * first incoming (non-self, non-SystemEvent) message whose sentAt exceeds
+ * the lastReadAt cutoff captured at mount. Anchored — won't move as new
+ * messages arrive during the reading session.
+ */
+function NewMark() {
+  return (
+    <div
+      className="flex items-center gap-2 my-2 px-3"
+      data-testid="new-messages-divider"
+    >
+      <div className="flex-1 h-px bg-arcan-accent opacity-50" />
+      <span className="text-[9px] uppercase tracking-widest font-semibold text-arcan-accent font-mono">
+        new
+      </span>
+      <div className="flex-1 h-px bg-arcan-accent opacity-50" />
+    </div>
+  );
+}
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -66,40 +91,81 @@ export function ConversationDetailRoute() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageCount]);
 
-  // Slice 8: mark conversation read when the user is ACTIVELY viewing this
-  // conversation. "Actively viewing" means the route is mounted AND the
-  // tab is visible (document.hidden === false). Gating on document.hidden
-  // matters because lastReadAt syncs across all the user's tabs/devices:
-  // without the gate, having a conversation open in any background tab
-  // would mark messages as read even while the user looks at a different
-  // tab — making the unread badge disappear on the tab they're actually
-  // looking at.
-  //
-  // Two effects: one fires on mount/message-arrival (active tab only),
-  // one fires when the user tabs BACK to a hidden-but-mounted conv.
-  // Per spec §2.4: writes max(Date.now(), latestSeenMessageSentAt + 1)
-  // for clock-skew safety.
-  useEffect(() => {
-    if (!me.$isLoaded || !conversation || !id) return;
-    if (document.hidden) return;
-    markRead(me as any, id);
-  }, [me.$isLoaded, conversation, id, messageCount]);
+  // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
+  // anchorRef captures lastReadAt at mount for the "new messages" divider
+  // (rendered in a later phase). latestRenderedSentAtRef tracks the newest
+  // message currently rendered so mark-on-leave can advance the cutoff.
+  const anchorRef = useRef<number | null>(null);
+  const latestRenderedSentAtRef = useRef<number>(0);
 
+  // Capture anchor lastReadAt at mount.
   useEffect(() => {
-    if (!me.$isLoaded || !conversation || !id) return;
-    // Capture the narrowed id into the closure (TS loses the narrowing
-    // across the inner function boundary otherwise).
-    const convID = id;
-    function onVisibilityChange() {
-      if (!document.hidden) {
-        markRead(me as any, convID);
-      }
+    const lastReadMap = (me as any)?.root?.lastReadAt;
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    if (!convId) return;
+    const prev = lastReadMap?.[convId];
+    anchorRef.current = typeof prev === "number" ? prev : 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
+
+  // Track the latest rendered message's sentAt.
+  useEffect(() => {
+    const messages = (conversation as any)?.messages ?? [];
+    let maxT = latestRenderedSentAtRef.current;
+    for (const m of messages) {
+      const t = m?.sentAt instanceof Date ? m.sentAt.getTime() : (typeof m?.sentAt === "number" ? m.sentAt : 0);
+      if (t > maxT) maxT = t;
     }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+    latestRenderedSentAtRef.current = maxT;
+  }, [(conversation as any)?.messages?.length]);
+
+  // Mark on leave: fires on route change (cleanup), visibilitychange-to-hidden,
+  // and beforeunload. Advances lastReadAt to latestRenderedSentAt + 1.
+  useEffect(() => {
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    if (!convId) return;
+
+    const markLeave = () => {
+      const latest = latestRenderedSentAtRef.current;
+      if (latest <= 0) return;
+      const next = latest + 1;
+      const lastReadMap = (me as any)?.root?.lastReadAt;
+      const cur = lastReadMap?.[convId] ?? 0;
+      if (next > cur && lastReadMap && typeof lastReadMap.$jazz?.set === "function") {
+        lastReadMap.$jazz.set(convId, next);
+      }
     };
-  }, [me.$isLoaded, conversation, id]);
+
+    const onVis = () => {
+      if (document.visibilityState === "hidden") markLeave();
+    };
+    const onBeforeUnload = () => markLeave();
+
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      // route-change cleanup
+      markLeave();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
+
+  // Phase 7: auto-scroll the new-messages divider into view on mount.
+  // Runs once per conversation switch; if there's no divider we no-op.
+  // Uses a slight tick delay so the timeline has rendered before query.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-testid="new-messages-divider"]');
+      if (el) {
+        (el as HTMLElement).scrollIntoView({ block: "center", behavior: "auto" });
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
 
   // ---- derived values (safe to call before early returns) ----
 
@@ -221,6 +287,15 @@ export function ConversationDetailRoute() {
 
   async function handleSend(body: string, attachments: any[]) {
     await sendMessage(me as any, conversation, body, attachments);
+    // Mark-on-send: advance lastReadAt to now so the message I just sent
+    // doesn't appear as unread on my other devices/tabs.
+    const convId = (conversation as any)?.$jazz?.id as string | undefined;
+    const lastReadMap = (me as any)?.root?.lastReadAt;
+    if (convId && lastReadMap && typeof lastReadMap.$jazz?.set === "function") {
+      const cur = lastReadMap?.[convId] ?? 0;
+      const next = Date.now();
+      if (next > cur) lastReadMap.$jazz.set(convId, next);
+    }
   }
 
   async function handleGetWriteGroup() {
@@ -244,6 +319,15 @@ export function ConversationDetailRoute() {
           >
             ← Back
           </Link>
+
+          <ConversationAvatar
+            conversationId={(conversation as any)?.$jazz?.id ?? ""}
+            title={conversationTitle}
+            icon={(conversation as any)?.icon}
+            size={32}
+            loadAs={me}
+            data-testid="conversation-header-avatar"
+          />
 
           <h1
             className="flex-1 font-semibold text-text truncate"
@@ -310,7 +394,33 @@ export function ConversationDetailRoute() {
               );
             }
 
-            return items.map((item) => {
+            // Phase 7: find the first incoming, non-event message whose
+            // sentAt exceeds the lastReadAt anchor captured at mount.
+            // Place the NewMark immediately before that item.
+            // - No unread → divider omitted.
+            // - All unread → divider at top (before first qualifying item).
+            const dividerInput: DividerTimelineItem[] = items.map((item) => {
+              if (item.kind === "message") {
+                return {
+                  kind: "message" as const,
+                  sortAt: item.sortAt,
+                  authorAccountID: getAuthorAccountIDFromMessage(item.data),
+                };
+              }
+              return { kind: "event" as const, sortAt: item.sortAt };
+            });
+            const dividerBeforeIndex = findNewMarkIndex(
+              dividerInput,
+              anchorRef.current,
+              myAccountID,
+            );
+
+            const rendered: any[] = [];
+            for (let i = 0; i < items.length; i++) {
+              if (i === dividerBeforeIndex) {
+                rendered.push(<NewMark key="new-mark" />);
+              }
+              const item = items[i];
               if (item.kind === "message") {
                 const message = item.data;
                 const authorAccountID = getAuthorAccountIDFromMessage(message);
@@ -322,7 +432,7 @@ export function ConversationDetailRoute() {
                       group: conversationGroup,
                     })
                   : "Unknown";
-                return (
+                rendered.push(
                   <MessageBubble
                     key={item.key}
                     message={message}
@@ -331,18 +441,20 @@ export function ConversationDetailRoute() {
                     isMine={isMine}
                     me={me}
                     group={conversationGroup}
-                  />
+                  />,
+                );
+              } else {
+                rendered.push(
+                  <SystemEvent
+                    key={item.key}
+                    event={item.data}
+                    me={me}
+                    group={conversationGroup}
+                  />,
                 );
               }
-              return (
-                <SystemEvent
-                  key={item.key}
-                  event={item.data}
-                  me={me}
-                  group={conversationGroup}
-                />
-              );
-            });
+            }
+            return rendered;
           })()}
 
           <div ref={bottomRef} />

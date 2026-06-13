@@ -13,7 +13,7 @@
  *   - Back button → /conversations/:id
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -35,8 +35,14 @@ import {
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
+import { ConversationAvatar } from "@/components/conversation-avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { useToast } from "@/components/toast";
+import { setConversationIcon } from "@/jazz/avatar";
+import {
+  AttachmentTooLargeError,
+  MAX_ATTACHMENT_BYTES,
+} from "@/jazz/attachments";
 
 /**
  * Per-row component so each member row can call its own useRemoteAvatar
@@ -141,8 +147,10 @@ export function MembersRoute() {
   const [actionInProgress, setActionInProgress] = useState(false);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [iconUploading, setIconUploading] = useState(false);
   const toast = useToast();
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (titleEditing) {
@@ -354,6 +362,37 @@ export function MembersRoute() {
     setTitleDraft("");
   }
 
+  // ---- icon upload handlers (Phase 8) ----
+
+  async function handleIconChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the value so picking the same file twice still fires onChange
+    e.target.value = "";
+    if (!file) return;
+    if (!iAmAdmin) return;
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      toast({
+        icon: "alert",
+        text: `${(file.size / 1_000_000).toFixed(1)} MB — too large`,
+        tone: "error",
+      });
+      return;
+    }
+    setIconUploading(true);
+    try {
+      await setConversationIcon(me as any, conversation, file);
+      toast({ icon: "check", text: "icon updated", tone: "accent" });
+    } catch (err) {
+      if (err instanceof AttachmentTooLargeError) {
+        toast({ icon: "alert", text: err.message, tone: "error" });
+      } else {
+        toast({ icon: "alert", text: "upload failed", tone: "error" });
+      }
+    } finally {
+      setIconUploading(false);
+    }
+  }
+
   // ---- render ----
 
   return (
@@ -370,6 +409,40 @@ export function MembersRoute() {
           >
             ← Back
           </Link>
+
+          {/* Conversation avatar + admin-only camera overlay (Phase 8) */}
+          <div className="relative">
+            <ConversationAvatar
+              conversationId={(conversation as any)?.$jazz?.id ?? ""}
+              title={conversationTitle}
+              icon={(conversation as any)?.icon}
+              size={36}
+              loadAs={me}
+              data-testid="members-header-avatar"
+            />
+            {iAmAdmin && (
+              <>
+                <input
+                  ref={iconInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleIconChange}
+                  data-testid="conversation-icon-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => iconInputRef.current?.click()}
+                  disabled={iconUploading || actionInProgress}
+                  aria-label="Change conversation icon"
+                  data-testid="conversation-icon-upload"
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-pill bg-arcan-accent text-on-accent flex items-center justify-center text-[10px]"
+                >
+                  ✎
+                </button>
+              </>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             {titleEditing ? (
@@ -411,14 +484,27 @@ export function MembersRoute() {
                 </Button>
               </div>
             ) : (
-              <h1
-                className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
-                onClick={iAmAdmin ? startTitleEdit : undefined}
-                title={iAmAdmin ? "Click to edit title" : undefined}
-                data-testid="group-title-display"
-              >
-                {conversationTitle}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1
+                  className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
+                  onClick={iAmAdmin ? startTitleEdit : undefined}
+                  title={iAmAdmin ? "Click to edit title" : undefined}
+                  data-testid="group-title-display"
+                >
+                  {conversationTitle}
+                </h1>
+                {iAmAdmin && (
+                  <button
+                    type="button"
+                    onClick={startTitleEdit}
+                    aria-label="Edit conversation title"
+                    data-testid="group-title-edit-btn"
+                    className="text-dim hover:text-text text-sm"
+                  >
+                    ✎
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

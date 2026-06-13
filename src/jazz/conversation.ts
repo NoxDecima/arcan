@@ -39,8 +39,9 @@ function writeSystemEvent(
   me: Account,
   conversation: any,
   payload: {
-    kind: "added" | "removed" | "left" | "promoted";
+    kind: "added" | "removed" | "left" | "promoted" | "renamed";
     targetAccountID?: string;
+    newTitle?: string;
   },
 ): void {
   const conversationGroup = conversation.$jazz?.owner as Group | undefined;
@@ -52,6 +53,7 @@ function writeSystemEvent(
       kind: payload.kind,
       actorAccountID: (me as any).$jazz.id as string,
       targetAccountID: payload.targetAccountID,
+      newTitle: payload.newTitle,
       occurredAt: new Date(),
     },
     { owner: conversationGroup },
@@ -512,11 +514,35 @@ export async function demoteToWriter(
  * lacks write access to the conversation.
  */
 export async function updateConversationTitle(
-  _me: Account,
+  me: Account,
   conversation: any,
   newTitle: string,
 ): Promise<void> {
-  conversation.$jazz.set("title", newTitle);
+  const trimmed = newTitle.trim();
+  if (!trimmed) throw new Error("title cannot be empty");
+  if (trimmed.length > 100) throw new Error("title too long (max 100 chars)");
+
+  conversation.$jazz.set("title", trimmed);
+
+  // Append a 'renamed' SystemEvent to the conversation's sidecar log.
+  writeSystemEvent(me, conversation, {
+    kind: "renamed",
+    newTitle: trimmed,
+  });
+}
+
+/**
+ * Set or clear the conversation's icon. Admins only (UI gates this;
+ * cojson permission gating is a future hardening per the spec).
+ *
+ * Pass null/undefined to clear (reverts to monogram).
+ */
+export async function updateConversationIcon(
+  _me: Account,
+  conversation: any,
+  icon: any | null,
+): Promise<void> {
+  conversation.$jazz.set("icon", icon ?? undefined);
 }
 
 /**

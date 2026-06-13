@@ -1,6 +1,7 @@
 import { co, z } from "jazz-tools";
 import { Message } from "./Message";
 import { SystemEvent } from "./SystemEvent";
+import { FileBlob } from "./FileBlob";
 
 /**
  * Conversation: a chat thread with one or more participants.
@@ -21,6 +22,7 @@ import { SystemEvent } from "./SystemEvent";
  */
 export const Conversation = co.map({
   title: z.string().optional(),
+  icon: FileBlob.optional(),
   createdAt: z.date(),
   createdBy: z.string(),
   messages: co.list(Message),

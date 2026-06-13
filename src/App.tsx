@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
@@ -11,6 +11,7 @@ import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
 import { ConversationDetailRoute } from "./routes/conversations/detail";
 import { MembersRoute } from "./routes/conversations/members";
+import { NewConversationRoute } from "./routes/conversations/new";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { PendingConnectionsRoute } from "@/routes/connections/pending";
@@ -24,6 +25,20 @@ import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
+import { SidebarTabProvider } from "@/components/sidebar-tab";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { ProfileView } from "@/components/profile-view";
+
+/**
+ * Wrapper that reads the :accountID route param and forwards it to ProfileView.
+ * Lives in App.tsx because the polymorphic profile route is a single route
+ * shared between own and other-profile views (Unit 4 Phase 5).
+ */
+function ProfileRoute(): ReactElement {
+  const { accountID } = useParams<{ accountID: string }>();
+  if (!accountID) return <Navigate to="/" replace />;
+  return <ProfileView accountID={accountID} />;
+}
 
 /**
  * App: top-level route shell.
@@ -122,12 +137,14 @@ function App() {
       <Routes>
         <Route path="/" element={<ConversationsRoute />} />
         <Route path="/conversations" element={<ConversationsRoute />} />
+        <Route path="/conversations/new" element={<NewConversationRoute />} />
         <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
         <Route path="/conversations/:id/members" element={<MembersRoute />} />
         <Route path="/settings/*" element={<SettingsRoute />} />
         <Route path="/contacts" element={<ContactsRoute />} />
         <Route path="/contacts/add" element={<ContactAddRoute />} />
         <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+        <Route path="/profile/:accountID" element={<ProfileRoute />} />
         {/* /auth/recovery is reachable while authenticated so a user who
             signed in via 24-word recovery code can complete stage 2 (set a
             fresh password). The recovery route itself navigates to "/" on
@@ -153,22 +170,28 @@ function App() {
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
-          {/* Unit 7: sync persisted appearance settings (theme + accent) into
-              ThemeProvider + AccentProvider on sign-in. Authenticated only —
-              SettingsSync depends on a logged-in Jazz account. */}
-          {isAuthenticated && <SettingsSync />}
-          {/* Slice 8: in-app notification manager — drives tab title badge,
-              sound, and browser-notification fanout. Reads `me` via its own
-              useAccount call so App.tsx's resolve stays shallow. */}
-          {showNotificationManager && <NotificationManager />}
-          {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
-              only renders when a pending pairing is detected. Authenticated only. */}
-          {isAuthenticated && <TrustedDevicePrompt />}
-          {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
-              an in-person ConnectionRequest arrives (channel="qr"). Other
-              channels land silently on the Pending Connections list. */}
-          {isAuthenticated && <IncomingConnectionPrompt />}
-          {routeTable}
+          <SidebarTabProvider>
+            {/* Unit 7: sync persisted appearance settings (theme + accent) into
+                ThemeProvider + AccentProvider on sign-in. Authenticated only —
+                SettingsSync depends on a logged-in Jazz account. */}
+            {isAuthenticated && <SettingsSync />}
+            {/* Slice 8: in-app notification manager — drives tab title badge,
+                sound, and browser-notification fanout. Reads `me` via its own
+                useAccount call so App.tsx's resolve stays shallow. */}
+            {showNotificationManager && <NotificationManager />}
+            {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
+                only renders when a pending pairing is detected. Authenticated only. */}
+            {isAuthenticated && <TrustedDevicePrompt />}
+            {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
+                an in-person ConnectionRequest arrives (channel="qr"). Other
+                channels land silently on the Pending Connections list. */}
+            {isAuthenticated && <IncomingConnectionPrompt />}
+            {routeTable}
+            {/* Unit 4 Phase 4: mobile bottom tab bar — fixed on root screens
+                only; hidden on non-root paths. Reads the shared sidebar tab
+                state. Authenticated only. */}
+            {isAuthenticated && <MobileTabBar />}
+          </SidebarTabProvider>
         </ToastProvider>
       </AccentProvider>
     </ThemeProvider>

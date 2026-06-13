@@ -20,6 +20,11 @@ vi.mock("@/hooks/useTabTitleBadge", () => ({
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => ({}),
 }));
+// Stub useLocation so tests run without a Router context. Default to no
+// active conversation; individual tests can override via vi.mocked if needed.
+vi.mock("react-router-dom", () => ({
+  useLocation: () => ({ pathname: "/" }),
+}));
 
 describe("NotificationManager — sound + browser notification fanout", () => {
   let originalAudio: any;
