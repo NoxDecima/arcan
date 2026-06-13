@@ -5,7 +5,7 @@ import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
 import { ContactsRoute } from "./routes/contacts";
-import { ContactAddRoute } from "./routes/contacts/add";
+import { AddContactRoute as ContactAddRoute } from "./routes/contacts/add";
 import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
