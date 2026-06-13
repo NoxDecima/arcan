@@ -32,8 +32,9 @@ async function makeAuthAndApp() {
     feedbackLabelId: "feedback-label-uuid",
     categoryLabels: {
       Bug: "bug-label-uuid",
-      Improvement: "improvement-label-uuid",
-      Feature: "feature-label-uuid",
+      Idea: "idea-label-uuid",
+      Question: "question-label-uuid",
+      Note: "note-label-uuid",
     },
     maxTotalBytes: 10 * 1024 * 1024,
     rateLimiterMax: 10,
@@ -223,5 +224,32 @@ describe("POST /api/feedback", () => {
       body,
     });
     expect(res.status).toBe(429);
+  });
+
+  test("Idea category maps to the Idea label", async () => {
+    const { app, auth, linearClient } = await makeAuthAndApp();
+    const cookie = await signUpAndGetCookie(auth);
+
+    (linearClient.createIssue as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: "id-idea",
+      identifier: "NOX-200",
+      url: "https://linear.app/nox/issue/NOX-200",
+    });
+
+    const body = new FormData();
+    body.set("message", "Could we add tag filters in the chat list?");
+    body.set("category", "Idea");
+
+    const res = await app.request("/api/feedback", {
+      method: "POST",
+      headers: { cookie },
+      body,
+    });
+
+    expect(res.status).toBe(200);
+    const arg = (linearClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(arg.labelIds).toEqual(
+      expect.arrayContaining(["feedback-label-uuid", "idea-label-uuid"])
+    );
   });
 });

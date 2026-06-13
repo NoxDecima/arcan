@@ -14,7 +14,7 @@ export interface FeedbackRouteConfig {
   auth: Auth;
   linearClient: LinearClient;
   feedbackLabelId: string;
-  categoryLabels: Record<"Bug" | "Improvement" | "Feature", string>;
+  categoryLabels: Record<"Bug" | "Idea" | "Question" | "Note", string>;
   maxTotalBytes: number;
   rateLimiterMax: number;
   rateLimiterWindowSeconds: number;

@@ -59,8 +59,9 @@ registerFeedbackRoute(app, {
   feedbackLabelId: env.LINEAR_LABEL_FEEDBACK_ID,
   categoryLabels: {
     Bug: env.LINEAR_LABEL_BUG_ID,
-    Improvement: env.LINEAR_LABEL_IMPROVEMENT_ID,
-    Feature: env.LINEAR_LABEL_FEATURE_ID,
+    Idea: env.LINEAR_LABEL_IDEA_ID,
+    Question: env.LINEAR_LABEL_QUESTION_ID,
+    Note: env.LINEAR_LABEL_NOTE_ID,
   },
   maxTotalBytes: env.FEEDBACK_MAX_TOTAL_BYTES,
   rateLimiterMax: env.FEEDBACK_RATE_LIMIT_MAX,
