@@ -110,6 +110,25 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 // ---------------------------------------------------------------------------
+// Fingerprint helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the 8-char hex display fingerprint from the responder's ephemeral pubkey hex.
+ * SHA-256(pubkey hex) → first 8 hex chars, uppercased for the visual block.
+ */
+export async function deriveResponderFingerprint(pubkeyHex: string): Promise<string> {
+  const bytes = new TextEncoder().encode(pubkeyHex);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const view = new Uint8Array(digest);
+  let hex = "";
+  for (let i = 0; i < 4; i++) {
+    hex += view[i].toString(16).padStart(2, "0");
+  }
+  return hex.toUpperCase();
+}
+
+// ---------------------------------------------------------------------------
 // Task 12 — pure parsing / crypto primitives (tested by pairing.test.ts)
 // ---------------------------------------------------------------------------
 
@@ -305,6 +324,33 @@ export async function wrapAccountSecretForResponder(
 }
 
 /**
+ * Approve a pending pairing on the trusted side.
+ *
+ * Writes `approvedAt` then calls wrapAccountSecretForResponder to seal +
+ * publish the account secret. Idempotent within the same caller (caller
+ * should guard against double-tap).
+ */
+export async function approvePairing(
+  account: Account,
+  pairing: ReturnType<typeof EphemeralPairing.create>,
+  ephemeralPrivkeyHex: string,
+  authContext: PairingAuthContext,
+): Promise<void> {
+  (pairing as any).$jazz.set("approvedAt", new Date());
+  await wrapAccountSecretForResponder(account, pairing, ephemeralPrivkeyHex, authContext);
+}
+
+/**
+ * Reject a pending pairing on the trusted side. Writes rejectedAt and tombstones expiresAt = now.
+ */
+export async function rejectPairing(
+  pairing: ReturnType<typeof EphemeralPairing.create>,
+): Promise<void> {
+  (pairing as any).$jazz.set("rejectedAt", new Date());
+  (pairing as any).$jazz.set("expiresAt", new Date());
+}
+
+/**
  * Tombstone a pairing CoValue by setting expiresAt to now.
  * The CoValue remains readable but signals completion / expiry.
  */
@@ -358,13 +404,17 @@ export async function loadPairingAsAgent(
 export async function respondToPairing(
   pairing: ReturnType<typeof EphemeralPairing.create>,
 ): Promise<{ responderPrivkeyHex: string }> {
-  // Generate responder's ephemeral nacl keypair
   const responderKeypair = nacl.box.keyPair();
   const responderPrivkeyHex = bytesToHex(responderKeypair.secretKey);
   const responderPubkeyHex = bytesToHex(responderKeypair.publicKey);
 
-  // Write the pubkey to the pairing CoValue so the initiator can see it
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const fingerprint = await deriveResponderFingerprint(responderPubkeyHex);
+
   (pairing as any).$jazz.set("responderPubkey", responderPubkeyHex);
+  (pairing as any).$jazz.set("responderUserAgent", ua);
+  (pairing as any).$jazz.set("responderFirstSeenAt", new Date());
+  (pairing as any).$jazz.set("responderFingerprint", fingerprint);
 
   return { responderPrivkeyHex };
 }
