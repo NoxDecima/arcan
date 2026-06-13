@@ -41,7 +41,7 @@ export function DevicesSection() {
     const device = devices[idx];
     if (!device) return;
     const confirmed = confirm(
-      "Revoke this device? It will be hidden from your list. Note: revocation is currently soft — the device may continue to function until full cryptographic revocation lands in a later release."
+      "Forget this device? It stays hidden from your list, but anything already synced to it remains readable. Full cryptographic revocation lands in a later release."
     );
     if (!confirmed) return;
     (device as any).$jazz.set("revoked", true);
@@ -95,13 +95,17 @@ export function DevicesSection() {
                   disabled={isCurrentDevice}
                   title={isCurrentDevice ? "This is your current device — use Sign out instead." : undefined}
                 >
-                  Revoke
+                  Forget
                 </Button>
               </li>
             );
           })
         )}
       </ul>
+      <p className="mt-4 text-xs text-dim leading-relaxed max-w-xl">
+        Forgetting a device hides it here, but it can still read everything it has already synced.
+        Full cryptographic revocation lands in the upcoming overhaul — see NOX-10.
+      </p>
     </section>
   );
 }
