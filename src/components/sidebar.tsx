@@ -5,6 +5,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
+import { ConversationAvatar } from "@/components/conversation-avatar";
 import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
@@ -268,11 +269,19 @@ export function Sidebar() {
                 <Link
                   key={i}
                   to={`/conversations/${convID}`}
-                  className={`block p-2 hover:bg-accent rounded text-sm flex items-center justify-between gap-2 ${
+                  className={`block p-2 hover:bg-accent rounded text-sm flex items-center gap-2 ${
                     unread > 0 ? "font-semibold" : ""
                   }`}
                   data-testid={`conversation-row-${i}`}
                 >
+                  <ConversationAvatar
+                    conversationId={convID}
+                    title={label}
+                    icon={(c.conversation as any)?.icon}
+                    size={32}
+                    loadAs={me}
+                    data-testid={`conversation-avatar-${i}`}
+                  />
                   <span className="truncate flex-1">{label}</span>
                   {!isActive && unread > 0 && (
                     <span

@@ -33,6 +33,7 @@ import { Composer } from "@/components/composer";
 import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { Button } from "@/components/ui/button";
+import { ConversationAvatar } from "@/components/conversation-avatar";
 import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 import { SystemEvent } from "@/components/system-event";
@@ -318,6 +319,15 @@ export function ConversationDetailRoute() {
           >
             ← Back
           </Link>
+
+          <ConversationAvatar
+            conversationId={(conversation as any)?.$jazz?.id ?? ""}
+            title={conversationTitle}
+            icon={(conversation as any)?.icon}
+            size={32}
+            loadAs={me}
+            data-testid="conversation-header-avatar"
+          />
 
           <h1
             className="flex-1 font-semibold text-text truncate"
