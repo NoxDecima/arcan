@@ -5,6 +5,7 @@ import { AccountSection } from "./account-section";
 import { InvitesSection } from "./invites-section";
 import { NotificationsSection } from "./notifications-section";
 import { AppearanceSection } from "./appearance-section";
+import { FeedbackSection } from "./feedback-section";
 
 /**
  * SettingsRoute: settings page with profile, devices, and account sections.
@@ -29,6 +30,7 @@ export function SettingsRoute() {
         <div className="flex flex-col gap-6">
           <ProfileSection />
           <AppearanceSection />
+          <FeedbackSection />
           <NotificationsSection />
           <DevicesSection />
           <InvitesSection />
