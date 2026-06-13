@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
@@ -26,6 +26,18 @@ import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { ProfileView } from "@/components/profile-view";
+
+/**
+ * Wrapper that reads the :accountID route param and forwards it to ProfileView.
+ * Lives in App.tsx because the polymorphic profile route is a single route
+ * shared between own and other-profile views (Unit 4 Phase 5).
+ */
+function ProfileRoute(): ReactElement {
+  const { accountID } = useParams<{ accountID: string }>();
+  if (!accountID) return <Navigate to="/" replace />;
+  return <ProfileView accountID={accountID} />;
+}
 
 /**
  * App: top-level route shell.
@@ -130,6 +142,7 @@ function App() {
         <Route path="/contacts" element={<ContactsRoute />} />
         <Route path="/contacts/add" element={<ContactAddRoute />} />
         <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+        <Route path="/profile/:accountID" element={<ProfileRoute />} />
         {/* /auth/recovery is reachable while authenticated so a user who
             signed in via 24-word recovery code can complete stage 2 (set a
             fresh password). The recovery route itself navigates to "/" on
