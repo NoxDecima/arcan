@@ -24,6 +24,8 @@ import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
+import { SidebarTabProvider } from "@/components/sidebar-tab";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 
 /**
  * App: top-level route shell.
@@ -153,22 +155,28 @@ function App() {
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
-          {/* Unit 7: sync persisted appearance settings (theme + accent) into
-              ThemeProvider + AccentProvider on sign-in. Authenticated only —
-              SettingsSync depends on a logged-in Jazz account. */}
-          {isAuthenticated && <SettingsSync />}
-          {/* Slice 8: in-app notification manager — drives tab title badge,
-              sound, and browser-notification fanout. Reads `me` via its own
-              useAccount call so App.tsx's resolve stays shallow. */}
-          {showNotificationManager && <NotificationManager />}
-          {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
-              only renders when a pending pairing is detected. Authenticated only. */}
-          {isAuthenticated && <TrustedDevicePrompt />}
-          {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
-              an in-person ConnectionRequest arrives (channel="qr"). Other
-              channels land silently on the Pending Connections list. */}
-          {isAuthenticated && <IncomingConnectionPrompt />}
-          {routeTable}
+          <SidebarTabProvider>
+            {/* Unit 7: sync persisted appearance settings (theme + accent) into
+                ThemeProvider + AccentProvider on sign-in. Authenticated only —
+                SettingsSync depends on a logged-in Jazz account. */}
+            {isAuthenticated && <SettingsSync />}
+            {/* Slice 8: in-app notification manager — drives tab title badge,
+                sound, and browser-notification fanout. Reads `me` via its own
+                useAccount call so App.tsx's resolve stays shallow. */}
+            {showNotificationManager && <NotificationManager />}
+            {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
+                only renders when a pending pairing is detected. Authenticated only. */}
+            {isAuthenticated && <TrustedDevicePrompt />}
+            {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
+                an in-person ConnectionRequest arrives (channel="qr"). Other
+                channels land silently on the Pending Connections list. */}
+            {isAuthenticated && <IncomingConnectionPrompt />}
+            {routeTable}
+            {/* Unit 4 Phase 4: mobile bottom tab bar — fixed on root screens
+                only; hidden on non-root paths. Reads the shared sidebar tab
+                state. Authenticated only. */}
+            {isAuthenticated && <MobileTabBar />}
+          </SidebarTabProvider>
         </ToastProvider>
       </AccentProvider>
     </ThemeProvider>

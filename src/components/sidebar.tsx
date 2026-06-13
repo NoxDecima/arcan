@@ -1,21 +1,24 @@
-import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { Button } from "@/components/ui/button";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { ContactPicker } from "@/components/contact-picker";
-import { GroupCreateDialog } from "@/components/group-create-dialog";
-import { findOrCreate1to1Conversation, createGroupConversation, isArchived } from "@/jazz/conversation";
+import { isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
 import { getUnreadCount } from "@/jazz/notifications";
+import { useSidebarTab } from "@/components/sidebar-tab";
+import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 
 /**
  * Sidebar component for the main layout.
  *
+ * Unit 4 Phase 4: the sidebar now has two tabs — `chats` and `contacts`.
+ * Tab state is shared with the mobile bottom tab bar via the SidebarTab
+ * context (per-session, not persisted). Clicking a row navigates as before.
+ *
  * Slice 3b: displays conversation list derived from me.root.knownConversations,
- * sorted by last message timestamp descending. A "+" button opens the
- * ContactPicker to start a new 1:1 conversation. Contacts moved to /contacts.
+ * sorted by last message timestamp descending. A "+" button now navigates to
+ * the dedicated /conversations/new multi-select flow (Unit 4 Phase 6).
  */
 /**
  * Derive a sidebar label for a conversation: explicit title wins; else
@@ -57,6 +60,51 @@ function deriveConversationLabel(conversation: any, me: any): string {
   return `${names[0]}, ${names[1]} +${names.length - 2} more`;
 }
 
+/**
+ * One contact row inside the contacts tab. Mirrors the contacts page row but
+ * navigates to the polymorphic profile route at /profile/:accountID instead
+ * of the legacy /contacts/:contactID detail.
+ */
+function SidebarContactRow({
+  contact,
+  index,
+  me,
+}: {
+  contact: any;
+  index: number;
+  me: any;
+}) {
+  const accountID = contact?.contactAccountID as string | undefined;
+  const localAvatar = resolveAvatarFileBlob({
+    accountID: accountID ?? "",
+    me,
+  });
+  const remoteAvatar = useRemoteAvatar(
+    localAvatar ? null : accountID ?? null,
+  );
+  const avatar = localAvatar ?? remoteAvatar;
+
+  if (!accountID) return null;
+
+  return (
+    <Link
+      to={`/profile/${accountID}`}
+      data-testid={`sidebar-contact-row-${index}`}
+      className="flex items-center gap-3 p-2 hover:bg-accent rounded text-sm"
+    >
+      <Avatar
+        src={avatar}
+        initials={contact?.displayNameLocal?.[0] ?? "?"}
+        size="sm"
+        loadAs={me}
+      />
+      <span className="truncate flex-1 text-text">
+        {contact?.displayNameLocal ?? "(unknown)"}
+      </span>
+    </Link>
+  );
+}
+
 export function Sidebar() {
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -77,8 +125,7 @@ export function Sidebar() {
   });
   const navigate = useNavigate();
   const { id: activeConvId } = useParams<{ id: string }>();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingGroupContacts, setPendingGroupContacts] = useState<any[] | null>(null);
+  const { tab, setTab } = useSidebarTab();
 
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
@@ -116,49 +163,77 @@ export function Sidebar() {
     return bTime - aTime;
   });
 
-  async function handlePickContacts(contacts: any[]) {
-    setPickerOpen(false);
-    if (contacts.length === 1) {
-      const conversation = await findOrCreate1to1Conversation(me as any, contacts[0]);
-      navigate(`/conversations/${(conversation as any).$jazz.id}`);
-    } else if (contacts.length >= 2) {
-      setPendingGroupContacts(contacts);
-    }
-  }
+  const contacts = Array.from(me.root?.contactBook ?? []);
+
+  const myID = (me as any).$jazz?.id as string | undefined;
 
   return (
-    <>
-      <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
-        {/* Header: avatar + display name + new chat button */}
-        <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Avatar
-              src={(me as any).profile.avatar}
-              initials={me.profile.displayName?.[0] ?? "?"}
-              size="sm"
-              loadAs={me}
-              data-testid="sidebar-avatar"
-            />
-            <span
-              data-testid="sidebar-display-name"
-              className="font-semibold text-text truncate"
-            >
-              {me.profile.displayName}
-            </span>
-          </div>
-          <Button
+    <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
+      {/* Header: avatar + display name + new chat button */}
+      <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
+        <button
+          type="button"
+          data-testid="sidebar-header-profile"
+          onClick={() => myID && navigate(`/profile/${myID}`)}
+          className="flex items-center gap-2 min-w-0 text-left hover:opacity-90"
+          aria-label="Open your profile"
+        >
+          <Avatar
+            src={(me as any).profile.avatar}
+            initials={me.profile.displayName?.[0] ?? "?"}
             size="sm"
-            variant="outline"
-            onClick={() => setPickerOpen(true)}
-            data-testid="new-chat-btn"
-            className="flex-shrink-0"
-            title="New chat"
+            loadAs={me}
+            data-testid="sidebar-avatar"
+          />
+          <span
+            data-testid="sidebar-display-name"
+            className="font-semibold text-text truncate"
           >
-            +
-          </Button>
-        </div>
+            {me.profile.displayName}
+          </span>
+        </button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate("/conversations/new")}
+          data-testid="new-chat-btn"
+          className="flex-shrink-0"
+          title="New chat"
+        >
+          +
+        </Button>
+      </div>
 
-        {/* Main nav: conversation list */}
+      {/* Tab header (Unit 4 Phase 4) */}
+      <div className="flex border-b border-hairline" data-testid="sidebar-tabs">
+        <button
+          type="button"
+          data-testid="sidebar-tab-chats"
+          className={`flex-1 py-2 text-xs font-semibold ${
+            tab === "chats"
+              ? "text-text border-b-2 border-arcan-accent"
+              : "text-dim"
+          }`}
+          onClick={() => setTab("chats")}
+        >
+          chats
+        </button>
+        <button
+          type="button"
+          data-testid="sidebar-tab-contacts"
+          className={`flex-1 py-2 text-xs font-semibold ${
+            tab === "contacts"
+              ? "text-text border-b-2 border-arcan-accent"
+              : "text-dim"
+          }`}
+          onClick={() => setTab("contacts")}
+        >
+          contacts
+        </button>
+      </div>
+
+      {/* Main nav: conversations OR contacts list, depending on active tab */}
+      {tab === "chats" ? (
         <nav
           className="flex-1 overflow-y-auto p-2"
           data-testid="conversation-list"
@@ -166,21 +241,19 @@ export function Sidebar() {
           {sortedActive.length === 0 ? (
             <div className="p-4 text-center space-y-3">
               <p className="text-sm text-muted-foreground">No conversations yet.</p>
-              <Link to="/contacts">
-                <Button size="sm" variant="outline">
-                  Browse contacts
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setTab("contacts")}
+              >
+                Browse contacts
+              </Button>
             </div>
           ) : (
             sortedActive.map((c: any, i: number) => {
               const label = deriveConversationLabel(c.conversation, me);
               // Slice 8: per-row unread count + badge + bold styling.
-              // Wrap in try/catch — if Jazz hasn't fully hydrated the messages
-              // list yet, iterating it can throw "not iterable"; we'd rather
-              // render the row with no badge than crash the whole sidebar.
               const convID = c.conversation.$jazz.id;
-              const myID = (me as any).$jazz?.id;
               const lastReadAt = (me.root as any).lastReadAt?.[convID];
               const isActive = convID === activeConvId;
               let unread = 0;
@@ -214,49 +287,43 @@ export function Sidebar() {
             })
           )}
         </nav>
-
-        {/* Footer: contacts + settings links */}
-        <div className="p-4 border-t border-hairline flex flex-col gap-2">
-          <Link
-            to="/contacts"
-            data-testid="contacts-link"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            📇 Contacts
-          </Link>
-          <Link
-            to="/settings"
-            data-testid="settings-link"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ⚙ Settings
-          </Link>
-        </div>
-      </aside>
-
-      {pickerOpen && (
-        <ContactPicker
-          onSelect={handlePickContacts}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
-
-      {pendingGroupContacts && (
-        <GroupCreateDialog
-          participantNames={pendingGroupContacts.map(
-            (c: any) => c?.displayNameLocal ?? "(unknown)",
+      ) : (
+        <nav
+          className="flex-1 overflow-y-auto p-2"
+          data-testid="sidebar-contacts-list"
+        >
+          {contacts.length === 0 ? (
+            <div className="p-4 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">No contacts yet.</p>
+              <Link to="/contacts/add">
+                <Button size="sm" variant="outline">
+                  Add a contact
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            contacts.map((c: any, i: number) => (
+              <SidebarContactRow
+                key={(c as any)?.$jazz?.id ?? i}
+                contact={c}
+                index={i}
+                me={me}
+              />
+            ))
           )}
-          onCreate={async (title) => {
-            const accountIDs = pendingGroupContacts.map(
-              (c: any) => c.contactAccountID as string,
-            );
-            const conv = await createGroupConversation(me, accountIDs, title);
-            setPendingGroupContacts(null);
-            navigate(`/conversations/${(conv as any).$jazz.id}`);
-          }}
-          onCancel={() => setPendingGroupContacts(null)}
-        />
+        </nav>
       )}
-    </>
+
+      {/* Footer: settings link */}
+      <div className="p-4 border-t border-hairline flex flex-col gap-2">
+        <Link
+          to="/settings"
+          data-testid="settings-link"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ⚙ Settings
+        </Link>
+      </div>
+    </aside>
   );
 }
