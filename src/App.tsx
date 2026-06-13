@@ -5,7 +5,7 @@ import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
 import { ContactsRoute } from "./routes/contacts";
-import { ContactAddRoute } from "./routes/contacts/add";
+import { AddContactRoute as ContactAddRoute } from "./routes/contacts/add";
 import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
@@ -13,6 +13,9 @@ import { ConversationDetailRoute } from "./routes/conversations/detail";
 import { MembersRoute } from "./routes/conversations/members";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
+import { PendingConnectionsRoute } from "@/routes/connections/pending";
+import { LiveInvitesRoute } from "@/routes/connections/live-invites";
+import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
@@ -129,6 +132,8 @@ function App() {
             signed in via 24-word recovery code can complete stage 2 (set a
             fresh password). The recovery route itself navigates to "/" on
             completion or skip. */}
+        <Route path="/connections/pending" element={<PendingConnectionsRoute />} />
+        <Route path="/connections/live-invites" element={<LiveInvitesRoute />} />
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -159,6 +164,10 @@ function App() {
           {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
               only renders when a pending pairing is detected. Authenticated only. */}
           {isAuthenticated && <TrustedDevicePrompt />}
+          {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
+              an in-person ConnectionRequest arrives (channel="qr"). Other
+              channels land silently on the Pending Connections list. */}
+          {isAuthenticated && <IncomingConnectionPrompt />}
           {routeTable}
         </ToastProvider>
       </AccentProvider>

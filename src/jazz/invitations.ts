@@ -1,65 +1,133 @@
 /**
- * Contact invitation protocol primitives.
+ * Contact invitation protocol primitives — multi-use Invitation model.
  *
- * Spec: docs/superpowers/specs/2026-05-16-slice-2-pairing-invitations-design.md §6
+ * Spec: docs/superpowers/plans/2026-06-09-unit-1-connection-subsystem.md §Phase 5
  *
  * ## URL format
- * /invite#<base64url(TextEncoder("inviteGroupID|inviteAgentSecret"))>
+ * /invite#<base64url("invitationCoValueID|inviterAccountID")>
  *
  * ## Access model
- * Uses the same "everyone writer" group pattern as pairing.ts (see that module
- * for rationale). The Invitation CoValue carries plaintext inviter/recipient info
- * — the URL fragment is the bearer credential. TOFU pinning at acceptance time
- * provides identity binding.
+ * The Invitation CoValue lives in an "everyone writer" group so any recipient
+ * can load it without a per-recipient agent secret. It is multi-use: multiple
+ * recipients can read it and submit a ConnectionRequest.
  *
- * ## Decision: everyone-writer fallback
- * Jazz's writerInvite-agent pattern requires generating an agent secret via
- * `Group.createInvite()`. We explored this but it produced an invite link
- * (not an agent secret string we can embed in a custom URL fragment). Given
- * the 30-minute budget and the fact that the pairing module already validated
- * that "everyone writer" is cryptographically safe for this use case, we use
- * the same approach here. The inviteAgentSecret field in the URL is set to
- * a placeholder ("everyone") to document this deviation.
+ * ## ConnectionRequest delivery
+ * Each opener mints a fresh ConnectionRequest in a new notification group and
+ * delivers it to the recipient's Inbox via InboxSender — the same pattern used
+ * for ConversationNotification in conversation.ts.
  */
 
-import { Group } from "jazz-tools";
+import { Group, Account, InboxSender } from "jazz-tools";
 import { Invitation } from "./schema/Invitation";
-import { Contact, ContactBook } from "./schema/Contact";
+import { ConnectionRequest } from "./schema/ConnectionRequest";
+import { Contact } from "./schema/Contact";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
-import type { Account } from "jazz-tools";
 
 // ---------------------------------------------------------------------------
-// Exported types
+// Constants
 // ---------------------------------------------------------------------------
 
-export interface InvitationURL {
-  inviteGroupID: string;
-  inviteAgentSecret: string;
+export const LINK_TTL_OPTIONS = {
+  "1h": 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+} as const;
+
+export const QR_TTL_MS = 5 * 60 * 1000;
+export const GROUP_REQUEST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type LinkTtl = keyof typeof LINK_TTL_OPTIONS;
+
+// ---------------------------------------------------------------------------
+// Base64url helpers (plain string variant — no TextEncoder needed)
+// ---------------------------------------------------------------------------
+
+function toB64url(s: string): string {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export interface InvitationIssued {
-  invitation: ReturnType<typeof Invitation.create>;
-  url: string;
-}
-
-// ---------------------------------------------------------------------------
-// Base64url helpers (same as pairing.ts — kept local to avoid coupling)
-// ---------------------------------------------------------------------------
-
-function toB64url(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromB64url(s: string): Uint8Array {
+function fromB64url(s: string): string {
   const padded = s
     .replace(/-/g, "+")
     .replace(/_/g, "/")
     .padEnd(s.length + ((4 - (s.length % 4)) % 4), "=");
-  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  return atob(padded);
+}
+
+// ---------------------------------------------------------------------------
+// Inviter side
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a multi-use Invitation CoValue in an everyone-writer group.
+ *
+ * @param account - the inviter's account (me from useAccount)
+ * @param channel  - "qr" (fixed 5-min TTL) or "link" (TTL from linkTtl)
+ * @param linkTtl  - only used when channel === "link"; defaults to "24h"
+ * @returns the Invitation CoValue and a shareable URL
+ */
+export async function createInvitation(
+  account: Account,
+  channel: "qr" | "link",
+  linkTtl: LinkTtl = "24h",
+): Promise<{ invitation: ReturnType<typeof Invitation.create>; url: string }> {
+  const me = account as Account & {
+    profile?: { displayName?: string; name?: string };
+    $jazz: { id: string };
+  };
+
+  const now = new Date();
+  const ttlMs = channel === "qr" ? QR_TTL_MS : LINK_TTL_OPTIONS[linkTtl];
+  const expiresAt = new Date(now.getTime() + ttlMs);
+
+  const displayName =
+    me.profile?.displayName ?? me.profile?.name ?? "Anonymous";
+
+  // Everyone-writer group so any recipient can load the CoValue
+  const inviteGroup = Group.create({ owner: account });
+  inviteGroup.addMember("everyone", "writer");
+
+  const invitation = Invitation.create(
+    {
+      inviterAccountID: me.$jazz.id,
+      inviterFingerprint: getAccountPubkeyHex(account),
+      inviterDisplayName: displayName,
+      channel,
+      createdAt: now,
+      expiresAt,
+    },
+    { owner: inviteGroup },
+  );
+
+  // Track in the user's live invites list for the management screen.
+  try {
+    const rootAny = (account as any).root;
+    if (rootAny?.liveInvitations && typeof rootAny.liveInvitations.$jazz?.push === "function") {
+      rootAny.liveInvitations.$jazz.push(invitation);
+    }
+  } catch (e) {
+    console.warn("[invitation] could not push to liveInvitations:", e);
+  }
+
+  const fragment = toB64url(
+    `${(invitation as any).$jazz.id}|${me.$jazz.id}`,
+  );
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "https://arcan.app";
+  const url = `${baseUrl}/invite#${fragment}`;
+
+  return { invitation, url };
+}
+
+/**
+ * Revoke an invitation by stamping revokedAt.
+ *
+ * Consumer routes should treat revokedAt being set as "no longer valid".
+ */
+export async function revokeInvitation(
+  invitation: ReturnType<typeof Invitation.create>,
+): Promise<void> {
+  (invitation as any).$jazz.set("revokedAt", new Date());
 }
 
 // ---------------------------------------------------------------------------
@@ -67,13 +135,16 @@ function fromB64url(s: string): Uint8Array {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse an invitation URL fragment and extract the two components.
+ * Parse an /invite URL and extract both CoValue IDs from the fragment.
  *
- * Fragment format: base64url(TextEncoder("inviteGroupID|inviteAgentSecret"))
+ * Fragment format: base64url("invitationID|inviterAccountID")
  *
- * @throws if url does not contain "/invite", fragment is missing, or has wrong structure
+ * @throws if url does not include /invite, fragment is missing, or malformed
  */
-export function parseInvitationURL(url: string): InvitationURL {
+export function parseInvitationURL(url: string): {
+  invitationID: string;
+  inviterAccountID: string;
+} {
   const parsed = new URL(url);
   if (!parsed.pathname.includes("/invite")) {
     throw new Error("Not an invitation URL — path does not include /invite");
@@ -84,7 +155,7 @@ export function parseInvitationURL(url: string): InvitationURL {
     throw new Error("Invitation URL has no fragment");
   }
 
-  const decoded = new TextDecoder().decode(fromB64url(fragment));
+  const decoded = fromB64url(fragment);
   const parts = decoded.split("|");
   if (parts.length !== 2) {
     throw new Error(
@@ -92,214 +163,153 @@ export function parseInvitationURL(url: string): InvitationURL {
     );
   }
 
-  const [inviteGroupID, inviteAgentSecret] = parts;
-  return { inviteGroupID, inviteAgentSecret };
+  const [invitationID, inviterAccountID] = parts;
+  return { invitationID, inviterAccountID };
 }
 
 // ---------------------------------------------------------------------------
-// Inviter side
-// ---------------------------------------------------------------------------
-
-/**
- * Create a new contact invitation.
- *
- * Creates an "everyone writer" group and an Invitation CoValue, appends it to
- * me.root.invitesIssued, and returns the invitation + a share URL.
- *
- * @param account - the inviter's account (me from useAccount)
- * @param baseUrl - e.g. "https://app.example.com" (no trailing slash)
- */
-export async function createInvitation(
-  account: Account,
-  baseUrl: string,
-): Promise<InvitationIssued> {
-  const me = account as Account & {
-    profile?: { displayName?: string; name?: string };
-    root?: {
-      invitesIssued?: { $jazz: { push: (v: ReturnType<typeof Invitation.create>) => void } };
-    };
-    $jazz: { id: string };
-  };
-
-  // Create invite group — world-writable so the recipient can write their info
-  const inviteGroup = Group.create({ owner: account });
-  inviteGroup.addMember("everyone", "writer");
-
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-  const displayName =
-    me.profile?.displayName ?? me.profile?.name ?? "Anonymous";
-
-  const invitation = Invitation.create(
-    {
-      inviterAccountID: me.$jazz.id,
-      inviterFingerprint: getAccountPubkeyHex(account),
-      inviterDisplayName: displayName,
-      createdAt: now,
-      expiresAt,
-      consumed: false,
-    },
-    { owner: inviteGroup },
-  );
-
-  // Append to invitesIssued — cast to access CoList push
-  const invitesIssued = (me as any).root?.invitesIssued;
-  if (invitesIssued) {
-    invitesIssued.$jazz.push(invitation);
-  }
-
-  // Build URL fragment: base64url("inviteGroupID|inviteAgentSecret")
-  // inviteAgentSecret is "everyone" to document the everyone-writer approach
-  const fragmentPayload = new TextEncoder().encode(
-    `${invitation.$jazz.id}|everyone`,
-  );
-  const fragment = toB64url(fragmentPayload);
-  const url = `${baseUrl}/invite#${fragment}`;
-
-  return { invitation, url };
-}
-
-/**
- * Inviter-side completion: called when invitation.acceptedAt appears.
- *
- * Appends a new Contact to the inviter's contactBook and marks the invite consumed.
- *
- * @param account - the inviter's account
- * @param invitation - the Invitation CoValue after recipient has filled their fields
- */
-export async function acceptInvitationAcceptance(
-  account: Account,
-  invitation: ReturnType<typeof Invitation.create>,
-): Promise<void> {
-  const me = account as Account & {
-    root?: {
-      contactBook?: ReturnType<typeof ContactBook.create>;
-    };
-  };
-
-  const recipientAccountID = (invitation as any).recipientAccountID;
-  const recipientFingerprint = (invitation as any).recipientFingerprint;
-  const recipientDisplayName = (invitation as any).recipientDisplayName;
-
-  if (!recipientAccountID || !recipientFingerprint || !recipientDisplayName) {
-    throw new Error("Invitation has not been accepted yet — recipient fields are missing");
-  }
-
-  // Self-contact guard: refuse if the recipient is the same account as the inviter.
-  const meAccount = account as Account & { $jazz: { id: string } };
-  if (recipientAccountID === meAccount.$jazz.id) {
-    throw new Error("Cannot accept your own invitation");
-  }
-
-  const contactBook = (me as any).root?.contactBook;
-  if (contactBook) {
-    const contact = Contact.create(
-      {
-        contactAccountID: recipientAccountID,
-        pinnedFingerprint: recipientFingerprint,
-        displayNameLocal: recipientDisplayName,
-        addedAt: new Date(),
-      },
-      { owner: account },
-    );
-    contactBook.$jazz.push(contact);
-  }
-
-  // Mark consumed
-  (invitation as any).$jazz.set("consumed", true);
-}
-
-/**
- * Revoke an invitation: mark consumed and signal expiry.
- */
-export async function revokeInvitation(
-  invitation: ReturnType<typeof Invitation.create>,
-): Promise<void> {
-  (invitation as any).$jazz.set("consumed", true);
-  // Tombstone by setting expiresAt to now (signals expiry to the recipient)
-  (invitation as any).$jazz.set("expiresAt", new Date());
-}
-
-// ---------------------------------------------------------------------------
-// Recipient side
+// Recipient side — loading
 // ---------------------------------------------------------------------------
 
 /**
  * Load an Invitation CoValue by ID.
  *
- * Since the group is "everyone" writer, no agent secret is needed. The
- * inviteAgentSecret parameter is accepted for API compatibility but ignored.
+ * Works without any agent secret because the owner group has "everyone" writer.
  *
- * @param inviteGroupID - the Invitation CoValue ID (from the URL, despite the name)
- * @param _inviteAgentSecret - unused ("everyone" approach); kept for API compat
- * @param _syncURL - unused; provider handles sync
+ * @param invitationID - the Invitation CoValue ID (co_z...)
+ * @throws if the CoValue cannot be loaded
  */
-export async function loadInvitationAsAgent(
-  inviteGroupID: string,
-  _inviteAgentSecret: string,
-  _syncURL: string,
+export async function loadInvitationAsGuest(
+  invitationID: string,
 ): Promise<ReturnType<typeof Invitation.create>> {
-  const invitation = await Invitation.load(inviteGroupID, {
+  const invitation = await Invitation.load(invitationID as any, {
     resolve: {},
   });
 
   if (!invitation) {
-    throw new Error(`Could not load Invitation CoValue ${inviteGroupID}`);
+    throw new Error(`Could not load Invitation CoValue ${invitationID}`);
   }
 
   return invitation as ReturnType<typeof Invitation.create>;
 }
 
+// ---------------------------------------------------------------------------
+// ConnectionRequest
+// ---------------------------------------------------------------------------
+
 /**
- * Accept an invitation as the recipient.
+ * Mint a ConnectionRequest CoValue and deliver it to the recipient's Inbox.
  *
- * Writes recipient fields to the Invitation CoValue and appends the inviter
- * as a Contact in the recipient's contactBook.
+ * The request is wrapped in a fresh notification group (same pattern as
+ * ConversationNotification in conversation.ts:151-166) so InboxSender can add
+ * the recipient as "writer" without any prior role conflict.
  *
- * @param account - the recipient's account
- * @param invitation - the loaded Invitation CoValue
- * @throws Error("Cannot add yourself as a contact") if the invitation was
- *   created by the same account that is accepting it.
+ * @param requester         - the account opening the connection
+ * @param recipientAccountID - the inviter's account ID (from parseInvitationURL)
+ * @param channel           - "qr" | "link" | "group"
+ * @param opts.invitationID - the Invitation CoValue ID if channel !== "group"
+ * @param opts.expiresAt    - when this request expires (caller sets based on channel TTL)
+ * @returns the created ConnectionRequest CoValue
  */
-export async function acceptInvitation(
-  account: Account,
-  invitation: ReturnType<typeof Invitation.create>,
-): Promise<void> {
-  const me = account as Account & {
+export async function createConnectionRequest(
+  requester: Account,
+  recipientAccountID: string,
+  channel: "qr" | "link" | "group",
+  opts: { invitationID?: string; expiresAt: Date },
+): Promise<ReturnType<typeof ConnectionRequest.create>> {
+  const me = requester as Account & {
     profile?: { displayName?: string; name?: string };
-    root?: {
-      contactBook?: ReturnType<typeof ContactBook.create>;
-    };
     $jazz: { id: string };
   };
 
-  // Self-contact guard: refuse if the inviter is the same account.
-  if ((invitation as any).inviterAccountID === me.$jazz.id) {
-    throw new Error("Cannot add yourself as a contact");
-  }
-
   const displayName =
-    (me as any).profile?.displayName ?? (me as any).profile?.name ?? "Anonymous";
+    me.profile?.displayName ?? me.profile?.name ?? "Anonymous";
 
-  // Write recipient fields
-  (invitation as any).$jazz.set("recipientAccountID", me.$jazz.id);
-  (invitation as any).$jazz.set("recipientFingerprint", getAccountPubkeyHex(account));
-  (invitation as any).$jazz.set("recipientDisplayName", displayName);
-  (invitation as any).$jazz.set("acceptedAt", new Date());
+  // Fresh notification group — recipient has no prior role here so
+  // InboxSender.load() can add them as "writer" without conflict.
+  const notificationGroup = Group.create({ owner: requester });
 
-  // Add inviter as contact on the recipient side
-  const contactBook = (me as any).root?.contactBook;
+  const request = ConnectionRequest.create(
+    {
+      requesterAccountID: me.$jazz.id,
+      requesterFingerprint: getAccountPubkeyHex(requester),
+      requesterDisplayName: displayName,
+      recipientAccountID,
+      channel,
+      invitationID: opts.invitationID,
+      createdAt: new Date(),
+      expiresAt: opts.expiresAt,
+    },
+    { owner: notificationGroup },
+  );
+
+  // Deliver via the recipient's Inbox
+  const sender = await InboxSender.load<typeof request>(
+    recipientAccountID as any,
+    requester,
+  );
+  await sender.sendMessage(request);
+
+  return request as ReturnType<typeof ConnectionRequest.create>;
+}
+
+/**
+ * Approve a ConnectionRequest: stamp approvedAt and write the requester as a
+ * local Contact in the recipient's contactBook.
+ *
+ * Idempotent: no-ops if approvedAt is already set.
+ *
+ * @param recipient - the approving account (me from useAccount)
+ * @param request   - the ConnectionRequest CoValue to approve
+ */
+export async function approveConnectionRequest(
+  recipient: Account,
+  request: ReturnType<typeof ConnectionRequest.create>,
+): Promise<void> {
+  const r = request as any;
+  if (r.approvedAt) return; // idempotent
+
+  r.$jazz.set("approvedAt", new Date());
+
+  // Write the requester as a local Contact in the recipient's contactBook
+  const contact = Contact.create(
+    {
+      contactAccountID: r.requesterAccountID,
+      pinnedFingerprint: r.requesterFingerprint,
+      displayNameLocal: r.requesterDisplayName,
+      addedAt: new Date(),
+    },
+    { owner: recipient },
+  );
+
+  const contactBook = (recipient as any).root?.contactBook;
   if (contactBook) {
-    const inviterContact = Contact.create(
-      {
-        contactAccountID: (invitation as any).inviterAccountID,
-        pinnedFingerprint: (invitation as any).inviterFingerprint,
-        displayNameLocal: (invitation as any).inviterDisplayName,
-        addedAt: new Date(),
-      },
-      { owner: account },
-    );
-    contactBook.$jazz.push(inviterContact);
+    contactBook.$jazz.push(contact);
+  }
+}
+
+/**
+ * Dismiss a ConnectionRequest: add its CoValue ID to
+ * me.root.dismissedRequestIDs. No shared CoValue is mutated.
+ *
+ * Deduplicated: a second call with the same request is a no-op.
+ *
+ * @param recipient - the dismissing account (me from useAccount)
+ * @param request   - the ConnectionRequest CoValue to dismiss
+ */
+export async function dismissConnectionRequest(
+  recipient: Account,
+  request: ReturnType<typeof ConnectionRequest.create>,
+): Promise<void> {
+  const root = (recipient as any).root;
+  const list = root?.dismissedRequestIDs;
+  if (!list) return;
+
+  const id = (request as any).$jazz.id as string;
+
+  // Deduplicate before pushing
+  const existing: string[] = Array.from(list as Iterable<string>);
+  if (!existing.includes(id)) {
+    list.$jazz.push(id);
   }
 }

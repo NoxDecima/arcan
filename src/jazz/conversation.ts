@@ -4,6 +4,7 @@ import { z } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { SystemEvent } from "@/jazz/schema/SystemEvent";
+import { createConnectionRequest, GROUP_REQUEST_TTL_MS } from "@/jazz/invitations";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -233,6 +234,18 @@ export async function createGroupConversation(
   }
 
   return conversation;
+}
+
+/**
+ * Group-channel: request a connection from a co-member of a conversation. Delivers a
+ * ConnectionRequest with channel='group', expiresAt = createdAt + 30d. 1:1 inbox delivery.
+ */
+export async function requestConnectionFromGroupMember(
+  me: Account,
+  targetAccountID: string,
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + GROUP_REQUEST_TTL_MS);
+  await createConnectionRequest(me as any, targetAccountID, "group", { expiresAt });
 }
 
 /**

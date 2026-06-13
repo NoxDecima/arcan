@@ -1,34 +1,80 @@
 /**
- * InviteRoute: recipient UI for accepting or declining a contact invitation.
+ * InviteRoute: requester confirmation screen.
  *
- * Phases: loading → review → accepting → accepted → declined → error
+ * Phases: loading → confirm (or expired / error) → signin-required
+ *         → sending → sent → approved / expired
  *
  * Auth-gate logic:
- * If the user is not authenticated when they visit /invite#…, this component
- * stashes the URL hash in sessionStorage under "pending-invite-fragment" and
- * redirects to "/" (which renders the onboarding flow). After sign-in, the
- * onboarding steps check for this key and replay the invite URL.
+ * The route is mounted outside the auth gate in App.tsx so unauthenticated
+ * users can land here. If the user is not signed in when they click "connect",
+ * we transition to signin-required and show a CTA that takes them to /auth/login
+ * with the current URL as the `next` param. After sign-in, the route re-renders
+ * with isAuthenticated === true and advances to confirm automatically.
  *
- * TOFU pinning: the inviter's safety number is shown for out-of-band verification
- * before the accept button is enabled.
+ * TOFU pinning: the inviter's safety number is shown in a collapsible details
+ * element for out-of-band verification.
  */
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAccount } from "jazz-tools/react";
-import { useIsAuthenticated } from "jazz-tools/react";
+import { useAccount, useIsAuthenticated } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
+import { Lattice } from "@/components/lattice";
+import { useSharedGroups } from "@/hooks/use-shared-groups";
 import {
   parseInvitationURL,
-  loadInvitationAsAgent,
-  acceptInvitation,
+  loadInvitationAsGuest,
+  createConnectionRequest,
 } from "@/jazz/invitations";
 
-type Phase = "loading" | "review" | "accepting" | "accepted" | "declined" | "error";
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
 
-const PENDING_INVITE_KEY = "pending-invite-fragment";
+async function writeInviterAsContact(
+  me: any,
+  inv: {
+    inviterAccountID: string;
+    inviterFingerprint: string;
+    inviterDisplayName: string;
+  },
+): Promise<void> {
+  const { Contact } = await import("@/jazz/schema/Contact");
+  const contact = Contact.create(
+    {
+      contactAccountID: inv.inviterAccountID,
+      pinnedFingerprint: inv.inviterFingerprint,
+      displayNameLocal: inv.inviterDisplayName,
+      addedAt: new Date(),
+    },
+    { owner: me },
+  );
+  const cb = me.root?.contactBook;
+  if (cb && typeof cb.$jazz?.push === "function") {
+    cb.$jazz.push(contact);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type Phase =
+  | "loading"
+  | "signin-required"
+  | "confirm"
+  | "sending"
+  | "sent"
+  | "approved"
+  | "expired"
+  | "error";
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function InviteRoute() {
   const navigate = useNavigate();
@@ -41,175 +87,260 @@ export function InviteRoute() {
   });
 
   const [phase, setPhase] = useState<Phase>("loading");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any | null>(null);
-  const [inviterName, setInviterName] = useState<string>("");
-  const [inviterFingerprint, setInviterFingerprint] = useState<string>("");
+  const [request, setRequest] = useState<any | null>(null);
 
-  // Auth gate: if not authenticated, stash fragment and redirect to onboarding
+  const shared = useSharedGroups(invitation?.inviterAccountID ?? "");
+
+  // --- Load invitation on mount (works unauthenticated too) ---
   useEffect(() => {
-    if (!isAuthenticated) {
-      const fragment = window.location.hash;
-      if (fragment) {
-        sessionStorage.setItem(PENDING_INVITE_KEY, fragment);
-      }
-      navigate("/", { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+    (async () => {
+      try {
+        const url = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
+        const { invitationID } = parseInvitationURL(url);
+        const inv = await loadInvitationAsGuest(invitationID);
+        const invAny = inv as any;
 
-  // Load invitation once authenticated and account loaded
-  useEffect(() => {
-    if (!isAuthenticated || !me.$isLoaded) return;
-
-    const fragment = window.location.hash;
-    if (!fragment) {
-      setErrorMsg("No invitation fragment in URL");
-      setPhase("error");
-      return;
-    }
-
-    const url = `${window.location.origin}/invite${fragment}`;
-
-    let parsed: { inviteGroupID: string; inviteAgentSecret: string };
-    try {
-      parsed = parseInvitationURL(url);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-      setPhase("error");
-      return;
-    }
-
-    loadInvitationAsAgent(parsed.inviteGroupID, parsed.inviteAgentSecret, "")
-      .then((inv) => {
-        // Self-contact guard: catch immediately so the user sees a clear
-        // message before ever reaching the accept button.
-        if ((inv as any).inviterAccountID === (me as any).$jazz?.id) {
-          setErrorMsg("Cannot add yourself as a contact");
-          setPhase("error");
+        if (invAny.revokedAt) {
+          setPhase("expired");
+          setErr("invite revoked");
           return;
         }
-        setInvitation(inv);
-        setInviterName((inv as any).inviterDisplayName ?? "Unknown");
-        setInviterFingerprint((inv as any).inviterFingerprint ?? "");
-        setPhase("review");
-      })
-      .catch((err: unknown) => {
-        setErrorMsg(err instanceof Error ? err.message : String(err));
+        if (invAny.expiresAt && new Date(invAny.expiresAt).getTime() < Date.now()) {
+          setPhase("expired");
+          return;
+        }
+
+        setInvitation(invAny);
+
+        if (!isAuthenticated) {
+          setPhase("signin-required");
+        } else {
+          setPhase("confirm");
+        }
+      } catch (e) {
         setPhase("error");
-      });
-  }, [isAuthenticated, me.$isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+        setErr(String(e));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function handleAccept() {
-    if (!invitation || !me.$isLoaded) return;
-    setPhase("accepting");
-    try {
-      await acceptInvitation(me, invitation);
-      setPhase("accepted");
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-      setPhase("error");
+  // Advance from signin-required → confirm once the user signs in
+  useEffect(() => {
+    if (phase === "signin-required" && isAuthenticated && invitation) {
+      setPhase("confirm");
     }
-  }
+  }, [isAuthenticated, phase, invitation]);
 
-  function handleDecline() {
-    setPhase("declined");
-  }
+  // Poll the ConnectionRequest for approval once sent
+  useEffect(() => {
+    if (phase !== "sent" || !request) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const reloaded = await ConnectionRequest.load(
+          (request as any).$jazz.id as any,
+          { resolve: {} },
+        );
+        if (!reloaded) return;
+        const r = reloaded as any;
+        if (r.approvedAt) {
+          clearInterval(interval);
+          await writeInviterAsContact(me as any, {
+            inviterAccountID: invitation.inviterAccountID,
+            inviterFingerprint: invitation.inviterFingerprint,
+            inviterDisplayName: invitation.inviterDisplayName,
+          });
+          setPhase("approved");
+        } else if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) {
+          clearInterval(interval);
+          setPhase("expired");
+        }
+      } catch {
+        // keep polling
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [phase, request, invitation, me]);
+
+  // --- Action ---
+
+  const onConnect = async () => {
+    if (!me.$isLoaded || !invitation) return;
+    setPhase("sending");
+    try {
+      const req = await createConnectionRequest(
+        me as any,
+        invitation.inviterAccountID,
+        invitation.channel,
+        {
+          invitationID: invitation.$jazz?.id,
+          expiresAt: invitation.expiresAt,
+        },
+      );
+      setRequest(req);
+      setPhase("sent");
+    } catch (e) {
+      setPhase("error");
+      setErr(String(e));
+    }
+  };
 
   // --- Render ---
 
-  if (!isAuthenticated) {
-    return null; // redirecting
-  }
-
   if (phase === "loading") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <p className="text-sm text-muted-foreground">Loading invitation…</p>
+      <div className="p-6 text-text-2" data-testid="invite-loading">
+        loading invite…
+      </div>
+    );
+  }
+
+  if (phase === "signin-required") {
+    return (
+      <div
+        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
+        data-testid="invite-signin-required"
+      >
+        <Lattice size={48} />
+        <p className="text-text">Sign in to connect.</p>
+        <Button
+          variant="primary"
+          onClick={() =>
+            navigate(
+              `/auth/login?next=${encodeURIComponent(
+                window.location.pathname + window.location.hash,
+              )}`,
+            )
+          }
+        >
+          sign in
+        </Button>
+      </div>
+    );
+  }
+
+  if (phase === "expired") {
+    return (
+      <div
+        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
+        data-testid="invite-expired"
+      >
+        <Lattice size={48} mono />
+        <p className="text-text">this invite has expired</p>
+        {err && <p className="text-xs text-dim">{err}</p>}
+        <Button variant="outline" onClick={() => navigate("/")}>
+          go home
+        </Button>
       </div>
     );
   }
 
   if (phase === "error") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6" data-testid="invite-error">
-        <p className="text-sm text-red-600">Error: {errorMsg}</p>
+      <div
+        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
+        data-testid="invite-error"
+      >
+        <Lattice size={48} mono />
+        <p className="text-text">couldn't load invite</p>
+        {err && <p className="text-xs text-dim">{err}</p>}
         <Button variant="outline" onClick={() => navigate("/")}>
-          Go home
+          go home
         </Button>
       </div>
     );
   }
 
-  if (phase === "accepting") {
+  if (phase === "sending") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6" data-testid="invite-accepting">
-        <p className="text-sm text-muted-foreground">Accepting invitation…</p>
+      <div className="p-6 text-text-2" data-testid="invite-sending">
+        sending request…
       </div>
     );
   }
 
-  if (phase === "accepted") {
+  if (phase === "sent") {
     return (
       <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
-        data-testid="invite-accepted"
+        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
+        data-testid="invite-sent"
       >
-        <p className="text-green font-medium text-lg">
-          You are now connected with {inviterName}!
+        <Lattice size={48} />
+        <p className="text-text">request sent — waiting for approval…</p>
+        <p className="text-xs text-dim">
+          You can close this tab; you'll be notified when they accept.
         </p>
-        <p className="text-sm text-muted-foreground">
-          They have been added to your contacts.
-        </p>
-        <Button onClick={() => navigate("/")}>Go home</Button>
       </div>
     );
   }
 
-  if (phase === "declined") {
+  if (phase === "approved") {
     return (
       <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
-        data-testid="invite-declined"
+        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
+        data-testid="invite-approved"
       >
-        <p className="text-text-2 font-medium">Invitation declined</p>
-        <Button variant="outline" onClick={() => navigate("/")}>
-          Go home
+        <Lattice size={48} />
+        <p className="text-text">contact added</p>
+        <Button variant="primary" onClick={() => navigate("/")}>
+          open Arcan
         </Button>
       </div>
     );
   }
 
-  // phase === "review"
+  // phase === "confirm"
+  const inv = invitation as any;
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold">Contact invitation</h1>
+    <div
+      className="p-6 max-w-sm mx-auto flex flex-col gap-4"
+      data-testid="invite-confirm"
+    >
+      <h1 className="text-lg font-semibold text-text">
+        connect with {inv.inviterDisplayName}?
+      </h1>
+      <p className="text-sm text-text-2" data-testid="invite-inviter-name">
+        {inv.inviterDisplayName} wants to connect.
+      </p>
 
-      <div className="rounded-lg border bg-card p-4 space-y-3">
-        <p className="text-sm text-muted-foreground">
-          <strong data-testid="invite-inviter-name">{inviterName}</strong> wants
-          to connect with you.
+      {shared.length > 0 && (
+        <p className="text-xs text-arcan-accent">
+          You're both in: {shared.map((s: any) => s.title).join(" · ")}
         </p>
+      )}
 
-        {inviterFingerprint && (
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">
-              Verify their safety number out of band:
-            </p>
-            <SafetyNumber fingerprintHex={inviterFingerprint} />
-          </div>
-        )}
-      </div>
+      <details className="rounded-r-3 border border-hairline p-3 bg-panel">
+        <summary className="cursor-pointer text-sm text-text">
+          view security code
+        </summary>
+        <div className="mt-3">
+          <SafetyNumber fingerprintHex={inv.inviterFingerprint} />
+        </div>
+        <p className="text-[11px] text-dim text-center mt-3">
+          Compare in person to confirm it's really them.
+        </p>
+      </details>
 
-      <div className="flex flex-col gap-2">
-        <Button onClick={handleAccept} data-testid="invite-accept-btn">
-          Accept invitation
+      <div className="flex gap-2">
+        <Button
+          variant="primary"
+          onClick={onConnect}
+          className="flex-1"
+          data-testid="invite-accept-btn"
+        >
+          connect
         </Button>
         <Button
           variant="outline"
-          onClick={handleDecline}
+          onClick={() => window.history.back()}
+          className="flex-1"
           data-testid="invite-decline-btn"
         >
-          Decline
+          cancel
         </Button>
       </div>
     </div>
