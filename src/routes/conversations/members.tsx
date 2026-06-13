@@ -31,10 +31,12 @@ import {
   isLastAdmin,
   updateConversationTitle,
   isArchived,
+  requestConnectionFromGroupMember,
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { useToast } from "@/components/toast";
 
 /**
  * Per-row component so each member row can call its own useRemoteAvatar
@@ -50,11 +52,13 @@ function MemberRow(props: {
   me: any;
   group: any;
   iAmAdmin: boolean;
+  isAlreadyContact: boolean;
   actionInProgress: boolean;
   onPromote: () => void;
   onRemove: () => void;
+  onRequestConnection: () => void;
 }) {
-  const { member, isMe, me, group, iAmAdmin, actionInProgress, onPromote, onRemove } = props;
+  const { member, isMe, me, group, iAmAdmin, isAlreadyContact, actionInProgress, onPromote, onRemove, onRequestConnection } = props;
   const localAvatar = isMe
     ? resolveAvatarFileBlob({ accountID: member.accountID, me, group })
     : undefined;
@@ -82,6 +86,19 @@ function MemberRow(props: {
       </span>
 
       <RolePill role={member.role} />
+
+      {!isMe && !isAlreadyContact && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs h-7 px-2 flex-shrink-0"
+          onClick={onRequestConnection}
+          disabled={actionInProgress}
+          data-testid={`request-connection-${member.accountID}`}
+        >
+          request connection
+        </Button>
+      )}
 
       {iAmAdmin && !isMe && (
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -124,6 +141,7 @@ export function MembersRoute() {
   const [actionInProgress, setActionInProgress] = useState(false);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const toast = useToast();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -230,6 +248,14 @@ export function MembersRoute() {
   const iAmAdmin = myRole === "admin";
 
   const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
+
+  // Build the set of contact account IDs so we can skip the "request connection"
+  // affordance for members who are already in the user's ContactBook.
+  const knownContactIDs = new Set(
+    Array.from(((me as any).root?.contactBook as Iterable<any>) ?? [])
+      .map((c: any) => c?.contactAccountID)
+      .filter(Boolean)
+  );
 
   // ---- handlers ----
 
@@ -420,9 +446,18 @@ export function MembersRoute() {
                 me={me}
                 group={group}
                 iAmAdmin={iAmAdmin}
+                isAlreadyContact={knownContactIDs.has(member.accountID)}
                 actionInProgress={actionInProgress}
                 onPromote={() => void handlePromote(member.accountID)}
                 onRemove={() => void handleRemove(member.accountID)}
+                onRequestConnection={async () => {
+                  try {
+                    await requestConnectionFromGroupMember(me as any, member.accountID);
+                    toast({ icon: "check", text: "request sent", tone: "accent" });
+                  } catch {
+                    toast({ icon: "alert", text: "couldn't send request", tone: "error" });
+                  }
+                }}
               />
             ))}
           </ul>
