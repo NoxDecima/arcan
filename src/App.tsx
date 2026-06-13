@@ -14,6 +14,7 @@ import { MembersRoute } from "./routes/conversations/members";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
 import { PendingConnectionsRoute } from "@/routes/connections/pending";
+import { LiveInvitesRoute } from "@/routes/connections/live-invites";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { NotificationManager } from "@/components/notification-manager";
@@ -130,6 +131,7 @@ function App() {
             fresh password). The recovery route itself navigates to "/" on
             completion or skip. */}
         <Route path="/connections/pending" element={<PendingConnectionsRoute />} />
+        <Route path="/connections/live-invites" element={<LiveInvitesRoute />} />
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

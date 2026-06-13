@@ -59,6 +59,9 @@ export const ArcanAccountRoot = co.map({
   // without acting. The shared CoValue is never mutated; requester sees nothing.
   // OPTIONAL for back-compat with pre-Unit-1 accounts (backfill below).
   dismissedRequestIDs: co.list(z.string()).optional(),
+  // Unit 1 Phase 10 — live invitations created by this user for the management
+  // screen. OPTIONAL for back-compat with pre-Phase-10 accounts (backfill below).
+  liveInvitations: co.list(Invitation).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -137,6 +140,7 @@ export const ArcanAccount = co.account({
         { owner: me },
       );
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
+    const liveInvitations = co.list(Invitation).create([], { owner: me });
 
     me.$jazz.set(
       "root",
@@ -149,6 +153,7 @@ export const ArcanAccount = co.account({
           lastReadAt,
           settings,
           dismissedRequestIDs,
+          liveInvitations,
         },
         { owner: me },
       ),
@@ -262,7 +267,20 @@ export const ArcanAccount = co.account({
     );
   }
 
-  // -- 2e. Self-register the current device's session --
+  // -- 2e. liveInvitations backfill (existing accounts) --
+  // Unit 1 Phase 10 addition; same guard pattern as the dismissedRequestIDs backfill.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).liveInvitations
+  ) {
+    (me.root as any).$jazz.set(
+      "liveInvitations",
+      co.list(Invitation).create([], { owner: me }),
+    );
+  }
+
+  // -- 2g. Self-register the current device's session --
   // Runs on every node startup. The root-init branch above pushes a
   // DeviceRecord only at account creation, so devices paired later (via
   // QR pairing or any future onboarding flow that authenticates against

@@ -99,6 +99,16 @@ export async function createInvitation(
     { owner: inviteGroup },
   );
 
+  // Track in the user's live invites list for the management screen.
+  try {
+    const rootAny = (account as any).root;
+    if (rootAny?.liveInvitations && typeof rootAny.liveInvitations.$jazz?.push === "function") {
+      rootAny.liveInvitations.$jazz.push(invitation);
+    }
+  } catch (e) {
+    console.warn("[invitation] could not push to liveInvitations:", e);
+  }
+
   const fragment = toB64url(
     `${(invitation as any).$jazz.id}|${me.$jazz.id}`,
   );
