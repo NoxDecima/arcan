@@ -35,6 +35,16 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Load project-local secrets / overrides from .env.local if present.
+# Format: KEY=value (one per line). Comments starting with # are ignored.
+# `set -a` auto-exports each KEY so child processes inherit them.
+if [ -f "$REPO_ROOT/.env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/.env.local"
+  set +a
+fi
+
 if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
   export BETTER_AUTH_SECRET="dev-$(head -c 24 /dev/urandom | base64 | tr -d /+=)"
 fi

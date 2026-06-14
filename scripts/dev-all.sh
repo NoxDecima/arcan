@@ -22,6 +22,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Load project-local secrets / overrides from .env.local if present.
+# Format: KEY=value (one per line). Comments starting with # are ignored.
+# `set -a` auto-exports each KEY so all three child processes inherit them
+# (Vite reads ALLOWED_ORIGINS via vite.config.ts; the api script also
+# sources .env.local for the standalone `npm run api` case).
+if [ -f "$REPO_ROOT/.env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/.env.local"
+  set +a
+fi
+
 # ---- 1. Tailscale detection ------------------------------------------------
 
 # Prefer Tailscale Serve if it's configured to proxy port 5173 over HTTPS.

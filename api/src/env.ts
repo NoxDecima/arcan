@@ -10,6 +10,10 @@ function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+function optionalEmpty(name: string): string {
+  return process.env[name] ?? "";
+}
+
 export const env = {
   /** Better Auth's symmetric secret. Used to sign session cookies. */
   BETTER_AUTH_SECRET: required("BETTER_AUTH_SECRET"),
@@ -23,8 +27,9 @@ export const env = {
   AUTH_RATE_LIMIT_MAX: parseInt(optional("AUTH_RATE_LIMIT_MAX", "5"), 10),
   /** Rate limit: window in seconds */
   AUTH_RATE_LIMIT_WINDOW: parseInt(optional("AUTH_RATE_LIMIT_WINDOW", "900"), 10),
-  /** Linear personal API token (server-side only). */
-  LINEAR_API_TOKEN: required("LINEAR_API_TOKEN"),
+  /** Linear personal API token (server-side only). Empty disables the
+   *  in-app feedback route — the rest of the api still boots. */
+  LINEAR_API_TOKEN: optionalEmpty("LINEAR_API_TOKEN"),
   /** Linear team UUID (Nox). */
   LINEAR_TEAM_ID: optional("LINEAR_TEAM_ID", "8f04cf65-d7a9-41d3-bc9b-5074f744e850"),
   /** Linear project UUID (Arcan). */

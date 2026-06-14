@@ -47,26 +47,30 @@ app.all("/api/auth/*", async (c) => {
   return auth.handler(c.req.raw);
 });
 
-const linearClient = new LinearClient({
-  apiToken: env.LINEAR_API_TOKEN,
-  teamId: env.LINEAR_TEAM_ID,
-  projectId: env.LINEAR_PROJECT_ID,
-});
+if (env.LINEAR_API_TOKEN) {
+  const linearClient = new LinearClient({
+    apiToken: env.LINEAR_API_TOKEN,
+    teamId: env.LINEAR_TEAM_ID,
+    projectId: env.LINEAR_PROJECT_ID,
+  });
 
-registerFeedbackRoute(app, {
-  auth,
-  linearClient,
-  feedbackLabelId: env.LINEAR_LABEL_FEEDBACK_ID,
-  categoryLabels: {
-    Bug: env.LINEAR_LABEL_BUG_ID,
-    Idea: env.LINEAR_LABEL_IDEA_ID,
-    Question: env.LINEAR_LABEL_QUESTION_ID,
-    Note: env.LINEAR_LABEL_NOTE_ID,
-  },
-  maxTotalBytes: env.FEEDBACK_MAX_TOTAL_BYTES,
-  rateLimiterMax: env.FEEDBACK_RATE_LIMIT_MAX,
-  rateLimiterWindowSeconds: env.FEEDBACK_RATE_LIMIT_WINDOW,
-});
+  registerFeedbackRoute(app, {
+    auth,
+    linearClient,
+    feedbackLabelId: env.LINEAR_LABEL_FEEDBACK_ID,
+    categoryLabels: {
+      Bug: env.LINEAR_LABEL_BUG_ID,
+      Idea: env.LINEAR_LABEL_IDEA_ID,
+      Question: env.LINEAR_LABEL_QUESTION_ID,
+      Note: env.LINEAR_LABEL_NOTE_ID,
+    },
+    maxTotalBytes: env.FEEDBACK_MAX_TOTAL_BYTES,
+    rateLimiterMax: env.FEEDBACK_RATE_LIMIT_MAX,
+    rateLimiterWindowSeconds: env.FEEDBACK_RATE_LIMIT_WINDOW,
+  });
+} else {
+  console.warn("api: LINEAR_API_TOKEN not set — feedback route disabled");
+}
 
 // Health check
 app.get("/health", (c) => c.json({ ok: true }));
