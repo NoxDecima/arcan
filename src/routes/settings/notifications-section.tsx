@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/toast";
 
 /**
  * NotificationsSection: toggles for in-app notification preferences.
@@ -26,6 +27,7 @@ export function NotificationsSection() {
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
   const [requestError, setRequestError] = useState<string | null>(null);
+  const toast = useToast();
 
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
@@ -42,6 +44,7 @@ export function NotificationsSection() {
 
   function handleSoundToggle() {
     prefs.$jazz.set("sound", !prefs.sound);
+    toast({ icon: "check", text: "notifications updated", tone: "success" });
   }
 
   async function handleEnableBrowser() {
@@ -61,6 +64,7 @@ export function NotificationsSection() {
       setPermissionState(result);
       if (result === "granted") {
         prefs.$jazz.set("browser", true);
+        toast({ icon: "check", text: "notifications updated", tone: "success" });
       } else if (result === "denied") {
         setRequestError(
           "Notifications were declined. Re-enable in your browser settings to try again.",
@@ -76,6 +80,7 @@ export function NotificationsSection() {
 
   function handleDisableBrowser() {
     prefs.$jazz.set("browser", false);
+    toast({ icon: "check", text: "notifications updated", tone: "success" });
   }
 
   return (
