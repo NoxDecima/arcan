@@ -3,6 +3,7 @@ import { useAccount, useJazzContextValue, useAuthSecretStorage } from "jazz-tool
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { usePendingPairings } from "@/jazz/use-pending-pairings";
 import { DeviceApprovalCard } from "@/components/device-approval-card";
+import { ModalShell } from "@/components/modal-shell";
 import { approvePairing, rejectPairing } from "@/jazz/pairing";
 import { useToast } from "@/components/toast";
 
@@ -69,26 +70,29 @@ export function TrustedDevicePrompt() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-      data-testid="trusted-device-prompt"
+    <ModalShell
+      open
+      onClose={() => setDismissed((s) => new Set(s).add(v.$jazz.id))}
+      title="approve new device?"
+      dataTestId="trusted-device-prompt"
+      // No footer — approve / deny live on the embedded DeviceApprovalCard.
+      // The card body is self-contained; we don't add the shell's gap-3.
+      className="max-w-[420px]"
     >
-      <div className="flex flex-col gap-2">
-        <DeviceApprovalCard
-          userAgent={v.responderUserAgent}
-          firstSeenAt={v.responderFirstSeenAt}
-          fingerprint={v.responderFingerprint}
-          onApprove={onApprove}
-          onDeny={onDeny}
-          pending={working || !canFullyApprove}
-        />
-        {!canFullyApprove && (
-          <p className="text-[11px] text-dim text-center max-w-sm">
-            To approve, open this prompt on the device you started the pairing on.
-            Reject works from any device.
-          </p>
-        )}
-      </div>
-    </div>
+      <DeviceApprovalCard
+        userAgent={v.responderUserAgent}
+        firstSeenAt={v.responderFirstSeenAt}
+        fingerprint={v.responderFingerprint}
+        onApprove={onApprove}
+        onDeny={onDeny}
+        pending={working || !canFullyApprove}
+      />
+      {!canFullyApprove && (
+        <p className="text-[11px] text-dim text-center">
+          To approve, open this prompt on the device you started the pairing on.
+          Reject works from any device.
+        </p>
+      )}
+    </ModalShell>
   );
 }
