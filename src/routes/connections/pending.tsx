@@ -6,6 +6,7 @@ import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
+import { EmptyPane } from "@/components/empty-pane";
 
 export function PendingConnectionsRoute() {
   const me = useAccount(ArcanAccount, { resolve: { profile: true } });
@@ -15,7 +16,12 @@ export function PendingConnectionsRoute() {
     <div className="p-6 max-w-md mx-auto flex flex-col gap-4">
       <h1 className="text-lg font-semibold text-text">pending connections</h1>
       {pending.length === 0 ? (
-        <p className="text-sm text-text-2">No pending requests.</p>
+        <EmptyPane
+          variant="compact"
+          title="no pending requests"
+          description="when someone scans your code or follows your invite link, their request will land here."
+          data-testid="pending-empty"
+        />
       ) : (
         pending.map(({ request }) => (
           <PendingCard
