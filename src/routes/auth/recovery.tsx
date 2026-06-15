@@ -1,9 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { recoverWithCode, setPasswordAfterRecovery } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
 import { decodeRecoveryCode } from "@/auth/recovery-code";
+import {
+  AuthSurface,
+  Wordmark,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 
 type Stage =
   | { kind: "enter-code" }
@@ -41,7 +46,7 @@ export function RecoveryRoute() {
         accountID: result.accountID,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Recovery failed");
+      setError(err instanceof Error ? err.message : "recovery failed");
       throw err;
     }
   }
@@ -58,14 +63,14 @@ export function RecoveryRoute() {
       navigate("/", { replace: true });
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to set new password",
+        err instanceof Error ? err.message : "failed to set new password",
       );
       throw err;
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <>
       {stage.kind === "enter-code" ? (
         <StageCode error={error} onSubmit={handleEnterCode} />
       ) : (
@@ -76,7 +81,7 @@ export function RecoveryRoute() {
           onSkip={() => navigate("/", { replace: true })}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -102,47 +107,46 @@ function StageCode({ error, onSubmit }: StageCodeProps) {
   }
 
   return (
-    <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Recover account</h1>
-        <p className="text-muted-foreground">
-          Enter your 24-word recovery code.
-        </p>
-      </div>
-      <textarea
-        data-testid="recovery-code-input"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        rows={4}
-        autoFocus
-        spellCheck={false}
-        autoComplete="off"
-        placeholder="word1 word2 word3 … word24"
-        className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      {error && (
-        <p
-          data-testid="recovery-error"
-          className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    <AuthSurface forceDark w={368} tall>
+      <Wordmark size={20} />
+      <AuthTitle>recover account</AuthTitle>
+      <AuthSub>enter your 24-word recovery code</AuthSub>
+      <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
+        <textarea
+          data-testid="recovery-code-input"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          rows={4}
+          autoFocus
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="word1 word2 word3 … word24"
+          className="w-full rounded-r-3 border border-hairline bg-panel px-3 py-2 font-mono text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+        />
+        {error && (
+          <p
+            data-testid="recovery-error"
+            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
+          >
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={isLoading}
+          data-testid="recovery-submit"
+          className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
         >
-          {error}
-        </p>
-      )}
-      <Button
-        type="submit"
-        disabled={isLoading}
-        data-testid="recovery-submit"
-        className="w-full"
-      >
-        {isLoading ? "Recovering…" : "Recover"}
-      </Button>
-      <Link
-        to="/auth/login"
-        className="block text-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        Back to sign in
-      </Link>
-    </form>
+          {isLoading ? "recovering…" : "recover"}
+        </button>
+        <Link
+          to="/auth/login"
+          className="block text-center text-[10.5px] text-dim hover:text-text"
+        >
+          back to sign in
+        </Link>
+      </form>
+    </AuthSurface>
   );
 }
 
@@ -166,11 +170,11 @@ function StageNewPassword({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (pw.length < 12) {
-      setError("Password must be at least 12 characters");
+      setError("password must be at least 12 characters");
       return;
     }
     if (pw !== pw2) {
-      setError("Passwords do not match");
+      setError("passwords do not match");
       return;
     }
     setIsLoading(true);
@@ -184,57 +188,52 @@ function StageNewPassword({
   }
 
   return (
-    <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Set a new password
-        </h1>
-        <p className="text-muted-foreground">
-          You're signed in. Choose a password to enable email sign-in next
-          time.
-        </p>
-      </div>
-      <input
-        type="password"
-        data-testid="recovery-new-password"
-        placeholder="New password (≥12 chars)"
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        autoComplete="new-password"
-        className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <input
-        type="password"
-        data-testid="recovery-new-password-confirm"
-        placeholder="Confirm new password"
-        value={pw2}
-        onChange={(e) => setPw2(e.target.value)}
-        autoComplete="new-password"
-        className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      {error && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onSkip}
-          className="flex-1"
-        >
-          Skip for now
-        </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          data-testid="recovery-set-password"
-          className="flex-1"
-        >
-          {isLoading ? "Saving…" : "Save password"}
-        </Button>
-      </div>
-    </form>
+    <AuthSurface forceDark>
+      <Wordmark size={20} />
+      <AuthTitle>set a new password</AuthTitle>
+      <AuthSub>you're signed in. choose a password for next time.</AuthSub>
+      <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
+        <input
+          type="password"
+          data-testid="recovery-new-password"
+          placeholder="new password (≥12 chars)"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          autoComplete="new-password"
+          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+        />
+        <input
+          type="password"
+          data-testid="recovery-new-password-confirm"
+          placeholder="confirm new password"
+          value={pw2}
+          onChange={(e) => setPw2(e.target.value)}
+          autoComplete="new-password"
+          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+        />
+        {error && (
+          <p className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent font-mono text-[12.5px] font-semibold text-text"
+          >
+            skip for now
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            data-testid="recovery-set-password"
+            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
+          >
+            {isLoading ? "saving…" : "save password"}
+          </button>
+        </div>
+      </form>
+    </AuthSurface>
   );
 }

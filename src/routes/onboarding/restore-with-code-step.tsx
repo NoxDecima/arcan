@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { validatePassphrase } from "@/auth/passphrase";
 import { recoverWithCode } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
-import { Button } from "@/components/ui/button";
+import {
+  AuthSurface,
+  Wordmark,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 
 interface RestoreWithCodeStepProps {
   onBack: () => void;
@@ -49,11 +54,11 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
     if (!validation.ok) {
       const reasons: Record<typeof validation.reason, string> = {
         "invalid-length":
-          "The recovery code must be exactly 24 words. Please check your input.",
+          "the recovery code must be exactly 24 words. please check your input.",
         "invalid-word":
-          "One or more words are not in the BIP-39 word list. Check for typos.",
+          "one or more words are not in the BIP-39 word list. check for typos.",
         "invalid-checksum":
-          "The recovery code checksum is invalid. Please check all 24 words carefully.",
+          "the recovery code checksum is invalid. please check all 24 words carefully.",
       };
       setError(reasons[validation.reason]);
       return;
@@ -82,76 +87,69 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to restore account. Please try again.",
+          : "failed to restore account. please try again.",
       );
       setIsRestoring(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Restore account
-          </h1>
-          <p className="text-muted-foreground">
-            Type your 24-word recovery code to sign into this device. Words
-            must be separated by spaces.
+    <AuthSurface forceDark w={376} tall>
+      <Wordmark size={20} />
+      <AuthTitle>restore your account</AuthTitle>
+      <AuthSub>paste your 24-word code, or type each word</AuthSub>
+
+      <div className="flex flex-col gap-[15px]">
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            recovery code
+          </span>
+          <textarea
+            id="restore-passphrase-input"
+            data-testid="restore-passphrase-input"
+            value={phrase}
+            onChange={(e) => setPhrase(e.target.value)}
+            rows={4}
+            placeholder="word1 word2 word3 … word24"
+            autoFocus
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full rounded-r-3 border border-hairline bg-panel px-3 py-2 font-mono text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          />
+        </label>
+
+        {error && (
+          <p
+            data-testid="restore-error"
+            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
+          >
+            {error}
           </p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label
-              htmlFor="restore-passphrase-input"
-              className="text-sm font-medium"
-            >
-              Recovery code
-            </label>
-            <textarea
-              id="restore-passphrase-input"
-              data-testid="restore-passphrase-input"
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              rows={4}
-              placeholder="word1 word2 word3 … word24"
-              autoFocus
-              spellCheck={false}
-              autoComplete="off"
-              className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          {error && (
-            <p
-              data-testid="restore-error"
-              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </p>
-          )}
-        </div>
+        )}
 
         <div className="flex gap-3">
-          <Button
-            variant="outline"
+          <button
+            type="button"
             onClick={onBack}
             disabled={isRestoring}
-            className="flex-1"
+            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold disabled:opacity-50"
           >
-            Back
-          </Button>
-          <Button
+            back
+          </button>
+          <button
+            type="button"
             data-testid="restore-btn"
             disabled={!canSubmit}
             onClick={() => void handleRestore()}
-            className="flex-1"
+            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
           >
-            {isRestoring ? "Restoring…" : "Restore"}
-          </Button>
+            {isRestoring ? "restoring…" : "restore →"}
+          </button>
+        </div>
+        <div className="text-center text-[10.5px] text-dim">
+          keys live on your device — no server reset
         </div>
       </div>
-    </div>
+    </AuthSurface>
   );
 }

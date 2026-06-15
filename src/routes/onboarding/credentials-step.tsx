@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
+import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
 
 export type Credentials = {
   email: string;
@@ -28,10 +28,10 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
   const [error, setError] = useState<string | null>(null);
 
   function validate(): string | null {
-    if (!EMAIL_RE.test(email)) return "Please enter a valid email address.";
+    if (!EMAIL_RE.test(email)) return "please enter a valid email address.";
     if (password.length < MIN_PASSWORD_LEN)
-      return `Password must be at least ${MIN_PASSWORD_LEN} characters.`;
-    if (password !== confirm) return "Passwords do not match.";
+      return `password must be at least ${MIN_PASSWORD_LEN} characters.`;
+    if (password !== confirm) return "passwords do not match.";
     return null;
   }
 
@@ -47,79 +47,88 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <AuthSurface forceDark>
+      <Steps n={1} />
+      <AuthTitle>create your account</AuthTitle>
       <form
-        className="w-full max-w-md space-y-6"
+        className="flex flex-col gap-[15px]"
         onSubmit={handleSubmit}
         data-testid="credentials-form"
       >
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-          <p className="text-muted-foreground">
-            Email is for sign-in. You'll pick a display name next.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <label className="block">
-            <span className="text-sm font-medium">Email</span>
-            <input
-              type="email"
-              data-testid="credentials-email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">
-              Password (≥{MIN_PASSWORD_LEN} characters)
-            </span>
-            <input
-              type="password"
-              data-testid="credentials-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-              minLength={MIN_PASSWORD_LEN}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Confirm password</span>
-            <input
-              type="password"
-              data-testid="credentials-confirm"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              autoComplete="new-password"
-              required
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </label>
-        </div>
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            email
+          </span>
+          <input
+            type="email"
+            data-testid="credentials-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+            placeholder="you@domain.dev"
+            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            password
+          </span>
+          <input
+            type="password"
+            data-testid="credentials-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={MIN_PASSWORD_LEN}
+            placeholder="choose a strong password"
+            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          />
+        </label>
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            confirm password
+          </span>
+          <input
+            type="password"
+            data-testid="credentials-confirm"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
+            required
+            placeholder="••••••••"
+            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          />
+        </label>
 
         {error && (
           <p
             data-testid="credentials-error"
-            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
           >
             {error}
           </p>
         )}
 
         <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-            Back
-          </Button>
-          <Button type="submit" data-testid="credentials-continue" className="flex-1">
-            Continue
-          </Button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+          >
+            back
+          </button>
+          <button
+            type="submit"
+            data-testid="credentials-continue"
+            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
+          >
+            continue →
+          </button>
         </div>
+        <div className="text-center text-[10.5px] text-dim">step 1 of 4</div>
       </form>
-    </div>
+    </AuthSurface>
   );
 }

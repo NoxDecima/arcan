@@ -6,6 +6,7 @@ import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/avatar";
+import { AuthSurface } from "@/components/auth-surface";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
@@ -86,9 +87,14 @@ export function ProfileView({ accountID }: ProfileViewProps) {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex flex-col items-center gap-4 p-6" data-testid="profile-loading">
-        <p className="text-sm text-dim">Loading…</p>
-      </div>
+      <AuthSurface forceDark>
+        <div
+          className="flex flex-col items-center gap-4"
+          data-testid="profile-loading"
+        >
+          <p className="text-sm text-dim">loading…</p>
+        </div>
+      </AuthSurface>
     );
   }
 
@@ -98,7 +104,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   const remoteDisplayName = (otherAccount as any)?.profile?.displayName as string | undefined;
   const displayName = isOwn
     ? ownDisplayName
-    : contactDisplayName ?? remoteDisplayName ?? "Unknown";
+    : contactDisplayName ?? remoteDisplayName ?? "unknown";
 
   // Fingerprint: own → derive from current signing key; other → contact pin if
   // present, else the remote account's pubkey (best-effort — won't match the
@@ -142,14 +148,14 @@ export function ProfileView({ accountID }: ProfileViewProps) {
       await setProfileAvatar(me as any, file);
     } catch (err) {
       if (err instanceof AttachmentTooLargeError) setAvatarError(err.message);
-      else setAvatarError("Upload failed — try again.");
+      else setAvatarError("upload failed — try again.");
     } finally {
       setBusy(false);
     }
   }
 
   async function handleAvatarRemove() {
-    if (!confirm("Remove your profile picture?")) return;
+    if (!confirm("remove your profile picture?")) return;
     setBusy(true);
     setAvatarError(null);
     try {
@@ -198,22 +204,23 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   const idShort = `${accountID.slice(0, 6)}…${accountID.slice(-3)}`;
 
   return (
-    <div
-      data-testid="profile-view"
-      data-profile-mode={isOwn ? "own" : "other"}
-      className="flex flex-col items-center gap-4 p-6 max-w-md mx-auto"
-    >
-      {/* Back affordance — sits left-aligned at the top of the column */}
-      <div className="w-full">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-sm text-dim hover:text-text"
-          data-testid="profile-back"
-        >
-          ← Back
-        </button>
-      </div>
+    <AuthSurface forceDark w={420} tall>
+      <div
+        data-testid="profile-view"
+        data-profile-mode={isOwn ? "own" : "other"}
+        className="flex flex-col items-center gap-4"
+      >
+        {/* Back affordance — sits left-aligned at the top of the column */}
+        <div className="w-full">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="text-sm text-dim hover:text-text"
+            data-testid="profile-back"
+          >
+            ← back
+          </button>
+        </div>
 
       {/* Avatar + camera overlay (own only) */}
       <div className="relative">
@@ -393,7 +400,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
               data-testid="profile-avatar-remove"
               className="text-xs text-red hover:underline"
             >
-              Remove profile picture
+              remove profile picture
             </button>
           )}
           <Link
@@ -405,6 +412,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           </Link>
         </>
       )}
-    </div>
+      </div>
+    </AuthSurface>
   );
 }

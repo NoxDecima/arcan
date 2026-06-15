@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import {
+  AuthSurface,
+  Steps,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 
 interface BackupConfirmStepProps {
   phrase: string;
@@ -53,58 +58,51 @@ export function BackupConfirmStep({
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Confirm your recovery code
-          </h1>
-          <p className="text-muted-foreground">
-            Type the words at the positions shown below to confirm you have
-            recorded your recovery code correctly.
-          </p>
-        </div>
+    <AuthSurface forceDark>
+      <Steps n={3} />
+      <AuthTitle>confirm your code</AuthTitle>
+      <AuthSub>type the words shown to prove you saved it</AuthSub>
 
-        {/* Three challenge inputs */}
-        <div className="space-y-4">
-          {challengeIndices.map((wordIdx, slot) => (
-            <div key={slot} className="space-y-1">
-              <label
-                htmlFor={`confirm-word-${slot}`}
-                className="text-sm font-medium"
-              >
-                Word {wordIdx + 1}
-              </label>
-              <input
-                id={`confirm-word-${slot}`}
-                data-testid={`confirm-word-${slot}`}
-                type="text"
-                value={inputs[slot]}
-                onChange={(e) => setInput(slot, e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder={`Word ${wordIdx + 1}`}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onBack} className="flex-1">
-            Back
-          </Button>
-          <Button
-            data-testid="confirm-passphrase-btn"
-            disabled={!allCorrect}
-            onClick={onConfirmed}
-            className="flex-1"
-          >
-            Confirm
-          </Button>
-        </div>
+      <div className="flex flex-col gap-3">
+        {challengeIndices.map((wordIdx, slot) => (
+          <label key={slot} className="flex flex-col gap-[6px]">
+            <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+              word #{String(wordIdx + 1).padStart(2, "0")}
+            </span>
+            <input
+              id={`confirm-word-${slot}`}
+              data-testid={`confirm-word-${slot}`}
+              type="text"
+              value={inputs[slot]}
+              onChange={(e) => setInput(slot, e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={`type word ${wordIdx + 1}`}
+              className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 font-mono text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+            />
+          </label>
+        ))}
       </div>
-    </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+        >
+          back
+        </button>
+        <button
+          type="button"
+          data-testid="confirm-passphrase-btn"
+          disabled={!allCorrect}
+          onClick={onConfirmed}
+          className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
+        >
+          continue →
+        </button>
+      </div>
+      <div className="text-center text-[10.5px] text-dim">step 3 of 4</div>
+    </AuthSurface>
   );
 }

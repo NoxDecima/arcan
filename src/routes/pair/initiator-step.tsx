@@ -17,8 +17,13 @@ import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
 import { Link } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
-import { Button } from "@/components/ui/button";
 import { DeviceApprovalCard } from "@/components/device-approval-card";
+import {
+  AuthSurface,
+  Wordmark,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 import {
   createPairingInvite,
   approvePairing,
@@ -165,86 +170,106 @@ export function InitiatorStep() {
 
   if (phase === "loading") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <p className="text-sm text-muted-foreground">Creating pairing session…</p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>preparing link</AuthTitle>
+        <AuthSub>creating pairing session…</AuthSub>
+      </AuthSurface>
     );
   }
 
   if (phase === "error") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6" data-testid="pair-init-error">
-        <p className="text-sm text-red-600">Error: {errorMsg}</p>
-        <Button
-          variant="outline"
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>something went wrong</AuthTitle>
+        <AuthSub>{errorMsg ?? "unknown error"}</AuthSub>
+        <div data-testid="pair-init-error" />
+        <button
+          type="button"
           onClick={() => {
             setPhase("loading");
             setInvitation(null);
             setErrorMsg(null);
           }}
+          className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
         >
-          Retry
-        </Button>
-      </div>
+          retry
+        </button>
+      </AuthSurface>
     );
   }
 
   if (phase === "complete") {
     return (
-      <div className="p-6 text-center space-y-4" data-testid="pair-init-complete">
-        <h2 className="text-2xl font-semibold">New device linked</h2>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>new device linked</AuthTitle>
+        <div data-testid="pair-init-complete" />
         <Link to="/">
-          <Button data-testid="pair-init-home-btn">Back to home</Button>
+          <button
+            type="button"
+            data-testid="pair-init-home-btn"
+            className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
+          >
+            back to home
+          </button>
         </Link>
-      </div>
+      </AuthSurface>
     );
   }
 
   if (phase === "approved") {
     return (
-      <div
-        className="flex flex-col items-center gap-4 p-6"
-        data-testid="pair-approved"
-      >
-        <p className="text-sm text-muted-foreground">Transferring account secret…</p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>linking device</AuthTitle>
+        <AuthSub>transferring account secret…</AuthSub>
+        <div data-testid="pair-approved" />
+      </AuthSurface>
     );
   }
 
   if (phase === "awaiting-approval") {
     const p = invitation?.pairing as any;
     return (
-      <div className="p-6 flex justify-center" data-testid="pair-approval-prompt">
-        <DeviceApprovalCard
-          userAgent={p?.responderUserAgent}
-          firstSeenAt={p?.responderFirstSeenAt}
-          fingerprint={p?.responderFingerprint}
-          onApprove={handleApprove}
-          onDeny={handleReject}
-          pending={false}
-        />
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <div data-testid="pair-approval-prompt">
+          <DeviceApprovalCard
+            userAgent={p?.responderUserAgent}
+            firstSeenAt={p?.responderFirstSeenAt}
+            fingerprint={p?.responderFingerprint}
+            onApprove={handleApprove}
+            onDeny={handleReject}
+            pending={false}
+          />
+        </div>
+      </AuthSurface>
     );
   }
 
   // phase === "waiting"
   return (
-    <div className="flex flex-col items-center gap-6 p-6" data-testid="pair-waiting">
-      <h2 className="text-base font-semibold">Scan on your new device</h2>
-      {invitation && <QRDisplay url={invitation.url} size={256} showText />}
-      <div className="flex gap-2 w-full max-w-sm">
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={handleCopyUrl}
-          data-testid="pair-copy-url-btn"
-        >
-          {copyFeedback ? "Copied!" : "Copy link"}
-        </Button>
+    <AuthSurface forceDark w={330}>
+      <Wordmark size={20} />
+      <AuthTitle>link a new device</AuthTitle>
+      <AuthSub>open this link on your other device, or scan it</AuthSub>
+      <div className="flex justify-center" data-testid="pair-waiting">
+        {invitation && <QRDisplay url={invitation.url} size={132} showText={false} />}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Waiting for the new device to scan…
-      </p>
-    </div>
+      <button
+        type="button"
+        onClick={handleCopyUrl}
+        data-testid="pair-copy-url-btn"
+        className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+      >
+        {copyFeedback ? "copied!" : "copy link"}
+      </button>
+      <div className="flex items-center justify-center gap-2 mt-[2px]">
+        <span className="h-[7px] w-[7px] rounded-pill bg-arcan-accent" />
+        <span className="text-[10.5px] text-dim">waiting for your other device…</span>
+      </div>
+    </AuthSurface>
   );
 }

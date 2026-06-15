@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
 
 type CopyState = "idle" | "copied" | "error";
 
@@ -42,87 +42,88 @@ export function BackupDisplayStep({
 
   const copyLabel =
     copyState === "copied"
-      ? "Copied to clipboard"
+      ? "copied to clipboard"
       : copyState === "error"
-        ? "Copy failed — copy manually"
-        : "Copy recovery code";
+        ? "copy failed — copy manually"
+        : "copy recovery code";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-lg space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Save your recovery code
-          </h1>
-          <p className="text-muted-foreground">
-            These 24 words are the <strong>only</strong> way back into your
-            account if you forget your password. Store them somewhere safe —
-            anyone who has them can sign in as you.
-          </p>
-        </div>
+    <AuthSurface forceDark w={368} tall>
+      <Steps n={2} />
+      <AuthTitle>save your recovery code</AuthTitle>
 
-        {/* 3-column word grid */}
-        <div
-          data-testid="passphrase-grid"
-          className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/50 p-4"
-        >
-          {words.map((word, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 rounded border bg-background px-2 py-1"
-            >
-              <span className="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground">
-                {i + 1}.
-              </span>
-              <span className="font-mono text-sm">{word}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Copy-to-clipboard control */}
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-testid="passphrase-copy-btn"
-            onClick={handleCopy}
-            aria-live="polite"
-          >
-            {copyLabel}
-          </Button>
-        </div>
-
-        {/* Acknowledge checkbox */}
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            data-testid="passphrase-saved-checkbox"
-            checked={acknowledged}
-            onChange={(e) => setAcknowledged(e.target.checked)}
-            className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
-          />
-          <span className="text-sm text-muted-foreground">
-            I have saved my recovery code in a secure location and understand
-            that it cannot be recovered if lost.
-          </span>
-        </label>
-
-        {/* Navigation */}
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onBack} className="flex-1">
-            Back
-          </Button>
-          <Button
-            data-testid="passphrase-display-continue"
-            disabled={!acknowledged}
-            onClick={onContinue}
-            className="flex-1"
-          >
-            Continue
-          </Button>
-        </div>
+      {/* Warning callout — same warn-amber palette as the design's
+          recovery scene (hf-flows.jsx lines 108-118). */}
+      <div className="flex items-start gap-2 rounded-r-3 border border-amber/40 bg-amber/10 px-3 py-[9px]">
+        <span className="font-mono text-[12px] font-semibold text-amber leading-snug">
+          ⚠
+        </span>
+        <span className="text-[10.5px] leading-relaxed text-amber">
+          this 24-word code is the only way to recover your account. nox cannot
+          reset it.
+        </span>
       </div>
-    </div>
+
+      {/* 3-column word grid */}
+      <div
+        data-testid="passphrase-grid"
+        className="grid grid-cols-3 gap-x-[10px] gap-y-[6px] rounded-r-3 border border-hairline bg-panel p-[13px]"
+      >
+        {words.map((word, i) => (
+          <div key={i} className="flex gap-[6px]">
+            <span className="w-[13px] font-mono text-[9px] text-dim leading-snug">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="font-mono text-[10.5px] text-text leading-snug">
+              {word}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        data-testid="passphrase-copy-btn"
+        onClick={handleCopy}
+        aria-live="polite"
+        className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+      >
+        {copyLabel}
+      </button>
+
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          data-testid="passphrase-saved-checkbox"
+          checked={acknowledged}
+          onChange={(e) => setAcknowledged(e.target.checked)}
+          className="mt-[2px] h-4 w-4 shrink-0 cursor-pointer accent-[var(--color-accent)]"
+        />
+        <span className="text-[11px] text-text-2 leading-relaxed">
+          i have saved my recovery code in a secure location and understand it
+          cannot be recovered if lost.
+        </span>
+      </label>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+        >
+          back
+        </button>
+        <button
+          type="button"
+          data-testid="passphrase-display-continue"
+          disabled={!acknowledged}
+          onClick={onContinue}
+          className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
+        >
+          i've saved it →
+        </button>
+      </div>
+      <div className="text-center text-[10.5px] text-dim">step 2 of 4</div>
+    </AuthSurface>
   );
 }
