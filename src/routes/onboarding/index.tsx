@@ -44,7 +44,8 @@ export function OnboardingRoute() {
       return (
         <WelcomeStep
           onCreateAccount={() => setStep({ kind: "credentials" })}
-          onRestoreAccount={() => setStep({ kind: "restore-choice" })}
+          onRestoreAccount={() => setStep({ kind: "restore-with-code" })}
+          onSignInWithPassword={() => navigate("/auth/login")}
         />
       );
 

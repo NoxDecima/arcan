@@ -2,20 +2,38 @@ import { Button } from "@/components/ui/button";
 
 interface WelcomeStepProps {
   onCreateAccount: () => void;
+  /**
+   * Restore via 24-word recovery code (offline path — no Better Auth
+   * session required). Routed to the restore-with-code step downstream.
+   */
   onRestoreAccount: () => void;
+  /**
+   * "already on a device? sign in" — Better Auth email/password path for
+   * users who already have an account and are adding this device.
+   */
+  onSignInWithPassword: () => void;
 }
 
 /**
  * WelcomeStep: first screen in the onboarding flow.
  *
- * In the new email/password world, the recovery code is generated inside
- * the credentials → backup-display transition (so it's bound to a fresh
- * Better Auth account creation, not to a casual "Create" button click).
- * This handler is now a thin passthrough.
+ * Design-aligned layout per Unit 8 audit headline observations #6 + #7:
+ *
+ * - Short tagline subtitle ("local-first · end-to-end encrypted") — the
+ *   Wordmark carries the brand.
+ * - Three CTAs in design order:
+ *     1. "create account"             — primary
+ *     2. "restore from recovery code" — outline (offline path)
+ *     3. "already on a device? sign in" — ghost (Better Auth path)
+ *
+ * The split surfaces the recovery affordance ahead of the email/password
+ * fallback. The third CTA was previously labeled "Sign in to existing
+ * account" and conflated with the recovery flow; Unit 8e split it out.
  */
 export function WelcomeStep({
   onCreateAccount,
   onRestoreAccount,
+  onSignInWithPassword,
 }: WelcomeStepProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -25,9 +43,7 @@ export function WelcomeStep({
             Welcome to Arcan
           </h1>
           <p className="text-muted-foreground">
-            A local-first, end-to-end encrypted messenger. Your account is
-            protected by a password you control; a 24-word recovery code is
-            your escape hatch if you forget it.
+            local-first · end-to-end encrypted
           </p>
         </div>
 
@@ -37,7 +53,7 @@ export function WelcomeStep({
             data-testid="create-account-btn"
             onClick={onCreateAccount}
           >
-            Create new account
+            create account
           </Button>
           <Button
             variant="outline"
@@ -45,7 +61,15 @@ export function WelcomeStep({
             data-testid="restore-account-btn"
             onClick={onRestoreAccount}
           >
-            Sign in to existing account
+            restore from recovery code
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="signin-existing-btn"
+            onClick={onSignInWithPassword}
+          >
+            already on a device? sign in
           </Button>
         </div>
       </div>
