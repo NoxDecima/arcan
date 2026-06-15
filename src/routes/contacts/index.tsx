@@ -39,6 +39,8 @@ function ContactRow({
         to={`/contacts/${contact?.$jazz?.id}`}
         className="flex items-center gap-3 p-3 hover:bg-accent rounded text-sm"
         data-testid={`contacts-page-row-${index}`}
+        data-contact-id={contact?.$jazz?.id}
+        data-account-id={contact?.contactAccountID}
       >
         <Avatar
           src={avatar}

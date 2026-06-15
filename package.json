@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
+    "audit:capture": "tsx scripts/audit/capture-screens.ts",
     "check-tokens": "./scripts/check-tokens.sh"
   },
   "dependencies": {
