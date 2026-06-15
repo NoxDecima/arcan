@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { EmptyPane } from "@/components/empty-pane";
 
 /**
  * ContactsRoute: full-page contacts list at /contacts.
@@ -77,15 +78,17 @@ export function ContactsRoute() {
       </Link>
 
       {contacts.length === 0 ? (
-        <div
-          className="text-center py-12 text-muted-foreground"
+        <EmptyPane
+          variant="compact"
+          title="no contacts yet"
+          description="add your first contact via a QR code or share link."
+          cta={
+            <Link to="/contacts/add">
+              <Button data-testid="add-contact-empty-cta">add a contact</Button>
+            </Link>
+          }
           data-testid="contacts-empty"
-        >
-          <p>No contacts yet.</p>
-          <p className="text-xs mt-2">
-            Add your first contact via the + Add contact button.
-          </p>
-        </div>
+        />
       ) : (
         <ul className="space-y-1" data-testid="contacts-page-list">
           {contacts.map((c: any, i: number) => (
