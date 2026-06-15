@@ -241,6 +241,12 @@ export function Sidebar() {
         <nav
           className="flex-1 overflow-y-auto p-2"
           data-testid="conversation-list"
+          style={{
+            // Mobile: clear the fixed MobileTabBar (56px) + iOS safe-area.
+            // env() resolves to 0px on desktop; the tab bar is also hidden
+            // there (md:hidden), so the extra 56px is harmless on >=md.
+            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+          }}
         >
           {sortedActive.length === 0 ? (
             <div className="p-4 text-center space-y-3">
@@ -304,6 +310,12 @@ export function Sidebar() {
         <nav
           className="flex-1 overflow-y-auto p-2"
           data-testid="sidebar-contacts-list"
+          style={{
+            // Mobile: clear the fixed MobileTabBar (56px) + iOS safe-area.
+            // env() resolves to 0px on desktop; the tab bar is also hidden
+            // there (md:hidden), so the extra 56px is harmless on >=md.
+            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+          }}
         >
           {contacts.length === 0 ? (
             <div className="p-4 text-center space-y-3">
