@@ -91,6 +91,8 @@ function SidebarContactRow({
     <Link
       to={`/profile/${accountID}`}
       data-testid={`sidebar-contact-row-${index}`}
+      data-account-id={accountID}
+      data-contact-id={(contact as any)?.$jazz?.id}
       className="flex items-center gap-3 p-2 hover:bg-accent rounded text-sm"
     >
       <Avatar
@@ -175,6 +177,7 @@ export function Sidebar() {
         <button
           type="button"
           data-testid="sidebar-header-profile"
+          data-account-id={myID}
           onClick={() => myID && navigate(`/profile/${myID}`)}
           className="flex items-center gap-2 min-w-0 text-left hover:opacity-90"
           aria-label="Open your profile"
@@ -273,6 +276,7 @@ export function Sidebar() {
                     unread > 0 ? "font-semibold" : ""
                   }`}
                   data-testid={`conversation-row-${i}`}
+                  data-conversation-id={convID}
                 >
                   <ConversationAvatar
                     conversationId={convID}

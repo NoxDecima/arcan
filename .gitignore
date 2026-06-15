@@ -43,3 +43,7 @@ playwright-report/
 # Slice 6 — Docker Compose deploy
 deploy/data/
 deploy/.env
+
+# Unit 8 reference design pack — extracted from ArcanUI.zip locally,
+# never committed. The zip itself stays in-repo for future re-extraction.
+design/

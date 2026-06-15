@@ -68,6 +68,13 @@ export function AddContactRoute() {
         </p>
 
         {inviteUrl && <QRDisplay url={inviteUrl} size={140} />}
+        {/* Audit / e2e hook: invisible URL string for Playwright extraction.
+            sr-only is screen-reader-only — invisible to sighted users. */}
+        {inviteUrl && (
+          <span data-testid="qr-url-text" className="sr-only">
+            {inviteUrl}
+          </span>
+        )}
 
         {accountID && (
           <p className="text-xs text-dim font-mono">
