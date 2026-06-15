@@ -165,7 +165,15 @@ export function Composer({
           {error}
         </div>
       )}
-      <div className="flex gap-2 p-3">
+      <div
+        className="flex gap-2 px-3 pt-3"
+        style={{
+          // 12px baseline + iOS safe-area on chat-detail (mobile full-screen).
+          // Tailwind v3 doesn't ship a `pb-safe` util; inline keeps the
+          // calc() expression colocated with the bottom-edge component.
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+        }}
+      >
         <input
           ref={fileInputRef}
           type="file"

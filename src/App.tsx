@@ -4,7 +4,6 @@ import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
-import { ContactsRoute } from "./routes/contacts";
 import { AddContactRoute as ContactAddRoute } from "./routes/contacts/add";
 import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
@@ -141,7 +140,14 @@ function App() {
         <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
         <Route path="/conversations/:id/members" element={<MembersRoute />} />
         <Route path="/settings/*" element={<SettingsRoute />} />
-        <Route path="/contacts" element={<ContactsRoute />} />
+        {/*
+          Unit 8d: deprecate the standalone /contacts list page in favor of
+          the sidebar `contacts` tab. The list visually diverged from the
+          tab (back-link + page title) and there was no spec justification
+          for two separate surfaces. /contacts/add and /contacts/:contactID
+          keep their dedicated routes — only the list page redirects.
+        */}
+        <Route path="/contacts" element={<Navigate to="/?tab=contacts" replace />} />
         <Route path="/contacts/add" element={<ContactAddRoute />} />
         <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
         <Route path="/profile/:accountID" element={<ProfileRoute />} />
