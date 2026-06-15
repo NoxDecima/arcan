@@ -44,7 +44,7 @@ export function AccountSection() {
   if (!me.$isLoaded) {
     return (
       <section data-testid="account-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">Account</h2>
+        <h2 className="text-base font-semibold text-text mb-2">account</h2>
         <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
           <Skel w="55%" h={12} />
           <Skel w="80%" h={14} />
@@ -62,7 +62,7 @@ export function AccountSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-text mb-2">Account</h2>
+      <h2 className="text-base font-semibold text-text mb-2">account</h2>
       <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
         <p className="text-sm text-text-2">Your safety number:</p>
         <SafetyNumber fingerprintHex={fingerprintHex} />

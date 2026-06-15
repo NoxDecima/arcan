@@ -25,7 +25,7 @@ export function AppearanceSection() {
   if (!me.$isLoaded) {
     return (
       <section data-testid="appearance-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">Appearance</h2>
+        <h2 className="text-base font-semibold text-text mb-2">appearance</h2>
         <div className="bg-panel rounded-r-3 border border-hairline px-4 py-3 flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <Skel w="40%" h={14} />
@@ -60,7 +60,7 @@ export function AppearanceSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-text mb-2">Appearance</h2>
+      <h2 className="text-base font-semibold text-text mb-2">appearance</h2>
       <div className="bg-panel rounded-r-3 border border-hairline px-4 py-3 flex flex-col gap-4">
         {/* Theme toggle */}
         <div className="flex items-center gap-3">

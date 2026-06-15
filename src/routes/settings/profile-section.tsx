@@ -19,7 +19,7 @@ export function ProfileSection() {
   if (!me.$isLoaded) {
     return (
       <section data-testid="profile-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">Profile</h2>
+        <h2 className="text-base font-semibold text-text mb-2">profile</h2>
         <div className="w-full p-4 rounded-r-3 border border-hairline bg-panel">
           <Skel w="40%" h={14} />
         </div>
@@ -66,7 +66,7 @@ export function ProfileSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-text mb-2">Profile</h2>
+      <h2 className="text-base font-semibold text-text mb-2">profile</h2>
       <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Avatar

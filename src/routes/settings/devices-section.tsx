@@ -20,7 +20,7 @@ export function DevicesSection() {
   if (!me.$isLoaded) {
     return (
       <section data-testid="devices-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">Devices</h2>
+        <h2 className="text-base font-semibold text-text mb-2">devices</h2>
         <ul className="bg-panel rounded border border-hairline divide-y divide-hairline">
           {[0, 1].map((i) => (
             <li key={i} className="px-4 py-3 flex items-center justify-between">
@@ -61,7 +61,7 @@ export function DevicesSection() {
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-semibold text-text">Devices</h2>
+        <h2 className="text-base font-semibold text-text">devices</h2>
         <Button asChild variant="outline" size="sm" data-testid="link-new-device-btn">
           <Link to="/pair?role=initiator">Link new device</Link>
         </Button>
