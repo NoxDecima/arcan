@@ -1,0 +1,459 @@
+{
+  "capturedAt": "2026-06-15T11:21:12.624Z",
+  "surfaces": [
+    {
+      "id": "auth-login",
+      "route": "/auth/login",
+      "routeNavigated": "/auth/login",
+      "state": "anonymous",
+      "viewport": "desktop",
+      "file": "auth-login--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "auth-login",
+      "route": "/auth/login",
+      "routeNavigated": "/auth/login",
+      "state": "anonymous",
+      "viewport": "mobile",
+      "file": "auth-login--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "auth-recovery",
+      "route": "/auth/recovery",
+      "routeNavigated": "/auth/recovery",
+      "state": "anonymous",
+      "viewport": "desktop",
+      "file": "auth-recovery--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "auth-recovery",
+      "route": "/auth/recovery",
+      "routeNavigated": "/auth/recovery",
+      "state": "anonymous",
+      "viewport": "mobile",
+      "file": "auth-recovery--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "onboarding",
+      "route": "/onboarding",
+      "routeNavigated": "/onboarding",
+      "state": "anonymous",
+      "viewport": "desktop",
+      "file": "onboarding--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "onboarding",
+      "route": "/onboarding",
+      "routeNavigated": "/onboarding",
+      "state": "anonymous",
+      "viewport": "mobile",
+      "file": "onboarding--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "conv-list-empty",
+      "route": "/",
+      "routeNavigated": "/",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "conv-list-empty--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "conv-list-empty",
+      "route": "/",
+      "routeNavigated": "/",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "conv-list-empty--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "conv-list-1to1",
+      "route": "/",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "conv-list-1to1--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-list-1to1",
+      "route": "/",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "conv-list-1to1--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-list-group",
+      "route": "/",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "desktop",
+      "file": "conv-list-group--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-list-group",
+      "route": "/",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "mobile",
+      "file": "conv-list-group--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-detail-1to1",
+      "route": "/conversations/:convId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "conv-detail-1to1--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-detail-1to1",
+      "route": "/conversations/:convId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "conv-detail-1to1--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-detail-group",
+      "route": "/conversations/:convId",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "desktop",
+      "file": "conv-detail-group--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-detail-group",
+      "route": "/conversations/:convId",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "mobile",
+      "file": "conv-detail-group--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-members-group",
+      "route": "/conversations/:convId/members",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "desktop",
+      "file": "conv-members-group--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-members-group",
+      "route": "/conversations/:convId/members",
+      "routeNavigated": "",
+      "state": "alice-with-group",
+      "viewport": "mobile",
+      "file": "conv-members-group--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-new",
+      "route": "/conversations/new",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "conv-new--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "conv-new",
+      "route": "/conversations/new",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "conv-new--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "contacts-empty",
+      "route": "/contacts",
+      "routeNavigated": "/contacts",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "contacts-empty--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "contacts-empty",
+      "route": "/contacts",
+      "routeNavigated": "/contacts",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "contacts-empty--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "contacts-list",
+      "route": "/contacts",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "contacts-list--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "contacts-list",
+      "route": "/contacts",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "contacts-list--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "contacts-add",
+      "route": "/contacts/add",
+      "routeNavigated": "/contacts/add",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "contacts-add--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "contacts-add",
+      "route": "/contacts/add",
+      "routeNavigated": "/contacts/add",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "contacts-add--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "contact-detail",
+      "route": "/contacts/:bobContactId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "contact-detail--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "contact-detail",
+      "route": "/contacts/:bobContactId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "contact-detail--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "profile-own",
+      "route": "/profile/:meId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "profile-own--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "profile-own",
+      "route": "/profile/:meId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "profile-own--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "profile-other",
+      "route": "/profile/:bobId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "desktop",
+      "file": "profile-other--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "profile-other",
+      "route": "/profile/:bobId",
+      "routeNavigated": "",
+      "state": "alice-with-bob-1to1",
+      "viewport": "mobile",
+      "file": "profile-other--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "connections-pending-empty",
+      "route": "/connections/pending",
+      "routeNavigated": "/connections/pending",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "connections-pending-empty--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "connections-pending-empty",
+      "route": "/connections/pending",
+      "routeNavigated": "/connections/pending",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "connections-pending-empty--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "connections-live-invites-empty",
+      "route": "/connections/live-invites",
+      "routeNavigated": "/connections/live-invites",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "connections-live-invites-empty--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "connections-live-invites-empty",
+      "route": "/connections/live-invites",
+      "routeNavigated": "/connections/live-invites",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "connections-live-invites-empty--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "connections-live-invites",
+      "route": "/connections/live-invites",
+      "routeNavigated": "",
+      "state": "alice-with-live-invite",
+      "viewport": "desktop",
+      "file": "connections-live-invites--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "connections-live-invites",
+      "route": "/connections/live-invites",
+      "routeNavigated": "",
+      "state": "alice-with-live-invite",
+      "viewport": "mobile",
+      "file": "connections-live-invites--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "skipped": "seed failed"
+    },
+    {
+      "id": "settings-root",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "settings-root--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "settings-root",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "settings-root--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "pair-initiator",
+      "route": "/pair?role=initiator",
+      "routeNavigated": "/pair?role=initiator",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "pair-initiator--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "pair-initiator",
+      "route": "/pair?role=initiator",
+      "routeNavigated": "/pair?role=initiator",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "pair-initiator--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "pair-responder",
+      "route": "/pair",
+      "routeNavigated": "/pair",
+      "state": "anonymous",
+      "viewport": "desktop",
+      "file": "pair-responder--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "pair-responder",
+      "route": "/pair",
+      "routeNavigated": "/pair",
+      "state": "anonymous",
+      "viewport": "mobile",
+      "file": "pair-responder--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "modal-change-password",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "modal-change-password--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "modal-change-password",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "modal-change-password--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "modal-view-recovery-code",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "desktop",
+      "file": "modal-view-recovery-code--desktop.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    },
+    {
+      "id": "modal-view-recovery-code",
+      "route": "/settings",
+      "routeNavigated": "/settings",
+      "state": "alice-empty",
+      "viewport": "mobile",
+      "file": "modal-view-recovery-code--mobile.png",
+      "capturedAt": "2026-06-15T11:21:12.624Z"
+    }
+  ]
+}
