@@ -2,8 +2,10 @@
  * PairRoute: handles /pair — chooses between initiator and responder flow
  * based on the `?role=` query parameter.
  *
- * - `?role=initiator` (or any explicit "initiator" value) → InitiatorStep
+ * - `?role=initiator` → InitiatorStep
  * - anything else (including no role param, or URL hash present) → ResponderStep
+ *
+ * The inner steps own their AuthSurface; this route is a thin selector.
  *
  * This route is auth-OPTIONAL: the responder arrives as an unauthenticated
  * user (or guest) and becomes authenticated after claiming the account.
@@ -16,17 +18,5 @@ import { ResponderStep } from "./responder-step";
 export function PairRoute() {
   const params = new URLSearchParams(window.location.search);
   const role = params.get("role");
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-panel-2">
-      <div className="w-full max-w-md bg-panel rounded-lg shadow-sm border">
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold">
-            {role === "initiator" ? "Link new device" : "Join account"}
-          </h1>
-        </div>
-        {role === "initiator" ? <InitiatorStep /> : <ResponderStep />}
-      </div>
-    </div>
-  );
+  return role === "initiator" ? <InitiatorStep /> : <ResponderStep />;
 }
