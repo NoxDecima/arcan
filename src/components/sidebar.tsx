@@ -208,7 +208,25 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Tab header (Unit 4 Phase 4) */}
+      {/*
+        Tab header (Unit 4 Phase 4) — sidebar separation pinned to
+        Option A · hairline under tabs (Unit 8d).
+
+        The four options enumerated in design/hf-chat.jsx#SidebarOptions:
+          A · hairline under tabs   <-- chosen
+          B · section label ("recent")
+          C · label + hairline
+          D · spacing only
+
+        Rationale (see docs/superpowers/plans/2026-06-13-unit-8d-mobile-chrome.md):
+        A matches the current shipping treatment, keeps visual rhythm
+        consistent with the mobile bottom tab bar's top hairline, and
+        avoids the orphaned `recent` label that would imply a multi-group
+        list the live sidebar doesn't have.
+
+        Anchored by tests/unit/components/sidebar-separation.test.tsx —
+        changes to this divider treatment must update that test in lockstep.
+      */}
       <div className="flex border-b border-hairline" data-testid="sidebar-tabs">
         <button
           type="button"
