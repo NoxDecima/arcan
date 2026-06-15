@@ -25,7 +25,7 @@ export function SettingsRoute() {
           ← Home
         </Link>
 
-        <h1 className="text-xl font-bold text-text mb-6">Settings</h1>
+        <h1 className="text-xl font-bold text-text mb-6">settings</h1>
 
         <div className="flex flex-col gap-6">
           <ProfileSection />
