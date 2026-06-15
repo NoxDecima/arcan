@@ -64,6 +64,7 @@ function PendingCard({ me, request }: { me: any; request: any }) {
           className="flex-1"
           onClick={async () => {
             await dismissConnectionRequest(me, request);
+            toast({ icon: "check", text: "request dismissed", tone: "neutral" });
           }}
           data-testid="dismiss"
         >dismiss</Button>
