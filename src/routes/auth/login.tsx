@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { signIn } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
+import { AuthSurface, Wordmark, AuthTitle } from "@/components/auth-surface";
 
 /**
  * LoginRoute: email + password sign-in.
@@ -40,23 +40,20 @@ export function LoginRoute() {
       }
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed");
+      setError(err instanceof Error ? err.message : "sign-in failed");
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
-          <p className="text-muted-foreground">
-            Welcome back to Arcan.
-          </p>
-        </div>
-
-        <label className="block">
-          <span className="text-sm font-medium">Email</span>
+    <AuthSurface forceDark>
+      <Wordmark size={22} />
+      <AuthTitle>sign in</AuthTitle>
+      <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            email
+          </span>
           <input
             type="email"
             data-testid="login-email"
@@ -64,11 +61,14 @@ export function LoginRoute() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="you@domain.dev"
+            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-text placeholder:text-dim text-[12px] focus:outline-none focus:border-arcan-accent"
           />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium">Password</span>
+        <label className="flex flex-col gap-[6px]">
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            password
+          </span>
           <input
             type="password"
             data-testid="login-password"
@@ -76,43 +76,38 @@ export function LoginRoute() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
-            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="••••••••"
+            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-text placeholder:text-dim text-[12px] focus:outline-none focus:border-arcan-accent"
           />
         </label>
 
         {error && (
           <p
             data-testid="login-error"
-            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
           >
             {error}
           </p>
         )}
 
-        <Button
+        <button
           type="submit"
           disabled={isLoading}
-          className="w-full"
           data-testid="login-submit"
+          className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
         >
-          {isLoading ? "Signing in…" : "Sign in"}
-        </Button>
+          {isLoading ? "signing in…" : "sign in"}
+        </button>
 
-        <div className="flex justify-between text-sm">
-          <Link
-            to="/auth/recovery"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Forgot password?
+        <div className="flex justify-between text-[10.5px]">
+          <Link to="/auth/recovery" className="text-dim hover:text-text">
+            forgot password?
           </Link>
-          <Link
-            to="/onboarding"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Create new account
+          <Link to="/onboarding" className="text-arcan-accent hover:text-text">
+            create account
           </Link>
         </div>
       </form>
-    </div>
+    </AuthSurface>
   );
 }
