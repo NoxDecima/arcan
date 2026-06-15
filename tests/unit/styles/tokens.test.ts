@@ -25,4 +25,16 @@ describe("tokens.css", () => {
   test("declares the light theme overrides", () => {
     expect(tokensCss).toContain('data-theme="light"');
   });
+
+  test("declares the three gradient tokens used by Phase B sub-units", () => {
+    // --gradient-primary: accent blue→violet sweep, used by wordmark gradient + primary CTAs
+    expect(tokensCss).toContain("--gradient-primary:");
+    expect(tokensCss).toMatch(/--gradient-primary:\s*linear-gradient\(/);
+    // --gradient-rule: blue→violet→transparent, used by section divider rules
+    expect(tokensCss).toContain("--gradient-rule:");
+    expect(tokensCss).toMatch(/--gradient-rule:\s*linear-gradient\(/);
+    // --gradient-cosmic: radial backdrop for AuthSurface
+    expect(tokensCss).toContain("--gradient-cosmic:");
+    expect(tokensCss).toMatch(/--gradient-cosmic:\s*radial-gradient\(/);
+  });
 });
