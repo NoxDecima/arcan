@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-type CopyState = "idle" | "copied" | "error";
+import { PassphraseGrid } from "@/components/passphrase-grid";
 
 interface BackupDisplayStepProps {
   phrase: string;
@@ -15,10 +14,6 @@ interface BackupDisplayStepProps {
  * The user must explicitly tick a checkbox to acknowledge they have saved the
  * code before the "Continue" button becomes active. This gates progression to
  * the confirm step where they must reproduce three random words.
- *
- * Note on data-testid attributes: the testids still say "passphrase-*" (rather
- * than "backup-*") for compatibility with Phase C e2e selectors. The user-
- * visible copy uses the new "recovery code" framing.
  */
 export function BackupDisplayStep({
   phrase,
@@ -26,72 +21,22 @@ export function BackupDisplayStep({
   onContinue,
 }: BackupDisplayStepProps) {
   const [acknowledged, setAcknowledged] = useState(false);
-  const [copyState, setCopyState] = useState<CopyState>("idle");
-  const words = phrase.trim().split(/\s+/);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(words.join(" "));
-      setCopyState("copied");
-      setTimeout(() => setCopyState("idle"), 2000);
-    } catch {
-      setCopyState("error");
-      setTimeout(() => setCopyState("idle"), 3000);
-    }
-  }
-
-  const copyLabel =
-    copyState === "copied"
-      ? "Copied to clipboard"
-      : copyState === "error"
-        ? "Copy failed — copy manually"
-        : "Copy recovery code";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-lg space-y-8">
         <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-text">
             Save your recovery code
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-text-2">
             These 24 words are the <strong>only</strong> way back into your
             account if you forget your password. Store them somewhere safe —
             anyone who has them can sign in as you.
           </p>
         </div>
 
-        {/* 3-column word grid */}
-        <div
-          data-testid="passphrase-grid"
-          className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/50 p-4"
-        >
-          {words.map((word, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 rounded border bg-background px-2 py-1"
-            >
-              <span className="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground">
-                {i + 1}.
-              </span>
-              <span className="font-mono text-sm">{word}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Copy-to-clipboard control */}
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-testid="passphrase-copy-btn"
-            onClick={handleCopy}
-            aria-live="polite"
-          >
-            {copyLabel}
-          </Button>
-        </div>
+        <PassphraseGrid phrase={phrase} withCopyButton />
 
         {/* Acknowledge checkbox */}
         <label className="flex cursor-pointer items-start gap-3">
@@ -102,7 +47,7 @@ export function BackupDisplayStep({
             onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
           />
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-text-2">
             I have saved my recovery code in a secure location and understand
             that it cannot be recovered if lost.
           </span>
