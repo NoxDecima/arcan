@@ -16,8 +16,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
 import { QRScanner } from "@/qr/scanner";
-import { Button } from "@/components/ui/button";
-import { Lattice } from "@/components/lattice";
+import {
+  AuthSurface,
+  Wordmark,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 import {
   parsePairingURL,
   loadPairingAsAgent,
@@ -208,129 +212,133 @@ export function ResponderStep() {
 
   if (phase === "scanning") {
     return (
-      <div className="flex flex-col gap-4 p-6">
-        <h2 className="text-base font-semibold">Scan the QR code from your other device</h2>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>scan to join</AuthTitle>
+        <AuthSub>point your camera at the QR on your other device</AuthSub>
         <QRScanner onUrl={handleScanned} expectedPathPrefix="/pair" />
-      </div>
+      </AuthSurface>
     );
   }
 
   if (phase === "loaded") {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <p className="text-sm text-muted-foreground">Reading pairing link…</p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>reading pairing link</AuthTitle>
+        <AuthSub>verifying the invite…</AuthSub>
+      </AuthSurface>
     );
   }
 
   if (phase === "waiting-approval") {
     const fp = (pairing as any)?.responderFingerprint as string | undefined;
     return (
-      <div
-        data-testid="pair-resp-waiting"
-        className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center bg-bg"
-      >
-        <Lattice size={64} />
-        <h2 className="text-lg font-semibold text-text">Waiting for approval</h2>
-        <p className="text-sm text-text-2 max-w-xs">
-          On your other device, you should see a request to link this one.
-        </p>
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-dim font-semibold">Fingerprint</span>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>waiting for approval</AuthTitle>
+        <AuthSub>on your other device, approve this link</AuthSub>
+        <div
+          data-testid="pair-resp-waiting"
+          className="flex flex-col items-center gap-[6px]"
+        >
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+            fingerprint
+          </span>
           <span
             data-testid="responder-fingerprint"
-            className="font-mono text-2xl tracking-widest text-text bg-panel border border-hairline rounded-r-3 px-4 py-2"
+            className="rounded-r-3 border border-hairline bg-panel px-4 py-2 font-mono text-[22px] tracking-widest text-text"
           >
             {fp ?? "…"}
           </span>
-          <p className="text-[11px] text-dim max-w-xs leading-relaxed">
-            Match this code with what's shown on your other device before tapping Approve there.
+          <p className="text-[11px] text-dim leading-relaxed text-center">
+            match this code with what's shown on your other device before
+            tapping approve there.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-text-2 text-sm">
-          <span className="w-2 h-2 rounded-full bg-arcan-accent" />
-          <span>waiting…</span>
+        <div className="flex items-center justify-center gap-2">
+          <span className="h-[7px] w-[7px] rounded-pill bg-arcan-accent" />
+          <span className="text-[10.5px] text-dim">waiting…</span>
         </div>
-      </div>
+      </AuthSurface>
     );
   }
 
   if (phase === "rejected") {
     return (
-      <div
-        data-testid="pair-resp-rejected"
-        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-bg"
-      >
-        <Lattice size={48} mono />
-        <h2 className="text-lg font-semibold text-text">Request rejected</h2>
-        <p className="text-sm text-text-2 max-w-xs">
-          The other device declined this link. Ask them to retry, or start over.
-        </p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>request rejected</AuthTitle>
+        <AuthSub>
+          the other device declined this link. ask them to retry, or start
+          over.
+        </AuthSub>
+        <div data-testid="pair-resp-rejected" />
+      </AuthSurface>
     );
   }
 
   if (phase === "timed-out") {
     return (
-      <div
-        data-testid="pair-resp-timed-out"
-        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-bg"
-      >
-        <Lattice size={48} mono />
-        <h2 className="text-lg font-semibold text-text">Request timed out</h2>
-        <p className="text-sm text-text-2 max-w-xs">
-          The request wasn't approved in time. Start a new pairing on your other device.
-        </p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>request timed out</AuthTitle>
+        <AuthSub>start a new pairing on your other device.</AuthSub>
+        <div data-testid="pair-resp-timed-out" />
+      </AuthSurface>
     );
   }
 
   if (phase === "claiming") {
     return (
-      <div
-        className="flex flex-col items-center gap-4 p-6"
-        data-testid="pair-resp-claiming"
-      >
-        <p className="text-sm text-muted-foreground">Claiming account…</p>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>claiming account</AuthTitle>
+        <AuthSub>almost there…</AuthSub>
+        <div data-testid="pair-resp-claiming" />
+      </AuthSurface>
     );
   }
 
   if (phase === "complete") {
     return (
-      <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
-        data-testid="pair-resp-complete"
-      >
-        <p className="text-green font-medium">Account paired!</p>
-        <p className="text-sm text-muted-foreground">
-          You now have access to your account on this device.
-        </p>
-        <Button onClick={() => { window.location.href = "/"; }}>
-          Continue
-        </Button>
-      </div>
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>account paired</AuthTitle>
+        <AuthSub>you now have access on this device.</AuthSub>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          data-testid="pair-resp-complete"
+          className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
+        >
+          continue
+        </button>
+      </AuthSurface>
     );
   }
 
   if (phase === "error") {
     return (
-      <div
-        className="flex flex-col items-center gap-4 p-6 text-center"
-        data-testid="pair-resp-error"
-      >
-        <p className="text-sm text-red-600">Error: {errorMsg}</p>
-        <Button
-          variant="outline"
+      <AuthSurface forceDark w={330}>
+        <Wordmark size={20} />
+        <AuthTitle>pairing failed</AuthTitle>
+        <AuthSub>{errorMsg ?? "unknown error"}</AuthSub>
+        <button
+          type="button"
           onClick={() => {
             setPhase("scanning");
             setPairingUrl(null);
             setErrorMsg(null);
           }}
+          data-testid="pair-resp-error"
+          className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
         >
-          Try again
-        </Button>
-      </div>
+          try again
+        </button>
+      </AuthSurface>
     );
   }
 
