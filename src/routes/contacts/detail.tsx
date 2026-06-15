@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
 import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { Skel } from "@/components/skeleton";
 
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
@@ -43,8 +44,10 @@ export function ContactDetailRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex flex-col items-center gap-4 p-6" data-testid="contact-detail-loading">
+        <Skel w={72} h={72} r={36} />
+        <Skel w={140} h={14} />
+        <Skel w={90} h={10} />
       </div>
     );
   }

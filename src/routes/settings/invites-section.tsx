@@ -13,6 +13,7 @@ import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { revokeInvitation } from "@/jazz/invitations";
 import { Button } from "@/components/ui/button";
+import { Skel } from "@/components/skeleton";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString(undefined, {
@@ -31,9 +32,12 @@ export function InvitesSection() {
 
   if (!me.$isLoaded) {
     return (
-      <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-base font-semibold mb-3">Pending invitations</h2>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <section
+        className="rounded-lg border bg-card p-4"
+        data-testid="invites-section-loading"
+      >
+        <h2 className="text-base font-semibold mb-3">pending invitations</h2>
+        <Skel w="60%" h={14} />
       </section>
     );
   }
@@ -57,7 +61,7 @@ export function InvitesSection() {
 
   return (
     <section className="rounded-lg border bg-card p-4 space-y-3">
-      <h2 className="text-base font-semibold">Pending invitations</h2>
+      <h2 className="text-base font-semibold">pending invitations</h2>
 
       {pending.length === 0 ? (
         <p

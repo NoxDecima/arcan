@@ -1,7 +1,8 @@
 import { describe, test, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
+import { ToastProvider } from "@/components/toast";
 import { AppearanceSection } from "@/routes/settings/appearance-section";
 
 vi.mock("jazz-tools/react", () => ({
@@ -21,9 +22,11 @@ vi.mock("jazz-tools/react", () => ({
 
 function Wrap({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
-      <AccentProvider>{children}</AccentProvider>
-    </ThemeProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <AccentProvider>{children}</AccentProvider>
+      </ThemeProvider>
+    </ToastProvider>
   );
 }
 
@@ -48,5 +51,27 @@ describe("AppearanceSection", () => {
     );
     fireEvent.click(getByTestId("accent-violet"));
     expect(document.documentElement.getAttribute("data-accent")).toBe("violet");
+  });
+
+  test("clicking 'light' fires an 'appearance updated' toast", () => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    const { getByTestId } = render(
+      <Wrap>
+        <AppearanceSection />
+      </Wrap>
+    );
+    fireEvent.click(getByTestId("theme-light"));
+    expect(screen.getByText("appearance updated")).toBeTruthy();
+  });
+
+  test("clicking an accent swatch fires an 'appearance updated' toast", () => {
+    document.documentElement.setAttribute("data-accent", "tokyo");
+    const { getByTestId } = render(
+      <Wrap>
+        <AppearanceSection />
+      </Wrap>
+    );
+    fireEvent.click(getByTestId("accent-violet"));
+    expect(screen.getByText("appearance updated")).toBeTruthy();
   });
 });

@@ -43,6 +43,7 @@ import {
   findNewMarkIndex,
   type DividerTimelineItem,
 } from "@/routes/conversations/newMarkPosition";
+import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/components/skeleton";
 
 /**
  * Unit 4 Phase 7: divider inserted into the timeline immediately before the
@@ -251,10 +252,11 @@ export function ConversationDetailRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="conversation-detail-loading">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <ChatMessagesSkeleton />
         </main>
       </div>
     );
@@ -274,10 +276,11 @@ export function ConversationDetailRoute() {
   if (!conversation) {
     // Still loading
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="conversation-detail-loading-late">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading conversation…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <ChatMessagesSkeleton />
         </main>
       </div>
     );

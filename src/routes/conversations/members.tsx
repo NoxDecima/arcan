@@ -23,6 +23,7 @@ import { ContactPicker } from "@/components/contact-picker";
 import { RolePill } from "@/components/role-pill";
 import { LeaveWithPromoteDialog } from "@/components/leave-with-promote-dialog";
 import { Button } from "@/components/ui/button";
+import { ChatHeaderSkeleton, NavListSkeleton } from "@/components/skeleton";
 import {
   addMemberToConversation,
   removeMemberFromConversation,
@@ -182,10 +183,11 @@ export function MembersRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="members-route-loading">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <NavListSkeleton rows={4} />
         </main>
       </div>
     );
@@ -204,10 +206,11 @@ export function MembersRoute() {
 
   if (!conversation) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="members-route-loading-late">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading members…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <NavListSkeleton rows={4} />
         </main>
       </div>
     );
@@ -351,6 +354,9 @@ export function MembersRoute() {
     setActionInProgress(true);
     try {
       await updateConversationTitle(me as any, conversation, trimmed);
+      toast({ icon: "check", text: "title updated", tone: "success" });
+    } catch {
+      toast({ icon: "alert", text: "couldn't update title", tone: "error" });
     } finally {
       setActionInProgress(false);
       setTitleEditing(false);

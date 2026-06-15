@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/toast";
+import { Skel } from "@/components/skeleton";
 
 /**
  * NotificationsSection: toggles for in-app notification preferences.
@@ -26,12 +28,17 @@ export function NotificationsSection() {
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
   const [requestError, setRequestError] = useState<string | null>(null);
+  const toast = useToast();
 
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
-      <section>
-        <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
-        <p className="text-sm text-dim">Loading…</p>
+      <section data-testid="notifications-section-loading">
+        <h2 className="text-base font-semibold text-text mb-2">notifications</h2>
+        <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
+          <Skel w="65%" h={14} />
+          <Skel w="50%" h={14} />
+          <Skel w={160} h={28} r={6} />
+        </div>
       </section>
     );
   }
@@ -42,6 +49,7 @@ export function NotificationsSection() {
 
   function handleSoundToggle() {
     prefs.$jazz.set("sound", !prefs.sound);
+    toast({ icon: "check", text: "notifications updated", tone: "success" });
   }
 
   async function handleEnableBrowser() {
@@ -61,6 +69,7 @@ export function NotificationsSection() {
       setPermissionState(result);
       if (result === "granted") {
         prefs.$jazz.set("browser", true);
+        toast({ icon: "check", text: "notifications updated", tone: "success" });
       } else if (result === "denied") {
         setRequestError(
           "Notifications were declined. Re-enable in your browser settings to try again.",
@@ -76,11 +85,12 @@ export function NotificationsSection() {
 
   function handleDisableBrowser() {
     prefs.$jazz.set("browser", false);
+    toast({ icon: "check", text: "notifications updated", tone: "success" });
   }
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
+      <h2 className="text-base font-semibold text-text mb-2">notifications</h2>
       <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
         <label className="flex items-center gap-2 text-sm">
           <input

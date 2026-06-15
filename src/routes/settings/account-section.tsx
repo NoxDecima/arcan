@@ -7,6 +7,7 @@ import { authClient } from "@/auth/client";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordModal } from "./change-password-modal";
 import { ViewRecoveryCodeModal } from "./view-recovery-code-modal";
+import { Skel } from "@/components/skeleton";
 
 /**
  * AccountSection: shows the user's safety number derived from their
@@ -42,9 +43,17 @@ export function AccountSection() {
 
   if (!me.$isLoaded) {
     return (
-      <section>
-        <h2 className="text-base font-semibold text-text mb-2">Account</h2>
-        <p className="text-sm text-dim">Loading…</p>
+      <section data-testid="account-section-loading">
+        <h2 className="text-base font-semibold text-text mb-2">account</h2>
+        <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
+          <Skel w="55%" h={12} />
+          <Skel w="80%" h={14} />
+        </div>
+        <div className="mt-4 flex flex-col gap-2">
+          {[0, 1, 2].map((i) => (
+            <Skel key={i} w="100%" h={36} r={6} />
+          ))}
+        </div>
       </section>
     );
   }
@@ -53,7 +62,7 @@ export function AccountSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-text mb-2">Account</h2>
+      <h2 className="text-base font-semibold text-text mb-2">account</h2>
       <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
         <p className="text-sm text-text-2">Your safety number:</p>
         <SafetyNumber fingerprintHex={fingerprintHex} />

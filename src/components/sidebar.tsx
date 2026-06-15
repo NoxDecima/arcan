@@ -6,6 +6,7 @@ import { isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { Avatar } from "@/components/avatar";
 import { ConversationAvatar } from "@/components/conversation-avatar";
+import { NavListSkeleton } from "@/components/skeleton";
 import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
@@ -135,10 +136,14 @@ export function Sidebar() {
   // Render a minimal shell while loading — avoids layout flash.
   if (!me.$isLoaded) {
     return (
-      <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
+      <aside
+        className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel"
+        data-testid="sidebar-loading"
+      >
         <div className="p-4 border-b border-hairline">
-          <span className="text-sm text-dim">Loading…</span>
+          <NavListSkeleton rows={1} />
         </div>
+        <NavListSkeleton rows={5} />
       </aside>
     );
   }
