@@ -39,6 +39,7 @@ import { SystemEvent } from "@/components/system-event";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
 import { markRead } from "@/jazz/notifications";
+import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/components/skeleton";
 
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
@@ -185,10 +186,11 @@ export function ConversationDetailRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="conversation-detail-loading">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <ChatMessagesSkeleton />
         </main>
       </div>
     );
@@ -208,10 +210,11 @@ export function ConversationDetailRoute() {
   if (!conversation) {
     // Still loading
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-testid="conversation-detail-loading-late">
         <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading conversation…</p>
+        <main className="flex-1 flex flex-col min-w-0">
+          <ChatHeaderSkeleton />
+          <ChatMessagesSkeleton />
         </main>
       </div>
     );
