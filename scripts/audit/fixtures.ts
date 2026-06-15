@@ -114,8 +114,11 @@ async function trySignIn(page: Page, account: Account): Promise<string | null> {
     // Either auth error or we never got redirected. Treat as needing sign-up.
     return null;
   }
-  // home-main marks the conversations route ready.
-  await page.getByTestId("home-main").waitFor({ timeout: 20_000 });
+  // sidebar-display-name is visible on both desktop AND mobile after sign-in.
+  // (home-main is `hidden md:flex` so it never shows on the mobile viewport.)
+  await page
+    .getByTestId("sidebar-display-name")
+    .waitFor({ timeout: 20_000 });
   return await readMeId(page);
 }
 
@@ -157,7 +160,9 @@ async function signUpAs(page: Page, account: Account): Promise<string> {
   await page.getByTestId("display-name-input").fill(account.displayName);
   await page.getByTestId("finish-onboarding-btn").click();
 
-  await page.getByTestId("home-main").waitFor({ timeout: 30_000 });
+  await page
+    .getByTestId("sidebar-display-name")
+    .waitFor({ timeout: 30_000 });
   return await readMeId(page);
 }
 

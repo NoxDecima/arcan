@@ -44,7 +44,8 @@ export const SURFACES: Surface[] = [
   { id: "onboarding", route: "/onboarding", state: "anonymous", waitFor: '[data-testid="create-account-btn"]' },
 
   // ─── Conversations list ──────────────────────────────────────────────
-  { id: "conv-list-empty", route: "/", state: "alice-empty", waitFor: '[data-testid="home-main"]' },
+  // home-main is `hidden md:flex`, so for mobile we wait on sidebar.
+  { id: "conv-list-empty", route: "/", state: "alice-empty", waitFor: '[data-testid="sidebar-display-name"]' },
   { id: "conv-list-1to1", route: "/", state: "alice-with-bob-1to1", waitFor: '[data-testid="conversation-list"]' },
   { id: "conv-list-group", route: "/", state: "alice-with-group", waitFor: '[data-testid="conversation-list"]' },
 

@@ -67,8 +67,7 @@ pkgs.mkShell {
     echo "  npm install"
     echo
     echo "Dev loop:"
-    echo "  npm run sync          # terminal A — local Jazz sync server on :4200"
-    echo "  npm run dev           # terminal B — Vite dev server on :5173"
+    echo "  npm run dev:all"
     echo
     echo "Tests:"
     echo "  npm test              # Vitest (38 unit tests)"

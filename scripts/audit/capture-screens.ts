@@ -51,42 +51,80 @@ async function main(): Promise<void> {
   const browser = await chromium.launch();
   const manifest: ManifestEntry[] = [];
   const capturedAt = new Date().toISOString();
-  // Substitutions are per-(state, viewport) — we reseed for each viewport
-  // since BrowserContext is recreated to pick up the new viewport size.
-  // The api+sync server state persists between contexts so signing back in
-  // is cheap (no re-onboarding).
+
+  // Per-state cache. Seeding (sign-up, multi-account dances, invite accept,
+  // group create, etc.) is NOT idempotent — re-running the same fixture in
+  // a fresh context against an already-populated api/sync corrupts state.
+  // So we run each fixture exactly once per state in a "seed context",
+  // snapshot its storageState (cookies + localStorage + IndexedDB) +
+  // substitutions, then create per-viewport capture contexts pre-loaded
+  // with that storage. Sign-in never re-runs.
+  interface StateCache {
+    storageState: Awaited<ReturnType<BrowserContext["storageState"]>>;
+    subs: Substitutions;
+  }
+  const stateCache = new Map<string, StateCache | "failed">();
+
+  async function getOrSeed(state: string): Promise<StateCache | null> {
+    const hit = stateCache.get(state);
+    if (hit === "failed") return null;
+    if (hit) return hit;
+    const seedCtx = await browser.newContext({
+      baseURL: BASE_URL,
+      // Use desktop viewport for seeding so any responsive UI the fixture
+      // depends on (sidebar, contacts page, etc.) is in its desktop form.
+      viewport: { width: 1440, height: 900 },
+    });
+    try {
+      const subs = await seedState(seedCtx, state);
+      // Include IndexedDB so Jazz's local-first session state carries
+      // over to capture contexts (Better Auth cookies alone aren't enough
+      // to reconstruct the Jazz account on a fresh device).
+      const storageState = await seedCtx.storageState({ indexedDB: true });
+      const entry: StateCache = { storageState, subs };
+      stateCache.set(state, entry);
+      console.log(`seeded: ${state}`);
+      return entry;
+    } catch (err) {
+      console.error(`[seed failed] ${state}: ${err}`);
+      stateCache.set(state, "failed");
+      return null;
+    } finally {
+      await seedCtx.close().catch(() => {});
+    }
+  }
+
   let totalCaptured = 0;
   let totalSkipped = 0;
 
   try {
     for (const surface of SURFACES) {
+      const seeded = await getOrSeed(surface.state);
       for (const viewport of VIEWPORTS) {
         const file = `${surface.id}--${viewport.name}.png`;
+        if (!seeded) {
+          console.error(`SKIP: ${file} — seed failed`);
+          manifest.push({
+            id: surface.id,
+            route: surface.route,
+            routeNavigated: "",
+            state: surface.state,
+            viewport: viewport.name,
+            file,
+            capturedAt,
+            skipped: "seed failed",
+          });
+          totalSkipped += 1;
+          continue;
+        }
         const ctx = await browser.newContext({
           baseURL: BASE_URL,
           viewport: { width: viewport.width, height: viewport.height },
           deviceScaleFactor: 1,
+          storageState: seeded.storageState,
         });
         try {
-          const subs = await seedState(ctx, surface.state).catch((err) => {
-            console.error(`[seed failed] ${surface.id} (${viewport.name}): ${err}`);
-            return null;
-          });
-          if (subs === null) {
-            console.error(`SKIP: ${file} — seed failed`);
-            manifest.push({
-              id: surface.id,
-              route: surface.route,
-              routeNavigated: "",
-              state: surface.state,
-              viewport: viewport.name,
-              file,
-              capturedAt,
-              skipped: "seed failed",
-            });
-            totalSkipped += 1;
-            continue;
-          }
+          const subs = seeded.subs;
 
           const navigated = applySubs(surface.route, subs);
           const captured = await captureOne(ctx, surface, navigated);
