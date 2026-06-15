@@ -179,3 +179,25 @@ html, body {
   0%   { background-position: 0% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ---------- Modal motion ---------- */
+@keyframes arcan-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes arcan-modal-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes arcan-sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-arcan-fade-in  { animation: arcan-fade-in var(--dur-base) var(--ease-out) both; }
+.animate-arcan-modal-in { animation: arcan-modal-in var(--dur-base) var(--ease-out) both; }
+.animate-arcan-sheet-in { animation: arcan-sheet-in var(--dur-base) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-arcan-fade-in,
+  .animate-arcan-modal-in,
+  .animate-arcan-sheet-in { animation: none; }
+}

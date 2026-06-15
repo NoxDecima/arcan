@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
-
-type CopyState = "idle" | "copied" | "error";
+import { PassphraseGrid } from "@/components/passphrase-grid";
 
 interface BackupDisplayStepProps {
   phrase: string;
@@ -16,9 +15,8 @@ interface BackupDisplayStepProps {
  * code before the "Continue" button becomes active. This gates progression to
  * the confirm step where they must reproduce three random words.
  *
- * Note on data-testid attributes: the testids still say "passphrase-*" (rather
- * than "backup-*") for compatibility with Phase C e2e selectors. The user-
- * visible copy uses the new "recovery code" framing.
+ * The 24-word grid + copy button are delegated to <PassphraseGrid>, the
+ * shared primitive also consumed by the Settings → view-recovery-code modal.
  */
 export function BackupDisplayStep({
   phrase,
@@ -26,26 +24,6 @@ export function BackupDisplayStep({
   onContinue,
 }: BackupDisplayStepProps) {
   const [acknowledged, setAcknowledged] = useState(false);
-  const [copyState, setCopyState] = useState<CopyState>("idle");
-  const words = phrase.trim().split(/\s+/);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(words.join(" "));
-      setCopyState("copied");
-      setTimeout(() => setCopyState("idle"), 2000);
-    } catch {
-      setCopyState("error");
-      setTimeout(() => setCopyState("idle"), 3000);
-    }
-  }
-
-  const copyLabel =
-    copyState === "copied"
-      ? "copied to clipboard"
-      : copyState === "error"
-        ? "copy failed — copy manually"
-        : "copy recovery code";
 
   return (
     <AuthSurface forceDark w={368} tall>
@@ -64,32 +42,7 @@ export function BackupDisplayStep({
         </span>
       </div>
 
-      {/* 3-column word grid */}
-      <div
-        data-testid="passphrase-grid"
-        className="grid grid-cols-3 gap-x-[10px] gap-y-[6px] rounded-r-3 border border-hairline bg-panel p-[13px]"
-      >
-        {words.map((word, i) => (
-          <div key={i} className="flex gap-[6px]">
-            <span className="w-[13px] font-mono text-[9px] text-dim leading-snug">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span className="font-mono text-[10.5px] text-text leading-snug">
-              {word}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        data-testid="passphrase-copy-btn"
-        onClick={handleCopy}
-        aria-live="polite"
-        className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
-      >
-        {copyLabel}
-      </button>
+      <PassphraseGrid phrase={phrase} withCopyButton />
 
       <label className="flex cursor-pointer items-start gap-3">
         <input

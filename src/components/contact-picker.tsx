@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { MobileBottomSheet, ModalFooter } from "@/components/modal-shell";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 
 interface ContactPickerProps {
@@ -26,11 +27,8 @@ export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactP
   function toggleContact(i: number) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(i)) {
-        next.delete(i);
-      } else {
-        next.add(i);
-      }
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
       return next;
     });
   }
@@ -49,70 +47,14 @@ export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactP
         : `${count} contacts selected — continue to create a group.`;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      onClick={onClose}
-      data-testid="contact-picker-overlay"
-    >
-      <div
-        className="bg-background rounded-lg p-6 max-w-md w-full shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold mb-4">Start a chat with…</h2>
-
-        {contacts.length === 0 ? (
-          <div className="text-center space-y-3">
-            <p className="text-sm text-muted-foreground">You have no contacts yet.</p>
-            <Link to="/contacts/add" onClick={onClose}>
-              <Button>Add a contact</Button>
-            </Link>
-          </div>
-        ) : (
-          <>
-            <ul
-              className="space-y-1 max-h-80 overflow-y-auto"
-              data-testid="contact-picker-list"
-            >
-              {contacts.map((c: any, i: number) => (
-                <li key={i}>
-                  <button
-                    onClick={() => toggleContact(i)}
-                    className={`w-full text-left px-3 py-2 hover:bg-accent rounded text-sm flex items-center gap-2 ${
-                      selected.has(i) ? "bg-accent" : ""
-                    }`}
-                    data-testid={`contact-picker-row-${i}`}
-                    aria-pressed={selected.has(i)}
-                  >
-                    <span
-                      className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
-                        selected.has(i)
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : "border-muted-foreground"
-                      }`}
-                    >
-                      {selected.has(i) ? "✓" : ""}
-                    </span>
-                    {c?.displayNameLocal ?? "(unknown)"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <p
-              className="text-xs text-muted-foreground mt-3"
-              data-testid="contact-picker-count"
-            >
-              {helperText}
-            </p>
-          </>
-        )}
-
-        <div className="flex justify-end gap-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            data-testid="contact-picker-cancel"
-          >
+    <MobileBottomSheet
+      open
+      onClose={onClose}
+      title="start a chat with…"
+      dataTestId="contact-picker-overlay"
+      footer={
+        <ModalFooter>
+          <Button variant="outline" onClick={onClose} data-testid="contact-picker-cancel">
             Cancel
           </Button>
           {contacts.length > 0 && (
@@ -124,8 +66,54 @@ export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactP
               Continue
             </Button>
           )}
+        </ModalFooter>
+      }
+    >
+      {contacts.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-2 text-center">
+          <p className="text-sm text-text-2">You have no contacts yet.</p>
+          <Link to="/contacts/add" onClick={onClose}>
+            <Button>Add a contact</Button>
+          </Link>
         </div>
-      </div>
-    </div>
+      ) : (
+        <>
+          <ul
+            className="flex flex-col gap-1 max-h-80 overflow-y-auto"
+            data-testid="contact-picker-list"
+          >
+            {contacts.map((c: any, i: number) => {
+              const isOn = selected.has(i);
+              return (
+                <li key={i}>
+                  <button
+                    onClick={() => toggleContact(i)}
+                    className={`flex w-full items-center gap-2 rounded-r-3 px-3 py-2 text-left text-sm text-text hover:bg-panel-2 ${
+                      isOn ? "bg-panel-2" : ""
+                    }`}
+                    data-testid={`contact-picker-row-${i}`}
+                    aria-pressed={isOn}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-xs ${
+                        isOn
+                          ? "bg-arcan-accent border-arcan-accent text-on-accent"
+                          : "border-hairline text-transparent"
+                      }`}
+                    >
+                      {isOn ? "✓" : ""}
+                    </span>
+                    {c?.displayNameLocal ?? "(unknown)"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-xs text-text-2" data-testid="contact-picker-count">
+            {helperText}
+          </p>
+        </>
+      )}
+    </MobileBottomSheet>
   );
 }
