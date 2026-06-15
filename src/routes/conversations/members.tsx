@@ -343,6 +343,9 @@ export function MembersRoute() {
     setActionInProgress(true);
     try {
       await updateConversationTitle(me as any, conversation, trimmed);
+      toast({ icon: "check", text: "title updated", tone: "success" });
+    } catch {
+      toast({ icon: "alert", text: "couldn't update title", tone: "error" });
     } finally {
       setActionInProgress(false);
       setTitleEditing(false);
