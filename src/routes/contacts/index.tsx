@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { NavListSkeleton } from "@/components/skeleton";
 
 /**
  * ContactsRoute: full-page contacts list at /contacts.
@@ -57,7 +58,13 @@ export function ContactsRoute() {
     resolve: { root: { contactBook: { $each: true } } },
   });
 
-  if (!me.$isLoaded) return <div className="p-6">Loading…</div>;
+  if (!me.$isLoaded) {
+    return (
+      <div className="p-6" data-testid="contacts-route-loading">
+        <NavListSkeleton rows={5} />
+      </div>
+    );
+  }
 
   const contacts = Array.from(me.root?.contactBook ?? []);
 
