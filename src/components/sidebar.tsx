@@ -10,6 +10,7 @@ import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { EmptyPane } from "@/components/empty-pane";
+import { Lattice } from "@/components/lattice";
 
 /**
  * Sidebar component for the main layout.
@@ -173,14 +174,15 @@ export function Sidebar() {
 
   return (
     <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
-      {/* Header: avatar + display name + new chat button */}
+      {/* Header: Lattice brand mark + avatar/profile button + new chat button */}
       <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
+        <Lattice size={22} className="flex-shrink-0" />
         <button
           type="button"
           data-testid="sidebar-header-profile"
           data-account-id={myID}
           onClick={() => myID && navigate(`/profile/${myID}`)}
-          className="flex items-center gap-2 min-w-0 text-left hover:opacity-90"
+          className="flex items-center gap-2 min-w-0 text-left hover:opacity-90 flex-1"
           aria-label="Open your profile"
         >
           <Avatar
