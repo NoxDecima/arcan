@@ -71,9 +71,9 @@ export function ContactsRoute() {
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-4">
       <header className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Contacts</h2>
+        <h2 className="text-2xl font-semibold">contacts</h2>
         <Link to="/contacts/add">
-          <Button data-testid="add-contact-page-btn">+ Add contact</Button>
+          <Button data-testid="add-contact-page-btn">+ add contact</Button>
         </Link>
       </header>
 
@@ -86,9 +86,9 @@ export function ContactsRoute() {
           className="text-center py-12 text-muted-foreground"
           data-testid="contacts-empty"
         >
-          <p>No contacts yet.</p>
+          <p>no contacts yet.</p>
           <p className="text-xs mt-2">
-            Add your first contact via the + Add contact button.
+            add your first contact via the + add contact button.
           </p>
         </div>
       ) : (
