@@ -34,9 +34,12 @@ describe("WelcomeStep", () => {
       screen.getByRole("button", { name: "restore from recovery code" }),
     );
     expect(onRestore).toHaveBeenCalled();
-    fireEvent.click(
-      screen.getByRole("button", { name: "already on a device? sign in" }),
-    );
+    // The "already on a device?" prefix is rendered as adjacent text;
+    // the button itself only contains "sign in" (see welcome-step.tsx
+    // — Unit 8a's AuthSurface layout uses a span + small accent button
+    // pair rather than a single full-width Button).
+    expect(screen.getByText(/already on a device\?/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "sign in" }));
     expect(onSignIn).toHaveBeenCalled();
   });
 });
