@@ -1,4 +1,9 @@
-import { Button } from "@/components/ui/button";
+import {
+  AuthSurface,
+  Wordmark,
+  AuthTitle,
+  AuthSub,
+} from "@/components/auth-surface";
 
 interface RestoreChoiceStepProps {
   onBack: () => void;
@@ -8,12 +13,8 @@ interface RestoreChoiceStepProps {
 
 /**
  * RestoreChoiceStep: lets the user pick between the two sign-in paths.
- *
- * Path A: email + password → /auth/login (the common case — user remembers
- * their password).
- *
- * Path B: 24-word recovery code → onboarding's restore-with-code step, which
- * is for the recovery-code escape hatch when the password is forgotten.
+ * Path A: email + password (the common case).
+ * Path B: 24-word recovery code (forgot-password escape hatch).
  */
 export function RestoreChoiceStep({
   onBack,
@@ -21,37 +22,34 @@ export function RestoreChoiceStep({
   onRestoreWithCode,
 }: RestoreChoiceStepProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Restore your account
-          </h1>
-          <p className="text-muted-foreground">How would you like to sign in?</p>
-        </div>
+    <AuthSurface forceDark>
+      <Wordmark size={22} />
+      <AuthTitle>restore your account</AuthTitle>
+      <AuthSub>how would you like to sign in?</AuthSub>
 
-        <div className="flex flex-col gap-3">
-          <Button
-            size="lg"
-            data-testid="restore-choice-signin"
-            onClick={onSignInWithPassword}
-          >
-            Sign in with email & password
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            data-testid="restore-choice-code"
-            onClick={onRestoreWithCode}
-          >
-            Use 24-word recovery code
-          </Button>
-        </div>
-
-        <Button variant="ghost" onClick={onBack} className="w-full">
-          Back
-        </Button>
-      </div>
-    </div>
+      <button
+        type="button"
+        data-testid="restore-choice-signin"
+        onClick={onSignInWithPassword}
+        className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
+      >
+        sign in with email & password
+      </button>
+      <button
+        type="button"
+        data-testid="restore-choice-code"
+        onClick={onRestoreWithCode}
+        className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
+      >
+        use 24-word recovery code
+      </button>
+      <button
+        type="button"
+        onClick={onBack}
+        className="h-10 w-full bg-transparent text-text-2 font-mono text-[12.5px] font-semibold"
+      >
+        back
+      </button>
+    </AuthSurface>
   );
 }
