@@ -2,6 +2,7 @@ import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTheme, type Theme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
+import { useToast } from "@/components/toast";
 
 const ACCENT_SWATCH: Record<Accent, string> = {
   tokyo:  "#7aa2f7",
@@ -18,6 +19,7 @@ export function AppearanceSection() {
   });
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
+  const toast = useToast();
 
   if (!me.$isLoaded) {
     return (
@@ -39,6 +41,7 @@ export function AppearanceSection() {
       setAccent(next.accent);
       (appearance as any).$jazz.set("accent", next.accent);
     }
+    toast({ icon: "check", text: "appearance updated", tone: "success" });
   };
 
   return (
