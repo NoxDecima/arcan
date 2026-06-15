@@ -9,6 +9,8 @@ import { ConversationAvatar } from "@/components/conversation-avatar";
 import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { EmptyPane } from "@/components/empty-pane";
+import { Lattice } from "@/components/lattice";
 
 /**
  * Sidebar component for the main layout.
@@ -172,14 +174,15 @@ export function Sidebar() {
 
   return (
     <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
-      {/* Header: avatar + display name + new chat button */}
+      {/* Header: Lattice brand mark + avatar/profile button + new chat button */}
       <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
+        <Lattice size={22} className="flex-shrink-0" />
         <button
           type="button"
           data-testid="sidebar-header-profile"
           data-account-id={myID}
           onClick={() => myID && navigate(`/profile/${myID}`)}
-          className="flex items-center gap-2 min-w-0 text-left hover:opacity-90"
+          className="flex items-center gap-2 min-w-0 text-left hover:opacity-90 flex-1"
           aria-label="Open your profile"
         >
           <Avatar
@@ -243,16 +246,21 @@ export function Sidebar() {
           data-testid="conversation-list"
         >
           {sortedActive.length === 0 ? (
-            <div className="p-4 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No conversations yet.</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setTab("contacts")}
-              >
-                Browse contacts
-              </Button>
-            </div>
+            <EmptyPane
+              variant="compact"
+              title="no conversations yet"
+              description="start a chat with one of your contacts."
+              cta={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTab("contacts")}
+                >
+                  browse contacts
+                </Button>
+              }
+              data-testid="sidebar-chats-empty"
+            />
           ) : (
             sortedActive.map((c: any, i: number) => {
               const label = deriveConversationLabel(c.conversation, me);
@@ -306,14 +314,17 @@ export function Sidebar() {
           data-testid="sidebar-contacts-list"
         >
           {contacts.length === 0 ? (
-            <div className="p-4 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No contacts yet.</p>
-              <Link to="/contacts/add">
-                <Button size="sm" variant="outline">
-                  Add a contact
-                </Button>
-              </Link>
-            </div>
+            <EmptyPane
+              variant="compact"
+              title="no contacts yet"
+              description="invite someone with a QR code or share link."
+              cta={
+                <Link to="/contacts/add">
+                  <Button size="sm" variant="outline">add a contact</Button>
+                </Link>
+              }
+              data-testid="sidebar-contacts-empty"
+            />
           ) : (
             contacts.map((c: any, i: number) => (
               <SidebarContactRow

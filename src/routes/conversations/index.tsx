@@ -1,9 +1,13 @@
 import { Sidebar } from "@/components/sidebar";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyPane } from "@/components/empty-pane";
 
 /**
- * The "select a conversation" view shown at /conversations when no specific
- * conversation is selected. Renders the sidebar + an empty main area.
+ * The desktop reading-pane shown at `/` when no conversation is selected.
+ * Renders the sidebar + the cosmic EmptyPane (oversized Lattice watermark,
+ * scattered cosmic dots, centered hint). Hidden on mobile — mobile shows
+ * the conversation list full-width with the bottom tab bar.
+ *
+ * Audit rows closed: AUDIT-007, AUDIT-008.
  */
 export function ConversationsRoute() {
   return (
@@ -11,9 +15,10 @@ export function ConversationsRoute() {
       <Sidebar />
       <main className="hidden md:flex flex-1" data-testid="home-main">
         <div data-testid="conversations-main" className="h-full w-full">
-          <EmptyState
-            title="Select a conversation"
-            description="Choose a conversation from the sidebar, or start a new one with the + button."
+          <EmptyPane
+            variant="reading-pane"
+            title="select a conversation"
+            description="or start a new one — end-to-end encrypted"
           />
         </div>
       </main>

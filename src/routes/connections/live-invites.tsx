@@ -3,6 +3,8 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { revokeInvitation } from "@/jazz/invitations";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
+import { Link } from "react-router-dom";
+import { EmptyPane } from "@/components/empty-pane";
 
 export function LiveInvitesRoute() {
   const me = useAccount(ArcanAccount, {
@@ -19,7 +21,17 @@ export function LiveInvitesRoute() {
     <div className="p-6 max-w-md mx-auto flex flex-col gap-3">
       <h1 className="text-lg font-semibold text-text">live invites</h1>
       {active.length === 0 ? (
-        <p className="text-sm text-text-2">No active invites.</p>
+        <EmptyPane
+          variant="compact"
+          title="no active invites"
+          description="create a QR code or share link to invite someone to connect."
+          cta={
+            <Link to="/contacts/add">
+              <Button data-testid="create-invite-empty-cta">create invitation</Button>
+            </Link>
+          }
+          data-testid="live-invites-empty"
+        />
       ) : (
         active.map((inv: any) => {
           const remainingMs = new Date(inv.expiresAt).getTime() - now;
