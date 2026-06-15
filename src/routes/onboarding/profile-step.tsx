@@ -5,7 +5,7 @@ import {
   useCreateAccountWithSeed,
   useSetDisplayNameOnMe,
 } from "@/jazz/createAccountFromSeed";
-import { Button } from "@/components/ui/button";
+import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
 import type { Credentials } from "./credentials-step";
 
 interface ProfileStepProps {
@@ -75,77 +75,78 @@ export function ProfileStep({
       // Otherwise: App's useIsAuthenticated flips, OnboardingRoute unmounts.
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Sign-up failed. Please try again.",
+        err instanceof Error ? err.message : "sign-up failed. please try again.",
       );
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Set up your profile
-          </h1>
-          <p className="text-muted-foreground">
-            Choose a display name that others will see when you connect with
-            them.
-          </p>
-        </div>
+    <AuthSurface forceDark>
+      <Steps n={4} />
+      <AuthTitle>set up your profile</AuthTitle>
 
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label
-              htmlFor="display-name-input"
-              className="text-sm font-medium"
-            >
-              Display name
-            </label>
-            <input
-              id="display-name-input"
-              data-testid="display-name-input"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleFinish();
-              }}
-              placeholder="Your name"
-              autoFocus
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+      {/* Avatar placeholder + camera overlay — purely decorative on this step;
+          actual avatar upload happens in /profile after sign-up completes. */}
+      <div className="flex justify-center mt-[2px]">
+        <div className="relative">
+          <div className="flex h-[78px] w-[78px] items-center justify-center rounded-r-3 border border-hairline bg-accent-soft font-mono text-[26px] font-semibold text-arcan-accent">
+            ?
           </div>
-
-          {error && (
-            <p
-              data-testid="profile-error"
-              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            disabled={isSubmitting}
-            className="flex-1"
-          >
-            Back
-          </Button>
-          <Button
-            data-testid="finish-onboarding-btn"
-            disabled={!canSubmit}
-            onClick={() => void handleFinish()}
-            className="flex-1"
-          >
-            {isSubmitting ? "Creating account…" : "Finish"}
-          </Button>
+          <div className="absolute -bottom-[2px] -right-[2px] flex h-7 w-7 items-center justify-center rounded-pill border-2 border-bg bg-arcan-accent text-on-accent text-[14px]">
+            ●
+          </div>
         </div>
       </div>
-    </div>
+
+      <label className="flex flex-col gap-[6px]">
+        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
+          display name
+        </span>
+        <input
+          id="display-name-input"
+          data-testid="display-name-input"
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleFinish();
+          }}
+          placeholder="how others see you"
+          autoFocus
+          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+        />
+      </label>
+
+      {error && (
+        <p
+          data-testid="profile-error"
+          className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
+        >
+          {error}
+        </p>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isSubmitting}
+          className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold disabled:opacity-50"
+        >
+          back
+        </button>
+        <button
+          type="button"
+          data-testid="finish-onboarding-btn"
+          disabled={!canSubmit}
+          onClick={() => void handleFinish()}
+          className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
+        >
+          {isSubmitting ? "creating account…" : "enter arcan →"}
+        </button>
+      </div>
+      <div className="text-center text-[10.5px] text-dim">step 4 of 4</div>
+    </AuthSurface>
   );
 }
