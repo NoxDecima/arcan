@@ -84,6 +84,13 @@ export default {
         'level-1': 'var(--shadow-1)',
         'level-2': 'var(--shadow-2)',
       },
+      backgroundImage: {
+        // Gradient tokens — see src/styles/tokens.css.
+        // Usage: <div className="bg-gradient-primary"> etc.
+        'gradient-primary': 'var(--gradient-primary)',
+        'gradient-rule': 'var(--gradient-rule)',
+        'gradient-cosmic': 'var(--gradient-cosmic)',
+      },
     },
   },
   plugins: [],

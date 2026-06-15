@@ -99,6 +99,16 @@
   --color-accent-soft: rgba(122, 162, 247, 0.16);
   --color-accent-border: rgba(122, 162, 247, 0.5);
   --color-on-accent: #ffffff;
+
+  /* Gradients — adopted from design/nox-tokens.css (renamed --nox-grad-* → --gradient-*).
+     Primary + rule reference the accent-grad pair so they auto-respect data-accent flips.
+     Cosmic uses surface tokens (--color-panel, --color-panel-2, --color-bg) so it adapts
+     across light/dark theme. See docs/superpowers/plans/2026-06-13-unit-8-prep-tokens.md. */
+  --gradient-primary: linear-gradient(90deg, var(--color-accent-grad-0), var(--color-accent-grad-1));
+  --gradient-rule: linear-gradient(90deg, var(--color-accent-grad-0), var(--color-accent-grad-1), transparent);
+  --gradient-cosmic:
+    radial-gradient(ellipse 80% 60% at 90% 10%, var(--color-panel) 0%, var(--color-bg) 60%),
+    radial-gradient(ellipse 50% 40% at 10% 90%, var(--color-panel-2) 0%, var(--color-bg) 50%);
 }
 
 /* ---------- Light theme overrides (data-theme="light") ---------- */
