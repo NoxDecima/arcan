@@ -9,6 +9,7 @@ import { ConversationAvatar } from "@/components/conversation-avatar";
 import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { EmptyPane } from "@/components/empty-pane";
 
 /**
  * Sidebar component for the main layout.
@@ -243,16 +244,21 @@ export function Sidebar() {
           data-testid="conversation-list"
         >
           {sortedActive.length === 0 ? (
-            <div className="p-4 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No conversations yet.</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setTab("contacts")}
-              >
-                Browse contacts
-              </Button>
-            </div>
+            <EmptyPane
+              variant="compact"
+              title="no conversations yet"
+              description="start a chat with one of your contacts."
+              cta={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTab("contacts")}
+                >
+                  browse contacts
+                </Button>
+              }
+              data-testid="sidebar-chats-empty"
+            />
           ) : (
             sortedActive.map((c: any, i: number) => {
               const label = deriveConversationLabel(c.conversation, me);
@@ -306,14 +312,17 @@ export function Sidebar() {
           data-testid="sidebar-contacts-list"
         >
           {contacts.length === 0 ? (
-            <div className="p-4 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No contacts yet.</p>
-              <Link to="/contacts/add">
-                <Button size="sm" variant="outline">
-                  Add a contact
-                </Button>
-              </Link>
-            </div>
+            <EmptyPane
+              variant="compact"
+              title="no contacts yet"
+              description="invite someone with a QR code or share link."
+              cta={
+                <Link to="/contacts/add">
+                  <Button size="sm" variant="outline">add a contact</Button>
+                </Link>
+              }
+              data-testid="sidebar-contacts-empty"
+            />
           ) : (
             contacts.map((c: any, i: number) => (
               <SidebarContactRow
