@@ -3,6 +3,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTheme, type Theme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
 import { useToast } from "@/components/toast";
+import { Skel } from "@/components/skeleton";
 
 const ACCENT_SWATCH: Record<Accent, string> = {
   tokyo:  "#7aa2f7",
@@ -23,9 +24,22 @@ export function AppearanceSection() {
 
   if (!me.$isLoaded) {
     return (
-      <section>
+      <section data-testid="appearance-section-loading">
         <h2 className="text-base font-semibold text-text mb-2">Appearance</h2>
-        <p className="text-sm text-dim">Loading…</p>
+        <div className="bg-panel rounded-r-3 border border-hairline px-4 py-3 flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <Skel w="40%" h={14} />
+            <Skel w={80} h={24} r={999} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skel w="40%" h={14} />
+            <div className="flex gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skel key={i} w={28} h={28} r={999} />
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
     );
   }

@@ -3,6 +3,7 @@ import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
+import { Skel } from "@/components/skeleton";
 
 /**
  * NotificationsSection: toggles for in-app notification preferences.
@@ -31,9 +32,13 @@ export function NotificationsSection() {
 
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
-      <section>
+      <section data-testid="notifications-section-loading">
         <h2 className="text-base font-semibold text-text mb-2">Notifications</h2>
-        <p className="text-sm text-dim">Loading…</p>
+        <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
+          <Skel w="65%" h={14} />
+          <Skel w="50%" h={14} />
+          <Skel w={160} h={28} r={6} />
+        </div>
       </section>
     );
   }

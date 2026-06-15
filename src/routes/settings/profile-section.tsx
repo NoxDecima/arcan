@@ -6,6 +6,7 @@ import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
+import { Skel } from "@/components/skeleton";
 
 export function ProfileSection() {
   const me = useAccount(ArcanAccount, {
@@ -17,9 +18,11 @@ export function ProfileSection() {
 
   if (!me.$isLoaded) {
     return (
-      <section>
+      <section data-testid="profile-section-loading">
         <h2 className="text-base font-semibold text-text mb-2">Profile</h2>
-        <p className="text-sm text-dim">Loading…</p>
+        <div className="w-full p-4 rounded-r-3 border border-hairline bg-panel">
+          <Skel w="40%" h={14} />
+        </div>
       </section>
     );
   }

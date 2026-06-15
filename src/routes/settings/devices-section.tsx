@@ -4,6 +4,7 @@ import type { Account } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
+import { Skel } from "@/components/skeleton";
 
 /**
  * DevicesSection: lists all registered (non-revoked) devices for the account.
@@ -18,9 +19,19 @@ export function DevicesSection() {
 
   if (!me.$isLoaded) {
     return (
-      <section>
+      <section data-testid="devices-section-loading">
         <h2 className="text-base font-semibold text-text mb-2">Devices</h2>
-        <p className="text-sm text-dim">Loading…</p>
+        <ul className="bg-panel rounded border border-hairline divide-y divide-hairline">
+          {[0, 1].map((i) => (
+            <li key={i} className="px-4 py-3 flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <Skel w={140} h={12} />
+                <Skel w={90} h={10} />
+              </div>
+              <Skel w={72} h={28} r={6} />
+            </li>
+          ))}
+        </ul>
       </section>
     );
   }
