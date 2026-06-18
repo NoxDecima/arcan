@@ -99,17 +99,17 @@ export function NotificationsSection() {
             checked={prefs.sound}
             onChange={handleSoundToggle}
           />
-          Play sound when new messages arrive
+          play sound when new messages arrive
         </label>
 
         <div className="flex flex-col gap-2">
           <div className="text-sm">
-            Browser notifications:{" "}
+            browser notifications:{" "}
             <span
               data-testid="browser-status"
               className={browserEffective ? "text-green" : "text-dim"}
             >
-              {browserEffective ? "Enabled" : "Not enabled"}
+              {browserEffective ? "enabled" : "not enabled"}
             </span>
           </div>
           {!browserEffective ? (
@@ -121,7 +121,7 @@ export function NotificationsSection() {
               disabled={!apiSupported}
               className="self-start"
             >
-              Enable browser notifications
+              enable browser notifications
             </Button>
           ) : (
             <Button
@@ -148,7 +148,7 @@ export function NotificationsSection() {
             </p>
           )}
           <p className="text-xs text-dim">
-            Once enabled, you'll see system notifications when a new message
+            once enabled, you'll see system notifications when a new message
             arrives in a conversation while this tab is hidden.
           </p>
         </div>

@@ -39,7 +39,7 @@ export function ViewRecoveryCodeModal({ onClose }: ViewRecoveryCodeModalProps) {
   const passwordFooter = (
     <ModalFooter>
       <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-        Cancel
+        cancel
       </Button>
       <Button
         type="submit"
@@ -47,14 +47,14 @@ export function ViewRecoveryCodeModal({ onClose }: ViewRecoveryCodeModalProps) {
         disabled={isLoading}
         data-testid="view-recovery-code-submit"
       >
-        {isLoading ? "…" : "Show code"}
+        {isLoading ? "…" : "show code"}
       </Button>
     </ModalFooter>
   );
 
   const codeFooter = (
     <ModalFooter>
-      <Button type="button" onClick={onClose}>Done</Button>
+      <Button type="button" onClick={onClose}>done</Button>
     </ModalFooter>
   );
 

@@ -60,7 +60,7 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
   const formFooter = (
     <ModalFooter>
       <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-        Cancel
+        cancel
       </Button>
       <Button
         type="submit"
@@ -68,7 +68,7 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
         disabled={isLoading}
         data-testid="change-password-submit"
       >
-        {isLoading ? "Saving…" : "Change password"}
+        {isLoading ? "saving…" : "change password"}
       </Button>
     </ModalFooter>
   );

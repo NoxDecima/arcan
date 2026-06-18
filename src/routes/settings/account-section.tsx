@@ -64,7 +64,7 @@ export function AccountSection() {
     <section>
       <h2 className="text-base font-semibold text-text mb-2">account</h2>
       <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
-        <p className="text-sm text-text-2">Your safety number:</p>
+        <p className="text-sm text-text-2">your safety number:</p>
         <SafetyNumber fingerprintHex={fingerprintHex} />
       </div>
       <div className="mt-4 flex flex-col gap-2">
@@ -73,21 +73,21 @@ export function AccountSection() {
           onClick={() => setShowChangePassword(true)}
           data-testid="change-password-btn"
         >
-          Change password
+          change password
         </Button>
         <Button
           variant="outline"
           onClick={() => setShowRecoveryCode(true)}
           data-testid="view-recovery-code-btn"
         >
-          View recovery code
+          view recovery code
         </Button>
         <Button
           variant="outline"
           onClick={() => void handleSignOut()}
           data-testid="sign-out-btn"
         >
-          Sign out
+          sign out
         </Button>
       </div>
       {showChangePassword && (

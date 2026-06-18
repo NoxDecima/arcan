@@ -64,7 +64,7 @@ export function AppearanceSection() {
       <div className="bg-panel rounded-r-3 border border-hairline px-4 py-3 flex flex-col gap-4">
         {/* Theme toggle */}
         <div className="flex items-center gap-3">
-          <span className="flex-1 text-sm text-text">Theme</span>
+          <span className="flex-1 text-sm text-text">theme</span>
           <div
             className="flex gap-0.5 p-0.5 rounded-pill bg-panel-2 border border-hairline"
             data-testid="appearance-theme-toggle"
@@ -88,7 +88,7 @@ export function AppearanceSection() {
         {/* Accent picker */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center">
-            <span className="flex-1 text-sm text-text">Accent color</span>
+            <span className="flex-1 text-sm text-text">accent color</span>
             <span className="text-xs text-arcan-accent">{accent}</span>
           </div>
           <div className="flex gap-3" data-testid="appearance-accent-picker">
