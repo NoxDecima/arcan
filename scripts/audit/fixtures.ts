@@ -137,23 +137,35 @@ async function signUpAs(page: Page, account: Account): Promise<string> {
   await page.getByTestId("credentials-continue").click();
 
   // Read the 24-word recovery code from the backup-display step.
-  const wordDivs = page.locator('[data-testid="passphrase-grid"] > div');
-  const count = await wordDivs.count();
+  // PassphraseGrid (Unit 8c) wraps each word as
+  //   [data-testid="passphrase-word-N"] > <span>NN</span><span>word</span>
+  // — read the second span per cell.
+  await page.locator('[data-testid="passphrase-word-1"]').waitFor({ timeout: 15_000 });
   const words: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const span = wordDivs.nth(i).locator("span").nth(1);
-    words.push((await span.textContent()) ?? "");
+  for (let i = 1; i <= 24; i++) {
+    const cell = page.locator(`[data-testid="passphrase-word-${i}"]`);
+    const text = (await cell.textContent()) ?? "";
+    // Strip the leading index (e.g. "01amber" → "amber").
+    const cleaned = text.replace(/^\s*\d+\s*/, "").trim();
+    words.push(cleaned);
   }
   await page.getByTestId("passphrase-saved-checkbox").check();
   await page.getByTestId("passphrase-display-continue").click();
 
   // 3 confirm slots; read which word index each requests from the label.
+  // Unit 8a's AuthSurface refactor wraps each input in a <label> (no `for`
+  // attribute) with a sibling <span>word #NN</span>. Read the label-parent's
+  // text and parse either "Word 12" or "word #12".
   for (let slot = 0; slot < 3; slot++) {
-    const label = page.locator(`label[for="confirm-word-${slot}"]`);
-    const txt = (await label.textContent()) ?? "";
-    const m = txt.match(/Word\s+(\d+)/);
-    if (!m) throw new Error(`unparseable confirm label slot ${slot}: "${txt}"`);
-    await page.getByTestId(`confirm-word-${slot}`).fill(words[parseInt(m[1], 10) - 1]);
+    const input = page.getByTestId(`confirm-word-${slot}`);
+    await input.waitFor({ timeout: 10_000 });
+    const labelText = await input.evaluate((el) => {
+      const lbl = el.closest("label");
+      return lbl ? (lbl as HTMLElement).innerText : "";
+    });
+    const m = labelText.match(/word\s*#?\s*0*(\d+)/i);
+    if (!m) throw new Error(`unparseable confirm label slot ${slot}: "${labelText}"`);
+    await input.fill(words[parseInt(m[1], 10) - 1]);
   }
   await page.getByTestId("confirm-passphrase-btn").click();
 

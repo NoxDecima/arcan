@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-06-15T11:21:12.624Z",
+  "capturedAt": "2026-06-18T14:15:21.919Z",
   "surfaces": [
     {
       "id": "auth-login",
@@ -8,7 +8,7 @@
       "state": "anonymous",
       "viewport": "desktop",
       "file": "auth-login--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "auth-login",
@@ -17,7 +17,7 @@
       "state": "anonymous",
       "viewport": "mobile",
       "file": "auth-login--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "auth-recovery",
@@ -26,7 +26,7 @@
       "state": "anonymous",
       "viewport": "desktop",
       "file": "auth-recovery--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "auth-recovery",
@@ -35,7 +35,7 @@
       "state": "anonymous",
       "viewport": "mobile",
       "file": "auth-recovery--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "onboarding",
@@ -44,7 +44,7 @@
       "state": "anonymous",
       "viewport": "desktop",
       "file": "onboarding--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "onboarding",
@@ -53,7 +53,7 @@
       "state": "anonymous",
       "viewport": "mobile",
       "file": "onboarding--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "conv-list-empty",
@@ -62,7 +62,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "conv-list-empty--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "conv-list-empty",
@@ -71,7 +71,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "conv-list-empty--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "conv-list-1to1",
@@ -80,7 +80,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "conv-list-1to1--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -90,7 +90,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "conv-list-1to1--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -100,7 +100,7 @@
       "state": "alice-with-group",
       "viewport": "desktop",
       "file": "conv-list-group--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -110,7 +110,7 @@
       "state": "alice-with-group",
       "viewport": "mobile",
       "file": "conv-list-group--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -120,7 +120,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "conv-detail-1to1--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -130,7 +130,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "conv-detail-1to1--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -140,7 +140,7 @@
       "state": "alice-with-group",
       "viewport": "desktop",
       "file": "conv-detail-group--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -150,7 +150,7 @@
       "state": "alice-with-group",
       "viewport": "mobile",
       "file": "conv-detail-group--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -160,7 +160,7 @@
       "state": "alice-with-group",
       "viewport": "desktop",
       "file": "conv-members-group--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -170,7 +170,7 @@
       "state": "alice-with-group",
       "viewport": "mobile",
       "file": "conv-members-group--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -180,7 +180,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "conv-new--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -190,7 +190,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "conv-new--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -200,7 +200,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "contacts-empty--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "contacts-empty",
@@ -209,7 +209,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "contacts-empty--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "contacts-list",
@@ -218,7 +218,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "contacts-list--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -228,7 +228,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "contacts-list--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -238,7 +238,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "contacts-add--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "contacts-add",
@@ -247,7 +247,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "contacts-add--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "contact-detail",
@@ -256,7 +256,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "contact-detail--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -266,7 +266,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "contact-detail--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -276,7 +276,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "profile-own--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -286,7 +286,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "profile-own--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -296,7 +296,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "desktop",
       "file": "profile-other--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -306,7 +306,7 @@
       "state": "alice-with-bob-1to1",
       "viewport": "mobile",
       "file": "profile-other--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
+      "capturedAt": "2026-06-18T14:15:21.919Z",
       "skipped": "seed failed"
     },
     {
@@ -316,7 +316,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "connections-pending-empty--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "connections-pending-empty",
@@ -325,7 +325,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "connections-pending-empty--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "connections-live-invites-empty",
@@ -334,7 +334,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "connections-live-invites-empty--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "connections-live-invites-empty",
@@ -343,27 +343,25 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "connections-live-invites-empty--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "connections-live-invites",
       "route": "/connections/live-invites",
-      "routeNavigated": "",
+      "routeNavigated": "/connections/live-invites",
       "state": "alice-with-live-invite",
       "viewport": "desktop",
       "file": "connections-live-invites--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
-      "skipped": "seed failed"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "connections-live-invites",
       "route": "/connections/live-invites",
-      "routeNavigated": "",
+      "routeNavigated": "/connections/live-invites",
       "state": "alice-with-live-invite",
       "viewport": "mobile",
       "file": "connections-live-invites--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z",
-      "skipped": "seed failed"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "settings-root",
@@ -372,7 +370,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "settings-root--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "settings-root",
@@ -381,7 +379,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "settings-root--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "pair-initiator",
@@ -390,7 +388,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "pair-initiator--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "pair-initiator",
@@ -399,7 +397,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "pair-initiator--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "pair-responder",
@@ -408,7 +406,7 @@
       "state": "anonymous",
       "viewport": "desktop",
       "file": "pair-responder--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "pair-responder",
@@ -417,7 +415,7 @@
       "state": "anonymous",
       "viewport": "mobile",
       "file": "pair-responder--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "modal-change-password",
@@ -426,7 +424,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "modal-change-password--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "modal-change-password",
@@ -435,7 +433,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "modal-change-password--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "modal-view-recovery-code",
@@ -444,7 +442,7 @@
       "state": "alice-empty",
       "viewport": "desktop",
       "file": "modal-view-recovery-code--desktop.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     },
     {
       "id": "modal-view-recovery-code",
@@ -453,7 +451,7 @@
       "state": "alice-empty",
       "viewport": "mobile",
       "file": "modal-view-recovery-code--mobile.png",
-      "capturedAt": "2026-06-15T11:21:12.624Z"
+      "capturedAt": "2026-06-18T14:15:21.919Z"
     }
   ]
 }
