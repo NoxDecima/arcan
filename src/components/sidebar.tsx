@@ -380,7 +380,7 @@ export function Sidebar() {
           data-testid="settings-link"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          ⚙ Settings
+          ⚙ settings
         </Link>
       </div>
     </aside>

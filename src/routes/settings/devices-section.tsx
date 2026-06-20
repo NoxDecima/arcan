@@ -63,7 +63,7 @@ export function DevicesSection() {
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-semibold text-text">devices</h2>
         <Button asChild variant="outline" size="sm" data-testid="link-new-device-btn">
-          <Link to="/pair?role=initiator">Link new device</Link>
+          <Link to="/pair?role=initiator">link new device</Link>
         </Button>
       </div>
       <ul
@@ -106,7 +106,7 @@ export function DevicesSection() {
                   disabled={isCurrentDevice}
                   title={isCurrentDevice ? "This is your current device — use Sign out instead." : undefined}
                 >
-                  Forget
+                  forget
                 </Button>
               </li>
             );

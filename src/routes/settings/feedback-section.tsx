@@ -58,7 +58,7 @@ export function FeedbackSection() {
     <section className="flex flex-col gap-4 max-w-xl">
       <h2 className="text-base font-semibold text-text">give feedback</h2>
       <p className="text-sm text-text-2">
-        Found a bug or have an idea? tell us — it goes straight to the maker. We'll know it's from your account.
+        found a bug or have an idea? tell us — it goes straight to the maker. we'll know it's from your account.
       </p>
 
       {/* Message */}

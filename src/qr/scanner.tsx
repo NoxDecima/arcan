@@ -68,7 +68,7 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">Scan with camera</h3>
+        <h3 className="text-sm font-medium">scan with camera</h3>
         <div className="aspect-square w-full overflow-hidden rounded-lg border bg-black">
           {(cameraState === "loading" || cameraState === "running") && (
             <video
@@ -79,14 +79,14 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
           )}
           {cameraState === "denied" && (
             <div className="flex h-full items-center justify-center p-4 text-center text-sm text-white">
-              Camera unavailable — paste the link instead.
+              camera unavailable — paste the link instead.
             </div>
           )}
         </div>
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">Or paste link</h3>
+        <h3 className="text-sm font-medium">or paste link</h3>
         <textarea
           className="w-full rounded-md border bg-background p-2 text-sm font-mono"
           rows={4}
@@ -95,7 +95,7 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
             setPasteValue(e.target.value);
             setError(null);
           }}
-          placeholder={`Paste a link containing "${expectedPathPrefix}"...`}
+          placeholder={`paste a link containing "${expectedPathPrefix}"...`}
           data-testid="qr-paste-input"
         />
         {error && (
@@ -108,7 +108,7 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
           disabled={!pasteValue.trim()}
           data-testid="qr-paste-submit"
         >
-          Use this link
+          use this link
         </Button>
       </div>
     </div>

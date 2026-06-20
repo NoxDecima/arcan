@@ -20,7 +20,7 @@ import { useSidebarTab } from "@/components/sidebar-tab";
 export function ConversationsRoute() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setTab } = useSidebarTab();
+  const { tab, setTab } = useSidebarTab();
 
   useEffect(() => {
     const requested = searchParams.get("tab");
@@ -34,6 +34,12 @@ export function ConversationsRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isContacts = tab === "contacts";
+  const title = isContacts ? "select a contact" : "select a conversation";
+  const description = isContacts
+    ? "or add a new one — end-to-end encrypted"
+    : "or start a new one — end-to-end encrypted";
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -41,8 +47,8 @@ export function ConversationsRoute() {
         <div data-testid="conversations-main" className="h-full w-full">
           <EmptyPane
             variant="reading-pane"
-            title="select a conversation"
-            description="or start a new one — end-to-end encrypted"
+            title={title}
+            description={description}
           />
         </div>
       </main>

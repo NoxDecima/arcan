@@ -22,7 +22,7 @@ export function SettingsRoute() {
           to="/"
           className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
         >
-          ← Home
+          ← home
         </Link>
 
         <h1 className="text-xl font-bold text-text mb-6">settings</h1>

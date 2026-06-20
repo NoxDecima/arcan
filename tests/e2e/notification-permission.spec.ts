@@ -33,7 +33,7 @@ test.describe("Slice 8 — notification permission flow", () => {
       await page.getByTestId("enable-browser-notifications").click();
 
       // Status flips to "Enabled" + the button switches to Disable.
-      await expect(page.getByTestId("browser-status")).toHaveText("Enabled", {
+      await expect(page.getByTestId("browser-status")).toHaveText("enabled", {
         timeout: 10_000,
       });
       await expect(
@@ -75,7 +75,7 @@ test.describe("Slice 8 — notification permission flow", () => {
         timeout: 10_000,
       });
       // Status stays "Not enabled".
-      await expect(page.getByTestId("browser-status")).toHaveText("Not enabled");
+      await expect(page.getByTestId("browser-status")).toHaveText("not enabled");
     } finally {
       await ctx.close();
     }
