@@ -54,10 +54,13 @@ export function ContactDetailRoute() {
 
   if (!contact) {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <p className="text-sm text-red-600">Contact not found.</p>
+      <div
+        className="flex flex-col items-center gap-4 p-6"
+        data-testid="contact-detail-not-found"
+      >
+        <p className="text-sm text-red">contact not found.</p>
         <Button variant="outline" onClick={() => navigate("/")}>
-          Go home
+          go home
         </Button>
       </div>
     );
@@ -86,7 +89,7 @@ export function ContactDetailRoute() {
           onClick={() => navigate(-1)}
           className="text-muted-foreground"
         >
-          ← Back
+          ← back
         </Button>
       </div>
 
@@ -108,7 +111,7 @@ export function ContactDetailRoute() {
 
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground font-medium">
-            Safety number (verify out of band):
+            safety number (verify out of band):
           </p>
           <SafetyNumber fingerprintHex={(contact as any).pinnedFingerprint ?? ""} />
         </div>
@@ -119,14 +122,14 @@ export function ContactDetailRoute() {
           onClick={() => void handleStartChat()}
           data-testid="start-chat-btn"
         >
-          Start chat
+          start chat
         </Button>
         <Button
           variant="destructive"
           onClick={handleRemove}
           data-testid="contact-remove-btn"
         >
-          Remove contact
+          remove contact
         </Button>
       </div>
     </div>

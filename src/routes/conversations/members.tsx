@@ -522,7 +522,7 @@ export function MembersRoute() {
               disabled={actionInProgress}
               data-testid="add-member-btn"
             >
-              Add member
+              add member
             </Button>
           )}
         </div>
@@ -556,7 +556,7 @@ export function MembersRoute() {
 
           {rawMembers.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No members found.
+              no members found.
             </p>
           )}
         </div>
@@ -570,7 +570,7 @@ export function MembersRoute() {
             disabled={actionInProgress}
             data-testid="leave-conversation-btn"
           >
-            {actionInProgress ? "Working…" : "Leave conversation"}
+            {actionInProgress ? "working…" : "leave conversation"}
           </Button>
         </div>
       </main>

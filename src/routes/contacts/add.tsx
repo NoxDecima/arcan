@@ -23,7 +23,12 @@ const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d"];
 export function AddContactRoute() {
   const navigate = useNavigate();
   const me = useAccount(ArcanAccount, {
-    resolve: { profile: true },
+    // liveInvitations is required so createInvitation() can push the
+    // newly-created Invitation CoValue for surfacing on
+    // /connections/live-invites. Caught during Unit 8 Phase C-2 (NEW-002)
+    // — the silent push-skip meant generated invites never showed up in
+    // the management screen.
+    resolve: { profile: true, root: { liveInvitations: true } },
   });
   const toast = useToast();
 
