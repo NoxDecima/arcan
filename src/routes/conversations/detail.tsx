@@ -1,7 +1,12 @@
 /**
  * ConversationDetailRoute: the main chat view for a single conversation.
  *
- * Renders Sidebar + a main panel containing:
+ * Unit 9-2 / 2-F: the persistent sidebar is provided by <AppShell>; this
+ * route renders only its main panel into the shell's outlet column. On
+ * mobile the chat view is full-screen (the shell's sidebar is hidden) and
+ * the in-header "← Back" link returns to the conversation list.
+ *
+ * Renders a main panel containing:
  *   - Header: back link, conversation title, members link
  *   - ConnectionBanner: shown when offline
  *   - Message timeline: each message as a <MessageBubble>, interleaved with
@@ -28,7 +33,6 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
-import { Sidebar } from "@/components/sidebar";
 import { Composer } from "@/components/composer";
 import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
@@ -252,37 +256,34 @@ export function ConversationDetailRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex h-screen" data-testid="conversation-detail-loading">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex flex-col min-w-0">
-          <ChatHeaderSkeleton />
-          <ChatMessagesSkeleton />
-        </main>
-      </div>
+      <main
+        className="flex-1 flex flex-col min-w-0"
+        data-testid="conversation-detail-loading"
+      >
+        <ChatHeaderSkeleton />
+        <ChatMessagesSkeleton />
+      </main>
     );
   }
 
   if (conversation === null) {
     return (
-      <div className="flex h-screen">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-red-600">Conversation not found.</p>
-        </main>
-      </div>
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-red-600">Conversation not found.</p>
+      </main>
     );
   }
 
   if (!conversation) {
     // Still loading
     return (
-      <div className="flex h-screen" data-testid="conversation-detail-loading-late">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex flex-col min-w-0">
-          <ChatHeaderSkeleton />
-          <ChatMessagesSkeleton />
-        </main>
-      </div>
+      <main
+        className="flex-1 flex flex-col min-w-0"
+        data-testid="conversation-detail-loading-late"
+      >
+        <ChatHeaderSkeleton />
+        <ChatMessagesSkeleton />
+      </main>
     );
   }
 
@@ -310,11 +311,11 @@ export function ConversationDetailRoute() {
   const messages = Array.from((conversation as any).messages ?? []);
 
   return (
-    <div className="flex h-screen" data-testid="conversation-detail">
-      <div className="hidden md:contents"><Sidebar /></div>
-
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
+    <main
+      className="flex-1 flex flex-col min-w-0"
+      data-testid="conversation-detail"
+    >
+      {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
           <Link
             to="/conversations"
@@ -463,12 +464,11 @@ export function ConversationDetailRoute() {
           <div ref={bottomRef} />
         </div>
 
-        <Composer
-          onSend={handleSend}
-          getWriteGroup={handleGetWriteGroup}
-          disabled={composerDisabled}
-        />
-      </main>
-    </div>
+      <Composer
+        onSend={handleSend}
+        getWriteGroup={handleGetWriteGroup}
+        disabled={composerDisabled}
+      />
+    </main>
   );
 }
