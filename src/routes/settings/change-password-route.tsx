@@ -71,7 +71,11 @@ export function ChangePasswordRoute() {
           ← back
         </Link>
 
-        <h1 className="text-xl font-bold text-text mb-6">change password</h1>
+        <h1 className="text-xl font-bold text-text mb-1">change password</h1>
+        <p className="mb-6 text-[11.5px] leading-relaxed text-text-2">
+          changing your password re-encrypts your account and will sign you out
+          on your other devices.
+        </p>
 
         <form
           id="change-password-form"
@@ -104,7 +108,7 @@ export function ChangePasswordRoute() {
           />
           {error && (
             <p
-              className="rounded-r-3 border border-red/30 bg-red/10 px-3 py-2 text-sm text-red"
+              className="rounded-r-4 border border-red/30 bg-red/10 px-3 py-2 text-sm text-red"
               data-testid="change-password-error"
             >
               {error}
@@ -121,8 +125,10 @@ export function ChangePasswordRoute() {
             </Button>
             <Button
               type="submit"
+              variant="outline"
               disabled={isLoading}
               data-testid="change-password-submit"
+              className="border-red/40 text-red hover:bg-red/10"
             >
               {isLoading ? "saving…" : "change password"}
             </Button>
