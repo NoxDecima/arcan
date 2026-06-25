@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useEffect, type ReactElement } from "react";
 import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
 import { OnboardingRoute } from "./routes/onboarding";
@@ -96,6 +96,38 @@ function App() {
   // route read from that list (via useIncomingConnectionRequests) and must NOT
   // each open their own destructive inbox subscription.
   useIncomingConnectionRequestInbox(me);
+
+  // Unit 9-7 Task 5: test-only bridge for exercising the QR-channel live prompt.
+  //
+  // There is no production UI that mints a channel="qr" *contact* invitation
+  // (createInvitation is only ever called with "link" in /contacts/add, and the
+  // /pair flow is multi-device account pairing, not a ConnectionRequest). To
+  // drive the real channel="qr" pipeline end-to-end in Playwright — real
+  // createConnectionRequest → real Inbox delivery → durable incomingRequests →
+  // real IncomingConnectionPrompt — we expose the production helper on `window`,
+  // but ONLY when the test harness has set window.__ARCAN_E2E__ via addInitScript
+  // before page load. In normal app usage the flag is never set, so this effect
+  // attaches nothing and there is zero production behavior change.
+  useEffect(() => {
+    const w = window as unknown as {
+      __ARCAN_E2E__?: boolean;
+      __arcanCreateQrRequest?: (recipientAccountID: string) => Promise<string>;
+    };
+    if (!w.__ARCAN_E2E__ || !me.$isLoaded) return;
+    w.__arcanCreateQrRequest = async (recipientAccountID: string) => {
+      const { createConnectionRequest } = await import("@/jazz/invitations");
+      const req = await createConnectionRequest(
+        me as never,
+        recipientAccountID,
+        "qr",
+        { expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+      );
+      return (req as { $jazz: { id: string } }).$jazz.id;
+    };
+    return () => {
+      delete w.__arcanCreateQrRequest;
+    };
+  }, [me]);
 
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
