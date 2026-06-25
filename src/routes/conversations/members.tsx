@@ -65,11 +65,19 @@ function MemberRow(props: {
   onRequestConnection: () => void;
 }) {
   const { member, isMe, me, group, iAmAdmin, isAlreadyContact, actionInProgress, onPromote, onRemove, onRequestConnection } = props;
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const localAvatar = isMe
     ? resolveAvatarFileBlob({ accountID: member.accountID, me, group })
     : undefined;
   const remoteAvatar = useRemoteAvatar(isMe ? null : member.accountID);
   const avatar = localAvatar ?? remoteAvatar;
+
+  // Actions available to me on this row.
+  const canPromote = iAmAdmin && !isMe && member.role === "writer";
+  const canRemove = iAmAdmin && !isMe && member.role === "writer";
+  const canRequest = !isMe && !isAlreadyContact;
+  const hasActions = canPromote || canRemove || canRequest;
 
   return (
     <div
@@ -97,41 +105,60 @@ function MemberRow(props: {
 
       <RolePill role={member.role} />
 
-      {!isMe && !isAlreadyContact && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-xs flex-shrink-0"
-          onClick={onRequestConnection}
-          disabled={actionInProgress}
-          data-testid={`request-connection-${member.accountID}`}
+      {hasActions && (
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={`Actions for ${member.displayName}`}
+          data-testid={`member-kebab-${member.accountID}`}
+          className={`shrink-0 w-6 h-6 rounded-r-2 flex items-center justify-center text-text-2 hover:bg-panel-2 ${menuOpen ? "bg-panel-2" : ""}`}
         >
-          request connection
-        </Button>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="12" cy="19" r="1.6" />
+          </svg>
+        </button>
       )}
 
-      {iAmAdmin && !isMe && member.role === "writer" && (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-xs"
-            onClick={onPromote}
-            disabled={actionInProgress}
-            data-testid={`promote-${member.accountID}`}
-          >
-            promote
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-xs text-red hover:bg-red/10"
-            onClick={onRemove}
-            disabled={actionInProgress}
-            data-testid={`remove-${member.accountID}`}
-          >
-            remove
-          </Button>
+      {menuOpen && hasActions && (
+        <div
+          data-testid={`member-menu-${member.accountID}`}
+          className="absolute top-full right-2 mt-1 z-10 min-w-[150px] rounded-r-3 border border-hairline bg-panel p-1 shadow-level-2"
+        >
+          {canPromote && (
+            <button
+              type="button"
+              onClick={() => { setMenuOpen(false); onPromote(); }}
+              disabled={actionInProgress}
+              data-testid={`promote-${member.accountID}`}
+              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-text hover:bg-panel-2"
+            >
+              promote to admin
+            </button>
+          )}
+          {canRequest && (
+            <button
+              type="button"
+              onClick={() => { setMenuOpen(false); onRequestConnection(); }}
+              disabled={actionInProgress}
+              data-testid={`request-connection-${member.accountID}`}
+              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-text hover:bg-panel-2"
+            >
+              request connection
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              onClick={() => { setMenuOpen(false); onRemove(); }}
+              disabled={actionInProgress}
+              data-testid={`remove-${member.accountID}`}
+              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-red hover:bg-red/10"
+            >
+              remove
+            </button>
+          )}
         </div>
       )}
     </div>
