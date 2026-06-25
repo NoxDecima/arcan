@@ -9,6 +9,8 @@
  * Color: stroke is `currentColor`, so callers set color with a token
  * text-class (e.g. `text-dim`, `text-on-accent`). Never hard-code a color.
  */
+import type { ReactNode } from "react";
+
 export type IconName = "chat" | "people" | "gear" | "plus";
 
 interface IconProps {
@@ -23,7 +25,7 @@ interface IconProps {
 
 // 24x24 viewBox paths. `chat` = speech bubble, `people` = two figures,
 // `gear` = settings cog, `plus` = add.
-const PATHS: Record<IconName, JSX.Element> = {
+const PATHS: Record<IconName, ReactNode> = {
   chat: (
     <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.5 9.5 0 0 1-3.9-.8L3 21l1.9-4.1A8.38 8.38 0 0 1 4 12.5 8.5 8.5 0 0 1 12.5 4 8.38 8.38 0 0 1 21 11.5Z" />
   ),
