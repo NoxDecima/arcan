@@ -1,14 +1,23 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
-import { FeedbackSection } from "@/routes/settings/feedback-section";
+import { FeedbackRoute } from "@/routes/settings/feedback-route";
 import type { ReactNode } from "react";
 
+// Unit 9-5b moved the inline feedback form to the dedicated /settings/feedback
+// route (FeedbackRoute). The submission logic (multipart POST, Title-case
+// category, submit-disabled-until-non-empty) is preserved verbatim, so this
+// suite now drives FeedbackRoute. It uses useNavigate, hence the router wrap.
 function Wrap({ children }: { children: ReactNode }) {
-  return <ToastProvider>{children}</ToastProvider>;
+  return (
+    <MemoryRouter>
+      <ToastProvider>{children}</ToastProvider>
+    </MemoryRouter>
+  );
 }
 
-describe("FeedbackSection", () => {
+describe("FeedbackRoute", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -19,7 +28,7 @@ describe("FeedbackSection", () => {
     );
     const { getByTestId } = render(
       <Wrap>
-        <FeedbackSection />
+        <FeedbackRoute />
       </Wrap>
     );
     fireEvent.change(getByTestId("feedback-message"), { target: { value: "hello" } });
@@ -38,7 +47,7 @@ describe("FeedbackSection", () => {
     );
     const { getByTestId } = render(
       <Wrap>
-        <FeedbackSection />
+        <FeedbackRoute />
       </Wrap>
     );
     fireEvent.change(getByTestId("feedback-message"), { target: { value: "test bug" } });
@@ -52,7 +61,7 @@ describe("FeedbackSection", () => {
   test("submit disabled until message is non-empty", () => {
     const { getByTestId } = render(
       <Wrap>
-        <FeedbackSection />
+        <FeedbackRoute />
       </Wrap>
     );
     const btn = getByTestId("feedback-submit") as HTMLButtonElement;

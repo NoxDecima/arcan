@@ -55,7 +55,9 @@ describe("NotificationsSection", () => {
         <NotificationsSection />
       </Wrap>
     );
-    fireEvent.click(screen.getByTestId("sound-toggle"));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "sound on new messages" }),
+    );
     expect(setSpy).toHaveBeenCalledWith("sound", true);
     expect(screen.getByText("notifications updated")).toBeTruthy();
   });
@@ -66,7 +68,9 @@ describe("NotificationsSection", () => {
         <NotificationsSection />
       </Wrap>
     );
-    fireEvent.click(screen.getByTestId("enable-browser-notifications"));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "browser notifications" }),
+    );
     await waitFor(() => {
       expect(setSpy).toHaveBeenCalledWith("browser", true);
     });
@@ -87,7 +91,11 @@ describe("NotificationsSection", () => {
         <NotificationsSection />
       </Wrap>
     );
-    fireEvent.click(screen.getByTestId("disable-browser-notifications"));
+    // browser is effective-on (prefs.browser=true + permission granted), so the
+    // single browser slider toggles OFF on click.
+    fireEvent.click(
+      screen.getByRole("switch", { name: "browser notifications" }),
+    );
     expect(setSpy).toHaveBeenCalledWith("browser", false);
     expect(screen.getByText("notifications updated")).toBeTruthy();
   });
