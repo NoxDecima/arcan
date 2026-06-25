@@ -416,126 +416,119 @@ export function MembersRoute() {
       className="flex-1 flex flex-col min-w-0"
       data-testid="members-route"
     >
-      {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
-          <Link
-            to={`/conversations/${id}`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-            data-testid="back-btn"
-          >
-            ← Back
-          </Link>
+      {/* Slim header bar — mobile-only back arrow (desktop uses the sidebar).
+          proto ConvoSettingsScreen PHeader title="conversation settings". */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline bg-panel">
+        <Link
+          to={`/conversations/${id}`}
+          aria-label="Back to conversation"
+          data-testid="back-btn"
+          className="md:hidden -ml-1 text-text-2 hover:text-text"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
+        <h1 className="flex-1 font-semibold text-text">conversation settings</h1>
+      </div>
 
-          {/* Conversation avatar + admin-only camera overlay (Phase 8) */}
-          <div className="relative">
-            <ConversationAvatar
-              conversationId={(conversation as any)?.$jazz?.id ?? ""}
-              title={conversationTitle}
-              icon={(conversation as any)?.icon}
-              size={36}
-              loadAs={me}
-              data-testid="members-header-avatar"
-            />
-            {iAmAdmin && (
-              <>
-                <input
-                  ref={iconInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={handleIconChange}
-                  data-testid="conversation-icon-input"
-                />
-                <button
-                  type="button"
-                  onClick={() => iconInputRef.current?.click()}
-                  disabled={iconUploading || actionInProgress}
-                  aria-label="Change conversation icon"
-                  data-testid="conversation-icon-upload"
-                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-pill bg-arcan-accent text-on-accent flex items-center justify-center text-[10px]"
-                >
-                  ✎
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            {titleEditing ? (
-              <div className="flex items-center gap-2">
-                <input
-                  ref={titleInputRef}
-                  type="text"
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void saveTitleEdit();
-                    } else if (e.key === "Escape") {
-                      cancelTitleEdit();
-                    }
-                  }}
-                  maxLength={60}
-                  disabled={actionInProgress}
-                  className="flex-1 border rounded px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                  data-testid="group-title-edit-input"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void saveTitleEdit()}
-                  disabled={!titleDraft.trim() || actionInProgress}
-                  data-testid="group-title-save-btn"
-                >
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={cancelTitleEdit}
-                  disabled={actionInProgress}
-                  data-testid="group-title-cancel-btn"
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1
-                  className={`font-semibold text-text truncate ${iAmAdmin ? "cursor-pointer hover:text-primary" : ""}`}
-                  onClick={iAmAdmin ? startTitleEdit : undefined}
-                  title={iAmAdmin ? "Click to edit title" : undefined}
-                  data-testid="group-title-display"
-                >
-                  {conversationTitle}
-                </h1>
-                {iAmAdmin && (
-                  <button
-                    type="button"
-                    onClick={startTitleEdit}
-                    aria-label="Edit conversation title"
-                    data-testid="group-title-edit-btn"
-                    className="text-dim hover:text-text text-sm"
-                  >
-                    ✎
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
+      {/* Group card — centered picture + editable name (group only; 1:1 redirects
+          before reaching here). proto ConvoSettingsScreen ~L334-341. */}
+      <div className="flex flex-col items-center gap-2 px-[18px] pt-6 pb-[18px] border-b border-hairline">
+        <div className="relative">
+          <ConversationAvatar
+            conversationId={(conversation as any)?.$jazz?.id ?? ""}
+            title={conversationTitle}
+            icon={(conversation as any)?.icon}
+            size={70}
+            loadAs={me}
+            data-testid="members-header-avatar"
+          />
           {iAmAdmin && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setAddPickerOpen(true)}
-              disabled={actionInProgress}
-              data-testid="add-member-btn"
-            >
-              add member
-            </Button>
+            <>
+              <input
+                ref={iconInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleIconChange}
+                data-testid="conversation-icon-input"
+              />
+              <button
+                type="button"
+                onClick={() => iconInputRef.current?.click()}
+                disabled={iconUploading || actionInProgress}
+                aria-label="Change group picture"
+                data-testid="conversation-icon-upload"
+                className="absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-pill bg-arcan-accent text-on-accent border-2 border-bg flex items-center justify-center"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </button>
+            </>
           )}
         </div>
+
+        {titleEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void saveTitleEdit();
+                } else if (e.key === "Escape") {
+                  cancelTitleEdit();
+                }
+              }}
+              maxLength={60}
+              disabled={actionInProgress}
+              className="border border-hairline rounded-r-2 bg-panel px-2 py-1 text-lg font-semibold text-text outline-none focus:border-arcan-accent"
+              data-testid="group-title-edit-input"
+            />
+            <Button size="sm" onClick={() => void saveTitleEdit()} disabled={!titleDraft.trim() || actionInProgress} data-testid="group-title-save-btn">
+              save
+            </Button>
+            <Button size="sm" variant="outline" onClick={cancelTitleEdit} disabled={actionInProgress} data-testid="group-title-cancel-btn">
+              cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2" data-testid="group-title-display">
+            <button
+              type="button"
+              onClick={iAmAdmin ? startTitleEdit : undefined}
+              disabled={!iAmAdmin}
+              className="text-lg font-semibold text-text disabled:cursor-default"
+            >
+              {conversationTitle}
+            </button>
+            {iAmAdmin && (
+              <button
+                type="button"
+                onClick={startTitleEdit}
+                aria-label="Edit group name"
+                data-testid="group-title-edit-btn"
+                className="text-dim hover:text-text"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+
+        <span className="text-[11px] text-dim font-mono" data-testid="members-count">
+          {rawMembers.length} {rawMembers.length === 1 ? "member" : "members"}
+        </span>
+      </div>
 
         {/* Member list */}
         <div className="flex-1 overflow-y-auto p-4">
