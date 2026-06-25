@@ -1,24 +1,27 @@
 import { useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
 import { Skel } from "@/components/skeleton";
+import { Card, SectionLabel, SRow, Toggle } from "./settings-kit";
 
 /**
- * NotificationsSection: toggles for in-app notification preferences.
+ * NotificationsSection: slider toggles for notification preferences (Unit 9-5b,
+ * 4-G). Two options:
+ *   • sound on new messages  → settings.notifications.sound
+ *   • browser notifications  → settings.notifications.browser, gated on the
+ *     real Notification permission.
  *
- * Sound toggle: simple boolean write to me.root.settings.notifications.sound.
+ * Browser slider flow (preserved verbatim from Slice 8):
+ *   - Flip ON  → Notification.requestPermission():
+ *       "granted" → prefs.browser = true (slider shows ON)
+ *       "denied"  → inline error, slider stays OFF
+ *       "default" → user dismissed, no state change
+ *   - Flip OFF → prefs.browser = false (OS permission untouched)
+ * Effective ON = prefs.browser && Notification.permission === "granted".
  *
- * Browser notification enable: a click-to-enable flow that:
- *   1. Calls Notification.requestPermission()
- *   2. On "granted" → sets me.root.settings.notifications.browser = true
- *   3. On "denied" → shows inline "blocked at browser level" hint
- *   4. On "default" (user dismissed) → no state change
- *
- * The user can independently toggle our app's use of browser notifications
- * off (settings.notifications.browser = false) without revoking OS permission.
- * Effective state shown: prefs.browser && Notification.permission === "granted".
+ * The kit Toggle (9-5a) has no `disabled` prop; when the Notification API is
+ * unavailable the click handler short-circuits and surfaces the inline note.
  */
 export function NotificationsSection() {
   const me = useAccount(ArcanAccount, {
@@ -32,14 +35,15 @@ export function NotificationsSection() {
 
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
-      <section data-testid="notifications-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">notifications</h2>
-        <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
-          <Skel w="65%" h={14} />
-          <Skel w="50%" h={14} />
-          <Skel w={160} h={28} r={6} />
-        </div>
-      </section>
+      <div data-testid="notifications-section-loading">
+        <SectionLabel>notifications</SectionLabel>
+        <Card>
+          <div className="flex flex-col gap-3 px-3.5 py-3">
+            <Skel w="65%" h={14} />
+            <Skel w="50%" h={14} />
+          </div>
+        </Card>
+      </div>
     );
   }
 
@@ -59,12 +63,10 @@ export function NotificationsSection() {
       return;
     }
     try {
-      // Call requestPermission unconditionally — checking
-      // Notification.permission first isn't reliable across browsers
-      // (Playwright e.g. reports "denied" via the getter even when the
-      // context will resolve a fresh request to "granted"). The browser
-      // itself decides whether to actually prompt or short-circuit to
-      // the previously-set value.
+      // Call requestPermission unconditionally — checking Notification.permission
+      // first isn't reliable across browsers (Playwright reports "denied" via the
+      // getter even when a fresh request resolves "granted"). The browser decides
+      // whether to prompt or short-circuit to the previously-set value.
       const result = await Notification.requestPermission();
       setPermissionState(result);
       if (result === "granted") {
@@ -88,71 +90,49 @@ export function NotificationsSection() {
     toast({ icon: "check", text: "notifications updated", tone: "success" });
   }
 
-  return (
-    <section>
-      <h2 className="text-base font-semibold text-text mb-2">notifications</h2>
-      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            data-testid="sound-toggle"
-            checked={prefs.sound}
-            onChange={handleSoundToggle}
-          />
-          play sound when new messages arrive
-        </label>
+  function handleBrowserToggle() {
+    if (browserEffective) handleDisableBrowser();
+    else void handleEnableBrowser();
+  }
 
-        <div className="flex flex-col gap-2">
-          <div className="text-sm">
-            browser notifications:{" "}
-            <span
-              data-testid="browser-status"
-              className={browserEffective ? "text-green" : "text-dim"}
-            >
-              {browserEffective ? "enabled" : "not enabled"}
-            </span>
-          </div>
-          {!browserEffective ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleEnableBrowser()}
-              data-testid="enable-browser-notifications"
-              disabled={!apiSupported}
-              className="self-start"
-            >
-              enable browser notifications
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDisableBrowser}
-              data-testid="disable-browser-notifications"
-              className="self-start"
-            >
-              Disable
-            </Button>
-          )}
-          {requestError && (
-            <p
-              data-testid="browser-error"
-              className="text-sm text-destructive"
-            >
-              {requestError}
-            </p>
-          )}
-          {!apiSupported && (
-            <p className="text-xs text-dim">
-              Browser notifications aren't available in this environment.
-            </p>
-          )}
-          <p className="text-xs text-dim">
-            once enabled, you'll see system notifications when a new message
-            arrives in a conversation while this tab is hidden.
-          </p>
-        </div>
-      </div>
-    </section>
+  return (
+    <div>
+      <SectionLabel>notifications</SectionLabel>
+      <Card>
+        <SRow
+          icon="bell"
+          label="sound on new messages"
+          control={
+            <Toggle
+              on={prefs.sound}
+              onClick={handleSoundToggle}
+              aria-label="sound on new messages"
+            />
+          }
+        />
+        <SRow
+          icon="bell"
+          label="browser notifications"
+          sub={
+            !apiSupported
+              ? "not available in this environment"
+              : "system alerts when a tab is hidden"
+          }
+          control={
+            <Toggle
+              on={browserEffective}
+              onClick={handleBrowserToggle}
+              aria-label="browser notifications"
+            />
+          }
+          last
+        />
+      </Card>
+      {requestError && (
+        <p data-testid="browser-error" className="mt-2 text-sm text-red">
+          {requestError}
+        </p>
+      )}
+    </div>
   );
 }
