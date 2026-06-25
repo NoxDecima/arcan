@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAccount } from "jazz-tools/react";
 import { Inbox } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -10,43 +10,115 @@ export interface PendingRequest {
 }
 
 /**
- * Subscribes to incoming ConnectionRequests via the Inbox and exposes the
- * non-dismissed, non-approved, non-expired set as React state.
+ * App-level inbox subscription — the ONLY place that calls
+ * `inbox.subscribe(ConnectionRequest, …)`.
+ *
+ * jazz-tools' Inbox delivery is one-shot + destructive: each message is marked
+ * `processed` in a persisted stream after first delivery, so a fresh subscription
+ * skips already-processed messages on replay. Previously every consumer of
+ * `useIncomingConnectionRequests` spun up its own subscription, so whichever
+ * component mounted first (the app-wide IncomingConnectionPrompt) consumed and
+ * marked-processed the request; navigating to /connections/pending is a full
+ * reload, which remounted the hook with empty `useState` and a fresh
+ * subscription that skipped the now-processed message → request lost forever.
+ *
+ * Mirroring useConversationInboxSubscription → me.root.knownConversations, this
+ * hook drains the inbox exactly once (mounted once in App.tsx) and persists each
+ * ConnectionRequest into `me.root.incomingRequests`, deduped by $jazz.id. Readers
+ * read from that durable CoList and therefore survive reloads/navigation.
+ *
+ * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes (i.e. on
+ * sign-in / account switch), not on every render.
  */
-export function useIncomingConnectionRequests(): PendingRequest[] {
-  const me = useAccount(ArcanAccount, {
-    resolve: { root: { dismissedRequestIDs: true } },
-  });
-  const [items, setItems] = useState<any[]>([]);
-
+export function useIncomingConnectionRequestInbox(me: any): void {
   useEffect(() => {
-    if (!me.$isLoaded) return;
-    let unsub: (() => void) | undefined;
+    if (!me?.$isLoaded) return;
+
+    let unsubscribe: (() => void) | undefined;
     let cancelled = false;
+
     (async () => {
       try {
-        const inbox = await Inbox.load(me as any);
+        const inbox = await Inbox.load(me);
         if (cancelled) return;
-        unsub = inbox.subscribe(ConnectionRequest, async (req: any) => {
-          setItems((cur) => {
-            const id = req?.$jazz?.id;
-            if (!id) return cur;
-            if (cur.some((c) => (c as any)?.$jazz?.id === id)) return cur;
-            return [...cur, req];
-          });
-        });
+        unsubscribe = inbox.subscribe(
+          ConnectionRequest,
+          async (request: any) => {
+            try {
+              const id = request?.$jazz?.id;
+              if (!id) return;
+
+              // Dedup against the durable list. Guard: $jazz.push is only
+              // available when incomingRequests is a fully-loaded CoList (it is,
+              // per the resolve in App.tsx); skip if it's a NotLoaded proxy.
+              const list = me?.root?.incomingRequests;
+              if (!list || typeof (list as any).$jazz?.push !== "function") return;
+              const already = Array.from(list as Iterable<any>).some(
+                (r: any) => r?.$jazz?.id === id,
+              );
+              if (already) return;
+
+              (list as any).$jazz.push(request);
+            } catch (e) {
+              console.warn(
+                "[connection-requests] Failed to persist incoming request:",
+                e,
+              );
+            }
+          },
+        );
       } catch (e) {
         console.warn("[connection-requests] inbox subscribe failed:", e);
       }
     })();
-    return () => { cancelled = true; unsub?.(); };
-  }, [me.$isLoaded]);
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.$isLoaded, (me as any)?.$jazz?.id]);
+}
+
+/**
+ * Read-only hook: resolves the durable `me.root.incomingRequests` list, applies
+ * the dismissed/approved/expired filter, and returns the pending set.
+ *
+ * Does NOT create an inbox subscription — that lives solely in
+ * useIncomingConnectionRequestInbox (mounted once in App.tsx). Both the
+ * IncomingConnectionPrompt and the PendingConnectionsRoute call this hook; since
+ * it only reads reactive CoState, multiple callers no longer race over a
+ * destructive inbox.
+ */
+export function useIncomingConnectionRequests(): PendingRequest[] {
+  const me = useAccount(ArcanAccount, {
+    resolve: {
+      root: {
+        dismissedRequestIDs: true,
+        incomingRequests: { $each: true },
+      },
+    },
+  });
+
+  if (!me.$isLoaded) return [];
 
   const dismissed = new Set(
-    Array.from(((me as any).root?.dismissedRequestIDs as Iterable<string>) ?? [])
+    Array.from(((me as any).root?.dismissedRequestIDs as Iterable<string>) ?? []),
   );
-  return items
-    .filter((r: any) => !r?.approvedAt && (!r?.expiresAt || new Date(r.expiresAt).getTime() > Date.now()))
-    .map((r: any) => ({ request: r, dismissedLocally: dismissed.has(r.$jazz.id) }))
+  const incoming = Array.from(
+    ((me as any).root?.incomingRequests as Iterable<any>) ?? [],
+  );
+
+  return incoming
+    .filter(
+      (r: any) =>
+        r &&
+        !r.approvedAt &&
+        (!r.expiresAt || new Date(r.expiresAt).getTime() > Date.now()),
+    )
+    .map((r: any) => ({
+      request: r,
+      dismissedLocally: dismissed.has(r.$jazz.id),
+    }))
     .filter((p) => !p.dismissedLocally);
 }

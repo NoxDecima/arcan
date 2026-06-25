@@ -43,7 +43,10 @@ function PendingCard({ me, request }: { me: any; request: any }) {
     <section
       className="rounded-r-3 border border-hairline bg-panel p-4 flex flex-col gap-3"
       data-testid={`pending-${r.$jazz.id}`}
+      data-pending-request-row="true"
     >
+      {/* Stable, id-independent selector for e2e (full pending UI is Unit 9-7). */}
+      <span data-testid="pending-request-row" className="sr-only" />
       <h3 className="text-base font-semibold text-text">{r.requesterDisplayName}</h3>
       <p className="text-sm text-text-2">wants to connect</p>
       {shared.length > 0 && (

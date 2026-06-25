@@ -18,6 +18,7 @@ import { LiveInvitesRoute } from "@/routes/connections/live-invites";
 import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
+import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
 import { NotificationManager } from "@/components/notification-manager";
 import { TrustedDevicePrompt } from "@/components/trusted-device-prompt";
 import { ThemeProvider } from "@/styles/use-theme";
@@ -75,10 +76,26 @@ function App() {
   // Lifting it here was observed to remount /auth/recovery after the
   // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
   // would reset back to "enter-code" mid-flow.
+  // incomingRequests is resolved here so the single app-level connection-request
+  // inbox subscription (useIncomingConnectionRequestInbox) can $jazz.push onto
+  // the loaded CoList. profile: true is required so Inbox.load(me) can read
+  // me.profile.inbox.
   const me = useAccount(ArcanAccount, {
-    resolve: { profile: true, root: { contactBook: { $each: true }, knownConversations: true } },
+    resolve: {
+      profile: true,
+      root: {
+        contactBook: { $each: true },
+        knownConversations: true,
+        incomingRequests: true,
+      },
+    },
   });
   useConversationInboxSubscription(me);
+  // Unit 9-0: drain the connection-request inbox into the durable
+  // me.root.incomingRequests list exactly once, app-wide. The prompt + pending
+  // route read from that list (via useIncomingConnectionRequests) and must NOT
+  // each open their own destructive inbox subscription.
+  useIncomingConnectionRequestInbox(me);
 
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
