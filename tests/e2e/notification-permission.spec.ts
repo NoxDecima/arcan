@@ -4,16 +4,20 @@ import { createAccount } from "./helpers";
 /**
  * E2E: Slice 8 notification permission flow + sound toggle round-trip.
  *
+ * Retargeted for Unit 9-5b: the settings notifications UI is now two kit
+ * Toggle sliders (role="switch" + aria-checked) instead of a checkbox +
+ * Enable/Disable buttons. The permission flow itself is unchanged.
+ *
  * Three scenarios:
- *   1. Permission pre-granted via Playwright context → click "Enable" →
- *      notificationPrefs.browser flips true, UI shows "Enabled" + Disable button.
- *   2. Permission denied (forced via Object.defineProperty in-page) →
- *      inline error appears; status stays "Not enabled".
- *   3. Sound toggle: simple boolean checkbox round-trips through reload.
+ *   1. Permission pre-granted via Playwright context → flip browser slider →
+ *      notifications.browser flips true, slider shows checked.
+ *   2. Permission denied (forced via init script) → inline error appears;
+ *      slider stays unchecked.
+ *   3. Sound slider: boolean round-trips through reload.
  */
 
 test.describe("Slice 8 — notification permission flow", () => {
-  test("granted permission flips notificationPrefs.browser true", async ({
+  test("granted permission flips notifications.browser true", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -27,18 +31,13 @@ test.describe("Slice 8 — notification permission flow", () => {
       await createAccount(page, "Alice");
       await page.goto("/settings");
 
-      await expect(page.getByTestId("enable-browser-notifications")).toBeVisible({
-        timeout: 10_000,
-      });
-      await page.getByTestId("enable-browser-notifications").click();
+      const slider = page.getByRole("switch", { name: "browser notifications" });
+      await expect(slider).toBeVisible({ timeout: 10_000 });
+      await expect(slider).not.toBeChecked();
+      await slider.click();
 
-      // Status flips to "Enabled" + the button switches to Disable.
-      await expect(page.getByTestId("browser-status")).toHaveText("enabled", {
-        timeout: 10_000,
-      });
-      await expect(
-        page.getByTestId("disable-browser-notifications"),
-      ).toBeVisible();
+      // granted → slider reflects the real permission → checked.
+      await expect(slider).toBeChecked({ timeout: 10_000 });
     } finally {
       await ctx.close();
     }
@@ -66,16 +65,16 @@ test.describe("Slice 8 — notification permission flow", () => {
       await page.goto("/");
       await createAccount(page, "Alice");
       await page.goto("/settings");
-      await expect(page.getByTestId("enable-browser-notifications")).toBeVisible({
-        timeout: 10_000,
-      });
-      await page.getByTestId("enable-browser-notifications").click();
+
+      const slider = page.getByRole("switch", { name: "browser notifications" });
+      await expect(slider).toBeVisible({ timeout: 10_000 });
+      await slider.click();
 
       await expect(page.getByTestId("browser-error")).toBeVisible({
         timeout: 10_000,
       });
-      // Status stays "Not enabled".
-      await expect(page.getByTestId("browser-status")).toHaveText("not enabled");
+      // Slider stays unchecked.
+      await expect(slider).not.toBeChecked();
     } finally {
       await ctx.close();
     }
@@ -91,16 +90,18 @@ test.describe("Slice 8 — notification permission flow", () => {
       await createAccount(page, "Alice");
       await page.goto("/settings");
 
-      const toggle = page.getByTestId("sound-toggle");
+      const toggle = page.getByRole("switch", { name: "sound on new messages" });
       await expect(toggle).toBeVisible({ timeout: 10_000 });
       await expect(toggle).not.toBeChecked();
 
       await toggle.click();
       await expect(toggle).toBeChecked();
 
-      // Reload + verify the bit persisted in me.root.notificationPrefs.sound.
+      // Reload + verify the bit persisted in settings.notifications.sound.
       await page.reload();
-      await expect(page.getByTestId("sound-toggle")).toBeChecked({
+      await expect(
+        page.getByRole("switch", { name: "sound on new messages" }),
+      ).toBeChecked({
         timeout: 15_000,
       });
     } finally {

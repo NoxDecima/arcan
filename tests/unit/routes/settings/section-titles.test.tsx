@@ -7,13 +7,13 @@ import { AccentProvider } from "@/styles/use-accent";
 import { AppearanceSection } from "@/routes/settings/appearance-section";
 import { NotificationsSection } from "@/routes/settings/notifications-section";
 import { DevicesSection } from "@/routes/settings/devices-section";
-import { FeedbackSection } from "@/routes/settings/feedback-section";
+import { FeedbackRow } from "@/routes/settings/feedback-section";
 
-// As of Unit 9-5a, AccountSection uses SectionLabel (a <span>) not an <h2>,
-// and ProfileSection / InvitesSection are no longer part of the settings
-// surface (MeRow subsumes the profile; invites aren't in the prototype). This
-// suite now only covers the sections that still render an <h2> — those are
-// 9-5b's to rebuild and will be revisited there.
+// As of Unit 9-5b, every settings section is rebuilt on the kit: the card
+// sections (appearance / notifications / devices) caption themselves with
+// SectionLabel (a <span>, not an <h2>), and the feedback form collapsed to a
+// FeedbackRow whose label is "give feedback". The lowercase invariant still
+// holds; we now assert the lowercase label text rather than an <h2> role.
 
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => ({
@@ -53,14 +53,15 @@ describe("settings section titles are lowercase", () => {
     [AppearanceSection, "appearance"],
     [NotificationsSection, "notifications"],
     [DevicesSection, "devices"],
-    [FeedbackSection, "give feedback"],
-  ])("renders a lowercase h2 with the expected label", (Section, label) => {
+    [FeedbackRow, "give feedback"],
+  ])("renders a lowercase label with the expected text", (Section, label) => {
     render(
       <Wrap>
         <Section />
       </Wrap>
     );
-    const heading = screen.getByRole("heading", { level: 2, name: label });
-    expect(heading.textContent).toBe(label);
+    const el = screen.getByText(label);
+    expect(el.textContent).toBe(label);
+    expect(label).toBe(label.toLowerCase());
   });
 });
