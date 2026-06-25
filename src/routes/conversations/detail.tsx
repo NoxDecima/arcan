@@ -36,7 +36,6 @@ import { Conversation } from "@/jazz/schema/Conversation";
 import { Composer } from "@/components/composer";
 import { MessageBubble } from "@/components/message-bubble";
 import { ConnectionBanner } from "@/components/connection-banner";
-import { Button } from "@/components/ui/button";
 import { ConversationAvatar } from "@/components/conversation-avatar";
 import { sendMessage } from "@/jazz/messages";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
@@ -315,41 +314,56 @@ export function ConversationDetailRoute() {
       className="flex-1 flex flex-col min-w-0"
       data-testid="conversation-detail"
     >
-      {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
-          <Link
-            to="/conversations"
-            className="text-sm text-muted-foreground hover:text-foreground"
+      {/* Header — the whole row (minus the back arrow) taps to conversation
+          settings (proto.jsx ChatScreen onTitle → convoset / profile, ~L179).
+          Back arrow is mobile-only (desktop has the persistent sidebar) and a
+          small single chevron (hf-chat.jsx L68: {mobile && <Icon d="back" …/>}).
+          Presence/verified chips intentionally dropped. */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline bg-panel">
+        <Link
+          to="/conversations"
+          aria-label="Back to conversations"
+          data-testid="chat-back-arrow"
+          className="md:hidden -ml-1 text-text-2 hover:text-text"
+        >
+          {/* small single left-chevron, 20px (proto back icon size) */}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            ← Back
-          </Link>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
 
+        <Link
+          to={`/conversations/${(conversation as any)?.$jazz?.id ?? id}/members`}
+          data-testid="conversation-header-link"
+          className="flex flex-1 min-w-0 items-center gap-3 hover:opacity-90"
+          title="Conversation settings"
+        >
           <ConversationAvatar
             conversationId={(conversation as any)?.$jazz?.id ?? ""}
             title={conversationTitle}
             icon={(conversation as any)?.icon}
-            size={32}
+            size={34}
             loadAs={me}
             data-testid="conversation-header-avatar"
           />
-
           <h1
-            className="flex-1 font-semibold text-text truncate"
+            className="flex-1 min-w-0 font-semibold text-text truncate"
             data-testid="conversation-title"
           >
             {conversationTitle}
           </h1>
-
-          {/* Members link */}
-          <Link
-            to={`/conversations/${id}/members`}
-            data-testid="members-link"
-          >
-            <Button size="sm" variant="ghost" title="View members">
-              👥 Members
-            </Button>
-          </Link>
-        </div>
+        </Link>
+      </div>
 
         <ConnectionBanner />
 
