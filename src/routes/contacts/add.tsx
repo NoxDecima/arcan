@@ -57,6 +57,7 @@ export function AddContactRoute() {
   }, [me.$isLoaded, ttl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const accountID: string = (me as any)?.$jazz?.id ?? "";
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
 
   return (
     <div className="p-6 max-w-md mx-auto flex flex-col gap-4">
@@ -87,40 +88,31 @@ export function AddContactRoute() {
           </p>
         )}
 
-        <div className="flex gap-2 w-full">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={async () => {
-              if (!inviteUrl) return;
+        {/*
+          Unit 9-7 §2-J: one adaptive action.
+          Mobile (navigator.share present) → native share sheet ("share invite").
+          Desktop → clipboard copy + toast ("copy link").
+        */}
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={async () => {
+            if (!inviteUrl) return;
+            if (canShare) {
+              try {
+                await navigator.share({ url: inviteUrl });
+              } catch {
+                // user cancelled the share sheet — no-op
+              }
+            } else {
               await navigator.clipboard.writeText(inviteUrl);
               toast({ icon: "copy", text: "invite link copied", tone: "accent" });
-            }}
-            data-testid="add-contact-copy-btn"
-          >
-            copy link
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={async () => {
-              if (!inviteUrl) return;
-              if (navigator.share) {
-                try {
-                  await navigator.share({ url: inviteUrl });
-                } catch {
-                  // user cancelled
-                }
-              } else {
-                await navigator.clipboard.writeText(inviteUrl);
-                toast({ icon: "copy", text: "link copied", tone: "accent" });
-              }
-            }}
-            data-testid="share-link"
-          >
-            share
-          </Button>
-        </div>
+            }
+          }}
+          data-testid="add-contact-share-btn"
+        >
+          {canShare ? "share invite" : "copy link"}
+        </Button>
 
         {/* TTL picker */}
         <div className="w-full flex items-center justify-between gap-2 pt-2 border-t border-hairline mt-2">
