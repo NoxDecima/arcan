@@ -5,7 +5,6 @@ import { CredentialsStep, type Credentials } from "./credentials-step";
 import { BackupDisplayStep } from "./backup-display-step";
 import { BackupConfirmStep } from "./backup-confirm-step";
 import { ProfileStep } from "./profile-step";
-import { RestoreChoiceStep } from "./restore-choice-step";
 import { RestoreWithCodeStep } from "./restore-with-code-step";
 import { generateRecoveryCode } from "@/auth/recovery-code";
 
@@ -15,9 +14,8 @@ import { generateRecoveryCode } from "@/auth/recovery-code";
  * Sign-up path:
  *   welcome → credentials → backup-display → backup-confirm → profile
  * Restore path:
- *   welcome → restore-choice
- *     → /auth/login (via navigate)
- *     → restore-with-code (24-word recovery code)
+ *   welcome → restore-with-code (24-word recovery code)
+ *   welcome → /auth/login (via navigate, "already on a device? sign in")
  */
 type OnboardingStep =
   | { kind: "welcome" }
@@ -25,7 +23,6 @@ type OnboardingStep =
   | { kind: "backup-display"; credentials: Credentials; recoveryCode: string }
   | { kind: "backup-confirm"; credentials: Credentials; recoveryCode: string }
   | { kind: "profile"; credentials: Credentials; recoveryCode: string }
-  | { kind: "restore-choice" }
   | { kind: "restore-with-code" };
 
 /**
@@ -111,19 +108,10 @@ export function OnboardingRoute() {
         />
       );
 
-    case "restore-choice":
-      return (
-        <RestoreChoiceStep
-          onBack={() => setStep({ kind: "welcome" })}
-          onSignInWithPassword={() => navigate("/auth/login")}
-          onRestoreWithCode={() => setStep({ kind: "restore-with-code" })}
-        />
-      );
-
     case "restore-with-code":
       return (
         <RestoreWithCodeStep
-          onBack={() => setStep({ kind: "restore-choice" })}
+          onBack={() => setStep({ kind: "welcome" })}
         />
       );
   }
