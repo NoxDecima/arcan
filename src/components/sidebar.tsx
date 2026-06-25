@@ -113,6 +113,21 @@ function SidebarContactRow({
   );
 }
 
+/**
+ * Format a chat-row timestamp (Unit 9-3, item 3.1-C). Shows HH:MM for the
+ * most recent message; returns "" when there is no message to time.
+ * Locale-aware via toLocaleTimeString — matches the design's compact time.
+ */
+function formatRowTime(conversation: any): string {
+  const msgs = conversation?.messages;
+  const last = msgs && msgs.length ? msgs[msgs.length - 1] : null;
+  const raw = last?.sentAt;
+  if (!raw) return "";
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function Sidebar() {
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -310,13 +325,14 @@ export function Sidebar() {
                   unread = 0;
                 }
               }
+              const preview = getLastMessagePreview(c.conversation);
+              const time = formatRowTime(c.conversation);
+              const showUnread = !isActive && unread > 0;
               return (
                 <Link
                   key={i}
                   to={`/conversations/${convID}`}
-                  className={`block p-2 hover:bg-accent rounded text-sm flex items-center gap-2 ${
-                    unread > 0 ? "font-semibold" : ""
-                  }`}
+                  className="flex items-center gap-3 p-2 rounded hover:bg-accent"
                   data-testid={`conversation-row-${i}`}
                   data-conversation-id={convID}
                 >
@@ -324,19 +340,50 @@ export function Sidebar() {
                     conversationId={convID}
                     title={label}
                     icon={(c.conversation as any)?.icon}
-                    size={32}
+                    size={38}
                     loadAs={me}
                     data-testid={`conversation-avatar-${i}`}
                   />
-                  <span className="truncate flex-1">{label}</span>
-                  {!isActive && unread > 0 && (
-                    <span
-                      data-testid={`unread-badge-${i}`}
-                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-arcan-accent text-on-accent"
-                    >
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    {/* top line: name + timestamp */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        data-testid={`conversation-name-${i}`}
+                        className={`flex-1 truncate text-sm text-text ${
+                          showUnread ? "font-semibold" : ""
+                        }`}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        data-testid={`conversation-time-${i}`}
+                        className="flex-shrink-0 text-xs text-dim"
+                      >
+                        {time}
+                      </span>
+                    </div>
+                    {/* bottom line: preview + unread pill badge */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        data-testid={`conversation-preview-${i}`}
+                        className={`flex-1 truncate text-xs ${
+                          showUnread
+                            ? "text-text-2 font-semibold"
+                            : "text-dim"
+                        }`}
+                      >
+                        {preview}
+                      </span>
+                      {showUnread && (
+                        <span
+                          data-testid={`unread-badge-${i}`}
+                          className="flex-shrink-0 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1.5 rounded-pill bg-arcan-accent text-on-accent text-xs font-bold"
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </Link>
               );
             })
