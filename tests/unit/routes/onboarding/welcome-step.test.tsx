@@ -66,4 +66,30 @@ describe("WelcomeStep", () => {
     expect(mark).not.toBeNull();
     expect(Number(mark!.getAttribute("width"))).toBeGreaterThanOrEqual(44);
   });
+
+  test("is a single surface: create + restore + inline sign-in, in design order", () => {
+    render(
+      <WelcomeStep
+        onCreateAccount={vi.fn()}
+        onRestoreAccount={vi.fn()}
+        onSignInWithPassword={vi.fn()}
+      />,
+    );
+    // All three affordances live on one surface — no intermediate choice screen.
+    const create = screen.getByTestId("create-account-btn");
+    const restore = screen.getByTestId("restore-account-btn");
+    const signin = screen.getByTestId("signin-existing-btn");
+    expect(create.textContent).toBe("create account");
+    expect(restore.textContent).toBe("restore from recovery code");
+    expect(signin.textContent).toBe("sign in");
+    // Design order: create precedes restore precedes the inline sign-in.
+    expect(
+      create.compareDocumentPosition(restore) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      restore.compareDocumentPosition(signin) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
