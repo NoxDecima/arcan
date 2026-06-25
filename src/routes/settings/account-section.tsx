@@ -19,7 +19,7 @@ import { Card, SectionLabel, SRow, Chev, Icon } from "./settings-kit";
  * Sign-out moved out to its own danger-red card at the bottom (SignOutCard).
  */
 export function AccountSection() {
-  const me = useAccount(ArcanAccount, { resolve: {} });
+  const me = useAccount(ArcanAccount, { resolve: { profile: true } });
   const navigate = useNavigate();
   const [showSafety, setShowSafety] = useState(false);
 
