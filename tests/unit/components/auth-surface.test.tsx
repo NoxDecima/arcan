@@ -45,11 +45,18 @@ describe("<AuthSurface />", () => {
     expect(col.style.width).toBe("368px");
   });
 
-  test("tall variant pins the column to the top and allows scroll", () => {
+  test("tall variant vertically centers the column and allows scroll (DEC-2)", () => {
     const { container } = render(<AuthSurface tall>x</AuthSurface>);
     const root = container.firstElementChild as HTMLElement;
-    expect(root.className).toMatch(/items-start/);
-    expect(root.className).toMatch(/overflow-auto/);
+    // No longer top-pinned: the surface centers like the login path…
+    expect(root.className).toMatch(/items-center/);
+    expect(root.className).not.toMatch(/items-start/);
+    // …but still scrolls vertically when the column exceeds the viewport.
+    expect(root.className).toMatch(/overflow-y-auto/);
+    // The column uses `my-auto` to center within the flex parent while
+    // remaining reachable on overflow scroll.
+    const col = container.querySelector("[data-auth-column]") as HTMLElement;
+    expect(col.className).toMatch(/my-auto/);
   });
 
   test("force-dark sets html[data-theme='dark'] while mounted and restores on unmount", () => {

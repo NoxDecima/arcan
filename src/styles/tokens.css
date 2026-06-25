@@ -68,6 +68,10 @@
   --r-1: 2px;
   --r-2: 4px;
   --r-3: 6px;
+  --r-4: 12px;   /* v5 soft base — inputs, list rows */
+  --r-5: 14px;   /* v5 cards (radius+2) */
+  --r-avatar: 10px;     /* rounded-rect avatars (v5 avatarRadius) */
+  --r-avatar-lg: 18px;  /* profile-page avatar (radius+6) */
   --r-pill: 999px;
 
   /* Borders */

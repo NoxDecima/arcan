@@ -101,7 +101,7 @@ export function ConversationAvatar({
       role="img"
       aria-label={`${initials} conversation avatar`}
       data-testid={testId ?? "conversation-avatar"}
-      className={`rounded-pill flex items-center justify-center font-semibold text-text font-mono flex-shrink-0 overflow-hidden ${className ?? ""}`}
+      className={`rounded-avatar flex items-center justify-center font-semibold text-text font-mono flex-shrink-0 overflow-hidden ${className ?? ""}`}
       style={{
         width: size,
         height: size,

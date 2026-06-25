@@ -21,9 +21,9 @@ interface AvatarProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<AvatarProps["size"]>, string> = {
-  sm: "w-8 h-8 text-xs",
-  md: "w-10 h-10 text-sm",
-  lg: "w-24 h-24 text-2xl",
+  sm: "w-8 h-8 text-xs rounded-avatar",
+  md: "w-10 h-10 text-sm rounded-avatar",
+  lg: "w-24 h-24 text-2xl rounded-avatar-lg",
 };
 
 export function Avatar({
@@ -74,7 +74,7 @@ export function Avatar({
       role="img"
       aria-label={ariaLabel ?? `${label} avatar`}
       data-testid={testId}
-      className={`rounded-full bg-primary/10 flex items-center justify-center font-medium text-primary flex-shrink-0 overflow-hidden ${sizeClasses} ${className ?? ""}`}
+      className={`bg-primary/10 flex items-center justify-center font-medium text-primary flex-shrink-0 overflow-hidden ${sizeClasses} ${className ?? ""}`}
     >
       {url ? (
         <img src={url} alt="" className="w-full h-full object-cover" />

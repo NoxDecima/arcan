@@ -78,6 +78,10 @@ export default {
         'r-1': 'var(--r-1)',
         'r-2': 'var(--r-2)',
         'r-3': 'var(--r-3)',
+        'r-4': 'var(--r-4)',
+        'r-5': 'var(--r-5)',
+        'avatar': 'var(--r-avatar)',
+        'avatar-lg': 'var(--r-avatar-lg)',
         pill: 'var(--r-pill)',
       },
       boxShadow: {

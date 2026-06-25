@@ -52,16 +52,24 @@ export function AuthSurface({
     };
   }, [forceDark]);
 
+  // Both modes vertically center the card column. `tall` allows the page to
+  // scroll when the column exceeds the viewport (e.g. the 24-word backup grid);
+  // `my-auto` keeps the column centered when it fits and reachable (scroll from
+  // top) when it doesn't. Non-tall stays `overflow-hidden` so the watermark can
+  // bleed off-edge without spawning scrollbars.
   const rootCls = [
-    "min-h-screen w-full relative flex justify-center bg-bg",
-    tall ? "items-start overflow-auto" : "items-center overflow-hidden",
+    "min-h-screen w-full relative flex items-center justify-center bg-bg",
+    tall ? "overflow-y-auto" : "overflow-hidden",
   ].join(" ");
 
   const columnStyle: CSSProperties = {
     width: `${w}px`,
     maxWidth: "88%",
     gap: tall ? 11 : 15,
-    padding: tall ? "20px 18px" : 18,
+    // Horizontal padding only; vertical breathing room comes from `py-8`
+    // (tall) so `my-auto` can do the centering. Non-tall keeps the original
+    // uniform 18px inset.
+    padding: tall ? "0 18px" : 18,
   };
 
   return (
@@ -83,10 +91,12 @@ export function AuthSurface({
       <Star x="30%" y="74%" color="#7dcfff" size={3} glow />
       <Star x="80%" y="66%" color="var(--color-accent)" size={2} />
 
-      {/* Centered narrow card column. */}
+      {/* Centered narrow card column. `my-auto` centers it vertically within
+          the flex parent and, when `tall`, keeps it fully reachable on
+          overflow scroll; `py-8` (tall) supplies the vertical breathing room. */}
       <div
         data-auth-column=""
-        className="relative flex flex-col"
+        className={`relative flex flex-col my-auto${tall ? " py-8" : ""}`}
         style={columnStyle}
       >
         {children}

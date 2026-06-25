@@ -26,6 +26,13 @@ describe("tokens.css", () => {
     expect(tokensCss).toContain('data-theme="light"');
   });
 
+  test("v5 soft-skin radius tokens are present", () => {
+    expect(tokensCss).toContain("--r-4: 12px");
+    expect(tokensCss).toContain("--r-5: 14px");
+    expect(tokensCss).toContain("--r-avatar: 10px");
+    expect(tokensCss).toContain("--r-avatar-lg: 18px");
+  });
+
   test("declares the three gradient tokens used by Phase B sub-units", () => {
     // --gradient-primary: accent blue→violet sweep, used by wordmark gradient + primary CTAs
     expect(tokensCss).toContain("--gradient-primary:");
