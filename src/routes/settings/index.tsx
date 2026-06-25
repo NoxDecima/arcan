@@ -3,10 +3,11 @@ import { AccountSection } from "./account-section";
 import { SignOutCard } from "./sign-out-card";
 import { AppearanceSection } from "./appearance-section";
 import { NotificationsSection } from "./notifications-section";
-import { FeedbackSection } from "./feedback-section";
+import { FeedbackRow } from "./feedback-section";
 import { DevicesSection } from "./devices-section";
 import { ChangePasswordRoute } from "./change-password-route";
 import { RecoveryCodeRoute } from "./recovery-code-route";
+import { FeedbackRoute } from "./feedback-route";
 
 /**
  * SettingsBody (Unit 9-5a): the settings landing page, rebuilt against the
@@ -35,7 +36,7 @@ function SettingsBody() {
             cards (feedback collapses to a single row → /settings/feedback).
             Do NOT touch AccountSection or SignOutCard. */}
         <div data-testid="settings-9-5b-zone" className="flex flex-col gap-4">
-          <FeedbackSection />
+          <FeedbackRow />
           <AppearanceSection />
           <NotificationsSection />
           <DevicesSection />
@@ -63,6 +64,7 @@ export function SettingsRoute() {
       <Route index element={<SettingsBody />} />
       <Route path="change-password" element={<ChangePasswordRoute />} />
       <Route path="recovery-code" element={<RecoveryCodeRoute />} />
+      <Route path="feedback" element={<FeedbackRoute />} />
       <Route path="*" element={<Navigate to="/settings" replace />} />
     </Routes>
   );
