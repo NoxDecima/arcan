@@ -72,24 +72,28 @@ function MemberRow(props: {
   const avatar = localAvatar ?? remoteAvatar;
 
   return (
-    <li
-      className="flex items-center gap-3 px-3 py-2 rounded hover:bg-accent"
+    <div
+      className="relative flex items-center gap-3 px-[10px] py-[9px] rounded-r-3"
       data-testid={`member-row-${member.accountID}`}
     >
-      <Avatar
-        src={avatar}
-        initials={member.displayName[0] ?? "?"}
-        size="sm"
-        loadAs={me}
-        data-testid={`member-avatar-${member.accountID}`}
-      />
-
-      <span className="flex-1 text-sm font-medium text-text truncate">
-        {member.displayName}
-        {isMe && (
-          <span className="ml-1 text-xs text-muted-foreground">(you)</span>
-        )}
-      </span>
+      {/* avatar + name → the member's profile (proto: tap name/picture → profile) */}
+      <Link
+        to={`/profile/${member.accountID}`}
+        data-testid={`member-profile-link-${member.accountID}`}
+        className="flex flex-1 min-w-0 items-center gap-3 hover:opacity-90"
+      >
+        <Avatar
+          src={avatar}
+          initials={member.displayName[0] ?? "?"}
+          size="md"
+          loadAs={me}
+          data-testid={`member-avatar-${member.accountID}`}
+        />
+        <span className="flex-1 text-[12.5px] font-semibold text-text truncate">
+          {member.displayName}
+          {isMe && <span className="ml-1 font-normal text-dim">· you</span>}
+        </span>
+      </Link>
 
       <RolePill role={member.role} />
 
@@ -97,7 +101,7 @@ function MemberRow(props: {
         <Button
           size="sm"
           variant="outline"
-          className="text-xs h-7 px-2 flex-shrink-0"
+          className="text-xs flex-shrink-0"
           onClick={onRequestConnection}
           disabled={actionInProgress}
           data-testid={`request-connection-${member.accountID}`}
@@ -106,35 +110,31 @@ function MemberRow(props: {
         </Button>
       )}
 
-      {iAmAdmin && !isMe && (
+      {iAmAdmin && !isMe && member.role === "writer" && (
         <div className="flex items-center gap-1 flex-shrink-0">
-          {member.role === "writer" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs h-7 px-2"
-              onClick={onPromote}
-              disabled={actionInProgress}
-              data-testid={`promote-${member.accountID}`}
-            >
-              Promote
-            </Button>
-          )}
-          {member.role === "writer" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs h-7 px-2 text-red-600 hover:bg-red-50"
-              onClick={onRemove}
-              disabled={actionInProgress}
-              data-testid={`remove-${member.accountID}`}
-            >
-              Remove
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs"
+            onClick={onPromote}
+            disabled={actionInProgress}
+            data-testid={`promote-${member.accountID}`}
+          >
+            promote
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs text-red hover:bg-red/10"
+            onClick={onRemove}
+            disabled={actionInProgress}
+            data-testid={`remove-${member.accountID}`}
+          >
+            remove
+          </Button>
         </div>
       )}
-    </li>
+    </div>
   );
 }
 
@@ -530,37 +530,88 @@ export function MembersRoute() {
         </span>
       </div>
 
-        {/* Member list */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <ul className="space-y-1" data-testid="members-list">
-            {rawMembers.map((member) => (
-              <MemberRow
-                key={member.accountID}
-                member={member}
-                isMe={member.accountID === myAccountID}
-                me={me}
-                group={group}
-                iAmAdmin={iAmAdmin}
-                isAlreadyContact={knownContactIDs.has(member.accountID)}
-                actionInProgress={actionInProgress}
-                onPromote={() => void handlePromote(member.accountID)}
-                onRemove={() => void handleRemove(member.accountID)}
-                onRequestConnection={async () => {
-                  try {
-                    await requestConnectionFromGroupMember(me as any, member.accountID);
-                    toast({ icon: "check", text: "request sent", tone: "accent" });
-                  } catch {
-                    toast({ icon: "alert", text: "couldn't send request", tone: "error" });
-                  }
-                }}
-              />
-            ))}
-          </ul>
+        {/* Member list — split into admins + members (proto ConvoSettingsScreen L342-349) */}
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          {/* admins */}
+          <div className="flex items-center gap-2 px-2 pt-1 pb-2">
+            <span className="flex-1 text-[9px] uppercase tracking-widest font-mono font-semibold text-dim">
+              admins
+            </span>
+            {iAmAdmin && (
+              <Button
+                size="sm"
+                variant="primary"
+                className="h-7 px-3 text-[11px]"
+                onClick={() => setAddPickerOpen(true)}
+                disabled={actionInProgress}
+                data-testid="add-member-btn"
+              >
+                + add people
+              </Button>
+            )}
+          </div>
+          <div data-testid="members-section-admins">
+            {rawMembers
+              .filter((m) => m.role === "admin")
+              .map((member) => (
+                <MemberRow
+                  key={member.accountID}
+                  member={member}
+                  isMe={member.accountID === myAccountID}
+                  me={me}
+                  group={group}
+                  iAmAdmin={iAmAdmin}
+                  isAlreadyContact={knownContactIDs.has(member.accountID)}
+                  actionInProgress={actionInProgress}
+                  onPromote={() => void handlePromote(member.accountID)}
+                  onRemove={() => void handleRemove(member.accountID)}
+                  onRequestConnection={async () => {
+                    try {
+                      await requestConnectionFromGroupMember(me as any, member.accountID);
+                      toast({ icon: "check", text: "request sent", tone: "accent" });
+                    } catch {
+                      toast({ icon: "alert", text: "couldn't send request", tone: "error" });
+                    }
+                  }}
+                />
+              ))}
+          </div>
+
+          {/* members (writers) */}
+          <div className="px-2 pt-3.5 pb-2">
+            <span className="text-[9px] uppercase tracking-widest font-mono font-semibold text-dim">
+              members
+            </span>
+          </div>
+          <div data-testid="members-section-writers">
+            {rawMembers
+              .filter((m) => m.role === "writer")
+              .map((member) => (
+                <MemberRow
+                  key={member.accountID}
+                  member={member}
+                  isMe={member.accountID === myAccountID}
+                  me={me}
+                  group={group}
+                  iAmAdmin={iAmAdmin}
+                  isAlreadyContact={knownContactIDs.has(member.accountID)}
+                  actionInProgress={actionInProgress}
+                  onPromote={() => void handlePromote(member.accountID)}
+                  onRemove={() => void handleRemove(member.accountID)}
+                  onRequestConnection={async () => {
+                    try {
+                      await requestConnectionFromGroupMember(me as any, member.accountID);
+                      toast({ icon: "check", text: "request sent", tone: "accent" });
+                    } catch {
+                      toast({ icon: "alert", text: "couldn't send request", tone: "error" });
+                    }
+                  }}
+                />
+              ))}
+          </div>
 
           {rawMembers.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              no members found.
-            </p>
+            <p className="text-sm text-dim text-center py-8">no members found.</p>
           )}
         </div>
 
