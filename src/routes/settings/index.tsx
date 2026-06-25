@@ -1,44 +1,49 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
-import { ProfileSection } from "./profile-section";
-import { DevicesSection } from "./devices-section";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AccountSection } from "./account-section";
-import { InvitesSection } from "./invites-section";
-import { NotificationsSection } from "./notifications-section";
+import { SignOutCard } from "./sign-out-card";
 import { AppearanceSection } from "./appearance-section";
+import { NotificationsSection } from "./notifications-section";
 import { FeedbackSection } from "./feedback-section";
+import { DevicesSection } from "./devices-section";
 import { ChangePasswordRoute } from "./change-password-route";
 import { RecoveryCodeRoute } from "./recovery-code-route";
 
 /**
- * SettingsIndex: the settings landing page with profile, appearance,
- * feedback, notifications, devices, invites, and account sections.
+ * SettingsBody (Unit 9-5a): the settings landing page, rebuilt against the
+ * prototype (design/proto.jsx:261 SettingsScreen). Section order:
+ * account → feedback → appearance → notifications → devices → sign-out.
  *
- * Navigation strategy: react-router-dom. Back navigation is a <Link to="/">.
- * No callback props.
+ * 9-5a owns SettingsBody, the account card, and the sign-out card. The block
+ * between the account section and SignOutCard is the 9-5b insertion zone —
+ * 9-5b replaces the placeholder children (feedback → appearance →
+ * notifications → devices) with prototype-matched cards and the feedback
+ * row→route, without editing the account or sign-out code.
+ *
+ * The desktop sidebar persists via AppShell (this page renders inside the
+ * shell outlet), so no header/back chrome is added here.
  */
-function SettingsIndex() {
+function SettingsBody() {
   return (
-    <div className="min-h-screen bg-panel-2">
-      <div className="max-w-xl mx-auto px-4 py-6">
-        {/* Back navigation */}
-        <Link
-          to="/"
-          className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
-        >
-          ← home
-        </Link>
+    <div className="min-h-screen bg-bg" data-testid="settings-body">
+      <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 p-4">
+        {/* account — owned by 9-5a */}
+        <AccountSection />
 
-        <h1 className="text-xl font-bold text-text mb-6">settings</h1>
-
-        <div className="flex flex-col gap-6">
-          <ProfileSection />
-          <AppearanceSection />
+        {/* === 9-5b INSERTION ZONE START ===
+            9-5b replaces these placeholder sections (feedback → appearance →
+            notifications → devices), in this order, with prototype-matched
+            cards (feedback collapses to a single row → /settings/feedback).
+            Do NOT touch AccountSection or SignOutCard. */}
+        <div data-testid="settings-9-5b-zone" className="flex flex-col gap-4">
           <FeedbackSection />
+          <AppearanceSection />
           <NotificationsSection />
           <DevicesSection />
-          <InvitesSection />
-          <AccountSection />
         </div>
+        {/* === 9-5b INSERTION ZONE END === */}
+
+        {/* sign-out — owned by 9-5a, always last */}
+        <SignOutCard />
       </div>
     </div>
   );
@@ -55,7 +60,7 @@ function SettingsIndex() {
 export function SettingsRoute() {
   return (
     <Routes>
-      <Route index element={<SettingsIndex />} />
+      <Route index element={<SettingsBody />} />
       <Route path="change-password" element={<ChangePasswordRoute />} />
       <Route path="recovery-code" element={<RecoveryCodeRoute />} />
       <Route path="*" element={<Navigate to="/settings" replace />} />

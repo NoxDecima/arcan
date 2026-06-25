@@ -4,13 +4,16 @@ import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
-import { ProfileSection } from "@/routes/settings/profile-section";
 import { AppearanceSection } from "@/routes/settings/appearance-section";
 import { NotificationsSection } from "@/routes/settings/notifications-section";
 import { DevicesSection } from "@/routes/settings/devices-section";
-import { AccountSection } from "@/routes/settings/account-section";
 import { FeedbackSection } from "@/routes/settings/feedback-section";
-import { InvitesSection } from "@/routes/settings/invites-section";
+
+// As of Unit 9-5a, AccountSection uses SectionLabel (a <span>) not an <h2>,
+// and ProfileSection / InvitesSection are no longer part of the settings
+// surface (MeRow subsumes the profile; invites aren't in the prototype). This
+// suite now only covers the sections that still render an <h2> — those are
+// 9-5b's to rebuild and will be revisited there.
 
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => ({
@@ -29,16 +32,8 @@ vi.mock("jazz-tools/react", () => ({
   useLogOut: () => vi.fn(),
 }));
 
-vi.mock("@/auth/pubkey", () => ({
-  getAccountPubkeyHex: () => "deadbeef".repeat(8),
-}));
-
 vi.mock("@/auth/session", () => ({
   getCurrentSessionFingerprint: () => null,
-}));
-
-vi.mock("@/components/safety-number", () => ({
-  SafetyNumber: () => <div data-testid="safety-number-stub" />,
 }));
 
 function Wrap({ children }: { children: React.ReactNode }) {
@@ -55,13 +50,10 @@ function Wrap({ children }: { children: React.ReactNode }) {
 
 describe("settings section titles are lowercase", () => {
   test.each([
-    [ProfileSection, "profile"],
     [AppearanceSection, "appearance"],
     [NotificationsSection, "notifications"],
     [DevicesSection, "devices"],
-    [AccountSection, "account"],
     [FeedbackSection, "give feedback"],
-    [InvitesSection, "pending invitations"],
   ])("renders a lowercase h2 with the expected label", (Section, label) => {
     render(
       <Wrap>
