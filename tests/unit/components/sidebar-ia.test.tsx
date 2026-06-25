@@ -61,3 +61,19 @@ describe("Sidebar IA — header chrome (items 2-B, 2-C)", () => {
     expect(getByTestId("sidebar-display-name").textContent).toBe("decima");
   });
 });
+
+describe("Sidebar IA — tab icons (item 2-A)", () => {
+  it("the chats tab has a leading chat icon", async () => {
+    const { getByTestId } = await renderSidebar();
+    const chats = getByTestId("sidebar-tab-chats");
+    expect(chats.querySelector('svg[data-icon="chat"]')).not.toBeNull();
+    expect(chats.textContent).toContain("chats");
+  });
+
+  it("the contacts tab has a leading people icon", async () => {
+    const { getByTestId } = await renderSidebar();
+    const contacts = getByTestId("sidebar-tab-contacts");
+    expect(contacts.querySelector('svg[data-icon="people"]')).not.toBeNull();
+    expect(contacts.textContent).toContain("contacts");
+  });
+});

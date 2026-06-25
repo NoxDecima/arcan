@@ -242,25 +242,27 @@ export function Sidebar() {
         <button
           type="button"
           data-testid="sidebar-tab-chats"
-          className={`flex-1 py-2 text-xs font-semibold ${
+          className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "chats"
               ? "text-text border-b-2 border-arcan-accent"
               : "text-dim"
           }`}
           onClick={() => setTab("chats")}
         >
+          <Icon name="chat" size={16} />
           chats
         </button>
         <button
           type="button"
           data-testid="sidebar-tab-contacts"
-          className={`flex-1 py-2 text-xs font-semibold ${
+          className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "contacts"
               ? "text-text border-b-2 border-arcan-accent"
               : "text-dim"
           }`}
           onClick={() => setTab("contacts")}
         >
+          <Icon name="people" size={16} />
           contacts
         </button>
       </div>
