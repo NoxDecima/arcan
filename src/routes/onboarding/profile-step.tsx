@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { signUp } from "@/auth/flows";
 import { decodeRecoveryCode } from "@/auth/recovery-code";
 import {
   useCreateAccountWithSeed,
   useSetDisplayNameOnMe,
 } from "@/jazz/createAccountFromSeed";
+import { setProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
+import { MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
 import type { Credentials } from "./credentials-step";
 
@@ -41,6 +43,39 @@ export function ProfileStep({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Build/tear down the object-URL preview whenever the picked file changes.
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
+
+  function handleAvatarPick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setError(
+        `${file.name} is ${(file.size / 1_000_000).toFixed(1)} MB. max 5 MB.`,
+      );
+      return;
+    }
+    setError(null);
+    setAvatarFile(file);
+  }
+
   const createAccountWithSeed = useCreateAccountWithSeed();
   const setDisplayNameOnMe = useSetDisplayNameOnMe();
 
@@ -60,6 +95,26 @@ export function ProfileStep({
         createJazzAccount: async (s, name) => {
           const handle = await createAccountWithSeed(s);
           await setDisplayNameOnMe(handle, name);
+          // Deferred avatar upload: the account exists now. Resize to 256²
+          // (matching conversation-icon behavior) and assign. A failure here
+          // must NOT abort sign-up — the account is already created — so we
+          // surface a non-blocking note and continue.
+          if (avatarFile) {
+            try {
+              const { ArcanAccount } = await import(
+                "@/jazz/schema/ArcanAccount"
+              );
+              const me = await ArcanAccount.getMe().$jazz.ensureLoaded({
+                resolve: { profile: true },
+              });
+              const resized = await resizeImageToSquare(avatarFile, 256);
+              await setProfileAvatar(me as any, resized);
+            } catch {
+              setError(
+                "account created, but the profile picture didn't upload — you can add it later in your profile.",
+              );
+            }
+          }
           return handle;
         },
       });
@@ -86,16 +141,40 @@ export function ProfileStep({
       <Steps n={4} />
       <AuthTitle>set up your profile</AuthTitle>
 
-      {/* Avatar placeholder + camera overlay — purely decorative on this step;
-          actual avatar upload happens in /profile after sign-up completes. */}
+      {/* Avatar tile + camera overlay — picks a file now, uploaded after the
+          account is created in handleFinish (the Jazz account does not exist
+          yet on this step). Design: hf-flows.jsx ScProfile lines 147-152. */}
       <div className="flex justify-center mt-[2px]">
         <div className="relative">
-          <div className="flex h-[78px] w-[78px] items-center justify-center rounded-r-3 border border-hairline bg-accent-soft font-mono text-[26px] font-semibold text-arcan-accent">
-            ?
+          <div className="flex h-[78px] w-[78px] items-center justify-center overflow-hidden rounded-avatar-lg border border-hairline bg-accent-soft font-mono text-[26px] font-semibold text-arcan-accent">
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt=""
+                data-testid="onboarding-avatar-preview"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              "?"
+            )}
           </div>
-          <div className="absolute -bottom-[2px] -right-[2px] flex h-7 w-7 items-center justify-center rounded-pill border-2 border-bg bg-arcan-accent text-on-accent text-[14px]">
-            ●
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+            data-testid="onboarding-avatar-input"
+          />
+          <button
+            type="button"
+            onClick={handleAvatarPick}
+            aria-label="Add a profile picture"
+            data-testid="onboarding-avatar-change"
+            className="absolute -bottom-[2px] -right-[2px] flex h-7 w-7 items-center justify-center rounded-pill border-2 border-bg bg-arcan-accent text-on-accent text-[13px]"
+          >
+            ⌖
+          </button>
         </div>
       </div>
 
