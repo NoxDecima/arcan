@@ -14,7 +14,7 @@
  */
 
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -255,6 +255,20 @@ export function MembersRoute() {
   const iAmAdmin = myRole === "admin";
 
   const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
+
+  // 1:1 conversations have no standalone settings screen — redirect to the
+  // other participant's profile. A DM is exactly two direct admin/writer
+  // members (me + one other); mirrors isOneToOneWith() in jazz/conversation.ts
+  // and the `contact` derivation in detail.tsx. Spec 9-6 §3.4(a).
+  const participants = rawMembers.filter(
+    (m) => m.role === "admin" || m.role === "writer",
+  );
+  if (participants.length === 2) {
+    const other = participants.find((m) => m.accountID !== myAccountID);
+    if (other) {
+      return <Navigate to={`/profile/${other.accountID}`} replace />;
+    }
+  }
 
   // Build the set of contact account IDs so we can skip the "request connection"
   // affordance for members who are already in the user's ContactBook.
