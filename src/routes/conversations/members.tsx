@@ -655,6 +655,12 @@ export function MembersRoute() {
           </Button>
         </div>
       {/* Dialogs (portal-based overlays; position in the tree is irrelevant) */}
+      {/* Add-member picker: kept as an overlay (ContactPicker / MobileBottomSheet)
+          rather than converted to a route. Per the 9-2 modal→route rule, a
+          contextual multi-select interrupt invoked from inside settings stays an
+          overlay; the prototype's AddPeopleScreen full-screen treatment is not
+          adopted here to avoid duplicating the contact-book deep-load + member
+          exclusion the picker already does. Decision recorded for Unit 9-6. */}
       {addPickerOpen && (
         <ContactPicker
           onSelect={handleAddMembers}
