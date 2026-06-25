@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useSidebarTab } from "@/components/sidebar-tab";
+import { Icon } from "@/components/icon";
 
 /**
  * MobileTabBar: fixed bottom tab bar visible only on the small-screen layout
@@ -42,6 +43,7 @@ export function MobileTabBar() {
         }`}
         onClick={() => setTab("chats")}
       >
+        <Icon name="chat" size={20} />
         chats
       </button>
       <button
@@ -52,6 +54,7 @@ export function MobileTabBar() {
         }`}
         onClick={() => setTab("contacts")}
       >
+        <Icon name="people" size={20} />
         contacts
       </button>
     </nav>

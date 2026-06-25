@@ -90,3 +90,12 @@ describe("Sidebar IA — FAB + footer (items 2-C, 2-D)", () => {
     expect(queryByTestId("settings-link")).toBeNull();
   });
 });
+
+describe("Sidebar IA — mobile tabs bottom-only (item 2-E)", () => {
+  it("hides the sidebar's own top tab row on mobile (hidden md:flex)", async () => {
+    const { getByTestId } = await renderSidebar();
+    const tabs = getByTestId("sidebar-tabs");
+    expect(tabs.className).toMatch(/\bhidden\b/);
+    expect(tabs.className).toMatch(/\bmd:flex\b/);
+  });
+});

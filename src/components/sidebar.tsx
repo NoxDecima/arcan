@@ -253,7 +253,10 @@ export function Sidebar() {
         Anchored by tests/unit/components/sidebar-separation.test.tsx —
         changes to this divider treatment must update that test in lockstep.
       */}
-      <div className="flex border-b border-hairline" data-testid="sidebar-tabs">
+      <div
+        className="hidden md:flex border-b border-hairline"
+        data-testid="sidebar-tabs"
+      >
         <button
           type="button"
           data-testid="sidebar-tab-chats"
