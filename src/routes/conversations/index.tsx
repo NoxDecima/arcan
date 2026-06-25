@@ -5,10 +5,17 @@ import { EmptyPane } from "@/components/empty-pane";
 import { useSidebarTab } from "@/components/sidebar-tab";
 
 /**
- * The desktop reading-pane shown at `/` when no conversation is selected.
- * Renders the sidebar + the cosmic EmptyPane (oversized Lattice watermark,
- * scattered cosmic dots, centered hint). Hidden on mobile — mobile shows
- * the conversation list full-width with the bottom tab bar.
+ * The home screen at `/`.
+ *
+ * Desktop: <AppShell> provides the persistent sidebar; this route renders
+ * only the cosmic EmptyPane reading-pane (oversized Lattice watermark,
+ * scattered cosmic dots, centered hint) in the outlet column.
+ *
+ * Mobile: the shell hides its sidebar (it's `hidden md:flex`), so the
+ * full-screen conversation/contacts list lives here as a mobile-only
+ * <Sidebar /> (`md:hidden`). The bottom tab bar (App.tsx) toggles the
+ * shared chats/contacts tab. This is the same list that backs the desktop
+ * sidebar — the mobile home screen would be blank without it (Unit 9-2).
  *
  * Unit 8d: also handles the `?tab=contacts` query param that the deprecated
  * standalone /contacts route redirects to. We seed the SidebarTab context
@@ -41,8 +48,12 @@ export function ConversationsRoute() {
     : "or start a new one — end-to-end encrypted";
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <>
+      {/* Mobile: the full-screen list (shell's sidebar is hidden on mobile). */}
+      <div className="md:hidden flex-1 min-h-0">
+        <Sidebar />
+      </div>
+      {/* Desktop: the empty reading-pane beside the shell's sidebar. */}
       <main className="hidden md:flex flex-1" data-testid="home-main">
         <div data-testid="conversations-main" className="h-full w-full">
           <EmptyPane
@@ -52,6 +63,6 @@ export function ConversationsRoute() {
           />
         </div>
       </main>
-    </div>
+    </>
   );
 }

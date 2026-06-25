@@ -18,7 +18,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
-import { Sidebar } from "@/components/sidebar";
 import { ContactPicker } from "@/components/contact-picker";
 import { RolePill } from "@/components/role-pill";
 import { LeaveWithPromoteDialog } from "@/components/leave-with-promote-dialog";
@@ -183,36 +182,33 @@ export function MembersRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex h-screen" data-testid="members-route-loading">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex flex-col min-w-0">
-          <ChatHeaderSkeleton />
-          <NavListSkeleton rows={4} />
-        </main>
-      </div>
+      <main
+        className="flex-1 flex flex-col min-w-0"
+        data-testid="members-route-loading"
+      >
+        <ChatHeaderSkeleton />
+        <NavListSkeleton rows={4} />
+      </main>
     );
   }
 
   if (conversation === null) {
     return (
-      <div className="flex h-screen">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-red-600">Conversation not found.</p>
-        </main>
-      </div>
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-red-600">Conversation not found.</p>
+      </main>
     );
   }
 
   if (!conversation) {
     return (
-      <div className="flex h-screen" data-testid="members-route-loading-late">
-        <div className="hidden md:contents"><Sidebar /></div>
-        <main className="flex-1 flex flex-col min-w-0">
-          <ChatHeaderSkeleton />
-          <NavListSkeleton rows={4} />
-        </main>
-      </div>
+      <main
+        className="flex-1 flex flex-col min-w-0"
+        data-testid="members-route-loading-late"
+      >
+        <ChatHeaderSkeleton />
+        <NavListSkeleton rows={4} />
+      </main>
     );
   }
 
@@ -402,11 +398,11 @@ export function MembersRoute() {
   // ---- render ----
 
   return (
-    <div className="flex h-screen" data-testid="members-route">
-      <div className="hidden md:contents"><Sidebar /></div>
-
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
+    <main
+      className="flex-1 flex flex-col min-w-0"
+      data-testid="members-route"
+    >
+      {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-panel">
           <Link
             to={`/conversations/${id}`}
@@ -573,9 +569,7 @@ export function MembersRoute() {
             {actionInProgress ? "working…" : "leave conversation"}
           </Button>
         </div>
-      </main>
-
-      {/* Dialogs */}
+      {/* Dialogs (portal-based overlays; position in the tree is irrelevant) */}
       {addPickerOpen && (
         <ContactPicker
           onSelect={handleAddMembers}
@@ -597,6 +591,6 @@ export function MembersRoute() {
           onCancel={() => setLeavePromoteOpen(false)}
         />
       )}
-    </div>
+    </main>
   );
 }

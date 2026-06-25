@@ -27,6 +27,7 @@ import { ToastProvider } from "@/components/toast";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { ProfileView } from "@/components/profile-view";
+import { AppShell } from "@/components/app-shell";
 
 /**
  * Wrapper that reads the :accountID route param and forwards it to ProfileView.
@@ -134,29 +135,36 @@ function App() {
   } else {
     routeTable = (
       <Routes>
-        <Route path="/" element={<ConversationsRoute />} />
-        <Route path="/conversations" element={<ConversationsRoute />} />
-        <Route path="/conversations/new" element={<NewConversationRoute />} />
-        <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
-        <Route path="/conversations/:id/members" element={<MembersRoute />} />
-        <Route path="/settings/*" element={<SettingsRoute />} />
-        {/*
-          Unit 8d: deprecate the standalone /contacts list page in favor of
-          the sidebar `contacts` tab. The list visually diverged from the
-          tab (back-link + page title) and there was no spec justification
-          for two separate surfaces. /contacts/add and /contacts/:contactID
-          keep their dedicated routes — only the list page redirects.
-        */}
-        <Route path="/contacts" element={<Navigate to="/?tab=contacts" replace />} />
-        <Route path="/contacts/add" element={<ContactAddRoute />} />
-        <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
-        <Route path="/profile/:accountID" element={<ProfileRoute />} />
-        {/* /auth/recovery is reachable while authenticated so a user who
-            signed in via 24-word recovery code can complete stage 2 (set a
-            fresh password). The recovery route itself navigates to "/" on
-            completion or skip. */}
-        <Route path="/connections/pending" element={<PendingConnectionsRoute />} />
-        <Route path="/connections/live-invites" element={<LiveInvitesRoute />} />
+        {/* Unit 9-2 / 2-F: the authenticated app screens live inside the
+            AppShell layout route, which renders the persistent desktop
+            sidebar + the routed pane via <Outlet />. Mobile hides the
+            sidebar (shell uses md:flex) so content is full-screen and the
+            bottom tab bar provides nav. */}
+        <Route element={<AppShell />}>
+          <Route path="/" element={<ConversationsRoute />} />
+          <Route path="/conversations" element={<ConversationsRoute />} />
+          <Route path="/conversations/new" element={<NewConversationRoute />} />
+          <Route path="/conversations/:id" element={<ConversationDetailRoute />} />
+          <Route path="/conversations/:id/members" element={<MembersRoute />} />
+          <Route path="/settings/*" element={<SettingsRoute />} />
+          {/*
+            Unit 8d: deprecate the standalone /contacts list page in favor of
+            the sidebar `contacts` tab. The list visually diverged from the
+            tab (back-link + page title) and there was no spec justification
+            for two separate surfaces. /contacts/add and /contacts/:contactID
+            keep their dedicated routes — only the list page redirects.
+          */}
+          <Route path="/contacts" element={<Navigate to="/?tab=contacts" replace />} />
+          <Route path="/contacts/add" element={<ContactAddRoute />} />
+          <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
+          <Route path="/profile/:accountID" element={<ProfileRoute />} />
+          <Route path="/connections/pending" element={<PendingConnectionsRoute />} />
+          <Route path="/connections/live-invites" element={<LiveInvitesRoute />} />
+        </Route>
+        {/* /auth/recovery stays OUTSIDE the AppShell — it's an auth-flow
+            stage (post-24-word-code "set a fresh password"), not an app
+            screen, so it renders chromeless (no sidebar). Reachable while
+            authenticated; navigates to "/" on completion or skip. */}
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

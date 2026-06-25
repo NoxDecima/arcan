@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount, useLogOut } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { authClient } from "@/auth/client";
 import { Button } from "@/components/ui/button";
-import { ChangePasswordModal } from "./change-password-modal";
-import { ViewRecoveryCodeModal } from "./view-recovery-code-modal";
 import { Skel } from "@/components/skeleton";
 
 /**
@@ -22,8 +20,7 @@ import { Skel } from "@/components/skeleton";
 export function AccountSection() {
   const me = useAccount(ArcanAccount);
   const logOut = useLogOut();
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showRecoveryCode, setShowRecoveryCode] = useState(false);
+  const navigate = useNavigate();
 
   async function handleSignOut() {
     if (
@@ -70,14 +67,14 @@ export function AccountSection() {
       <div className="mt-4 flex flex-col gap-2">
         <Button
           variant="outline"
-          onClick={() => setShowChangePassword(true)}
+          onClick={() => navigate("/settings/change-password")}
           data-testid="change-password-btn"
         >
           change password
         </Button>
         <Button
           variant="outline"
-          onClick={() => setShowRecoveryCode(true)}
+          onClick={() => navigate("/settings/recovery-code")}
           data-testid="view-recovery-code-btn"
         >
           view recovery code
@@ -90,12 +87,6 @@ export function AccountSection() {
           sign out
         </Button>
       </div>
-      {showChangePassword && (
-        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
-      )}
-      {showRecoveryCode && (
-        <ViewRecoveryCodeModal onClose={() => setShowRecoveryCode(false)} />
-      )}
     </section>
   );
 }
