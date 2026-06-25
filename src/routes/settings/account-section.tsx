@@ -1,92 +1,124 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAccount, useLogOut } from "jazz-tools/react";
+import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { Avatar } from "@/components/avatar";
 import { SafetyNumber } from "@/components/safety-number";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
-import { authClient } from "@/auth/client";
-import { Button } from "@/components/ui/button";
 import { Skel } from "@/components/skeleton";
+import { Card, SectionLabel, SRow, Chev, Icon } from "./settings-kit";
 
 /**
- * AccountSection: shows the user's safety number derived from their
- * Ed25519 signing public key, plus password / recovery-code management
- * and a sign-out action.
+ * AccountSection (Unit 9-5a): the FIRST card in settings, rebuilt against the
+ * prototype (design/proto.jsx:270 + design/hf-settings.jsx:95-100).
  *
- * Sign-out: calls authClient.signOut() first so the Better Auth cookie
- * is invalidated server-side, then logOut() to clear local Jazz
- * credentials. After logOut, App's useIsAuthenticated flips and the
- * /auth/login route renders.
+ * Rows: MeRow (avatar + name + "view your profile" → /profile/<me-id>),
+ * change password → /settings/change-password, recovery code →
+ * /settings/recovery-code, then an expandable safety-number row.
+ *
+ * Sign-out moved out to its own danger-red card at the bottom (SignOutCard).
  */
 export function AccountSection() {
-  const me = useAccount(ArcanAccount);
-  const logOut = useLogOut();
+  const me = useAccount(ArcanAccount, { resolve: { profile: true } });
   const navigate = useNavigate();
-
-  async function handleSignOut() {
-    if (
-      !confirm(
-        "Sign out? You'll need your password to sign back in. Local data will be cleared.",
-      )
-    )
-      return;
-    try {
-      await authClient.signOut();
-    } catch {
-      // Network failure shouldn't block local logOut. The Better Auth
-      // session will expire naturally; clear local creds either way.
-    }
-    logOut();
-  }
+  const [showSafety, setShowSafety] = useState(false);
 
   if (!me.$isLoaded) {
     return (
-      <section data-testid="account-section-loading">
-        <h2 className="text-base font-semibold text-text mb-2">account</h2>
-        <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
-          <Skel w="55%" h={12} />
-          <Skel w="80%" h={14} />
-        </div>
-        <div className="mt-4 flex flex-col gap-2">
-          {[0, 1, 2].map((i) => (
-            <Skel key={i} w="100%" h={36} r={6} />
-          ))}
-        </div>
-      </section>
+      <div data-testid="account-section-loading">
+        <SectionLabel>account</SectionLabel>
+        <Card>
+          <div className="px-3.5 py-3">
+            <Skel w="55%" h={14} />
+          </div>
+        </Card>
+      </div>
     );
   }
 
+  const myID = (me as any).$jazz?.id as string | undefined;
   const fingerprintHex = getAccountPubkeyHex(me);
 
   return (
-    <section>
-      <h2 className="text-base font-semibold text-text mb-2">account</h2>
-      <div className="bg-panel rounded border border-hairline px-4 py-3 flex flex-col gap-2">
-        <p className="text-sm text-text-2">your safety number:</p>
-        <SafetyNumber fingerprintHex={fingerprintHex} />
-      </div>
-      <div className="mt-4 flex flex-col gap-2">
-        <Button
-          variant="outline"
+    <div>
+      <SectionLabel>account</SectionLabel>
+      <Card>
+        {/* MeRow — whole row → profile (design MeRow, 44px avatar) */}
+        <button
+          type="button"
+          data-testid="settings-me-row"
+          onClick={() => myID && navigate(`/profile/${myID}`)}
+          disabled={!myID}
+          className="flex w-full items-center gap-3 border-b border-hairline px-3.5 py-[13px] text-left hover:bg-panel-2 disabled:opacity-50"
+        >
+          <Avatar
+            src={(me as any).profile.avatar}
+            initials={me.profile.displayName?.[0] ?? "?"}
+            size="md"
+            loadAs={me}
+            className="!h-11 !w-11"
+            data-testid="settings-me-avatar"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold leading-tight text-text">
+              {me.profile.displayName}
+            </div>
+            <div className="mt-0.5 text-[11px] leading-none text-dim">
+              view your profile
+            </div>
+          </div>
+          <Chev />
+        </button>
+
+        <SRow
+          icon="key"
+          label="change password"
+          control={<Chev />}
           onClick={() => navigate("/settings/change-password")}
           data-testid="change-password-btn"
-        >
-          change password
-        </Button>
-        <Button
-          variant="outline"
+        />
+        <SRow
+          icon="shield"
+          label="recovery code"
+          control={<Chev />}
           onClick={() => navigate("/settings/recovery-code")}
           data-testid="view-recovery-code-btn"
+        />
+
+        {/* Expandable safety-number row (4-D). Collapsed shows a chevron that
+            rotates open; expanded renders the formatted number on panel-2. */}
+        <button
+          type="button"
+          data-testid="safety-number-toggle"
+          aria-expanded={showSafety}
+          onClick={() => setShowSafety((v) => !v)}
+          className={`flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-panel-2 ${
+            showSafety ? "border-b border-hairline" : ""
+          }`}
         >
-          view recovery code
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => void handleSignOut()}
-          data-testid="sign-out-btn"
-        >
-          sign out
-        </Button>
-      </div>
-    </section>
+          <span className="text-text-2">
+            <Icon d="shield" size={17} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12.5px] font-medium leading-tight text-text">
+              safety number
+            </div>
+            <div className="mt-0.5 text-[10.5px] leading-tight text-dim">
+              verify it matches in person
+            </div>
+          </div>
+          <span
+            className={`text-dim transition-transform ${showSafety ? "rotate-90" : ""}`}
+          >
+            <Icon d="chev" size={15} />
+          </span>
+        </button>
+        {showSafety && (
+          <div className="bg-panel-2 px-3.5 py-3">
+            <SafetyNumber fingerprintHex={fingerprintHex} />
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }

@@ -50,7 +50,11 @@ export function RecoveryCodeRoute() {
           ← back
         </Link>
 
-        <h1 className="text-xl font-bold text-text mb-6">view recovery code</h1>
+        <h1 className="text-xl font-bold text-text mb-1">view recovery code</h1>
+        <p className="mb-6 text-[11.5px] leading-relaxed text-text-2">
+          this is the master secret to your account — anyone with this code can
+          access your account. only reveal it somewhere private.
+        </p>
 
         {code ? (
           <div className="flex flex-col gap-3">
@@ -89,7 +93,7 @@ export function RecoveryCodeRoute() {
               data-testid="view-recovery-code-password"
             />
             {error && (
-              <p className="rounded-r-3 border border-red/30 bg-red/10 px-3 py-2 text-sm text-red">
+              <p className="rounded-r-4 border border-red/30 bg-red/10 px-3 py-2 text-sm text-red">
                 {error}
               </p>
             )}
@@ -104,8 +108,10 @@ export function RecoveryCodeRoute() {
               </Button>
               <Button
                 type="submit"
+                variant="outline"
                 disabled={isLoading}
                 data-testid="view-recovery-code-submit"
+                className="border-red/40 text-red hover:bg-red/10"
               >
                 {isLoading ? "…" : "show code"}
               </Button>

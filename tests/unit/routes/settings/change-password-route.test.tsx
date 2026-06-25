@@ -59,4 +59,17 @@ describe("ChangePasswordRoute", () => {
       expect(screen.getByTestId("settings-index")).toBeTruthy();
     });
   });
+
+  test("renders subtle helper text explaining other sessions are signed out", () => {
+    renderRoute();
+    expect(
+      screen.getByText(/sign you out on your other devices/i),
+    ).toBeTruthy();
+  });
+
+  test("submit button carries the destructive red treatment", () => {
+    renderRoute();
+    const btn = screen.getByTestId("change-password-submit");
+    expect(btn.className).toContain("text-red");
+  });
 });
