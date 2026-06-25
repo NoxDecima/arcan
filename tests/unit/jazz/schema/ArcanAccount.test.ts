@@ -15,6 +15,14 @@ describe("ArcanAccount schema", () => {
     expect(typeof ArcanAccountRoot.create).toBe("function");
   });
 
+  // Unit 9-0: durable store for incoming ConnectionRequests. The recipient's
+  // Inbox is one-shot+destructive, so requests are drained into this list once
+  // and read from here — surviving the /connections/pending full reload.
+  it("root has an incomingRequests CoList field", () => {
+    const shape = (ArcanAccountRoot as unknown as { shape: Record<string, unknown> }).shape;
+    expect(shape.incomingRequests, "missing field: incomingRequests").toBeDefined();
+  });
+
   /**
    * Migration hook test.
    *

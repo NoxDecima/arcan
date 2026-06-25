@@ -3,6 +3,7 @@ import { ContactBook } from "./Contact";
 import { DeviceRecord } from "./DeviceRecord";
 import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
+import { ConnectionRequest } from "./ConnectionRequest";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
 import { getCurrentSessionFingerprint } from "@/auth/session";
@@ -67,6 +68,15 @@ export const ArcanAccountRoot = co.map({
   // Unit 1 Phase 10 — live invitations created by this user for the management
   // screen. OPTIONAL for back-compat with pre-Phase-10 accounts (backfill below).
   liveInvitations: co.list(Invitation).optional(),
+  // Unit 9-0 — durable store of incoming ConnectionRequests delivered via the
+  // recipient's Inbox. jazz-tools Inbox.subscribe is one-shot+destructive (it
+  // marks each message `processed` in a persisted stream after first delivery),
+  // so surfacing requests via ephemeral component-local state lost them on the
+  // /connections/pending full reload. A single app-level subscription
+  // (useIncomingConnectionRequestInbox) drains the inbox into this list once;
+  // readers (the prompt + the pending route) read from here and survive reloads.
+  // OPTIONAL for back-compat with pre-Unit-9 accounts (backfill below).
+  incomingRequests: co.list(ConnectionRequest).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -147,6 +157,7 @@ export const ArcanAccount = co.account({
       );
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
     const liveInvitations = co.list(Invitation).create([], { owner: me });
+    const incomingRequests = co.list(ConnectionRequest).create([], { owner: me });
 
     me.$jazz.set(
       "root",
@@ -161,6 +172,7 @@ export const ArcanAccount = co.account({
           settings,
           dismissedRequestIDs,
           liveInvitations,
+          incomingRequests,
         },
         { owner: me },
       ),
@@ -300,6 +312,19 @@ export const ArcanAccount = co.account({
     );
   }
 
+  // -- 2h. incomingRequests backfill (existing accounts) --
+  // Unit 9-0 addition; same guard pattern as the liveInvitations backfill.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).incomingRequests
+  ) {
+    (me.root as any).$jazz.set(
+      "incomingRequests",
+      co.list(ConnectionRequest).create([], { owner: me }),
+    );
+  }
+
   // -- 2g. Self-register the current device's session --
   // Runs on every node startup. The root-init branch above pushes a
   // DeviceRecord only at account creation, so devices paired later (via
@@ -344,14 +369,18 @@ export const ArcanAccount = co.account({
   }
 
   // -- 3. Inbox initialization --
-  // Inbox.load is idempotent: creates the inbox if missing, returns existing
-  // if already present. The framework writes the inbox CoValue ID to
-  // me.profile.inbox automatically. Running on every startup ensures existing
-  // accounts (created before this migration step was added) also get an inbox.
+  // NOTE: contrary to an earlier comment here, Inbox.load() does NOT create the
+  // inbox if it is missing — in jazz-tools 0.20.18 it throws when
+  // me.profile.inbox is unset. The inbox CoValue is created by the jazz-tools
+  // account/profile bootstrap (co.profile() seeds the `inbox` slot), so by the
+  // time this migration step runs on a freshly-initialised profile the inbox
+  // already exists and Inbox.load() merely returns it. Running on every startup
+  // is a cheap idempotent verification that the inbox resolves; failures are
+  // non-fatal and retried on the next startup.
   try {
     await Inbox.load(me);
   } catch (e) {
-    console.warn("[inbox] Failed to load/create inbox on migration:", e);
+    console.warn("[inbox] Failed to load inbox on migration:", e);
     // Non-fatal: subsequent app bootstrap will retry
   }
 
