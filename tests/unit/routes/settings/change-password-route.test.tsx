@@ -1,7 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
-import { ChangePasswordModal } from "@/routes/settings/change-password-modal";
+import { ChangePasswordRoute } from "@/routes/settings/change-password-route";
 
 vi.mock("@/auth/flows", () => ({
   changePassword: vi.fn(async () => undefined),
@@ -9,22 +10,32 @@ vi.mock("@/auth/flows", () => ({
 
 import { changePassword } from "@/auth/flows";
 
-function Wrap({ children }: { children: React.ReactNode }) {
-  return <ToastProvider>{children}</ToastProvider>;
+function renderRoute() {
+  return render(
+    <ToastProvider>
+      <MemoryRouter initialEntries={["/settings/change-password"]}>
+        <Routes>
+          <Route
+            path="/settings/change-password"
+            element={<ChangePasswordRoute />}
+          />
+          <Route
+            path="/settings"
+            element={<div data-testid="settings-index">settings</div>}
+          />
+        </Routes>
+      </MemoryRouter>
+    </ToastProvider>,
+  );
 }
 
-describe("ChangePasswordModal", () => {
+describe("ChangePasswordRoute", () => {
   beforeEach(() => {
     (changePassword as unknown as ReturnType<typeof vi.fn>).mockClear();
   });
 
-  test("successful submit fires success toast and calls onClose", async () => {
-    const onClose = vi.fn();
-    render(
-      <Wrap>
-        <ChangePasswordModal onClose={onClose} />
-      </Wrap>
-    );
+  test("successful submit fires success toast and navigates back to /settings", async () => {
+    renderRoute();
 
     fireEvent.change(screen.getByTestId("change-password-current"), {
       target: { value: "old-password-123" },
@@ -43,6 +54,9 @@ describe("ChangePasswordModal", () => {
     await waitFor(() => {
       expect(screen.getByText("password changed")).toBeTruthy();
     });
-    expect(onClose).toHaveBeenCalled();
+    // Navigated back to the settings index (the modal previously called onClose).
+    await waitFor(() => {
+      expect(screen.getByTestId("settings-index")).toBeTruthy();
+    });
   });
 });
