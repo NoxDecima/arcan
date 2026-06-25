@@ -11,7 +11,9 @@ import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { EmptyPane } from "@/components/empty-pane";
-import { Lattice } from "@/components/lattice";
+import { Icon } from "@/components/icon";
+import { Fab } from "@/components/fab";
+import { getLastMessagePreview } from "@/jazz/notifications";
 
 /**
  * Sidebar component for the main layout.
@@ -179,9 +181,11 @@ export function Sidebar() {
 
   return (
     <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
-      {/* Header: Lattice brand mark + avatar/profile button + new chat button */}
+      {/* Header (Unit 9-3, item 2-B): avatar + name + gear→settings only.
+          The Arcan/Lattice mark was removed from list chrome — it lives in
+          the empty-pane watermark + auth screens, not here. The old "+"
+          moved to the bottom-right FAB (item 2-C). */}
       <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
-        <Lattice size={22} className="flex-shrink-0" />
         <button
           type="button"
           data-testid="sidebar-header-profile"
@@ -204,16 +208,15 @@ export function Sidebar() {
             {me.profile.displayName}
           </span>
         </button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate("/conversations/new")}
-          data-testid="new-chat-btn"
-          className="flex-shrink-0"
-          title="New chat"
+        <Link
+          to="/settings"
+          data-testid="sidebar-settings-gear"
+          className="flex-shrink-0 text-text-2 hover:text-text"
+          aria-label="Settings"
+          title="Settings"
         >
-          +
-        </Button>
+          <Icon name="gear" size={20} />
+        </Link>
       </div>
 
       {/*
