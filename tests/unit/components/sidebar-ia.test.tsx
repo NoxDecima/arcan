@@ -77,3 +77,16 @@ describe("Sidebar IA — tab icons (item 2-A)", () => {
     expect(contacts.textContent).toContain("contacts");
   });
 });
+
+describe("Sidebar IA — FAB + footer (items 2-C, 2-D)", () => {
+  it("renders the bottom-right FAB", async () => {
+    const { getByTestId } = await renderSidebar();
+    const fab = getByTestId("fab");
+    expect(fab.querySelector('svg[data-icon="plus"]')).not.toBeNull();
+  });
+
+  it("does NOT render the footer settings link", async () => {
+    const { queryByTestId } = await renderSidebar();
+    expect(queryByTestId("settings-link")).toBeNull();
+  });
+});

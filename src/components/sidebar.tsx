@@ -180,7 +180,7 @@ export function Sidebar() {
   const myID = (me as any).$jazz?.id as string | undefined;
 
   return (
-    <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
+    <aside className="relative w-full md:w-64 flex flex-col border-r border-hairline bg-panel overflow-hidden">
       {/* Header (Unit 9-3, item 2-B): avatar + name + gear→settings only.
           The Arcan/Lattice mark was removed from list chrome — it lives in
           the empty-pane watermark + auth screens, not here. The old "+"
@@ -378,16 +378,17 @@ export function Sidebar() {
         </nav>
       )}
 
-      {/* Footer: settings link */}
-      <div className="p-4 border-t border-hairline flex flex-col gap-2">
-        <Link
-          to="/settings"
-          data-testid="settings-link"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ⚙ settings
-        </Link>
-      </div>
+      {/* Unit 9-3 (item 2-C): bottom-right floating FAB replaces the old
+          header "+". Context-aware target — new conversation in the chats
+          tab, add-contact in the contacts tab (matches DesktopApp,
+          design/proto.jsx:777). Item 2-D: the footer settings link was
+          removed; settings is reached via the header gear. */}
+      <Fab
+        label={tab === "contacts" ? "Add a contact" : "New chat"}
+        onClick={() =>
+          navigate(tab === "contacts" ? "/contacts/add" : "/conversations/new")
+        }
+      />
     </aside>
   );
 }
