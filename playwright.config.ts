@@ -30,7 +30,7 @@ export default defineConfig({
       // auth-server runs Better Auth migrations on boot
       // (see auth-server/src/index.ts) so we just exec it directly.
       command:
-        "cd auth-server && BETTER_AUTH_SECRET=test-secret-for-e2e-only-not-prod-xyz BETTER_AUTH_URL=http://localhost:5173/api/auth PORT=4300 AUTH_RATE_LIMIT_MAX=1000 AUTH_RATE_LIMIT_WINDOW=60 npx tsx src/index.ts",
+        "cd api && BETTER_AUTH_SECRET=test-secret-for-e2e-only-not-prod-xyz BETTER_AUTH_URL=http://localhost:5173/api/auth PORT=4300 AUTH_RATE_LIMIT_MAX=1000 AUTH_RATE_LIMIT_WINDOW=60 npx tsx src/index.ts",
       port: 4300,
       reuseExistingServer: !process.env.CI,
       stdout: "ignore",
