@@ -1,6 +1,5 @@
 // src/components/composer.tsx
 import { useRef, useState, type KeyboardEvent, type ClipboardEvent, type ChangeEvent } from "react";
-import { Button } from "@/components/ui/button";
 import {
   ComposerAttachmentTray,
   type PendingAttachment,
@@ -50,7 +49,7 @@ export function Composer({
   onSend,
   getWriteGroup,
   disabled = false,
-  placeholder = "Type a message…",
+  placeholder = "type a message…",
 }: ComposerProps) {
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
@@ -155,22 +154,20 @@ export function Composer({
     !disabled && !sending && (text.trim().length > 0 || pending.length > 0);
 
   return (
-    <div className="border-t border-border" data-testid="composer">
+    <div className="border-t border-hairline bg-bg" data-testid="composer">
       <ComposerAttachmentTray pending={pending} onRemove={handleRemove} />
       {error && (
         <div
-          className="px-3 py-2 bg-red-50 text-xs text-red-700"
+          className="px-3 py-2 text-xs text-red"
           data-testid="composer-error"
         >
           {error}
         </div>
       )}
       <div
-        className="flex gap-2 px-3 pt-3"
+        className="flex items-center gap-2 px-3 pt-3"
         style={{
           // 12px baseline + iOS safe-area on chat-detail (mobile full-screen).
-          // Tailwind v3 doesn't ship a `pb-safe` util; inline keeps the
-          // calc() expression colocated with the bottom-edge component.
           paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
         }}
       >
@@ -182,35 +179,72 @@ export function Composer({
           onChange={handleFileInputChange}
           data-testid="composer-file-input"
         />
-        <Button
+        {/* attach (proto: paperclip/plus icon, text-2) */}
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={handlePickClick}
           disabled={disabled || sending}
           aria-label="Add attachment"
           data-testid="composer-attach-btn"
+          className="shrink-0 text-text-2 hover:text-text disabled:opacity-50"
         >
-          📎
-        </Button>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKey}
-          onPaste={handlePaste}
-          disabled={disabled || sending}
-          placeholder={disabled ? "No one else is in this chat" : placeholder}
-          rows={2}
-          className="flex-1 resize-none rounded border bg-background p-2 text-sm"
-          data-testid="composer-input"
-        />
-        <Button
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49" />
+          </svg>
+        </button>
+
+        {/* pill input wrapper (proto: rounded-pill, hairline, bg-bg, height 38) */}
+        <div className="flex flex-1 items-center rounded-pill border border-hairline bg-bg px-3">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKey}
+            onPaste={handlePaste}
+            disabled={disabled || sending}
+            placeholder={disabled ? "no one else is in this chat" : placeholder}
+            rows={1}
+            className="flex-1 resize-none bg-transparent py-2 text-[12.5px] text-text placeholder:text-dim outline-none"
+            data-testid="composer-input"
+          />
+        </div>
+
+        {/* 38x38 pill send button — accent fill when sendable (proto L197-199) */}
+        <button
+          type="button"
           onClick={handleSend}
           disabled={!sendEnabled}
+          aria-label="Send message"
           data-testid="composer-send-btn"
+          className={`flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-pill transition-colors ${
+            sendEnabled
+              ? "bg-arcan-accent text-on-accent"
+              : "bg-panel-2 text-dim"
+          }`}
         >
-          {sending ? "Sending…" : "Send"}
-        </Button>
+          {sending ? (
+            <span className="text-[10px] font-mono">…</span>
+          ) : (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M3.4 20.4l17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.39 1.21L4 11l11 1-11 1-1.98 6.19a1 1 0 0 0 1.38 1.21z" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   );
