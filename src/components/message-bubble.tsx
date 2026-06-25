@@ -140,20 +140,14 @@ export function MessageBubble({
         ariaLabel={`${authorDisplayName} avatar`}
       />
 
-      <div className={`flex-1 min-w-0 ${isMine ? "text-right" : "text-left"}`}>
-        <div className="text-xs text-muted-foreground mb-1">
-          {isMine ? formattedTime : `${authorDisplayName} ${formattedTime}`}
-          {message.edited && <span className="ml-1">(edited)</span>}
-          {isMine && !editing && (
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className="ml-2 opacity-0 group-hover:opacity-100"
-              data-testid="message-menu-btn"
-            >
-              ⋮
-            </button>
-          )}
-        </div>
+      <div className={`flex-1 min-w-0 flex flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}>
+        {/* author name above the bubble for OTHER messages only (proto Row
+            ~L65-66: own messages omit the name) */}
+        {!isMine && (
+          <span className="text-[9.5px] font-semibold text-text-2 ml-1">
+            {authorDisplayName}
+          </span>
+        )}
 
         {editing ? (
           <div className="inline-flex flex-col gap-1 items-end">
@@ -161,23 +155,15 @@ export function MessageBubble({
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               rows={2}
-              className="rounded border bg-background p-2 text-sm w-64"
+              className="rounded-r-2 border border-hairline bg-panel p-2 text-sm w-64"
               data-testid="message-edit-input"
             />
             <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditing(false)}
-              >
-                Cancel
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveEdit}
-                data-testid="message-edit-save"
-              >
-                Save
+              <Button size="sm" onClick={handleSaveEdit} data-testid="message-edit-save">
+                save
               </Button>
             </div>
           </div>
@@ -185,11 +171,33 @@ export function MessageBubble({
           <>
             {message.body && (
               <div
-                className={`inline-block max-w-md rounded-lg px-3 py-2 text-sm ${
-                  isMine ? "bg-primary text-primary-foreground" : "bg-muted"
+                data-testid="bubble-body"
+                className={`max-w-md px-[11px] py-2 rounded-[14px] ${
+                  isMine
+                    ? "bg-arcan-accent text-on-accent rounded-br-[2px]"
+                    : "bg-panel text-text rounded-bl-[2px]"
                 }`}
               >
-                {message.body}
+                {/* bubble text + inline timestamp, baseline-aligned (proto Bubble
+                    ~L46-49: flex items-end gap 8; time = 500 8.5px mono) */}
+                <div className="flex items-end gap-2">
+                  <span className="flex-1 text-[12.5px] leading-[1.45] whitespace-pre-wrap break-words">
+                    {message.body}
+                  </span>
+                  <span
+                    data-testid="bubble-time"
+                    className={`shrink-0 mb-px text-[8.5px] leading-none font-mono ${
+                      isMine ? "text-on-accent/60" : "text-dim"
+                    }`}
+                  >
+                    {formattedTime}
+                  </span>
+                </div>
+                {message.edited && (
+                  <span className="block text-[8.5px] font-mono opacity-70 mt-0.5">
+                    (edited)
+                  </span>
+                )}
               </div>
             )}
             {attachments.length > 0 && (
@@ -208,6 +216,17 @@ export function MessageBubble({
                 ))}
               </div>
             )}
+            {/* hover ⋮ menu trigger for own messages (kept; relocated below bubble) */}
+            {isMine && (
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="opacity-0 group-hover:opacity-100 text-dim text-xs mt-0.5"
+                data-testid="message-menu-btn"
+                aria-label="Message actions"
+              >
+                ⋮
+              </button>
+            )}
           </>
         )}
 
@@ -222,7 +241,7 @@ export function MessageBubble({
               }}
               data-testid="message-edit-btn"
             >
-              Edit
+              edit
             </Button>
             <Button
               size="sm"
@@ -233,7 +252,7 @@ export function MessageBubble({
               }}
               data-testid="message-delete-btn"
             >
-              Delete
+              delete
             </Button>
           </div>
         )}
