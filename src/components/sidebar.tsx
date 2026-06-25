@@ -11,6 +11,7 @@ import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { EmptyPane } from "@/components/empty-pane";
+import { PendingRequestsSection } from "@/components/pending-requests-section";
 import { Icon } from "@/components/icon";
 import { Fab } from "@/components/fab";
 import { getLastMessagePreview } from "@/jazz/notifications";
@@ -403,6 +404,7 @@ export function Sidebar() {
             paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
           }}
         >
+          <PendingRequestsSection />
           {contacts.length === 0 ? (
             <EmptyPane
               variant="compact"

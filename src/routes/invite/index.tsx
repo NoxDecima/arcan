@@ -23,6 +23,9 @@ import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { Lattice } from "@/components/lattice";
+import { AuthSurface, AuthSub } from "@/components/auth-surface";
+import { Avatar } from "@/components/avatar";
+import { useRemoteAvatar } from "@/jazz/avatarResolver";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import {
   parseInvitationURL,
@@ -92,6 +95,7 @@ export function InviteRoute() {
   const [request, setRequest] = useState<any | null>(null);
 
   const shared = useSharedGroups(invitation?.inviterAccountID ?? "");
+  const inviterAvatar = useRemoteAvatar(invitation?.inviterAccountID ?? null);
 
   // --- Load invitation on mount (works unauthenticated too) ---
   useEffect(() => {
@@ -296,53 +300,65 @@ export function InviteRoute() {
   // phase === "confirm"
   const inv = invitation as any;
   return (
-    <div
-      className="p-6 max-w-sm mx-auto flex flex-col gap-4"
-      data-testid="invite-confirm"
-    >
-      <h1 className="text-lg font-semibold text-text">
-        connect with {inv.inviterDisplayName}?
-      </h1>
-      <p className="text-sm text-text-2" data-testid="invite-inviter-name">
-        {inv.inviterDisplayName} wants to connect.
-      </p>
-
-      {shared.length > 0 && (
-        <p className="text-xs text-arcan-accent">
-          You're both in: {shared.map((s: any) => s.title).join(" · ")}
-        </p>
-      )}
-
-      <details className="rounded-r-3 border border-hairline p-3 bg-panel">
-        <summary className="cursor-pointer text-sm text-text">
-          view security code
-        </summary>
-        <div className="mt-3">
-          <SafetyNumber fingerprintHex={inv.inviterFingerprint} />
+    <AuthSurface w={360}>
+      <div
+        className="flex flex-col items-center gap-4"
+        data-testid="invite-confirm"
+      >
+        <Avatar
+          src={inviterAvatar}
+          initials={inv.inviterDisplayName?.[0] ?? "?"}
+          size="lg"
+          loadAs={me}
+          data-testid="invite-inviter-avatar"
+        />
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span
+            className="text-lg font-semibold text-text"
+            data-testid="invite-inviter-name"
+          >
+            {inv.inviterDisplayName}
+          </span>
+          <AuthSub>wants to connect with you on arcan</AuthSub>
         </div>
-        <p className="text-[11px] text-dim text-center mt-3">
-          Compare in person to confirm it's really them.
-        </p>
-      </details>
 
-      <div className="flex gap-2">
-        <Button
-          variant="primary"
-          onClick={onConnect}
-          className="flex-1"
-          data-testid="invite-accept-btn"
-        >
-          connect
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => window.history.back()}
-          className="flex-1"
-          data-testid="invite-decline-btn"
-        >
-          cancel
-        </Button>
+        {shared.length > 0 && (
+          <p className="text-center text-xs text-arcan-accent">
+            you're both in: {shared.map((s: any) => s.title).join(" · ")}
+          </p>
+        )}
+
+        <details className="w-full rounded-r-3 border border-hairline bg-panel p-3">
+          <summary className="cursor-pointer text-sm text-text">
+            view security code
+          </summary>
+          <div className="mt-3">
+            <SafetyNumber fingerprintHex={inv.inviterFingerprint} />
+          </div>
+          <p className="mt-3 text-center text-[11px] text-dim">
+            compare in person to confirm it's really them.
+          </p>
+        </details>
+
+        <div className="flex w-full gap-2">
+          <Button
+            variant="primary"
+            onClick={onConnect}
+            className="flex-1"
+            data-testid="invite-accept-btn"
+          >
+            connect
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="flex-1"
+            data-testid="invite-decline-btn"
+          >
+            cancel
+          </Button>
+        </div>
       </div>
-    </div>
+    </AuthSurface>
   );
 }

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, screen, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
@@ -28,14 +28,22 @@ function Wrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-describe("AddContactRoute copy/share toast", () => {
+const origShare = (navigator as any).share;
+
+describe("AddContactRoute adaptive copy/share button", () => {
   beforeEach(() => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn(async () => undefined) },
     });
   });
 
-  test("copy-link button fires 'invite link copied' toast", async () => {
+  afterEach(() => {
+    (navigator as any).share = origShare;
+    vi.clearAllMocks();
+  });
+
+  test("desktop (no navigator.share): single button copies + fires 'invite link copied' toast", async () => {
+    delete (navigator as any).share;
     render(
       <Wrap>
         <AddContactRoute />
@@ -43,10 +51,10 @@ describe("AddContactRoute copy/share toast", () => {
     );
     // Wait for the invitation effect to resolve and the button to become wired.
     await waitFor(() => {
-      expect(screen.getByTestId("add-contact-copy-btn")).toBeTruthy();
+      expect(screen.getByTestId("add-contact-share-btn")).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.click(screen.getByTestId("add-contact-copy-btn"));
+      fireEvent.click(screen.getByTestId("add-contact-share-btn"));
     });
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -58,22 +66,22 @@ describe("AddContactRoute copy/share toast", () => {
     });
   });
 
-  test("share button falls back to clipboard + 'link copied' toast when navigator.share is unavailable", async () => {
-    // Ensure navigator.share is not defined for this test.
-    delete (navigator as any).share;
+  test("mobile (navigator.share present): single button opens the native share sheet", async () => {
+    const share = vi.fn(async () => undefined);
+    (navigator as any).share = share;
     render(
       <Wrap>
         <AddContactRoute />
       </Wrap>
     );
     await waitFor(() => {
-      expect(screen.getByTestId("share-link")).toBeTruthy();
+      expect(screen.getByTestId("add-contact-share-btn")).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.click(screen.getByTestId("share-link"));
+      fireEvent.click(screen.getByTestId("add-contact-share-btn"));
     });
     await waitFor(() => {
-      expect(screen.getByText("link copied")).toBeTruthy();
+      expect(share).toHaveBeenCalledWith({ url: "https://test.example/i/abc" });
     });
   });
 });
