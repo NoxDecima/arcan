@@ -243,28 +243,12 @@ export async function createConnectionRequest(
     { owner: notificationGroup },
   );
 
-  // [SPIKE-9-0] temporary instrumentation — reverted in Phase 3.2
-  console.log("[SPIKE-SENDER] minted request id=", (request as any).$jazz.id, "recipient=", recipientAccountID, "channel=", channel);
-
   // Deliver via the recipient's Inbox
-  let sender: Awaited<ReturnType<typeof InboxSender.load<typeof request>>>;
-  try {
-    sender = await InboxSender.load<typeof request>(
-      recipientAccountID as any,
-      requester,
-    );
-    console.log("[SPIKE-SENDER] InboxSender.load OK for recipient=", recipientAccountID);
-  } catch (e) {
-    console.log("[SPIKE-SENDER] InboxSender.load THREW:", String(e));
-    throw e;
-  }
-  try {
-    const res = await sender.sendMessage(request);
-    console.log("[SPIKE-SENDER] sendMessage RESOLVED sent id=", (request as any).$jazz.id, "result=", String(res));
-  } catch (e) {
-    console.log("[SPIKE-SENDER] sendMessage REJECTED:", String(e));
-    throw e;
-  }
+  const sender = await InboxSender.load<typeof request>(
+    recipientAccountID as any,
+    requester,
+  );
+  await sender.sendMessage(request);
 
   return request as ReturnType<typeof ConnectionRequest.create>;
 }

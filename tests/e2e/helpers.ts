@@ -62,14 +62,18 @@ export async function createAccount(
   await page.getByTestId("passphrase-saved-checkbox").check();
   await page.getByTestId("passphrase-display-continue").click();
 
-  // Backup confirm (3 challenge words by label)
+  // Backup confirm (3 challenge words). The confirm step renders no `for`
+  // attribute on the <label>; the input carries data-testid=confirm-word-N and
+  // its sibling <span> reads "word #NN" (zero-padded, 1-based). Read NN from
+  // that span to pick the right word from the captured grid.
   for (let slot = 0; slot < 3; slot++) {
-    const label = page.locator(`label[for="confirm-word-${slot}"]`);
-    const labelText = (await label.textContent()) ?? "";
-    const match = labelText.match(/Word\s+(\d+)/);
+    const input = page.getByTestId(`confirm-word-${slot}`);
+    await input.waitFor({ timeout: 20_000 });
+    const labelText = (await input.locator("xpath=../span").first().textContent()) ?? "";
+    const match = labelText.match(/#?\s*0*(\d+)/);
     if (!match) throw new Error(`Could not parse confirm label: "${labelText}"`);
     const expected = words[parseInt(match[1], 10) - 1];
-    await page.getByTestId(`confirm-word-${slot}`).fill(expected);
+    await input.fill(expected);
   }
   await page.getByTestId("confirm-passphrase-btn").click();
 
@@ -115,14 +119,15 @@ export async function fillOnboardingForm(
   await page.getByTestId("passphrase-saved-checkbox").check();
   await page.getByTestId("passphrase-display-continue").click();
 
-  // Backup confirm
+  // Backup confirm (see createAccount above for the selector rationale).
   for (let slot = 0; slot < 3; slot++) {
-    const label = page.locator(`label[for="confirm-word-${slot}"]`);
-    const labelText = (await label.textContent()) ?? "";
-    const match = labelText.match(/Word\s+(\d+)/);
+    const input = page.getByTestId(`confirm-word-${slot}`);
+    await input.waitFor({ timeout: 20_000 });
+    const labelText = (await input.locator("xpath=../span").first().textContent()) ?? "";
+    const match = labelText.match(/#?\s*0*(\d+)/);
     if (!match) throw new Error(`Could not parse confirm label: "${labelText}"`);
     const expected = words[parseInt(match[1], 10) - 1];
-    await page.getByTestId(`confirm-word-${slot}`).fill(expected);
+    await input.fill(expected);
   }
   await page.getByTestId("confirm-passphrase-btn").click();
 
