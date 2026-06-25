@@ -38,7 +38,7 @@ export function WelcomeStep({
 }: WelcomeStepProps) {
   return (
     <AuthSurface forceDark w={300}>
-      <Wordmark size={30} />
+      <Wordmark size={56} />
       <AuthSub>local-first · end-to-end encrypted</AuthSub>
       <div className="h-[6px]" />
       <button

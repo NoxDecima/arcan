@@ -213,7 +213,7 @@ export function ResponderStep() {
   if (phase === "scanning") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>scan to join</AuthTitle>
         <AuthSub>point your camera at the QR on your other device</AuthSub>
         <QRScanner onUrl={handleScanned} expectedPathPrefix="/pair" />
@@ -224,7 +224,7 @@ export function ResponderStep() {
   if (phase === "loaded") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>reading pairing link</AuthTitle>
         <AuthSub>verifying the invite…</AuthSub>
       </AuthSurface>
@@ -235,7 +235,7 @@ export function ResponderStep() {
     const fp = (pairing as any)?.responderFingerprint as string | undefined;
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>waiting for approval</AuthTitle>
         <AuthSub>on your other device, approve this link</AuthSub>
         <div
@@ -267,7 +267,7 @@ export function ResponderStep() {
   if (phase === "rejected") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>request rejected</AuthTitle>
         <AuthSub>
           the other device declined this link. ask them to retry, or start
@@ -281,7 +281,7 @@ export function ResponderStep() {
   if (phase === "timed-out") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>request timed out</AuthTitle>
         <AuthSub>start a new pairing on your other device.</AuthSub>
         <div data-testid="pair-resp-timed-out" />
@@ -292,7 +292,7 @@ export function ResponderStep() {
   if (phase === "claiming") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>claiming account</AuthTitle>
         <AuthSub>almost there…</AuthSub>
         <div data-testid="pair-resp-claiming" />
@@ -303,7 +303,7 @@ export function ResponderStep() {
   if (phase === "complete") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>account paired</AuthTitle>
         <AuthSub>you now have access on this device.</AuthSub>
         <button
@@ -323,7 +323,7 @@ export function ResponderStep() {
   if (phase === "error") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>pairing failed</AuthTitle>
         <AuthSub>{errorMsg ?? "unknown error"}</AuthSub>
         <button

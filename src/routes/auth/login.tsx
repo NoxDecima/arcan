@@ -47,7 +47,7 @@ export function LoginRoute() {
 
   return (
     <AuthSurface forceDark>
-      <Wordmark size={22} />
+      <Wordmark size={56} />
       <AuthTitle>sign in</AuthTitle>
       <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-[6px]">

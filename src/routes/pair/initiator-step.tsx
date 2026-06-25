@@ -171,7 +171,7 @@ export function InitiatorStep() {
   if (phase === "loading") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>preparing link</AuthTitle>
         <AuthSub>creating pairing session…</AuthSub>
       </AuthSurface>
@@ -181,7 +181,7 @@ export function InitiatorStep() {
   if (phase === "error") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>something went wrong</AuthTitle>
         <AuthSub>{errorMsg ?? "unknown error"}</AuthSub>
         <div data-testid="pair-init-error" />
@@ -203,7 +203,7 @@ export function InitiatorStep() {
   if (phase === "complete") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>new device linked</AuthTitle>
         <div data-testid="pair-init-complete" />
         <Link to="/">
@@ -222,7 +222,7 @@ export function InitiatorStep() {
   if (phase === "approved") {
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <AuthTitle>linking device</AuthTitle>
         <AuthSub>transferring account secret…</AuthSub>
         <div data-testid="pair-approved" />
@@ -234,7 +234,7 @@ export function InitiatorStep() {
     const p = invitation?.pairing as any;
     return (
       <AuthSurface forceDark w={330}>
-        <Wordmark size={20} />
+        <Wordmark size={48} />
         <div data-testid="pair-approval-prompt">
           <DeviceApprovalCard
             userAgent={p?.responderUserAgent}
@@ -252,7 +252,7 @@ export function InitiatorStep() {
   // phase === "waiting"
   return (
     <AuthSurface forceDark w={330}>
-      <Wordmark size={20} />
+      <Wordmark size={48} />
       <AuthTitle>link a new device</AuthTitle>
       <AuthSub>open this link on your other device, or scan it</AuthSub>
       <div className="flex justify-center" data-testid="pair-waiting">
