@@ -79,4 +79,73 @@ test.describe("Unit 9-5b — settings controls + feedback", () => {
       await ctx.close();
     }
   });
+
+  test("devices card shows the link-device row at the bottom and it navigates to pairing", async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    try {
+      await page.goto("/");
+      await createAccount(page, "Dana");
+      await page.goto("/settings");
+
+      const card = page.getByTestId("devices-card");
+      await expect(card).toBeVisible({ timeout: 10_000 });
+
+      // The link row is the last child row of the card.
+      const linkRow = page.getByTestId("link-device-row");
+      await expect(linkRow).toBeVisible();
+      // It is positioned after the (at least one) device row in DOM order.
+      const deviceRow = page.getByTestId("device-row-0");
+      await expect(deviceRow).toBeVisible();
+      const order = await card.evaluate((el) => {
+        const ids = Array.from(el.querySelectorAll("[data-testid]")).map(
+          (n) => (n as HTMLElement).dataset.testid,
+        );
+        return {
+          device: ids.indexOf("device-row-0"),
+          link: ids.indexOf("link-device-row"),
+        };
+      });
+      expect(order.link).toBeGreaterThan(order.device);
+
+      await linkRow.click();
+      await expect(page).toHaveURL(/\/pair\?role=initiator/);
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  test("feedback row opens the route, submits, and returns to settings", async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    try {
+      // Stub the feedback API so the test doesn't depend on Linear.
+      await page.route("**/api/feedback", (route) =>
+        route.fulfill({ status: 200, body: JSON.stringify({ ok: true }) }),
+      );
+      await page.goto("/");
+      await createAccount(page, "Eve");
+      await page.goto("/settings");
+
+      await page.getByTestId("feedback-row").click();
+      await expect(page).toHaveURL(/\/settings\/feedback$/);
+      await expect(page.getByTestId("feedback-submit")).toBeDisabled();
+
+      await page.getByTestId("feedback-message").fill("the safety-number flow is slick");
+      await page.getByTestId("feedback-category-idea").click();
+      await expect(page.getByTestId("feedback-submit")).toBeEnabled();
+
+      await page.getByTestId("feedback-submit").click();
+      // Success toast + return to /settings.
+      await expect(page).toHaveURL(/\/settings$/, { timeout: 10_000 });
+    } finally {
+      await ctx.close();
+    }
+  });
 });
