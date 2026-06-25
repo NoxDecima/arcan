@@ -22,7 +22,22 @@ Jazz API surface in use: `docs/jazz-api-notes.md` (verified against jazz-tools 0
 - Slice 6 (Caddy + TLS Docker Compose deploy) — merged, tag `slice-6-complete`.
 - Slice 7 (zero-knowledge email + password auth) — merged, tag `slice-7-complete`.
 - Slice 8 (in-app notifications) — merged, tag `slice-8-complete`.
-- Next: UI rework + supporting features — see `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`.
+
+### UI rework (Units) — breakdown in `docs/superpowers/specs/2026-06-05-ui-rework-feature-breakdown-design.md`
+
+Units are merged as `--no-ff` merge commits (no per-unit tags; `slice-N` tags belong to the
+original feature slices above, a separate track).
+
+- Unit 5 (rebrand jazz-messanger → Arcan) — merged.
+- Unit 7 (design-system foundation: tokens, fonts, Lattice, theme + accent, toasts, skeletons) — merged.
+- Unit 1 (connection subsystem rework) — merged.
+- Unit 2 (device-pairing approval gate) — merged.
+- Unit 3 follow-up (feedback → Linear) — merged.
+- Unit 4 (conversation display) — merged.
+- Unit 8 (final UI alignment sweep: AuthSurface, EmptyPane, ModalShell, mobile chrome, toast/skeleton/typography) — merged + 2 polish passes. Audit method (screenshot diffing) missed IA/interaction/feel issues — see Unit 9.
+- Unit 9 (IA & interaction-fidelity pass) — DESIGNED, not started. Spec: `docs/superpowers/specs/2026-06-23-unit-9-ia-interaction-design.md`. Reference is the prototype `design/proto.jsx`. Includes a connection-request delivery bug fix (9-0).
+- Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
+- `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
 ## Issue tracking
 
