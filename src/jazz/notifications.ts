@@ -84,3 +84,29 @@ export function markRead(me: any, conversationID: string): void {
   }
   me.root.lastReadAt.$jazz.set(conversationID, cutoff);
 }
+
+/**
+ * Derive a one-line preview for a conversation's most recent message
+ * (Unit 9-3, item 3.1-B). Pure — reads only body / deleted / attachments.
+ *
+ * Fallbacks mirror how message-bubble.tsx renders these states:
+ *  - deleted message       → "message deleted"
+ *  - attachment-only (no body text) → "photo"
+ *  - body present           → trimmed body, internal whitespace collapsed
+ *  - no messages            → "" (caller decides what to show)
+ *
+ * Whitespace is collapsed so a multi-line message renders as a single
+ * truncatable preview line.
+ */
+export function getLastMessagePreview(conversation: any): string {
+  const messages = conversation?.messages;
+  if (!messages || messages.length === 0) return "";
+  const last = messages[messages.length - 1];
+  if (!last) return "";
+  if (last.deleted) return "message deleted";
+  const body = typeof last.body === "string" ? last.body.trim() : "";
+  if (body.length > 0) return body.replace(/\s+/g, " ");
+  const attachments = last.attachments;
+  if (attachments && attachments.length > 0) return "photo";
+  return "";
+}

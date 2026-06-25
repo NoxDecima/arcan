@@ -1,0 +1,101 @@
+import { render } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { SidebarTabProvider } from "@/components/sidebar-tab";
+
+// Mock useAccount so Sidebar renders without a real Jazz context.
+vi.mock("jazz-tools/react", () => ({
+  useAccount: () => ({
+    $isLoaded: true,
+    profile: { displayName: "decima", avatar: null },
+    root: {
+      contactBook: [],
+      knownConversations: [],
+      lastReadAt: {},
+    },
+    $jazz: { id: "co_me" },
+  }),
+}));
+
+async function renderSidebar() {
+  const { Sidebar } = await import("@/components/sidebar");
+  return render(
+    <MemoryRouter>
+      <SidebarTabProvider>
+        <Sidebar />
+      </SidebarTabProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe("Sidebar IA — header chrome (items 2-B, 2-C)", () => {
+  it("does NOT render the Lattice brand mark in the header", async () => {
+    const { getByTestId } = await renderSidebar();
+    // Item 2-B removes the brand mark from the *header chrome*. The mark
+    // still lives in the empty-pane watermark (a separate brand surface),
+    // so scope the assertion to the header — the block that holds the
+    // profile button + the settings gear. Lattice renders an
+    // <svg role="img" aria-label="Arcan">.
+    const header = getByTestId("sidebar-header-profile").parentElement!;
+    expect(header.querySelector('svg[aria-label="Arcan"]')).toBeNull();
+    // Sanity: the gear lives in this same header block.
+    expect(
+      header.querySelector('[data-testid="sidebar-settings-gear"]'),
+    ).not.toBeNull();
+  });
+
+  it("does NOT render a header '+' new-chat button", async () => {
+    const { queryByTestId } = await renderSidebar();
+    expect(queryByTestId("new-chat-btn")).toBeNull();
+  });
+
+  it("renders a gear settings link pointing to /settings", async () => {
+    const { getByTestId } = await renderSidebar();
+    const gear = getByTestId("sidebar-settings-gear");
+    expect(gear.getAttribute("href")).toBe("/settings");
+    expect(gear.querySelector('svg[data-icon="gear"]')).not.toBeNull();
+  });
+
+  it("still renders the avatar + display name", async () => {
+    const { getByTestId } = await renderSidebar();
+    expect(getByTestId("sidebar-avatar")).not.toBeNull();
+    expect(getByTestId("sidebar-display-name").textContent).toBe("decima");
+  });
+});
+
+describe("Sidebar IA — tab icons (item 2-A)", () => {
+  it("the chats tab has a leading chat icon", async () => {
+    const { getByTestId } = await renderSidebar();
+    const chats = getByTestId("sidebar-tab-chats");
+    expect(chats.querySelector('svg[data-icon="chat"]')).not.toBeNull();
+    expect(chats.textContent).toContain("chats");
+  });
+
+  it("the contacts tab has a leading people icon", async () => {
+    const { getByTestId } = await renderSidebar();
+    const contacts = getByTestId("sidebar-tab-contacts");
+    expect(contacts.querySelector('svg[data-icon="people"]')).not.toBeNull();
+    expect(contacts.textContent).toContain("contacts");
+  });
+});
+
+describe("Sidebar IA — FAB + footer (items 2-C, 2-D)", () => {
+  it("renders the bottom-right FAB", async () => {
+    const { getByTestId } = await renderSidebar();
+    const fab = getByTestId("fab");
+    expect(fab.querySelector('svg[data-icon="plus"]')).not.toBeNull();
+  });
+
+  it("does NOT render the footer settings link", async () => {
+    const { queryByTestId } = await renderSidebar();
+    expect(queryByTestId("settings-link")).toBeNull();
+  });
+});
+
+describe("Sidebar IA — mobile tabs bottom-only (item 2-E)", () => {
+  it("hides the sidebar's own top tab row on mobile (hidden md:flex)", async () => {
+    const { getByTestId } = await renderSidebar();
+    const tabs = getByTestId("sidebar-tabs");
+    expect(tabs.className).toMatch(/\bhidden\b/);
+    expect(tabs.className).toMatch(/\bmd:flex\b/);
+  });
+});

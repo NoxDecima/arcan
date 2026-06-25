@@ -48,4 +48,20 @@ describe("MobileTabBar", () => {
       /height:\s*calc\(56px \+ env\(safe-area-inset-bottom\)\)/,
     );
   });
+
+  it("renders a leading chat icon on the chats tab", () => {
+    const { getByTestId } = renderAt("/");
+    expect(
+      getByTestId("mobile-tab-chats").querySelector('svg[data-icon="chat"]'),
+    ).not.toBeNull();
+  });
+
+  it("renders a leading people icon on the contacts tab", () => {
+    const { getByTestId } = renderAt("/");
+    expect(
+      getByTestId("mobile-tab-contacts").querySelector(
+        'svg[data-icon="people"]',
+      ),
+    ).not.toBeNull();
+  });
 });

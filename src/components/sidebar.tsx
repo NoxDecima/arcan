@@ -11,7 +11,9 @@ import { getUnreadCount } from "@/jazz/notifications";
 import { useSidebarTab } from "@/components/sidebar-tab";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { EmptyPane } from "@/components/empty-pane";
-import { Lattice } from "@/components/lattice";
+import { Icon } from "@/components/icon";
+import { Fab } from "@/components/fab";
+import { getLastMessagePreview } from "@/jazz/notifications";
 
 /**
  * Sidebar component for the main layout.
@@ -111,6 +113,21 @@ function SidebarContactRow({
   );
 }
 
+/**
+ * Format a chat-row timestamp (Unit 9-3, item 3.1-C). Shows HH:MM for the
+ * most recent message; returns "" when there is no message to time.
+ * Locale-aware via toLocaleTimeString — matches the design's compact time.
+ */
+function formatRowTime(conversation: any): string {
+  const msgs = conversation?.messages;
+  const last = msgs && msgs.length ? msgs[msgs.length - 1] : null;
+  const raw = last?.sentAt;
+  if (!raw) return "";
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function Sidebar() {
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -178,10 +195,12 @@ export function Sidebar() {
   const myID = (me as any).$jazz?.id as string | undefined;
 
   return (
-    <aside className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel">
-      {/* Header: Lattice brand mark + avatar/profile button + new chat button */}
+    <aside className="relative w-full md:w-64 flex flex-col border-r border-hairline bg-panel overflow-hidden">
+      {/* Header (Unit 9-3, item 2-B): avatar + name + gear→settings only.
+          The Arcan/Lattice mark was removed from list chrome — it lives in
+          the empty-pane watermark + auth screens, not here. The old "+"
+          moved to the bottom-right FAB (item 2-C). */}
       <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
-        <Lattice size={22} className="flex-shrink-0" />
         <button
           type="button"
           data-testid="sidebar-header-profile"
@@ -204,16 +223,15 @@ export function Sidebar() {
             {me.profile.displayName}
           </span>
         </button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate("/conversations/new")}
-          data-testid="new-chat-btn"
-          className="flex-shrink-0"
-          title="New chat"
+        <Link
+          to="/settings"
+          data-testid="sidebar-settings-gear"
+          className="flex-shrink-0 text-text-2 hover:text-text"
+          aria-label="Settings"
+          title="Settings"
         >
-          +
-        </Button>
+          <Icon name="gear" size={20} />
+        </Link>
       </div>
 
       {/*
@@ -235,29 +253,34 @@ export function Sidebar() {
         Anchored by tests/unit/components/sidebar-separation.test.tsx —
         changes to this divider treatment must update that test in lockstep.
       */}
-      <div className="flex border-b border-hairline" data-testid="sidebar-tabs">
+      <div
+        className="hidden md:flex border-b border-hairline"
+        data-testid="sidebar-tabs"
+      >
         <button
           type="button"
           data-testid="sidebar-tab-chats"
-          className={`flex-1 py-2 text-xs font-semibold ${
+          className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "chats"
               ? "text-text border-b-2 border-arcan-accent"
               : "text-dim"
           }`}
           onClick={() => setTab("chats")}
         >
+          <Icon name="chat" size={16} />
           chats
         </button>
         <button
           type="button"
           data-testid="sidebar-tab-contacts"
-          className={`flex-1 py-2 text-xs font-semibold ${
+          className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "contacts"
               ? "text-text border-b-2 border-arcan-accent"
               : "text-dim"
           }`}
           onClick={() => setTab("contacts")}
         >
+          <Icon name="people" size={16} />
           contacts
         </button>
       </div>
@@ -305,13 +328,14 @@ export function Sidebar() {
                   unread = 0;
                 }
               }
+              const preview = getLastMessagePreview(c.conversation);
+              const time = formatRowTime(c.conversation);
+              const showUnread = !isActive && unread > 0;
               return (
                 <Link
                   key={i}
                   to={`/conversations/${convID}`}
-                  className={`block p-2 hover:bg-accent rounded text-sm flex items-center gap-2 ${
-                    unread > 0 ? "font-semibold" : ""
-                  }`}
+                  className="flex items-center gap-3 p-2 rounded hover:bg-accent"
                   data-testid={`conversation-row-${i}`}
                   data-conversation-id={convID}
                 >
@@ -319,19 +343,50 @@ export function Sidebar() {
                     conversationId={convID}
                     title={label}
                     icon={(c.conversation as any)?.icon}
-                    size={32}
+                    size={38}
                     loadAs={me}
                     data-testid={`conversation-avatar-${i}`}
                   />
-                  <span className="truncate flex-1">{label}</span>
-                  {!isActive && unread > 0 && (
-                    <span
-                      data-testid={`unread-badge-${i}`}
-                      className="flex-shrink-0 px-2 py-0.5 text-xs rounded-full bg-arcan-accent text-on-accent"
-                    >
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    {/* top line: name + timestamp */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        data-testid={`conversation-name-${i}`}
+                        className={`flex-1 truncate text-sm text-text ${
+                          showUnread ? "font-semibold" : ""
+                        }`}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        data-testid={`conversation-time-${i}`}
+                        className="flex-shrink-0 text-xs text-dim"
+                      >
+                        {time}
+                      </span>
+                    </div>
+                    {/* bottom line: preview + unread pill badge */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        data-testid={`conversation-preview-${i}`}
+                        className={`flex-1 truncate text-xs ${
+                          showUnread
+                            ? "text-text-2 font-semibold"
+                            : "text-dim"
+                        }`}
+                      >
+                        {preview}
+                      </span>
+                      {showUnread && (
+                        <span
+                          data-testid={`unread-badge-${i}`}
+                          className="flex-shrink-0 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1.5 rounded-pill bg-arcan-accent text-on-accent text-xs font-bold"
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </Link>
               );
             })
@@ -373,16 +428,17 @@ export function Sidebar() {
         </nav>
       )}
 
-      {/* Footer: settings link */}
-      <div className="p-4 border-t border-hairline flex flex-col gap-2">
-        <Link
-          to="/settings"
-          data-testid="settings-link"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ⚙ settings
-        </Link>
-      </div>
+      {/* Unit 9-3 (item 2-C): bottom-right floating FAB replaces the old
+          header "+". Context-aware target — new conversation in the chats
+          tab, add-contact in the contacts tab (matches DesktopApp,
+          design/proto.jsx:777). Item 2-D: the footer settings link was
+          removed; settings is reached via the header gear. */}
+      <Fab
+        label={tab === "contacts" ? "Add a contact" : "New chat"}
+        onClick={() =>
+          navigate(tab === "contacts" ? "/contacts/add" : "/conversations/new")
+        }
+      />
     </aside>
   );
 }
