@@ -5,6 +5,7 @@ import {
   useCreateAccountWithSeed,
   useSetDisplayNameOnMe,
 } from "@/jazz/createAccountFromSeed";
+import { setProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
 import type { Credentials } from "./credentials-step";
@@ -94,6 +95,26 @@ export function ProfileStep({
         createJazzAccount: async (s, name) => {
           const handle = await createAccountWithSeed(s);
           await setDisplayNameOnMe(handle, name);
+          // Deferred avatar upload: the account exists now. Resize to 256²
+          // (matching conversation-icon behavior) and assign. A failure here
+          // must NOT abort sign-up — the account is already created — so we
+          // surface a non-blocking note and continue.
+          if (avatarFile) {
+            try {
+              const { ArcanAccount } = await import(
+                "@/jazz/schema/ArcanAccount"
+              );
+              const me = await ArcanAccount.getMe().$jazz.ensureLoaded({
+                resolve: { profile: true },
+              });
+              const resized = await resizeImageToSquare(avatarFile, 256);
+              await setProfileAvatar(me as any, resized);
+            } catch {
+              setError(
+                "account created, but the profile picture didn't upload — you can add it later in your profile.",
+              );
+            }
+          }
           return handle;
         },
       });
