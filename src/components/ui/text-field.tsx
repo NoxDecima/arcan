@@ -19,7 +19,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     <input
       ref={ref}
       className={cn(
-        "w-full rounded-r-3 border border-hairline bg-bg px-3 py-2 text-sm text-text",
+        "w-full rounded-r-4 border border-hairline bg-bg px-3 py-2 text-sm text-text",
         "placeholder:text-dim",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft focus-visible:border-arcan-accent",
         "disabled:opacity-50",
