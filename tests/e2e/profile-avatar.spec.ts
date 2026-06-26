@@ -23,13 +23,16 @@ test("avatar uploaded in settings appears in sidebar + Bob's contacts list after
     // Establish contact (Bob invites, Alice accepts)
     await establishContact(pageB, pageA, "Bob");
 
-    // Alice uploads her avatar in settings
-    await pageA.goto("/settings");
-    await pageA.setInputFiles('[data-testid="settings-avatar-input"]', PNG);
+    // Alice uploads her avatar from her own profile (Unit 9: avatar editing
+    // moved off the settings page onto the polymorphic profile route).
+    await pageA.goto("/conversations");
+    await pageA.getByTestId("sidebar-header-profile").click();
+    await expect(pageA.getByTestId("profile-view")).toBeVisible({ timeout: 10_000 });
+    await pageA.setInputFiles('[data-testid="profile-avatar-input"]', PNG);
 
-    // Avatar img tag appears within the settings-avatar container
+    // Avatar img tag appears within the profile-avatar container
     await expect(
-      pageA.getByTestId("settings-avatar").locator("img"),
+      pageA.getByTestId("profile-avatar").locator("img"),
     ).toBeVisible({ timeout: 10_000 });
 
     // Sidebar header shows the avatar img

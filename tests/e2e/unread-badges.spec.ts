@@ -55,7 +55,8 @@ test("Slice 8 — badge appears, count grows, clears on open", async ({ browser 
     await expect(badge).toHaveText("3", { timeout: 15_000 });
 
     const row = pageB.getByTestId("conversation-row-0");
-    await expect(row).toHaveClass(/font-semibold/);
+    // The unread bold styling lives on the name span, not the row anchor.
+    await expect(pageB.getByTestId("conversation-name-0")).toHaveClass(/font-semibold/);
 
     // ── 5. Bob opens the conversation → markRead fires, badge clears ────────
     await row.click();
@@ -76,7 +77,7 @@ test("Slice 8 — badge appears, count grows, clears on open", async ({ browser 
     await expect(pageB.getByTestId("unread-badge-0")).toHaveCount(0, {
       timeout: 15_000,
     });
-    await expect(pageB.getByTestId("conversation-row-0")).not.toHaveClass(
+    await expect(pageB.getByTestId("conversation-name-0")).not.toHaveClass(
       /font-semibold/,
     );
   } finally {

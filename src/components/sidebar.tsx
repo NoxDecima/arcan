@@ -76,11 +76,16 @@ function SidebarContactRow({
   contact,
   index,
   me,
+  testScope,
 }: {
   contact: any;
   index: number;
   me: any;
+  testScope?: string;
 }) {
+  const rowTestId = testScope
+    ? `${testScope}-sidebar-contact-row-${index}`
+    : `sidebar-contact-row-${index}`;
   const accountID = contact?.contactAccountID as string | undefined;
   const localAvatar = resolveAvatarFileBlob({
     accountID: accountID ?? "",
@@ -96,7 +101,7 @@ function SidebarContactRow({
   return (
     <Link
       to={`/profile/${accountID}`}
-      data-testid={`sidebar-contact-row-${index}`}
+      data-testid={rowTestId}
       data-account-id={accountID}
       data-contact-id={(contact as any)?.$jazz?.id}
       className="flex items-center gap-3 p-2 hover:bg-accent rounded text-sm"
@@ -431,6 +436,7 @@ export function Sidebar({ testScope }: { testScope?: string } = {}) {
                 contact={c}
                 index={i}
                 me={me}
+                testScope={testScope}
               />
             ))
           )}

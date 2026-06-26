@@ -38,7 +38,7 @@ test("device pairing flow", async ({ browser }) => {
       // Initiator's approval prompt appears once the responder's pubkey syncs
       await expect(pageA.getByTestId("pair-approval-prompt")).toBeVisible({ timeout: 15_000 });
       // Initiator approves — this wraps + writes wrappedAccountSecret to the CoValue
-      await pageA.getByTestId("pair-approve-btn").click();
+      await pageA.getByTestId("approve-device").click();
 
       // Responder's 2-second poll detects wrappedAccountSecret → auto-moves to claiming → complete
       // Use a generous timeout to account for Jazz sync latency and the 2s poll interval
