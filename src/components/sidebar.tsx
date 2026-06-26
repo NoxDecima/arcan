@@ -129,7 +129,14 @@ function formatRowTime(conversation: any): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function Sidebar() {
+export function Sidebar({ testScope }: { testScope?: string } = {}) {
+  // The Sidebar is mounted twice: a persistent desktop column (app-shell,
+  // `hidden md:flex`) and a full-screen mobile list (conversations/index,
+  // `md:hidden`). Both live in the DOM at once, so identical testids would
+  // collide under Playwright strict mode. The mobile mount passes a
+  // `testScope` to namespace its testids; the desktop mount (and unit tests)
+  // render with no scope and keep the canonical names.
+  const tid = (name: string) => (testScope ? `${testScope}-${name}` : name);
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
@@ -156,7 +163,7 @@ export function Sidebar() {
     return (
       <aside
         className="w-full md:w-64 flex flex-col border-r border-hairline bg-panel"
-        data-testid="sidebar-loading"
+        data-testid={tid("sidebar-loading")}
       >
         <div className="p-4 border-b border-hairline">
           <NavListSkeleton rows={1} />
@@ -204,7 +211,7 @@ export function Sidebar() {
       <div className="p-4 border-b border-hairline flex items-center justify-between gap-2">
         <button
           type="button"
-          data-testid="sidebar-header-profile"
+          data-testid={tid("sidebar-header-profile")}
           data-account-id={myID}
           onClick={() => myID && navigate(`/profile/${myID}`)}
           className="flex items-center gap-2 min-w-0 text-left hover:opacity-90 flex-1"
@@ -215,10 +222,10 @@ export function Sidebar() {
             initials={me.profile.displayName?.[0] ?? "?"}
             size="sm"
             loadAs={me}
-            data-testid="sidebar-avatar"
+            data-testid={tid("sidebar-avatar")}
           />
           <span
-            data-testid="sidebar-display-name"
+            data-testid={tid("sidebar-display-name")}
             className="font-semibold text-text truncate"
           >
             {me.profile.displayName}
@@ -226,7 +233,7 @@ export function Sidebar() {
         </button>
         <Link
           to="/settings"
-          data-testid="sidebar-settings-gear"
+          data-testid={tid("sidebar-settings-gear")}
           className="flex-shrink-0 text-text-2 hover:text-text"
           aria-label="Settings"
           title="Settings"
@@ -256,11 +263,11 @@ export function Sidebar() {
       */}
       <div
         className="hidden md:flex border-b border-hairline"
-        data-testid="sidebar-tabs"
+        data-testid={tid("sidebar-tabs")}
       >
         <button
           type="button"
-          data-testid="sidebar-tab-chats"
+          data-testid={tid("sidebar-tab-chats")}
           className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "chats"
               ? "text-text border-b-2 border-arcan-accent"
@@ -273,7 +280,7 @@ export function Sidebar() {
         </button>
         <button
           type="button"
-          data-testid="sidebar-tab-contacts"
+          data-testid={tid("sidebar-tab-contacts")}
           className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 ${
             tab === "contacts"
               ? "text-text border-b-2 border-arcan-accent"
@@ -290,7 +297,7 @@ export function Sidebar() {
       {tab === "chats" ? (
         <nav
           className="flex-1 overflow-y-auto p-2"
-          data-testid="conversation-list"
+          data-testid={tid("conversation-list")}
           style={{
             // Mobile: clear the fixed MobileTabBar (56px) + iOS safe-area.
             // env() resolves to 0px on desktop; the tab bar is also hidden
@@ -312,7 +319,7 @@ export function Sidebar() {
                   browse contacts
                 </Button>
               }
-              data-testid="sidebar-chats-empty"
+              data-testid={tid("sidebar-chats-empty")}
             />
           ) : (
             sortedActive.map((c: any, i: number) => {
@@ -337,7 +344,7 @@ export function Sidebar() {
                   key={i}
                   to={`/conversations/${convID}`}
                   className="flex items-center gap-3 p-2 rounded hover:bg-accent"
-                  data-testid={`conversation-row-${i}`}
+                  data-testid={tid(`conversation-row-${i}`)}
                   data-conversation-id={convID}
                 >
                   <ConversationAvatar
@@ -346,13 +353,13 @@ export function Sidebar() {
                     icon={(c.conversation as any)?.icon}
                     size={38}
                     loadAs={me}
-                    data-testid={`conversation-avatar-${i}`}
+                    data-testid={tid(`conversation-avatar-${i}`)}
                   />
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     {/* top line: name + timestamp */}
                     <div className="flex items-center gap-2">
                       <span
-                        data-testid={`conversation-name-${i}`}
+                        data-testid={tid(`conversation-name-${i}`)}
                         className={`flex-1 truncate text-sm text-text ${
                           showUnread ? "font-semibold" : ""
                         }`}
@@ -360,7 +367,7 @@ export function Sidebar() {
                         {label}
                       </span>
                       <span
-                        data-testid={`conversation-time-${i}`}
+                        data-testid={tid(`conversation-time-${i}`)}
                         className="flex-shrink-0 text-xs text-dim"
                       >
                         {time}
@@ -369,7 +376,7 @@ export function Sidebar() {
                     {/* bottom line: preview + unread pill badge */}
                     <div className="flex items-center gap-2">
                       <span
-                        data-testid={`conversation-preview-${i}`}
+                        data-testid={tid(`conversation-preview-${i}`)}
                         className={`flex-1 truncate text-xs ${
                           showUnread
                             ? "text-text-2 font-semibold"
@@ -380,7 +387,7 @@ export function Sidebar() {
                       </span>
                       {showUnread && (
                         <span
-                          data-testid={`unread-badge-${i}`}
+                          data-testid={tid(`unread-badge-${i}`)}
                           className="flex-shrink-0 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1.5 rounded-pill bg-arcan-accent text-on-accent text-xs font-bold"
                         >
                           {unread > 99 ? "99+" : unread}
@@ -396,7 +403,7 @@ export function Sidebar() {
       ) : (
         <nav
           className="flex-1 overflow-y-auto p-2"
-          data-testid="sidebar-contacts-list"
+          data-testid={tid("sidebar-contacts-list")}
           style={{
             // Mobile: clear the fixed MobileTabBar (56px) + iOS safe-area.
             // env() resolves to 0px on desktop; the tab bar is also hidden
@@ -415,7 +422,7 @@ export function Sidebar() {
                   <Button size="sm" variant="outline">add a contact</Button>
                 </Link>
               }
-              data-testid="sidebar-contacts-empty"
+              data-testid={tid("sidebar-contacts-empty")}
             />
           ) : (
             contacts.map((c: any, i: number) => (
