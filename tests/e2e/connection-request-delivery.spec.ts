@@ -1,30 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { createAccount } from "./helpers";
-
-/**
- * Decode the inviterAccountID from an /invite URL fragment.
- * Fragment format: base64url("invitationID|inviterAccountID").
- */
-function inviterAccountIDFromInviteUrl(url: string): string {
-  const fragment = new URL(url).hash.slice(1);
-  const padded = fragment
-    .replace(/-/g, "+")
-    .replace(/_/g, "/")
-    .padEnd(fragment.length + ((4 - (fragment.length % 4)) % 4), "=");
-  const decoded = Buffer.from(padded, "base64").toString("utf8");
-  const parts = decoded.split("|");
-  if (parts.length !== 2) {
-    throw new Error(`Unexpected invite fragment: "${decoded}"`);
-  }
-  return parts[1];
-}
-
-/** Arm the Unit 9-7 test-only QR-request bridge before any app code runs. */
-async function armQrBridge(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    (window as unknown as { __ARCAN_E2E__?: boolean }).__ARCAN_E2E__ = true;
-  });
-}
 
 /**
  * E2E regression (Unit 9-0): a connection request must survive the recipient's
@@ -58,9 +33,12 @@ test("connection request survives navigation to /connections/pending", async ({
   try {
     await createAccount(bob, "Bob");
     await bob.goto("/contacts/add");
-    await expect(bob.getByTestId("qr-url-text")).toBeVisible({ timeout: 15_000 });
-    const inviteUrl = (await bob.getByTestId("qr-url-text").textContent())!.trim();
+    // Use the PLAIN copy/share URL (channel="link") for the negative control:
+    // a link-channel request must NOT raise the live pop-up.
+    await expect(bob.getByTestId("copy-url-text")).toBeAttached({ timeout: 15_000 });
+    const inviteUrl = (await bob.getByTestId("copy-url-text").textContent())!.trim();
     expect(inviteUrl).toContain("/invite#");
+    expect(inviteUrl).not.toContain("via=qr");
 
     await createAccount(alice, "Alice");
     await alice.goto(inviteUrl);
@@ -105,54 +83,41 @@ test("connection request survives navigation to /connections/pending", async ({
 });
 
 /**
- * Unit 9-7 §2-I (QR live pop-up). The plan originally proposed driving this via
- * /pair?role=initiator, but that route is the multi-device *account-pairing*
- * flow — it mints no contact ConnectionRequest and exposes no qr-url-text. No
- * production UI mints a channel="qr" *contact* invitation today (createInvitation
- * is only ever called with "link"). To keep the binding assertion real — a
- * channel="qr" request makes incoming-connection-prompt visible on the host —
- * without faking the prompt or inventing product scope, we exercise the genuine
- * pipeline via the test-only window.__arcanCreateQrRequest bridge (App.tsx,
- * gated behind window.__ARCAN_E2E__): real createConnectionRequest("qr") → real
- * Inbox delivery → durable me.root.incomingRequests → the real app-mounted
- * IncomingConnectionPrompt. The host sits on a normal app screen while it fires.
+ * Unit 9-7 §2-I (QR live pop-up), driven through the REAL UI. The QR code on
+ * /contacts/add encodes a `?via=qr`-marked invite URL (exposed as qr-url-text);
+ * a recipient who opens that URL and accepts mints a channel="qr"
+ * ConnectionRequest, which the app-wide IncomingConnectionPrompt surfaces as a
+ * live modal on the inviter's screen. (A plain copied link → channel="link" →
+ * silent on pending, asserted by the negative control above.)
  */
-test("qr-channel request raises the live prompt on the recipient's screen", async ({
+test("qr-channel request raises the live prompt on the inviter's screen", async ({
   browser,
 }) => {
+  // Hank (inviter): stays on /contacts/add; should get the live pop-up.
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
+  // Gwen (guest): opens the QR-marked URL and accepts.
   const guestCtx = await browser.newContext();
   const guest = await guestCtx.newPage();
 
   try {
-    await armQrBridge(guest);
-
     await createAccount(host, "Hank");
-    await createAccount(guest, "Gwen");
-
-    // Read the host's accountID from its /contacts/add invite fragment.
     await host.goto("/contacts/add");
-    await expect(host.getByTestId("qr-url-text")).toBeVisible({ timeout: 15_000 });
-    const inviteUrl = (await host.getByTestId("qr-url-text").textContent())!.trim();
-    expect(inviteUrl).toContain("/invite#");
-    const hostAccountID = inviterAccountIDFromInviteUrl(inviteUrl);
-    expect(hostAccountID).toContain("co_z");
+    // The QR-encoded URL carries ?via=qr.
+    await expect(host.getByTestId("qr-url-text")).toBeAttached({ timeout: 15_000 });
+    const qrUrl = (await host.getByTestId("qr-url-text").textContent())!.trim();
+    expect(qrUrl).toContain("via=qr");
+    expect(qrUrl).toContain("/invite");
 
-    // Guest mints a REAL channel="qr" ConnectionRequest to the host via the
-    // production createConnectionRequest helper (through the test bridge).
-    const reqId = await guest.evaluate(
-      (recipientID) =>
-        (
-          window as unknown as {
-            __arcanCreateQrRequest: (id: string) => Promise<string>;
-          }
-        ).__arcanCreateQrRequest(recipientID),
-      hostAccountID,
-    );
-    expect(reqId).toContain("co_z");
+    await createAccount(guest, "Gwen");
+    await guest.goto(qrUrl);
+    await expect(guest.getByTestId("invite-inviter-name")).toContainText("Hank", {
+      timeout: 15_000,
+    });
+    await guest.getByTestId("invite-accept-btn").click();
+    await expect(guest.getByTestId("invite-sent")).toBeVisible({ timeout: 30_000 });
 
-    // Host is on a normal app screen — the app-wide IncomingConnectionPrompt
+    // Hank is still on /contacts/add — the app-wide IncomingConnectionPrompt
     // must raise the live modal (channel="qr" gate) and name the guest.
     await expect(host.getByTestId("incoming-connection-prompt")).toBeVisible({
       timeout: 30_000,

@@ -10,6 +10,7 @@ vi.mock("@/components/qr-display", () => ({
 
 vi.mock("@/jazz/invitations", () => ({
   createInvitation: vi.fn(async () => ({ url: "https://test.example/i/abc" })),
+  withQrChannelMarker: (url: string) => `${url}?via=qr`,
 }));
 
 vi.mock("jazz-tools/react", () => ({

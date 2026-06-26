@@ -31,6 +31,7 @@ import {
   parseInvitationURL,
   loadInvitationAsGuest,
   createConnectionRequest,
+  readInviteChannel,
 } from "@/jazz/invitations";
 
 // ---------------------------------------------------------------------------
@@ -93,6 +94,14 @@ export function InviteRoute() {
   const [err, setErr] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any | null>(null);
   const [request, setRequest] = useState<any | null>(null);
+  // Captured at mount so it survives a sign-in round-trip: a QR-scanned
+  // URL carries ?via=qr; a pasted/shared link does not. Drives the
+  // ConnectionRequest channel (qr → live pop-up; link → silent pending).
+  const [openedChannel] = useState<"qr" | "link">(() =>
+    typeof window !== "undefined"
+      ? readInviteChannel(window.location.search)
+      : "link",
+  );
 
   const shared = useSharedGroups(invitation?.inviterAccountID ?? "");
   const inviterAvatar = useRemoteAvatar(invitation?.inviterAccountID ?? null);
@@ -179,7 +188,10 @@ export function InviteRoute() {
       const req = await createConnectionRequest(
         me as any,
         invitation.inviterAccountID,
-        invitation.channel,
+        // Channel reflects how THIS recipient opened the invite (scanned QR
+        // vs pasted link), not how the invitation was minted — the same
+        // invitation is shared through both channels.
+        openedChannel,
         {
           invitationID: invitation.$jazz?.id,
           expiresAt: invitation.expiresAt,

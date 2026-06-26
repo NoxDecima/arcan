@@ -120,6 +120,34 @@ export async function createInvitation(
 }
 
 /**
+ * Insert a `?via=qr` query marker into an invite URL, before the hash
+ * fragment. The QR code encodes the marked URL; a copied/shared link uses
+ * the plain URL. This is how the recipient's accept flow distinguishes a
+ * scanned QR (→ channel="qr", which raises the live add-contact pop-up on
+ * the inviter's screen) from a pasted link (→ channel="link", which lands
+ * silently on the Pending Connections list).
+ *
+ * Pure + idempotent (returns the input unchanged if already marked).
+ */
+export function withQrChannelMarker(url: string): string {
+  if (/[?&]via=qr(&|$|#)/.test(url)) return url;
+  const hashIdx = url.indexOf("#");
+  const base = hashIdx === -1 ? url : url.slice(0, hashIdx);
+  const hash = hashIdx === -1 ? "" : url.slice(hashIdx);
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}via=qr${hash}`;
+}
+
+/**
+ * Read the channel a recipient used to open an invite from its query
+ * string. QR-scanned URLs carry `?via=qr`; copied/shared links do not.
+ * Returns "qr" or "link".
+ */
+export function readInviteChannel(search: string): "qr" | "link" {
+  return new URLSearchParams(search).get("via") === "qr" ? "qr" : "link";
+}
+
+/**
  * Revoke an invitation by stamping revokedAt.
  *
  * Consumer routes should treat revokedAt being set as "no longer valid".
