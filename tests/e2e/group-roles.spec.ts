@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import {
+  createAccount,
+  establishContact,
+  createConversation,
+  openMembers,
+  openMemberMenu,
+} from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -24,20 +30,7 @@ async function pairWith(
   await page.goto("/");
   await createAccount(page, name);
 
-  await page.goto("/contacts/add");
-  await expect(page.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-  const inviteUrl = (await page.getByTestId("qr-url-text").textContent())!.trim();
-
-  // Navigate Alice to neutral page to avoid InviteRoute phase collision
-  await pageA.goto("/conversations");
-  await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-  await pageA.goto(inviteUrl);
-  await expect(pageA.getByTestId("invite-inviter-name")).toContainText(name, {
-    timeout: 15_000,
-  });
-  await pageA.getByTestId("invite-accept-btn").click();
-  await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+  await establishContact(page, pageA, name);
 
   return { ctx, page };
 }
@@ -68,32 +61,12 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     ctxCharlie = _ctxCharlie;
 
     // ── 3. Alice creates a group with Bob and Charlie ────────────────────────
-    await pageA.goto("/conversations");
-    await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-    await pageA.getByTestId("new-chat-btn").click();
-    await expect(pageA.getByTestId("contact-picker-overlay")).toBeVisible({
-      timeout: 5_000,
-    });
-
-    // Select both contacts (Bob and Charlie)
-    await pageA.getByTestId("contact-picker-row-0").click();
-    await pageA.getByTestId("contact-picker-row-1").click();
-    await pageA.getByTestId("contact-picker-continue").click();
-
-    // GroupCreateDialog appears — name the group
-    await expect(pageA.getByTestId("group-create-overlay")).toBeVisible({
-      timeout: 5_000,
-    });
-    await pageA.getByTestId("group-create-title-input").fill("Role Test Group");
-    await pageA.getByTestId("group-create-submit").click();
-
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 15_000 });
+    await createConversation(pageA, ["Bob", "Charlie"], "Role Test Group");
 
     // ── 4. Alice opens /members — verifies Bob has writer role ───────────────
-    await pageA.getByTestId("members-link").click();
-    await expect(pageA.getByTestId("members-route")).toBeVisible({ timeout: 5_000 });
+    await openMembers(pageA);
 
-    const membersList = pageA.getByTestId("members-list");
+    const membersList = pageA.getByTestId("members-route");
 
     // Find Bob's member row
     const bobRow = membersList.locator('[data-testid^="member-row-"]').filter({
@@ -107,7 +80,8 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     // Bob should start as writer
     await expect(bobRow.getByTestId("role-pill-writer")).toBeVisible({ timeout: 5_000 });
 
-    // Alice sees the promote button for Bob (writer → admin)
+    // Alice opens Bob's kebab and sees the promote action (writer → admin)
+    await openMemberMenu(pageA, bobAccountID);
     await expect(pageA.getByTestId(`promote-${bobAccountID}`)).toBeVisible({
       timeout: 5_000,
     });
@@ -139,7 +113,7 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     await expect(pageBob.getByTestId("members-route")).toBeVisible({ timeout: 10_000 });
 
     // Bob's own row shows admin role
-    const bobOwnRow = pageBob.getByTestId("members-list").locator('[data-testid^="member-row-"]').filter({
+    const bobOwnRow = pageBob.getByTestId("members-route").locator('[data-testid^="member-row-"]').filter({
       hasText: "Bob",
     });
     await expect(bobOwnRow.getByTestId("role-pill-admin")).toBeVisible({ timeout: 10_000 });
@@ -148,18 +122,18 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     await expect(pageBob.getByTestId("add-member-btn")).toBeVisible({ timeout: 5_000 });
 
     // Find Charlie's row on Bob's page — Bob should see promote/remove for Charlie (writer)
-    const charlieRowOnBob = pageBob.getByTestId("members-list").locator('[data-testid^="member-row-"]').filter({
+    const charlieRowOnBob = pageBob.getByTestId("members-route").locator('[data-testid^="member-row-"]').filter({
       hasText: "Charlie",
     });
     await expect(charlieRowOnBob).toBeVisible({ timeout: 5_000 });
     const charlieTestId = await charlieRowOnBob.getAttribute("data-testid");
     const charlieAccountID = charlieTestId?.replace("member-row-", "") ?? "";
 
-    // Bob sees the promote button for Charlie (writer → admin)
+    // Open Charlie's kebab on Bob's view — Bob (admin) sees promote + remove.
+    await openMemberMenu(pageBob, charlieAccountID);
     await expect(pageBob.getByTestId(`promote-${charlieAccountID}`)).toBeVisible({
       timeout: 5_000,
     });
-    // Bob sees the remove button for Charlie
     await expect(pageBob.getByTestId(`remove-${charlieAccountID}`)).toBeVisible({
       timeout: 5_000,
     });
@@ -167,7 +141,7 @@ test("admin promotion and demotion in group conversation", async ({ browser }) =
     // ── 7. Verify admin rows have no demote/remove buttons (Slice 3c) ────────
     // Slice 3c removed the Demote button and hides Remove on admin rows.
     // Bob (admin) should NOT see demote or remove for Alice (also admin).
-    const aliceRowOnBob = pageBob.getByTestId("members-list").locator('[data-testid^="member-row-"]').filter({
+    const aliceRowOnBob = pageBob.getByTestId("members-route").locator('[data-testid^="member-row-"]').filter({
       hasText: "Alice",
     });
     await expect(aliceRowOnBob).toBeVisible({ timeout: 5_000 });

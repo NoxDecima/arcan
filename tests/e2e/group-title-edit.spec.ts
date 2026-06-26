@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import {
+  createAccount,
+  establishContact,
+  createConversation,
+  openMembers,
+} from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -23,20 +28,7 @@ async function pairWith(
   await page.goto("/");
   await createAccount(page, name);
 
-  await page.goto("/contacts/add");
-  await expect(page.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-  const inviteUrl = (await page.getByTestId("qr-url-text").textContent())!.trim();
-
-  // Navigate Alice to neutral page to avoid InviteRoute phase collision
-  await pageA.goto("/conversations");
-  await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-  await pageA.goto(inviteUrl);
-  await expect(pageA.getByTestId("invite-inviter-name")).toContainText(name, {
-    timeout: 15_000,
-  });
-  await pageA.getByTestId("invite-accept-btn").click();
-  await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+  await establishContact(page, pageA, name);
 
   return { ctx, page };
 }
@@ -66,25 +58,10 @@ test("inline group title edit — admin can edit, writer sees read-only", async 
     ctxCharlie = _ctxCharlie;
 
     // ── 3. Alice creates a group titled "Old name" ────────────────────────────
-    await pageA.goto("/conversations");
-    await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-    await pageA.getByTestId("new-chat-btn").click();
-    await expect(pageA.getByTestId("contact-picker-overlay")).toBeVisible({ timeout: 5_000 });
-
-    // Select both contacts to create a group
-    await pageA.getByTestId("contact-picker-row-0").click();
-    await pageA.getByTestId("contact-picker-row-1").click();
-    await pageA.getByTestId("contact-picker-continue").click();
-
-    await expect(pageA.getByTestId("group-create-overlay")).toBeVisible({ timeout: 5_000 });
-    await pageA.getByTestId("group-create-title-input").fill("Old name");
-    await pageA.getByTestId("group-create-submit").click();
-
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 15_000 });
+    await createConversation(pageA, ["Bob", "Charlie"], "Old name");
 
     // ── 4. Alice opens /members — title shows in display mode ────────────────
-    await pageA.getByTestId("members-link").click();
-    await expect(pageA.getByTestId("members-route")).toBeVisible({ timeout: 5_000 });
+    await openMembers(pageA);
 
     await expect(pageA.getByTestId("group-title-display")).toBeVisible({ timeout: 5_000 });
     await expect(pageA.getByTestId("group-title-display")).toContainText("Old name");
