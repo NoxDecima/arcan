@@ -16,7 +16,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
-import { createInvitation, type LinkTtl } from "@/jazz/invitations";
+import { createInvitation, withQrChannelMarker, type LinkTtl } from "@/jazz/invitations";
 
 const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d"];
 
@@ -73,11 +73,20 @@ export function AddContactRoute() {
           your code
         </p>
 
-        {inviteUrl && <QRDisplay url={inviteUrl} size={140} />}
-        {/* Audit / e2e hook: invisible URL string for Playwright extraction.
-            sr-only is screen-reader-only — invisible to sighted users. */}
+        {/* The QR encodes the ?via=qr-marked URL so a scan mints a
+            channel="qr" request (→ live pop-up); copy/share use the plain
+            URL below (→ channel="link", silent on pending). */}
+        {inviteUrl && <QRDisplay url={withQrChannelMarker(inviteUrl)} size={140} />}
+        {/* Audit / e2e hooks: invisible URL strings for Playwright extraction.
+            qr-url-text = what the QR encodes (marked); copy-url-text = what
+            copy/share yields (plain). sr-only = invisible to sighted users. */}
         {inviteUrl && (
           <span data-testid="qr-url-text" className="sr-only">
+            {withQrChannelMarker(inviteUrl)}
+          </span>
+        )}
+        {inviteUrl && (
+          <span data-testid="copy-url-text" className="sr-only">
             {inviteUrl}
           </span>
         )}

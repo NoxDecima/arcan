@@ -18,6 +18,10 @@ const createInvitation = vi.fn(async () => ({
 }));
 vi.mock("@/jazz/invitations", () => ({
   createInvitation: (...a: any[]) => createInvitation(...a),
+  // add.tsx renders the QR with the ?via=qr-marked URL — stub it so the
+  // component's render path doesn't break. The share/copy button uses the
+  // plain inviteUrl, which is what this test asserts.
+  withQrChannelMarker: (url: string) => `${url}?via=qr`,
 }));
 
 vi.mock("@/components/qr-display", () => ({

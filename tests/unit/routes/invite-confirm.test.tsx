@@ -28,6 +28,8 @@ vi.mock("@/jazz/invitations", () => ({
   parseInvitationURL: () => ({ invitationID: "inv-1", inviterAccountID: "inviter-acct" }),
   loadInvitationAsGuest: (...a: any[]) => loadInvitationAsGuest(...a),
   createConnectionRequest: vi.fn(),
+  readInviteChannel: (search: string) =>
+    new URLSearchParams(search).get("via") === "qr" ? "qr" : "link",
 }));
 
 import { InviteRoute } from "@/routes/invite";
