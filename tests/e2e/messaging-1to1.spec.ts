@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 
 /**
  * E2E: 1:1 Messaging happy path
@@ -33,32 +33,11 @@ test("1:1 messaging — send, receive, edit, delete", async ({ browser }) => {
     await pageB.goto("/");
     await createAccount(pageB, "Bob");
 
-    // ── 2. Establish mutual contacts (Bob generates invite, Alice accepts) ───
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
+    // ── 2. Establish mutual contacts (Bob invites, Alice connects, Bob approves) ─
+    await establishContact(pageB, pageA, "Bob");
 
-    await pageA.goto(inviteUrl);
-    await expect(pageA.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("invite-accept-btn").click();
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-
-    // Wait for Bob to detect acceptance
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
-
-    // ── 3. Alice starts a chat with Bob from contact detail ──────────────────
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("contacts-page-row-0").click();
-    await expect(pageA.getByTestId("start-chat-btn")).toBeVisible({ timeout: 5_000 });
-    await pageA.getByTestId("start-chat-btn").click();
-
-    // Alice should land on the conversation detail page
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    // ── 3. Alice starts a chat with Bob from his profile ─────────────────────
+    await openDirectChat(pageA, "Bob");
     await expect(pageA.getByTestId("conversation-title")).toContainText("Bob", {
       timeout: 5_000,
     });
