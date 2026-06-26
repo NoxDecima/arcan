@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 
 /**
  * E2E: Slice 8 unread badges — badge appears, count grows, clears on open.
@@ -31,30 +31,10 @@ test("Slice 8 — badge appears, count grows, clears on open", async ({ browser 
     await createAccount(pageB, "Bob");
 
     // ── 2. Mutual contacts via invite flow ──────────────────────────────────
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
-
-    await pageA.goto(inviteUrl);
-    await expect(pageA.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("invite-accept-btn").click();
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({
-      timeout: 15_000,
-    });
+    await establishContact(pageB, pageA, "Bob");
 
     // ── 3. Alice starts a chat with Bob and sends 3 messages ────────────────
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("contacts-page-row-0").click();
-    await pageA.getByTestId("start-chat-btn").click();
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openDirectChat(pageA, "Bob");
 
     for (let i = 1; i <= 3; i++) {
       await pageA.getByTestId("composer-input").fill(`msg ${i}`);

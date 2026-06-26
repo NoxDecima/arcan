@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 
 /**
  * E2E: Bob's sidebar auto-discovers a conversation Alice created
@@ -42,31 +42,10 @@ test("Bob's sidebar auto-discovers a conversation Alice created", async ({
     await createAccount(pageB, "Bob");
 
     // ── 2. Establish mutual contacts (Bob generates invite, Alice accepts) ───
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
-
-    await pageA.goto(inviteUrl);
-    await expect(pageA.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("invite-accept-btn").click();
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-
-    // Wait for Bob to detect that Alice accepted his invite
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+    await establishContact(pageB, pageA, "Bob");
 
     // ── 3. Alice opens Bob's contact and starts a chat ───────────────────────
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("contacts-page-row-0").click();
-    await expect(pageA.getByTestId("start-chat-btn")).toBeVisible({ timeout: 5_000 });
-    await pageA.getByTestId("start-chat-btn").click();
-
-    // Alice lands on the conversation detail page
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    await openDirectChat(pageA, "Bob");
 
     // ── 4. Alice sends "Hello Bob" ────────────────────────────────────────────
     await pageA.getByTestId("composer-input").fill("Hello Bob");

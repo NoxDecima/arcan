@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount, signIn } from "./helpers";
+import { createAccount, signIn, establishContact, openDirectChat } from "./helpers";
 
 /**
  * E2E: Slice 8 unread state syncs across the user's devices.
@@ -36,32 +36,10 @@ test("Slice 8 — opening on device A clears badge on device B", async ({ browse
 
     // ── 2. Pair Alice and Bob ───────────────────────────────────────────────
     // Bob's "device A" generates an invite; Alice accepts.
-    await pageBobA.goto("/contacts/add");
-    await expect(pageBobA.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageBobA.getByTestId("qr-url-text").textContent())!.trim();
-
-    await pageAlice.goto(inviteUrl);
-    await expect(pageAlice.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageAlice.getByTestId("invite-accept-btn").click();
-    await expect(pageAlice.getByTestId("invite-accepted")).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(pageBobA.getByTestId("add-contact-accepted")).toBeVisible({
-      timeout: 15_000,
-    });
+    await establishContact(pageBobA, pageAlice, "Bob");
 
     // ── 3. Alice starts a chat with Bob and sends 2 messages ────────────────
-    await pageAlice.goto("/contacts");
-    await expect(pageAlice.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageAlice.getByTestId("contacts-page-row-0").click();
-    await pageAlice.getByTestId("start-chat-btn").click();
-    await expect(pageAlice.getByTestId("conversation-detail")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openDirectChat(pageAlice, "Bob");
 
     await pageAlice.getByTestId("composer-input").fill("ping 1");
     await pageAlice.getByTestId("composer-send-btn").click();

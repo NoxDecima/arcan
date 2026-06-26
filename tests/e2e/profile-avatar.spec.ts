@@ -2,7 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact } from "./helpers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PNG = path.resolve(__dirname, "fixtures/tiny.png");
@@ -21,13 +21,7 @@ test("avatar uploaded in settings appears in sidebar + Bob's contacts list after
     await createAccount(pageB, "Bob");
 
     // Establish contact (Bob invites, Alice accepts)
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
-    await pageA.goto(inviteUrl);
-    await pageA.getByTestId("invite-accept-btn").click();
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+    await establishContact(pageB, pageA, "Bob");
 
     // Alice uploads her avatar in settings
     await pageA.goto("/settings");
@@ -45,12 +39,12 @@ test("avatar uploaded in settings appears in sidebar + Bob's contacts list after
     ).toBeVisible({ timeout: 10_000 });
 
     // Bob navigates to contacts and sees Alice's avatar in her contact row
-    await pageB.goto("/contacts");
-    await expect(pageB.getByTestId("contacts-page-list")).toContainText("Alice", {
+    await pageB.goto("/?tab=contacts");
+    await expect(pageB.getByTestId("sidebar-contacts-list")).toContainText("Alice", {
       timeout: 15_000,
     });
     await expect(
-      pageB.getByTestId("contacts-page-row-0").locator("img"),
+      pageB.getByTestId("sidebar-contact-row-0").locator("img"),
     ).toBeVisible({ timeout: 30_000 });
   } finally {
     await ctxA.close();

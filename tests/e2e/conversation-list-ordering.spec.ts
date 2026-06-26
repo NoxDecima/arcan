@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -29,21 +29,8 @@ async function setupContact(
   await page.goto("/");
   await createAccount(page, name);
 
-  // Generate invite URL
-  await page.goto("/contacts/add");
-  await expect(page.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-  const inviteUrl = (await page.getByTestId("qr-url-text").textContent())!.trim();
-
-  // Alice accepts the invite
-  await pageA.goto(inviteUrl);
-  await expect(pageA.getByTestId("invite-inviter-name")).toContainText(name, {
-    timeout: 10_000,
-  });
-  await pageA.getByTestId("invite-accept-btn").click();
-  await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-
-  // Wait for the contact side to detect acceptance
-  await expect(page.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+  // The new account invites; Alice accepts (asymmetric request/approve flow).
+  await establishContact(page, pageA, name);
 
   return { ctx, page };
 }
@@ -67,18 +54,7 @@ test("conversation list sorts by most-recent activity", async ({ browser }) => {
     ctxBob = _ctxBob;
 
     // ── 3. Alice starts chat with Bob and sends a message ───────────────────
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-
-    // Find Bob in the contact list (may be index 0)
-    const bobRow = pageA.getByTestId("contacts-page-list").getByText("Bob");
-    await bobRow.click();
-    await expect(pageA.getByTestId("start-chat-btn")).toBeVisible({ timeout: 5_000 });
-    await pageA.getByTestId("start-chat-btn").click();
-
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    await openDirectChat(pageA, "Bob");
     await pageA.getByTestId("composer-input").fill("Hi Bob first");
     await pageA.getByTestId("composer-send-btn").click();
     await expect(pageA.getByTestId("message-timeline")).toContainText("Hi Bob first", {
@@ -90,17 +66,7 @@ test("conversation list sorts by most-recent activity", async ({ browser }) => {
     ctxCarol = _ctxCarol;
 
     // ── 5. Alice starts chat with Carol and sends a message ──────────────────
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Carol", {
-      timeout: 10_000,
-    });
-
-    const carolRow = pageA.getByTestId("contacts-page-list").getByText("Carol");
-    await carolRow.click();
-    await expect(pageA.getByTestId("start-chat-btn")).toBeVisible({ timeout: 5_000 });
-    await pageA.getByTestId("start-chat-btn").click();
-
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    await openDirectChat(pageA, "Carol");
     await pageA.getByTestId("composer-input").fill("Hi Carol second");
     await pageA.getByTestId("composer-send-btn").click();
     await expect(pageA.getByTestId("message-timeline")).toContainText("Hi Carol second", {
