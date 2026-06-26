@@ -25,7 +25,7 @@ test("pair two devices back-to-back from same initiator", async ({ browser }) =>
 
     // ---- Pairing #1: A → B ----
     await pageA.goto("/pair?role=initiator");
-    await expect(pageA.getByTestId("qr-url-text")).toBeVisible({ timeout: 15_000 });
+    // qr-url-text is sr-only; getPairingUrl waits for it to be attached.
     const pairUrl1 = await getPairingUrl(pageA);
 
     const ctxB = await browser.newContext();
@@ -57,7 +57,6 @@ test("pair two devices back-to-back from same initiator", async ({ browser }) =>
 
       // ---- Pairing #2: A → C (the previously-failing scenario) ----
       await pageA.goto("/pair?role=initiator");
-      await expect(pageA.getByTestId("qr-url-text")).toBeVisible({ timeout: 15_000 });
       const pairUrl2 = await getPairingUrl(pageA);
 
       const ctxC = await browser.newContext();
@@ -86,10 +85,11 @@ test("pair two devices back-to-back from same initiator", async ({ browser }) =>
         // Each responder self-registers on first migration after authenticate;
         // sync propagates the new DeviceRecord back to A within seconds.
         await pageA.goto("/settings");
-        await expect(pageA.getByTestId("device-list")).toBeVisible({ timeout: 10_000 });
+        await expect(pageA.getByTestId("devices-card")).toBeVisible({ timeout: 10_000 });
         await expect
           .poll(
-            async () => pageA.getByTestId("device-list").locator("li").count(),
+            async () =>
+              pageA.locator('[data-testid^="device-row-"]').count(),
             { timeout: 15_000 },
           )
           .toBe(3);

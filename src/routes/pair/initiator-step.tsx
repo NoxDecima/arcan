@@ -258,6 +258,14 @@ export function InitiatorStep() {
       <div className="flex justify-center" data-testid="pair-waiting">
         {invitation && <QRDisplay url={invitation.url} size={132} showText={false} />}
       </div>
+      {/* Invisible e2e hook: the QR renders without visible text, so expose the
+          pairing URL as an sr-only string for Playwright extraction (mirrors the
+          qr-url-text hook on /contacts/add). */}
+      {invitation && (
+        <span data-testid="qr-url-text" className="sr-only">
+          {invitation.url}
+        </span>
+      )}
       <button
         type="button"
         onClick={handleCopyUrl}

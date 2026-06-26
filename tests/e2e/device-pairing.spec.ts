@@ -21,8 +21,8 @@ test("device pairing flow", async ({ browser }) => {
 
     // Navigate to initiator pairing screen
     await pageA.goto("/pair?role=initiator");
-    // Wait for the QR to render (the text element appears once pairing invite is created)
-    await expect(pageA.getByTestId("qr-url-text")).toBeVisible({ timeout: 15_000 });
+    // The qr-url-text hook is sr-only (the QR shows no visible text), so
+    // getPairingUrl waits for it to be attached rather than visible.
     const pairUrl = await getPairingUrl(pageA);
 
     // Open in a fresh context (responder — no existing account)
@@ -54,9 +54,11 @@ test("device pairing flow", async ({ browser }) => {
       // self-register block. Both A's and B's device lists should show 2 entries
       // (the original device + the newly paired one).
       await pageA.goto("/settings");
+      await expect(pageA.getByTestId("devices-card")).toBeVisible({ timeout: 10_000 });
       await expect
         .poll(
-          async () => pageA.getByTestId("device-list").locator("li").count(),
+          async () =>
+            pageA.locator('[data-testid^="device-row-"]').count(),
           { timeout: 15_000 },
         )
         .toBe(2);

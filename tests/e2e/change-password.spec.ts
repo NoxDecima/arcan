@@ -13,8 +13,8 @@ test.describe("change password", () => {
     await page.getByTestId("change-password-confirm").fill(newPassword);
     await page.getByTestId("change-password-submit").click();
 
-    // Modal shows "Password changed" then close
-    await page.getByText("Password changed").waitFor();
+    // Success toast ("password changed") then navigates back.
+    await page.getByText("password changed").waitFor();
 
     // Sign out
     await page.goto("/settings");
