@@ -128,6 +128,19 @@ export function InviteRoute() {
         setInvitation(invAny);
 
         if (!isAuthenticated) {
+          // Stash the invite fragment so the post-auth flow can replay it: the
+          // login screen, the onboarding profile step, and recovery all read
+          // `pending-invite-fragment` and re-open `/invite#…` after the user
+          // authenticates. (The pre-9-7 InviteRoute stashed here; the rework
+          // dropped it, orphaning those readers — restored.)
+          try {
+            sessionStorage.setItem(
+              "pending-invite-fragment",
+              window.location.hash,
+            );
+          } catch {
+            // sessionStorage unavailable — degrade to no replay.
+          }
           setPhase("signin-required");
         } else {
           setPhase("confirm");

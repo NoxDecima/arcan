@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PNG = path.resolve(__dirname, "fixtures/tiny.png");
@@ -25,18 +25,9 @@ test("paste an image from clipboard adds it to the tray", async ({ browser, brow
     await pageB.goto("/");
     await createAccount(pageB, "Bob");
 
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
-    await pageA.goto(inviteUrl);
-    await pageA.getByTestId("invite-accept-btn").click();
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+    await establishContact(pageB, pageA, "Bob");
 
-    await pageA.goto("/contacts");
-    await pageA.getByTestId("contacts-page-row-0").click();
-    await pageA.getByTestId("start-chat-btn").click();
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
+    await openDirectChat(pageA, "Bob");
 
     // Build a ClipboardEvent in the page and dispatch on the textarea
     const pngBytes = fs.readFileSync(PNG);

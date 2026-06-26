@@ -29,14 +29,17 @@ test("invite link opens onboarding then replays after sign-in", async ({ browser
     await createAccount(pageB, "Bob");
 
     await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
+    // qr-url-text is sr-only — wait for it to be attached, not visible.
+    await pageB.getByTestId("qr-url-text").waitFor({ state: "attached", timeout: 10_000 });
     const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
 
-    // Alice (unauthenticated) opens the invite URL.
-    // InviteRoute stashes the fragment in sessionStorage and navigates to "/",
-    // which (unauthenticated) redirects to /auth/login.
+    // Alice (unauthenticated) opens the invite URL. The InviteRoute shows a
+    // sign-in gate (Unit 9-7) and stashes the fragment in sessionStorage for
+    // post-auth replay.
     await pageA.goto(inviteUrl);
-    await pageA.waitForURL(/\/auth\/login/, { timeout: 10_000 });
+    await expect(pageA.getByTestId("invite-signin-required")).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Complete account creation as Alice.
     // Use fillOnboardingForm (not createAccount) because profile-step / signUp

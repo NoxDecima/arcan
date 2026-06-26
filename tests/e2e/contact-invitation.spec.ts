@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact } from "./helpers";
 
 /**
  * E2E: Contact invitation flow (two accounts, mutual contact).
  *
  * Alice (ctxA) and Bob (ctxB) each create accounts.
- * Bob navigates to /contacts/add and captures the invite URL.
- * Alice opens the URL, sees Bob as the inviter, and accepts.
+ * Bob generates an invite link; Alice opens it and connects; Bob approves
+ * the request (the Unit 9-7 asymmetric request/approve handshake).
  * Both contact lists eventually show the other person.
  *
  * Note: polling-based cross-context sync can take several seconds;
@@ -28,36 +28,18 @@ test("contact invitation flow", async ({ browser }) => {
     await pageB.goto("/");
     await createAccount(pageB, "Bob");
 
-    // Bob navigates to /contacts/add to generate an invite link
-    await pageB.goto("/contacts/add");
-    await expect(pageB.getByTestId("qr-display")).toBeVisible({ timeout: 10_000 });
-    // The QRDisplay is rendered with showText=true; wait for the text element
-    await expect(pageB.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();
+    // Bob invites, Alice connects, Bob approves → mutual contact.
+    await establishContact(pageB, pageA, "Bob");
 
-    // Alice opens the invite link
-    await pageA.goto(inviteUrl);
-    // Invite accept screen should show Bob as inviter
-    await expect(pageA.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageA.getByTestId("invite-accept-btn").click();
-
-    // Alice lands on accepted screen
-    await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 10_000 });
-
-    // Alice navigates to /contacts — her contacts list should contain Bob
-    await pageA.goto("/contacts");
-    await expect(pageA.getByTestId("contacts-page-list")).toContainText("Bob", {
+    // Alice's contacts tab should contain Bob.
+    await pageA.goto("/?tab=contacts");
+    await expect(pageA.getByTestId("sidebar-contacts-list")).toContainText("Bob", {
       timeout: 10_000,
     });
 
-    // Bob's side: polling detects acceptance and completes → navigate to /contacts
-    // Bob may still be on /contacts/add showing "Contact added!" or the page may have navigated.
-    // Either way: navigate to /contacts explicitly and check the contacts page list.
-    await expect(pageB.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
-    await pageB.goto("/contacts");
-    await expect(pageB.getByTestId("contacts-page-list")).toContainText("Alice", {
+    // Bob's contacts tab should contain Alice.
+    await pageB.goto("/?tab=contacts");
+    await expect(pageB.getByTestId("sidebar-contacts-list")).toContainText("Alice", {
       timeout: 10_000,
     });
   } finally {

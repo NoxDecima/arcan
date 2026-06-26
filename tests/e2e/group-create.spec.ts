@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, createConversation } from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -34,26 +34,8 @@ async function pairWith(
   await page.goto("/");
   await createAccount(page, name);
 
-  // Generate invite URL from this user's side
-  await page.goto("/contacts/add");
-  await expect(page.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-  const inviteUrl = (await page.getByTestId("qr-url-text").textContent())!.trim();
-
-  // Alice accepts the invite.
-  // Navigate to a neutral page first to ensure the InviteRoute re-mounts
-  // cleanly (the component keeps phase state, so navigating from one /invite#
-  // URL to another without an intermediate stop leaves it in "accepted" phase).
-  await pageA.goto("/conversations");
-  await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-  await pageA.goto(inviteUrl);
-  await expect(pageA.getByTestId("invite-inviter-name")).toContainText(name, {
-    timeout: 15_000,
-  });
-  await pageA.getByTestId("invite-accept-btn").click();
-  await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 15_000 });
-
-  // Wait for the other side to detect acceptance
-  await expect(page.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+  // `page` (the new user) invites; Alice connects + the new user approves.
+  await establishContact(page, pageA, name);
 
   return { ctx, page };
 }
@@ -85,47 +67,10 @@ test("group conversation create — multi-select picker, title, discovery, messa
     );
     ctxCharlie = _ctxCharlie;
 
-    // ── 3. Alice opens picker, selects Bob + Charlie, continues ─────────────
-    await pageA.goto("/conversations");
-    await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-
-    // Open the new-chat ContactPicker
-    await pageA.getByTestId("new-chat-btn").click();
-    await expect(pageA.getByTestId("contact-picker-overlay")).toBeVisible({
-      timeout: 5_000,
-    });
-
-    // Select first contact (index 0) — this is Bob or Charlie, order may vary
-    await pageA.getByTestId("contact-picker-row-0").click();
-    await expect(pageA.getByTestId("contact-picker-row-0")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    // Select second contact (index 1)
-    await pageA.getByTestId("contact-picker-row-1").click();
-    await expect(pageA.getByTestId("contact-picker-row-1")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    // Verify the count helper text shows 2 selected
-    await expect(pageA.getByTestId("contact-picker-count")).toContainText("2 contacts");
-
-    // Click Continue to advance to GroupCreateDialog
-    await pageA.getByTestId("contact-picker-continue").click();
-
-    // ── 4. GroupCreateDialog: type title and submit ──────────────────────────
-    await expect(pageA.getByTestId("group-create-overlay")).toBeVisible({
-      timeout: 5_000,
-    });
-    await pageA.getByTestId("group-create-title-input").fill("Trip planning");
-    await pageA.getByTestId("group-create-submit").click();
+    // ── 3-4. Alice creates a group with Bob + Charlie via /conversations/new ─
+    await createConversation(pageA, ["Bob", "Charlie"], "Trip planning");
 
     // ── 5. Alice lands on the new group conversation ─────────────────────────
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({
-      timeout: 15_000,
-    });
     await expect(pageA.getByTestId("conversation-title")).toContainText("Trip planning", {
       timeout: 5_000,
     });

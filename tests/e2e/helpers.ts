@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Page, expect } from "@playwright/test";
 
 export type AccountCredentials = {
   email: string;
@@ -155,9 +155,188 @@ export async function signIn(
 /**
  * From a page that has a `qr-url-text` element (pairing initiator or contact
  * add), extract the URL displayed in the QR code text.
+ *
+ * Note: on /contacts/add the qr-url-text / copy-url-text spans are `sr-only`
+ * (visually hidden), so callers must wait on `attached`, not `visible`.
  */
 export async function getPairingUrl(page: Page): Promise<string> {
-  const url = await page.getByTestId("qr-url-text").textContent();
+  const el = page.getByTestId("qr-url-text");
+  await el.waitFor({ state: "attached", timeout: 15_000 });
+  const url = await el.textContent();
   if (!url) throw new Error("Could not read pairing URL");
   return url.trim();
+}
+
+/**
+ * Establish a mutual contact between two already-onboarded accounts via the
+ * real connection UI.
+ *
+ * Unit 9-7 replaced the old symmetric invite flow (one tap → both sides see
+ * `invite-accepted` / `add-contact-accepted`) with an asymmetric
+ * request/approve handshake. This helper drives the full happy path:
+ *
+ *   1. `inviterPage` opens /contacts/add and exposes a link-channel invite URL
+ *      (the `copy-url-text` sr-only span — channel="link", silent on pending).
+ *   2. `requesterPage` opens it, confirms the inviter, and clicks "connect" →
+ *      mints a ConnectionRequest and lands on the "request sent" screen.
+ *   3. `inviterPage` approves the request from /connections/pending.
+ *   4. `requesterPage`'s poll detects approval and writes the contact, landing
+ *      on the "contact added" (invite-approved) screen.
+ *
+ * After it resolves, both accounts have each other in their contactBook.
+ *
+ * The link channel + explicit /connections/pending approval is used (rather
+ * than the QR live-prompt modal) because it is deterministic and independent
+ * of which screen the inviter happens to be sitting on.
+ */
+export async function establishContact(
+  inviterPage: Page,
+  requesterPage: Page,
+  inviterName: string,
+): Promise<void> {
+  await inviterPage.goto("/contacts/add");
+  // copy-url-text is sr-only — wait for attachment, not visibility.
+  const copyUrl = inviterPage.getByTestId("copy-url-text");
+  await copyUrl.waitFor({ state: "attached", timeout: 15_000 });
+  const inviteUrl = (await copyUrl.textContent())!.trim();
+
+  // Navigate to a neutral path first so the InviteRoute remounts cleanly.
+  // /invite is a single route keyed only by hash, so going straight from one
+  // /invite#… URL to another (e.g. when this helper is called repeatedly to
+  // pair one account with several others) is a hash-only change that does NOT
+  // reload the page and would leave the route stuck in its prior phase.
+  await requesterPage.goto("/");
+  await requesterPage.goto(inviteUrl);
+  await expect(requesterPage.getByTestId("invite-inviter-name")).toContainText(
+    inviterName,
+    { timeout: 15_000 },
+  );
+  await requesterPage.getByTestId("invite-accept-btn").click();
+  await expect(requesterPage.getByTestId("invite-sent")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Inviter approves from the pending surface. Retry the navigate+click to
+  // absorb cross-context sync lag before the request lands in the durable
+  // incomingRequests list that /connections/pending reads from.
+  await expect(async () => {
+    await inviterPage.goto("/connections/pending");
+    await inviterPage
+      .getByTestId("approve")
+      .first()
+      .click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
+  // Requester's poll detects approvedAt, writes the inviter as a contact, and
+  // advances to the "contact added" screen.
+  await expect(requesterPage.getByTestId("invite-approved")).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+/**
+ * From the home screen, open (creating if needed) the 1:1 conversation with a
+ * contact, landing on the conversation detail.
+ *
+ * Unit 8d/9 replaced the standalone /contacts list + /contacts/:id detail
+ * (`contacts-page-row-N` → `start-chat-btn`) with the sidebar contacts tab
+ * (`sidebar-contact-row-N`) → polymorphic profile route (`profile-message`).
+ */
+export async function openDirectChat(
+  page: Page,
+  contactName: string,
+): Promise<void> {
+  // /contacts redirects to the sidebar contacts tab; go there directly.
+  await page.goto("/?tab=contacts");
+  const list = page.getByTestId("sidebar-contacts-list");
+  await expect(list).toContainText(contactName, { timeout: 15_000 });
+  // The contact row is a <Link> with the name in a <span>; clicking it opens
+  // the polymorphic profile route.
+  await list.getByText(contactName, { exact: false }).first().click();
+  await expect(page.getByTestId("profile-message")).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.getByTestId("profile-message").click();
+  await expect(page.getByTestId("conversation-detail")).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+/**
+ * Create a conversation from the rebuilt /conversations/new route (Unit 4
+ * Phase 6 — replaced the old ContactPicker + GroupCreateDialog two-modal flow).
+ * Selecting one contact → 1:1; two+ → group (with an optional name field).
+ * Lands on the conversation detail.
+ *
+ * `contactNames` are matched against the contact rows by visible text.
+ */
+export async function createConversation(
+  page: Page,
+  contactNames: string[],
+  title?: string,
+): Promise<void> {
+  await page.goto("/conversations/new");
+  for (const name of contactNames) {
+    await page
+      .locator('[data-testid^="new-convo-contact-"]')
+      .filter({ hasText: name })
+      .first()
+      .click();
+  }
+  if (contactNames.length >= 2 && title) {
+    await page.getByTestId("new-convo-group-name").fill(title);
+  }
+  await page.getByTestId("new-convo-submit").click();
+  await expect(page.getByTestId("conversation-detail")).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+/**
+ * From a conversation detail, open the members / conversation-settings route.
+ * Unit 9-6 made the whole chat header the settings link (`conversation-header-link`,
+ * replacing the old standalone `members-link`).
+ */
+export async function openMembers(page: Page): Promise<void> {
+  await page.getByTestId("conversation-header-link").click();
+  await expect(page.getByTestId("members-route")).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Resolve a member's accountID from the members route by display name. The
+ * member list is split into members-section-admins / members-section-writers
+ * (Unit 9-6); member rows carry `member-row-<accountID>` across both sections.
+ */
+export async function memberAccountID(page: Page, name: string): Promise<string> {
+  const row = page
+    .getByTestId("members-route")
+    .locator('[data-testid^="member-row-"]')
+    .filter({ hasText: name })
+    .first();
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  const tid = await row.getAttribute("data-testid");
+  return (tid ?? "").replace("member-row-", "");
+}
+
+/**
+ * Open a member row's kebab menu (Unit 9-6 moved per-member actions —
+ * promote / remove / request-connection — into a kebab popover).
+ */
+export async function openMemberMenu(page: Page, accountID: string): Promise<void> {
+  await page.getByTestId(`member-kebab-${accountID}`).click();
+  await expect(page.getByTestId(`member-menu-${accountID}`)).toBeVisible({
+    timeout: 5_000,
+  });
+}
+
+/**
+ * Open a member's kebab menu and click one of its actions.
+ */
+export async function memberAction(
+  page: Page,
+  accountID: string,
+  action: "promote" | "remove" | "request-connection",
+): Promise<void> {
+  await openMemberMenu(page, accountID);
+  await page.getByTestId(`${action}-${accountID}`).click();
 }

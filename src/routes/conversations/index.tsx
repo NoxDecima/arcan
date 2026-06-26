@@ -49,9 +49,11 @@ export function ConversationsRoute() {
 
   return (
     <>
-      {/* Mobile: the full-screen list (shell's sidebar is hidden on mobile). */}
+      {/* Mobile: the full-screen list (shell's sidebar is hidden on mobile).
+          testScope namespaces this mount's testids so they don't collide with
+          the desktop sidebar (app-shell) under Playwright strict mode. */}
       <div className="md:hidden flex-1 min-h-0">
-        <Sidebar />
+        <Sidebar testScope="mobile" />
       </div>
       {/* Desktop: the empty reading-pane beside the shell's sidebar. */}
       <main className="hidden md:flex flex-1" data-testid="home-main">

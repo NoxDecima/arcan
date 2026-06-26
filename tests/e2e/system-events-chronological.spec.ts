@@ -1,15 +1,22 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import {
+  createAccount,
+  establishContact,
+  createConversation,
+  openMembers,
+} from "./helpers";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
  * E2E: System events render at the correct chronological position (Slice 4)
  *
- * Alice creates a 2-person group with Bob, sends "First message", then adds
- * Charlie (writing an "added" system event), then sends "Second message".
+ * Alice creates a 3-person group (Alice + Bob + Charlie — a group is required
+ * because Unit 9-6 redirects 1:1 conversations to a profile with no settings
+ * screen), sends "First message", then adds Dave from the members route
+ * (writing an "added" system event), then sends "Second message".
  *
  * The timeline on Alice's screen should contain items in this order:
- *   "First message" → "Alice added Charlie" pill → "Second message"
+ *   "First message" → "Alice added Dave" pill → "Second message"
  *
  * This verifies that system events are interleaved by occurredAt, not appended
  * after all messages.
@@ -25,19 +32,7 @@ async function pairWith(
   await page.goto("/");
   await createAccount(page, name);
 
-  await page.goto("/contacts/add");
-  await expect(page.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-  const inviteUrl = (await page.getByTestId("qr-url-text").textContent())!.trim();
-
-  await pageA.goto("/conversations");
-  await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
-  await pageA.goto(inviteUrl);
-  await expect(pageA.getByTestId("invite-inviter-name")).toContainText(name, {
-    timeout: 15_000,
-  });
-  await pageA.getByTestId("invite-accept-btn").click();
-  await expect(pageA.getByTestId("invite-accepted")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("add-contact-accepted")).toBeVisible({ timeout: 15_000 });
+  await establishContact(page, pageA, name);
 
   return { ctx, page };
 }
@@ -52,49 +47,26 @@ test("'added' system event renders at the correct chronological position in the 
 
   let ctxBob: BrowserContext | null = null;
   let ctxCharlie: BrowserContext | null = null;
+  let ctxDave: BrowserContext | null = null;
 
   try {
     // ── 1. Create Alice ─────────────────────────────────────────────────────
     await pageA.goto("/");
     await createAccount(pageA, "Alice");
 
-    // ── 2. Pair Alice with Bob and Charlie ───────────────────────────────────
+    // ── 2. Pair Alice with Bob, Charlie, and Dave ────────────────────────────
     const { ctx: _ctxBob, page: pageBob } = await pairWith(browser, pageA, "Bob");
     ctxBob = _ctxBob;
 
     const { ctx: _ctxCharlie } = await pairWith(browser, pageA, "Charlie");
     ctxCharlie = _ctxCharlie;
 
-    // ── 3. Alice creates a 2-person group with Bob only ──────────────────────
-    await pageA.goto("/conversations");
-    await expect(pageA.getByTestId("home-main")).toBeVisible({ timeout: 10_000 });
+    const { ctx: _ctxDave } = await pairWith(browser, pageA, "Dave");
+    ctxDave = _ctxDave;
 
-    await pageA.getByTestId("new-chat-btn").click();
-    await expect(pageA.getByTestId("contact-picker-overlay")).toBeVisible({ timeout: 5_000 });
-
-    // Find and select only Bob from the picker
-    const row0Text = await pageA.getByTestId("contact-picker-row-0").textContent();
-    const bobIsRow0 = row0Text?.toLowerCase().includes("bob");
-    if (bobIsRow0) {
-      await pageA.getByTestId("contact-picker-row-0").click();
-    } else {
-      await pageA.getByTestId("contact-picker-row-1").click();
-    }
-    await pageA.getByTestId("contact-picker-continue").click();
-
-    // GroupCreateDialog appears (multi-select triggers it even for 1 contact)
-    // If it's a DM (1 contact), it goes directly to conversation; if dialog appears, set title
-    const isGroupDialog = await pageA
-      .getByTestId("group-create-overlay")
-      .isVisible()
-      .catch(() => false);
-
-    if (isGroupDialog) {
-      await pageA.getByTestId("group-create-title-input").fill("Plans");
-      await pageA.getByTestId("group-create-submit").click();
-    }
-
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 15_000 });
+    // ── 3. Alice creates a 3-person group (Alice + Bob + Charlie) ────────────
+    await createConversation(pageA, ["Bob", "Charlie"], "Plans");
+    const convUrl = pageA.url();
 
     // ── 4. Alice sends "First message" ──────────────────────────────────────
     await pageA.getByTestId("composer-input").fill("First message");
@@ -111,24 +83,23 @@ test("'added' system event renders at the correct chronological position in the 
       timeout: 20_000,
     });
 
-    // ── 5. Alice navigates to Members and adds Charlie ───────────────────────
-    await pageA.getByTestId("members-link").click();
-    await expect(pageA.getByTestId("members-route")).toBeVisible({ timeout: 5_000 });
+    // ── 5. Alice navigates to the members route and adds Dave ────────────────
+    await openMembers(pageA);
     await pageA.getByTestId("add-member-btn").click();
     await expect(pageA.getByTestId("contact-picker-overlay")).toBeVisible({ timeout: 5_000 });
 
-    // Only Charlie should be available (Bob already a member)
+    // Only Dave should be available (Bob + Charlie already members)
     await pageA.getByTestId("contact-picker-row-0").click();
     await pageA.getByTestId("contact-picker-continue").click();
 
-    // Wait for Charlie to appear in members list
-    await expect(pageA.getByTestId("members-route")).toContainText("Charlie", {
+    // Wait for Dave to appear in the members list
+    await expect(pageA.getByTestId("members-route")).toContainText("Dave", {
       timeout: 15_000,
     });
 
     // ── 6. Alice navigates back and sends "Second message" ───────────────────
-    await pageA.getByTestId("back-btn").click();
-    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 5_000 });
+    await pageA.goto(convUrl);
+    await expect(pageA.getByTestId("conversation-detail")).toBeVisible({ timeout: 10_000 });
 
     // Small wait to ensure the system event's occurredAt is strictly after first message
     await pageA.waitForTimeout(200);
@@ -181,5 +152,6 @@ test("'added' system event renders at the correct chronological position in the 
     await ctxA.close();
     if (ctxBob) await ctxBob.close();
     if (ctxCharlie) await ctxCharlie.close();
+    if (ctxDave) await ctxDave.close();
   }
 });

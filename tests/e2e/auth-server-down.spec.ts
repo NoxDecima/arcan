@@ -25,12 +25,14 @@ test.describe("auth-server unreachable", () => {
     }
     await page.getByTestId("passphrase-saved-checkbox").check();
     await page.getByTestId("passphrase-display-continue").click();
-    // Backup-confirm: fill the 3 challenge words by reading each label.
+    // Backup-confirm: fill the 3 challenge words. The label has no `for`
+    // attribute; the prompt lives in a sibling <span> ("word #NN", zero-padded).
     for (let slot = 0; slot < 3; slot++) {
-      const label = page.locator(`label[for="confirm-word-${slot}"]`);
-      const labelText = (await label.textContent()) ?? "";
-      const m = labelText.match(/Word\s+(\d+)/)!;
-      await page.getByTestId(`confirm-word-${slot}`).fill(words[parseInt(m[1], 10) - 1]);
+      const input = page.getByTestId(`confirm-word-${slot}`);
+      await input.waitFor({ timeout: 20_000 });
+      const labelText = (await input.locator("xpath=../span").first().textContent()) ?? "";
+      const m = labelText.match(/#?\s*0*(\d+)/)!;
+      await input.fill(words[parseInt(m[1], 10) - 1]);
     }
     await page.getByTestId("confirm-passphrase-btn").click();
     await page.getByTestId("display-name-input").fill("Offline Alice");

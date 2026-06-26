@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createAccount } from "./helpers";
+import { createAccount, establishContact, openDirectChat } from "./helpers";
 
 /**
  * E2E: Slice 8 tab title badge — title prefix `(N) ` appears when the
@@ -29,20 +29,7 @@ test("Slice 8 — title gains (N) prefix when hidden + unread > 0", async ({
     await createAccount(pageBob, "Bob");
 
     // Pair via Bob's invite.
-    await pageBob.goto("/contacts/add");
-    await expect(pageBob.getByTestId("qr-url-text")).toBeVisible({ timeout: 10_000 });
-    const inviteUrl = (await pageBob.getByTestId("qr-url-text").textContent())!.trim();
-    await pageAlice.goto(inviteUrl);
-    await expect(pageAlice.getByTestId("invite-inviter-name")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageAlice.getByTestId("invite-accept-btn").click();
-    await expect(pageAlice.getByTestId("invite-accepted")).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(pageBob.getByTestId("add-contact-accepted")).toBeVisible({
-      timeout: 15_000,
-    });
+    await establishContact(pageBob, pageAlice, "Bob");
 
     // Bob navigates to /conversations and forces "hidden" BEFORE Alice sends.
     // The NotificationManager (mounted in App.tsx) will then react via
@@ -61,15 +48,7 @@ test("Slice 8 — title gains (N) prefix when hidden + unread > 0", async ({
     });
 
     // Alice opens a 1:1 with Bob and sends 2 messages.
-    await pageAlice.goto("/contacts");
-    await expect(pageAlice.getByTestId("contacts-page-list")).toContainText("Bob", {
-      timeout: 10_000,
-    });
-    await pageAlice.getByTestId("contacts-page-row-0").click();
-    await pageAlice.getByTestId("start-chat-btn").click();
-    await expect(pageAlice.getByTestId("conversation-detail")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openDirectChat(pageAlice, "Bob");
     await pageAlice.getByTestId("composer-input").fill("hi 1");
     await pageAlice.getByTestId("composer-send-btn").click();
     await expect(pageAlice.getByTestId("message-timeline")).toContainText("hi 1", {
