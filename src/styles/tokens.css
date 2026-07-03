@@ -25,6 +25,12 @@
   --color-red:   #f7768e;
   --color-teal:  #73daca;
 
+  /* Prototype fixed colors (theme-varying, accent-independent) */
+  --color-avatar-group: rgba(187, 154, 247, 0.16); /* HAv group tint: alpha(#bb9af7, .16) */
+  --color-red-border: rgba(247, 118, 142, 0.5);    /* PButton danger border: alpha(red, .5) */
+  --color-media-veil: rgba(255, 255, 255, 0.18);   /* own-bubble attachment placeholder */
+  --shadow-bubble: none;                           /* soft-skin bubble shadow: light only */
+
   /* Typography */
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -41,14 +47,29 @@
   --fs-meta: 11px;
   --fs-micro: 10px;
 
+  /* Prototype UI type ramp (Unit 10 — px values verbatim from design/proto*.jsx) */
+  --fs-ui-title: 16px;   /* PHeader title */
+  --fs-ui-btn: 13px;     /* PButton label */
+  --fs-ui-row: 12.5px;   /* PRow label, bubble text, PField value */
+  --fs-ui-value: 11px;   /* PRow trailing value */
+  --fs-ui-sub: 10.5px;   /* PRow sub line */
+  --fs-ui-sys: 10px;     /* chat system rows */
+  --fs-ui-tab: 9.5px;    /* PTabBar labels */
+  --fs-ui-caps: 9px;     /* PSectionLabel, PField label, "new" divider */
+  --fs-ui-time: 8.5px;   /* bubble timestamps */
+
   --lh-tight: 1.05;
   --lh-snug: 1.15;
   --lh-body: 1.6;
   --lh-loose: 1.75;
+  --lh-ui: 1.2;      /* prototype row/title line-height */
+  --lh-bubble: 1.45; /* prototype bubble text */
 
   --tracking-display: -0.02em;
   --tracking-title: -0.01em;
-  --tracking-caps: 0.18em;
+  --tracking-caps: 0.16em;      /* prototype PSectionLabel (was 0.18em — prototype wins) */
+  --tracking-caps-sm: 0.14em;   /* prototype PField label */
+  --tracking-tab: 0.04em;       /* prototype PTabBar label (mono) */
   --tracking-caps-lg: 0.24em;
 
   /* Spacing (8pt base, plus micro) */
@@ -89,6 +110,7 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 360ms;
+  --dur-switch: 180ms; /* PToggle knob/track transition (.18s in proto) */
 
   /* Layout */
   --content-narrow: 640px;
@@ -124,6 +146,10 @@
   --color-amber: #b5832b;
   --color-red: #d6455d;
   --color-teal: #2f9d8c;
+  --color-avatar-group: rgba(122, 85, 201, 0.13); /* alpha(#7a55c9, .13) */
+  --color-red-border: rgba(214, 69, 93, 0.5);     /* alpha(#d6455d, .5) */
+  --color-media-veil: rgba(255, 255, 255, 0.18);
+  --shadow-bubble: 0 1px 2px rgba(20, 20, 40, 0.05);
 
   --shadow-1: 0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(40,40,60,0.08);
   --shadow-2: 0 4px 16px rgba(40,40,60,0.16), 0 1px 0 rgba(255,255,255,0.6) inset;
