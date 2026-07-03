@@ -96,13 +96,6 @@
   --content-wide: 1120px;
   --content-max: 1280px;
 
-  /* Default accent fallback (tokyo) — overridden by [data-accent] selectors below */
-  --color-accent: #7aa2f7;
-  --color-accent-grad-0: #7aa2f7;
-  --color-accent-grad-1: #bb9af7;
-  --color-accent-soft: rgba(122, 162, 247, 0.16);
-  --color-accent-border: rgba(122, 162, 247, 0.5);
-  --color-on-accent: #ffffff;
 
   /* Gradients — adopted from design/nox-tokens.css (renamed --nox-grad-* → --gradient-*).
      Primary + rule reference the accent-grad pair so they auto-respect data-accent flips.
@@ -135,33 +128,7 @@
 
   --shadow-1: 0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(40,40,60,0.08);
   --shadow-2: 0 4px 16px rgba(40,40,60,0.16), 0 1px 0 rgba(255,255,255,0.6) inset;
-
-  --color-accent-soft: rgba(122, 162, 247, 0.12);
-  --color-accent-border: rgba(122, 162, 247, 0.4);
 }
-
-/* ---------- Accent palettes (data-accent="<name>") ---------- */
-:root[data-accent="tokyo"]  { --color-accent: #7aa2f7; --color-accent-grad-0: #7aa2f7; --color-accent-grad-1: #bb9af7; }
-:root[data-accent="violet"] { --color-accent: #bb9af7; --color-accent-grad-0: #bb9af7; --color-accent-grad-1: #7aa2f7; }
-:root[data-accent="teal"]   { --color-accent: #73daca; --color-accent-grad-0: #73daca; --color-accent-grad-1: #7dcfff; }
-:root[data-accent="lime"]   { --color-accent: #9ece6a; --color-accent-grad-0: #9ece6a; --color-accent-grad-1: #73daca; }
-:root[data-accent="amber"]  { --color-accent: #e0af68; --color-accent-grad-0: #e0af68; --color-accent-grad-1: #f7768e; }
-:root[data-accent="rose"]   { --color-accent: #f7768e; --color-accent-grad-0: #f7768e; --color-accent-grad-1: #bb9af7; }
-
-:root[data-theme="light"][data-accent="tokyo"]  { --color-on-accent: #ffffff; }
-:root[data-theme="light"][data-accent="violet"] { --color-on-accent: #ffffff; }
-:root[data-theme="light"][data-accent="teal"]   { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="lime"]   { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="amber"]  { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="rose"]   { --color-on-accent: #ffffff; }
-
-:root[data-theme="dark"][data-accent="tokyo"],
-:root[data-theme="dark"][data-accent="violet"],
-:root[data-theme="dark"][data-accent="rose"] { --color-on-accent: #ffffff; }
-
-:root[data-theme="dark"][data-accent="teal"],
-:root[data-theme="dark"][data-accent="lime"],
-:root[data-theme="dark"][data-accent="amber"] { --color-on-accent: #0b0d14; }
 
 /* ---------- Base body styles ---------- */
 html, body {
@@ -205,3 +172,7 @@ html, body {
   .animate-arcan-modal-in,
   .animate-arcan-sheet-in { animation: none; }
 }
+
+/* ---------- Accent-derived tokens (generated) ---------- */
+/* @generated accents:start */
+/* @generated accents:end */
