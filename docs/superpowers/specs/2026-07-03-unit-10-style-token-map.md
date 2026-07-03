@@ -35,6 +35,12 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `alpha(c.red, .5)` (danger border) | `border-red-border` |
 | `alpha('#fff', .18)` (attachment veil) | `bg-media-veil` |
 | HAv group tint `alpha(#bb9af7/#7a55c9, …)` | `bg-avatar-group` |
+| Fab glow `alpha(c.accentFill, .45)` | `shadow-fab` |
+| cosmic dot glow `alpha(c.accentFill, .6)` | `shadow-dot` (dot itself `bg-arcan-accent-fill`) |
+| fixed violet dot `#bb9af7`/`#7a55c9` | `bg-cosmic-dot` / HAv group fg `text-avatar-group-fg` |
+| toast washes `alpha(col, .2/.14)` | `bg-{green,red,neutral,accent}-wash` |
+| toast shadow | `shadow-toast` |
+| DesktopWindow shadow | `shadow-window` |
 | `s.font` (JetBrains Mono) | `font-mono` |
 | `s.body` (Inter) | `font-body` |
 | `s.radius` (12) | `rounded-r-4` |
@@ -62,6 +68,11 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `600 9px/1` mono `.16em` caps (section labels) | `font-mono font-semibold text-ui-caps tracking-caps uppercase` |
 | `600 9px/1` mono `.14em` caps (field labels) | `font-mono font-semibold text-ui-caps tracking-caps-sm uppercase` |
 | `500 8.5px/1` mono (bubble time) | `font-mono font-medium text-ui-time` |
+| `500 12px/1.3` body (toast text) | `font-body font-medium text-ui-toast` |
+| `600 15px/1.3` mono (empty-state title) | `font-mono font-semibold text-ui-empty` |
+| `400 11.5px/1` body (empty-state sub) | `font-body text-ui-empty-sub` |
+| `500 10px/1` mono `.04em` (window chrome) | `font-mono font-medium text-ui-chrome tracking-tab` |
+| `600 size*.34px/1` mono `-.02em` (HAv initials) | `font-mono font-semibold tracking-avatar` + computed inline font-size |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -91,7 +102,7 @@ code (arbitrary values allowed; `check-tokens` only polices color/typography):
 header minH 52, tab bar h 54, button h 44, field h 40, toggle 38×22 (knob 16,
 offsets 2/18), avatar default 34, icon sizes 15/16/17/20, row padding
 `12px 14px`, header padding `0 12px`, bubble padding `8px 11px` (attachment
-`6`), QR module grid (5×5, gap 3, 62% of box).
+`6`), QR module grid (5×5, gap 3, 62% of box). Fab 52 (offset right/bottom 16), toast icon circle 22, DesktopWindow bar h 38 / traffic lights 11 (#e2696e #e6b450 #5fb87f — decorative constants, stay inline), phone-frame numbers are stage dressing (not ported).
 
 ## Legacy tokens (not in the prototype — do not use in new kit code)
 

@@ -40,6 +40,27 @@ describe("accentTokens", () => {
     expect(accentTokens("tokyo", "light")["--color-accent-grad-0"]).toBe("#749aeb");
     expect(accentTokens("tokyo", "light")["--color-accent-grad-1"]).toBe("#b292eb");
   });
+
+  it("derives fab glow from fill (tokyo dark, alpha .45)", () => {
+    expect(accentTokens("tokyo", "dark")["--color-accent-glow"]).toBe(
+      "rgba(122,162,247,0.45)",
+    );
+  });
+
+  it("derives cosmic-dot glow from fill (tokyo light, alpha .6 of shaded fill)", () => {
+    expect(accentTokens("tokyo", "light")["--color-accent-dot"]).toBe(
+      "rgba(115,152,232,0.6)",
+    );
+  });
+
+  it("derives toast wash from text-safe accent (tokyo: dark .2, light .14)", () => {
+    expect(accentTokens("tokyo", "dark")["--color-accent-wash"]).toBe(
+      "rgba(122,162,247,0.2)",
+    );
+    expect(accentTokens("tokyo", "light")["--color-accent-wash"]).toBe(
+      "rgba(90,120,183,0.14)",
+    );
+  });
 });
 
 describe("render + inject", () => {

@@ -70,6 +70,12 @@ export function accentTokens(key, theme) {
     "--color-on-accent": lum(fill) > 0.55 ? "#0b0d14" : "#ffffff",
     "--color-bubble-own":
       theme === "dark" ? alpha(fill, 0.3) : alpha(fill, 0.2),
+    "--color-accent-glow": alpha(fill, 0.45),
+    "--color-accent-dot": alpha(fill, 0.6),
+    "--color-accent-wash":
+      theme === "dark"
+        ? alpha(a.solid, 0.2)
+        : alpha(shade(a.solid, -0.26), 0.14),
   };
 }
 

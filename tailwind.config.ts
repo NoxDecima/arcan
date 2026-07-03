@@ -69,6 +69,12 @@ export default {
         'avatar-group': 'var(--color-avatar-group)',
         'red-border': 'var(--color-red-border)',
         'media-veil': 'var(--color-media-veil)',
+        'avatar-group-fg': 'var(--color-avatar-group-fg)',
+        'cosmic-dot': 'var(--color-cosmic-dot)',
+        'green-wash': 'var(--color-green-wash)',
+        'red-wash': 'var(--color-red-wash)',
+        'neutral-wash': 'var(--color-neutral-wash)',
+        'accent-wash': 'var(--color-accent-wash)',
       },
       fontFamily: {
         body: ['var(--font-body)'],
@@ -86,12 +92,17 @@ export default {
         'ui-tab': ['var(--fs-ui-tab)', { lineHeight: '1' }],
         'ui-caps': ['var(--fs-ui-caps)', { lineHeight: '1' }],
         'ui-time': ['var(--fs-ui-time)', { lineHeight: '1' }],
+        'ui-toast': ['var(--fs-ui-toast)', { lineHeight: '1.3' }],
+        'ui-empty': ['var(--fs-ui-empty)', { lineHeight: '1.3' }],
+        'ui-empty-sub': ['var(--fs-ui-empty-sub)', { lineHeight: '1' }],
+        'ui-chrome': ['var(--fs-ui-chrome)', { lineHeight: '1' }],
       },
       letterSpacing: {
         caps: 'var(--tracking-caps)',
         'caps-sm': 'var(--tracking-caps-sm)',
         'caps-lg': 'var(--tracking-caps-lg)',
         tab: 'var(--tracking-tab)',
+        avatar: 'var(--tracking-avatar)',
         title: 'var(--tracking-title)',
       },
       transitionDuration: {
@@ -115,6 +126,10 @@ export default {
         'level-1': 'var(--shadow-1)',
         'level-2': 'var(--shadow-2)',
         'bubble': 'var(--shadow-bubble)',
+        'toast': 'var(--shadow-toast)',
+        'window': 'var(--shadow-window)',
+        'fab': '0 8px 22px var(--color-accent-glow)',
+        'dot': '0 0 10px var(--color-accent-dot)',
       },
       backgroundImage: {
         // Gradient tokens — see src/styles/tokens.css.
