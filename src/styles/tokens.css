@@ -25,7 +25,7 @@
   --color-red:   #f7768e;
   --color-teal:  #73daca;
 
-  /* Prototype fixed colors (theme-varying, accent-independent) */
+  /* Prototype fixed tokens (theme-varying, accent-independent) */
   --color-avatar-group: rgba(187, 154, 247, 0.16); /* HAv group tint: alpha(#bb9af7, .16) */
   --color-red-border: rgba(247, 118, 142, 0.5);    /* PButton danger border: alpha(red, .5) */
   --color-media-veil: rgba(255, 255, 255, 0.18);   /* own-bubble attachment placeholder */
