@@ -5,4 +5,5 @@
 // (docs/superpowers/specs/2026-07-03-unit-10-style-token-map.md).
 // Purity: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
-export {};
+export { Icon, IPATHS } from "./icon";
+export type { IconName } from "./icon";

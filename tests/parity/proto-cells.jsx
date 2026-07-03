@@ -3,11 +3,32 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
+const { Icon } = window;
+
+const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ font: `500 12.5px/1.2 ${s.font}`, color: s.c.text }}>probe // arcan</span>
+    </div>
+  ),
+
+  // hf-kit.jsx lines 115–146
+  "icon-grid": (s) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {ICON_NAMES.map(n => <Icon key={n} d={n} c={s.c.text2} size={18} />)}
+    </div>
+  ),
+
+  "icon-modes": (s) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Icon d="send" c={s.c.text2} size={16} fill />
+      <Icon d="chev" c={s.c.dim} size={15} />
+      <Icon d="gear" c={s.c.text2} size={20} />
+      <div style={{ width: 52, height: 52, borderRadius: 999, background: s.c.accentFill, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon d="plus" c={s.c.onAccent} size={24} sw={2.2} />
+      </div>
     </div>
   ),
 };
