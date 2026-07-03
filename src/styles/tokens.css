@@ -96,7 +96,6 @@
   --content-wide: 1120px;
   --content-max: 1280px;
 
-
   /* Gradients — adopted from design/nox-tokens.css (renamed --nox-grad-* → --gradient-*).
      Primary + rule reference the accent-grad pair so they auto-respect data-accent flips.
      Cosmic uses surface tokens (--color-panel, --color-panel-2, --color-bg) so it adapts
@@ -175,4 +174,161 @@ html, body {
 
 /* ---------- Accent-derived tokens (generated) ---------- */
 /* @generated accents:start */
+/* DO NOT EDIT BY HAND — regenerate with: node scripts/gen-tokens.mjs
+
+ * Math mirrors design/hf-kit.jsx skin() (v5 variant). */
+
+:root {
+  --color-accent: #7aa2f7;
+  --color-accent-fill: #7aa2f7;
+  --color-accent-grad-0: #7aa2f7;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(122,162,247,0.16);
+  --color-accent-border: rgba(122,162,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(122,162,247,0.3);
+}
+
+:root[data-theme="light"] {
+  --color-accent: #5a78b7;
+  --color-accent-fill: #7398e8;
+  --color-accent-grad-0: #749aeb;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(122,162,247,0.12);
+  --color-accent-border: rgba(122,162,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,152,232,0.2);
+}
+
+:root[data-accent="tokyo"] {
+  --color-accent: #7aa2f7;
+  --color-accent-fill: #7aa2f7;
+  --color-accent-grad-0: #7aa2f7;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(122,162,247,0.16);
+  --color-accent-border: rgba(122,162,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(122,162,247,0.3);
+}
+
+:root[data-theme="light"][data-accent="tokyo"] {
+  --color-accent: #5a78b7;
+  --color-accent-fill: #7398e8;
+  --color-accent-grad-0: #749aeb;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(122,162,247,0.12);
+  --color-accent-border: rgba(122,162,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,152,232,0.2);
+}
+
+:root[data-accent="violet"] {
+  --color-accent: #bb9af7;
+  --color-accent-fill: #bb9af7;
+  --color-accent-grad-0: #bb9af7;
+  --color-accent-grad-1: #7aa2f7;
+  --color-accent-soft: rgba(187,154,247,0.16);
+  --color-accent-border: rgba(187,154,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(187,154,247,0.3);
+}
+
+:root[data-theme="light"][data-accent="violet"] {
+  --color-accent: #8a72b7;
+  --color-accent-fill: #b091e8;
+  --color-accent-grad-0: #b292eb;
+  --color-accent-grad-1: #749aeb;
+  --color-accent-soft: rgba(187,154,247,0.12);
+  --color-accent-border: rgba(187,154,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(176,145,232,0.2);
+}
+
+:root[data-accent="teal"] {
+  --color-accent: #73daca;
+  --color-accent-fill: #73daca;
+  --color-accent-grad-0: #73daca;
+  --color-accent-grad-1: #7dcfff;
+  --color-accent-soft: rgba(115,218,202,0.16);
+  --color-accent-border: rgba(115,218,202,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,218,202,0.3);
+}
+
+:root[data-theme="light"][data-accent="teal"] {
+  --color-accent: #55a195;
+  --color-accent-fill: #6ccdbe;
+  --color-accent-grad-0: #6dcfc0;
+  --color-accent-grad-1: #77c5f2;
+  --color-accent-soft: rgba(115,218,202,0.12);
+  --color-accent-border: rgba(115,218,202,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(108,205,190,0.2);
+}
+
+:root[data-accent="lime"] {
+  --color-accent: #9ece6a;
+  --color-accent-fill: #9ece6a;
+  --color-accent-grad-0: #9ece6a;
+  --color-accent-grad-1: #73daca;
+  --color-accent-soft: rgba(158,206,106,0.16);
+  --color-accent-border: rgba(158,206,106,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(158,206,106,0.3);
+}
+
+:root[data-theme="light"][data-accent="lime"] {
+  --color-accent: #75984e;
+  --color-accent-fill: #95c264;
+  --color-accent-grad-0: #96c465;
+  --color-accent-grad-1: #6dcfc0;
+  --color-accent-soft: rgba(158,206,106,0.12);
+  --color-accent-border: rgba(158,206,106,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(149,194,100,0.2);
+}
+
+:root[data-accent="amber"] {
+  --color-accent: #e0af68;
+  --color-accent-fill: #e0af68;
+  --color-accent-grad-0: #e0af68;
+  --color-accent-grad-1: #f7768e;
+  --color-accent-soft: rgba(224,175,104,0.16);
+  --color-accent-border: rgba(224,175,104,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(224,175,104,0.3);
+}
+
+:root[data-theme="light"][data-accent="amber"] {
+  --color-accent: #a6824d;
+  --color-accent-fill: #d3a562;
+  --color-accent-grad-0: #d5a663;
+  --color-accent-grad-1: #eb7087;
+  --color-accent-soft: rgba(224,175,104,0.12);
+  --color-accent-border: rgba(224,175,104,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(211,165,98,0.2);
+}
+
+:root[data-accent="rose"] {
+  --color-accent: #f7768e;
+  --color-accent-fill: #f7768e;
+  --color-accent-grad-0: #f7768e;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(247,118,142,0.16);
+  --color-accent-border: rgba(247,118,142,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(247,118,142,0.3);
+}
+
+:root[data-theme="light"][data-accent="rose"] {
+  --color-accent: #b75769;
+  --color-accent-fill: #e86f85;
+  --color-accent-grad-0: #eb7087;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(247,118,142,0.12);
+  --color-accent-border: rgba(247,118,142,0.4);
+  --color-on-accent: #ffffff;
+  --color-bubble-own: rgba(232,111,133,0.2);
+}
 /* @generated accents:end */
