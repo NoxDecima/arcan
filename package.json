@@ -16,7 +16,8 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "audit:capture": "npx tsx scripts/audit/capture-screens.ts",
-    "check-tokens": "./scripts/check-tokens.sh"
+    "check-tokens": "./scripts/check-tokens.sh",
+    "check-ui-purity": "./scripts/check-ui-purity.sh"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
