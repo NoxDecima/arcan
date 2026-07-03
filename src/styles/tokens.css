@@ -25,6 +25,12 @@
   --color-red:   #f7768e;
   --color-teal:  #73daca;
 
+  /* Prototype fixed tokens (theme-varying, accent-independent) */
+  --color-avatar-group: rgba(187, 154, 247, 0.16); /* HAv group tint: alpha(#bb9af7, .16) */
+  --color-red-border: rgba(247, 118, 142, 0.5);    /* PButton danger border: alpha(red, .5) */
+  --color-media-veil: rgba(255, 255, 255, 0.18);   /* own-bubble attachment placeholder */
+  --shadow-bubble: none;                           /* soft-skin bubble shadow: light only */
+
   /* Typography */
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -41,14 +47,29 @@
   --fs-meta: 11px;
   --fs-micro: 10px;
 
+  /* Prototype UI type ramp (Unit 10 — px values verbatim from design/proto*.jsx) */
+  --fs-ui-title: 16px;   /* PHeader title */
+  --fs-ui-btn: 13px;     /* PButton label */
+  --fs-ui-row: 12.5px;   /* PRow label, bubble text, PField value */
+  --fs-ui-value: 11px;   /* PRow trailing value */
+  --fs-ui-sub: 10.5px;   /* PRow sub line */
+  --fs-ui-sys: 10px;     /* chat system rows */
+  --fs-ui-tab: 9.5px;    /* PTabBar labels */
+  --fs-ui-caps: 9px;     /* PSectionLabel, PField label, "new" divider */
+  --fs-ui-time: 8.5px;   /* bubble timestamps */
+
   --lh-tight: 1.05;
   --lh-snug: 1.15;
   --lh-body: 1.6;
   --lh-loose: 1.75;
+  --lh-ui: 1.2;      /* prototype row/title line-height */
+  --lh-bubble: 1.45; /* prototype bubble text */
 
   --tracking-display: -0.02em;
   --tracking-title: -0.01em;
-  --tracking-caps: 0.18em;
+  --tracking-caps: 0.16em;      /* prototype PSectionLabel (was 0.18em — prototype wins) */
+  --tracking-caps-sm: 0.14em;   /* prototype PField label */
+  --tracking-tab: 0.04em;       /* prototype PTabBar label (mono) */
   --tracking-caps-lg: 0.24em;
 
   /* Spacing (8pt base, plus micro) */
@@ -89,20 +110,13 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 360ms;
+  --dur-switch: 180ms; /* PToggle knob/track transition (.18s in proto) */
 
   /* Layout */
   --content-narrow: 640px;
   --content: 860px;
   --content-wide: 1120px;
   --content-max: 1280px;
-
-  /* Default accent fallback (tokyo) — overridden by [data-accent] selectors below */
-  --color-accent: #7aa2f7;
-  --color-accent-grad-0: #7aa2f7;
-  --color-accent-grad-1: #bb9af7;
-  --color-accent-soft: rgba(122, 162, 247, 0.16);
-  --color-accent-border: rgba(122, 162, 247, 0.5);
-  --color-on-accent: #ffffff;
 
   /* Gradients — adopted from design/nox-tokens.css (renamed --nox-grad-* → --gradient-*).
      Primary + rule reference the accent-grad pair so they auto-respect data-accent flips.
@@ -132,36 +146,14 @@
   --color-amber: #b5832b;
   --color-red: #d6455d;
   --color-teal: #2f9d8c;
+  --color-avatar-group: rgba(122, 85, 201, 0.13); /* alpha(#7a55c9, .13) */
+  --color-red-border: rgba(214, 69, 93, 0.5);     /* alpha(#d6455d, .5) */
+  --color-media-veil: rgba(255, 255, 255, 0.18);
+  --shadow-bubble: 0 1px 2px rgba(20, 20, 40, 0.05);
 
   --shadow-1: 0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(40,40,60,0.08);
   --shadow-2: 0 4px 16px rgba(40,40,60,0.16), 0 1px 0 rgba(255,255,255,0.6) inset;
-
-  --color-accent-soft: rgba(122, 162, 247, 0.12);
-  --color-accent-border: rgba(122, 162, 247, 0.4);
 }
-
-/* ---------- Accent palettes (data-accent="<name>") ---------- */
-:root[data-accent="tokyo"]  { --color-accent: #7aa2f7; --color-accent-grad-0: #7aa2f7; --color-accent-grad-1: #bb9af7; }
-:root[data-accent="violet"] { --color-accent: #bb9af7; --color-accent-grad-0: #bb9af7; --color-accent-grad-1: #7aa2f7; }
-:root[data-accent="teal"]   { --color-accent: #73daca; --color-accent-grad-0: #73daca; --color-accent-grad-1: #7dcfff; }
-:root[data-accent="lime"]   { --color-accent: #9ece6a; --color-accent-grad-0: #9ece6a; --color-accent-grad-1: #73daca; }
-:root[data-accent="amber"]  { --color-accent: #e0af68; --color-accent-grad-0: #e0af68; --color-accent-grad-1: #f7768e; }
-:root[data-accent="rose"]   { --color-accent: #f7768e; --color-accent-grad-0: #f7768e; --color-accent-grad-1: #bb9af7; }
-
-:root[data-theme="light"][data-accent="tokyo"]  { --color-on-accent: #ffffff; }
-:root[data-theme="light"][data-accent="violet"] { --color-on-accent: #ffffff; }
-:root[data-theme="light"][data-accent="teal"]   { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="lime"]   { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="amber"]  { --color-on-accent: #0b0d14; }
-:root[data-theme="light"][data-accent="rose"]   { --color-on-accent: #ffffff; }
-
-:root[data-theme="dark"][data-accent="tokyo"],
-:root[data-theme="dark"][data-accent="violet"],
-:root[data-theme="dark"][data-accent="rose"] { --color-on-accent: #ffffff; }
-
-:root[data-theme="dark"][data-accent="teal"],
-:root[data-theme="dark"][data-accent="lime"],
-:root[data-theme="dark"][data-accent="amber"] { --color-on-accent: #0b0d14; }
 
 /* ---------- Base body styles ---------- */
 html, body {
@@ -205,3 +197,164 @@ html, body {
   .animate-arcan-modal-in,
   .animate-arcan-sheet-in { animation: none; }
 }
+
+/* ---------- Accent-derived tokens (generated) ---------- */
+/* @generated accents:start */
+/* DO NOT EDIT BY HAND — regenerate with: node scripts/gen-tokens.mjs
+
+ * Math mirrors design/hf-kit.jsx skin() (v5 variant). */
+
+:root {
+  --color-accent: #7aa2f7;
+  --color-accent-fill: #7aa2f7;
+  --color-accent-grad-0: #7aa2f7;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(122,162,247,0.16);
+  --color-accent-border: rgba(122,162,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(122,162,247,0.3);
+}
+
+:root[data-theme="light"] {
+  --color-accent: #5a78b7;
+  --color-accent-fill: #7398e8;
+  --color-accent-grad-0: #749aeb;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(122,162,247,0.12);
+  --color-accent-border: rgba(122,162,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,152,232,0.2);
+}
+
+:root[data-accent="tokyo"] {
+  --color-accent: #7aa2f7;
+  --color-accent-fill: #7aa2f7;
+  --color-accent-grad-0: #7aa2f7;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(122,162,247,0.16);
+  --color-accent-border: rgba(122,162,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(122,162,247,0.3);
+}
+
+:root[data-theme="light"][data-accent="tokyo"] {
+  --color-accent: #5a78b7;
+  --color-accent-fill: #7398e8;
+  --color-accent-grad-0: #749aeb;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(122,162,247,0.12);
+  --color-accent-border: rgba(122,162,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,152,232,0.2);
+}
+
+:root[data-accent="violet"] {
+  --color-accent: #bb9af7;
+  --color-accent-fill: #bb9af7;
+  --color-accent-grad-0: #bb9af7;
+  --color-accent-grad-1: #7aa2f7;
+  --color-accent-soft: rgba(187,154,247,0.16);
+  --color-accent-border: rgba(187,154,247,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(187,154,247,0.3);
+}
+
+:root[data-theme="light"][data-accent="violet"] {
+  --color-accent: #8a72b7;
+  --color-accent-fill: #b091e8;
+  --color-accent-grad-0: #b292eb;
+  --color-accent-grad-1: #749aeb;
+  --color-accent-soft: rgba(187,154,247,0.12);
+  --color-accent-border: rgba(187,154,247,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(176,145,232,0.2);
+}
+
+:root[data-accent="teal"] {
+  --color-accent: #73daca;
+  --color-accent-fill: #73daca;
+  --color-accent-grad-0: #73daca;
+  --color-accent-grad-1: #7dcfff;
+  --color-accent-soft: rgba(115,218,202,0.16);
+  --color-accent-border: rgba(115,218,202,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(115,218,202,0.3);
+}
+
+:root[data-theme="light"][data-accent="teal"] {
+  --color-accent: #55a195;
+  --color-accent-fill: #6ccdbe;
+  --color-accent-grad-0: #6dcfc0;
+  --color-accent-grad-1: #77c5f2;
+  --color-accent-soft: rgba(115,218,202,0.12);
+  --color-accent-border: rgba(115,218,202,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(108,205,190,0.2);
+}
+
+:root[data-accent="lime"] {
+  --color-accent: #9ece6a;
+  --color-accent-fill: #9ece6a;
+  --color-accent-grad-0: #9ece6a;
+  --color-accent-grad-1: #73daca;
+  --color-accent-soft: rgba(158,206,106,0.16);
+  --color-accent-border: rgba(158,206,106,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(158,206,106,0.3);
+}
+
+:root[data-theme="light"][data-accent="lime"] {
+  --color-accent: #75984e;
+  --color-accent-fill: #95c264;
+  --color-accent-grad-0: #96c465;
+  --color-accent-grad-1: #6dcfc0;
+  --color-accent-soft: rgba(158,206,106,0.12);
+  --color-accent-border: rgba(158,206,106,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(149,194,100,0.2);
+}
+
+:root[data-accent="amber"] {
+  --color-accent: #e0af68;
+  --color-accent-fill: #e0af68;
+  --color-accent-grad-0: #e0af68;
+  --color-accent-grad-1: #f7768e;
+  --color-accent-soft: rgba(224,175,104,0.16);
+  --color-accent-border: rgba(224,175,104,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(224,175,104,0.3);
+}
+
+:root[data-theme="light"][data-accent="amber"] {
+  --color-accent: #a6824d;
+  --color-accent-fill: #d3a562;
+  --color-accent-grad-0: #d5a663;
+  --color-accent-grad-1: #eb7087;
+  --color-accent-soft: rgba(224,175,104,0.12);
+  --color-accent-border: rgba(224,175,104,0.4);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(211,165,98,0.2);
+}
+
+:root[data-accent="rose"] {
+  --color-accent: #f7768e;
+  --color-accent-fill: #f7768e;
+  --color-accent-grad-0: #f7768e;
+  --color-accent-grad-1: #bb9af7;
+  --color-accent-soft: rgba(247,118,142,0.16);
+  --color-accent-border: rgba(247,118,142,0.5);
+  --color-on-accent: #0b0d14;
+  --color-bubble-own: rgba(247,118,142,0.3);
+}
+
+:root[data-theme="light"][data-accent="rose"] {
+  --color-accent: #b75769;
+  --color-accent-fill: #e86f85;
+  --color-accent-grad-0: #eb7087;
+  --color-accent-grad-1: #b292eb;
+  --color-accent-soft: rgba(247,118,142,0.12);
+  --color-accent-border: rgba(247,118,142,0.4);
+  --color-on-accent: #ffffff;
+  --color-bubble-own: rgba(232,111,133,0.2);
+}
+/* @generated accents:end */

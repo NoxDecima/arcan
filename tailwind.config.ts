@@ -64,11 +64,38 @@ export default {
         'accent-soft': 'var(--color-accent-soft)',
         'accent-border': 'var(--color-accent-border)',
         'on-accent': 'var(--color-on-accent)',
+        'arcan-accent-fill': 'var(--color-accent-fill)',
+        'bubble-own': 'var(--color-bubble-own)',
+        'avatar-group': 'var(--color-avatar-group)',
+        'red-border': 'var(--color-red-border)',
+        'media-veil': 'var(--color-media-veil)',
       },
       fontFamily: {
         body: ['var(--font-body)'],
         mono: ['var(--font-mono)'],
         display: ['var(--font-display)'],
+      },
+      fontSize: {
+        'ui-title': ['var(--fs-ui-title)', { lineHeight: 'var(--lh-ui)' }],
+        'ui-btn': ['var(--fs-ui-btn)', { lineHeight: '1' }],
+        'ui-row': ['var(--fs-ui-row)', { lineHeight: 'var(--lh-ui)' }],
+        'ui-bubble': ['var(--fs-ui-row)', { lineHeight: 'var(--lh-bubble)' }],
+        'ui-value': ['var(--fs-ui-value)', { lineHeight: '1' }],
+        'ui-sub': ['var(--fs-ui-sub)', { lineHeight: 'var(--lh-ui)' }],
+        'ui-sys': ['var(--fs-ui-sys)', { lineHeight: '1.4' }],
+        'ui-tab': ['var(--fs-ui-tab)', { lineHeight: '1' }],
+        'ui-caps': ['var(--fs-ui-caps)', { lineHeight: '1' }],
+        'ui-time': ['var(--fs-ui-time)', { lineHeight: '1' }],
+      },
+      letterSpacing: {
+        caps: 'var(--tracking-caps)',
+        'caps-sm': 'var(--tracking-caps-sm)',
+        'caps-lg': 'var(--tracking-caps-lg)',
+        tab: 'var(--tracking-tab)',
+        title: 'var(--tracking-title)',
+      },
+      transitionDuration: {
+        switch: 'var(--dur-switch)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,6 +114,7 @@ export default {
       boxShadow: {
         'level-1': 'var(--shadow-1)',
         'level-2': 'var(--shadow-2)',
+        'bubble': 'var(--shadow-bubble)',
       },
       backgroundImage: {
         // Gradient tokens — see src/styles/tokens.css.
