@@ -26,7 +26,23 @@ const staticSrv = await serve(4174);
 const vite = spawn("npx", ["vite", "--port", "4175", "--strictPort"], {
   cwd: here("../.."), stdio: "ignore",
 });
-await new Promise((r) => setTimeout(r, 2500));
+// Wait for vite to accept connections (up to 30s; cold optimize-deps is slow)
+const deadline = Date.now() + 30_000;
+let viteUp = false;
+while (Date.now() < deadline) {
+  try {
+    await fetch("http://localhost:4175/parity.html");
+    viteUp = true;
+    break;
+  } catch {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+if (!viteUp) {
+  vite.kill();
+  staticSrv.close();
+  throw new Error("vite did not become ready on :4175 within 30s");
+}
 
 const REPORT = here("./report");
 rmSync(REPORT, { recursive: true, force: true });
@@ -47,6 +63,9 @@ for (const cell of cells) {
 
 const browser = await chromium.launch();
 const results = [];
+const cleanup = () => { try { vite.kill(); } catch {} try { staticSrv.close(); } catch {} };
+process.on("SIGINT", () => { cleanup(); process.exit(130); });
+process.on("SIGTERM", () => { cleanup(); process.exit(143); });
 try {
   for (const [variant, vcells] of variants) {
     const [theme, accent] = variant.split("/");
@@ -82,7 +101,9 @@ try {
       writeFileSync(`${dir}/${cell.id}-app.png`, aBuf);
       const failing = status !== "PASS" && !cell.advisory;
       results.push({ variant, id: cell.id, status: cell.advisory && status !== "PASS" ? `ADVISORY(${status})` : status, ratio, failing });
-      console.log(`${failing ? "✗" : "✓"} [${variant}] ${cell.id}: ${status} (${(ratio * 100).toFixed(3)}%)`);
+      const marker = failing ? "✗" : (cell.advisory && status !== "PASS") ? "~" : "✓";
+      const pctStr = status.startsWith("SIZE") ? "—" : `${(ratio * 100).toFixed(3)}%`;
+      console.log(`${marker} [${variant}] ${cell.id}: ${status} (${pctStr})`);
     }
     await proto.close();
     await app.close();
