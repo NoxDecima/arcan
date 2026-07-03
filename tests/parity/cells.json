@@ -1,0 +1,6 @@
+{
+  "defaults": { "width": 340, "pad": 16, "bg": "bg", "themes": ["dark", "light"], "accents": ["tokyo"], "maxDiffRatio": 0.002 },
+  "cells": [
+    { "id": "probe-swatch" }
+  ]
+}
