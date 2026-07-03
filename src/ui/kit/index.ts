@@ -7,3 +7,4 @@
 
 export { Icon, IPATHS } from "./icon";
 export type { IconName } from "./icon";
+export { HAv } from "./hav";

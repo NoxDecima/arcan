@@ -3,6 +3,9 @@
   "cells": [
     { "id": "probe-swatch" },
     { "id": "icon-grid" },
-    { "id": "icon-modes" }
+    { "id": "icon-modes" },
+    { "id": "hav-sizes" },
+    { "id": "hav-group" },
+    { "id": "hav-status" }
   ]
 }

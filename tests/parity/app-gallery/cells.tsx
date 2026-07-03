@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, type IconName } from "@/ui/kit";
+import { Icon, HAv, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -32,6 +32,29 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
       <div className="w-[52px] h-[52px] rounded-pill bg-arcan-accent-fill flex items-center justify-center">
         <Icon d="plus" className="text-on-accent" size={24} sw={2.2} />
       </div>
+    </div>
+  ),
+
+  // hf-kit.jsx lines 103–114
+  "hav-sizes": () => (
+    <div className="flex items-center gap-2">
+      <HAv txt="AB" size={28} />
+      <HAv txt="AB" size={34} />
+      <HAv txt="AB" size={38} />
+    </div>
+  ),
+
+  "hav-group": () => (
+    <div className="flex items-center gap-2">
+      <HAv txt="AB" size={34} group />
+      <HAv txt="AB" size={38} group />
+    </div>
+  ),
+
+  "hav-status": () => (
+    <div className="flex items-center gap-2">
+      <HAv txt="AB" size={38} status="online" ring="var(--color-bg)" />
+      <HAv txt="AB" size={38} status="offline" ring="var(--color-bg)" />
     </div>
   ),
 };

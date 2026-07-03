@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon } = window;
+const { Icon, HAv } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -29,6 +29,29 @@ const PROTO_CELLS = {
       <div style={{ width: 52, height: 52, borderRadius: 999, background: s.c.accentFill, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon d="plus" c={s.c.onAccent} size={24} sw={2.2} />
       </div>
+    </div>
+  ),
+
+  // hf-kit.jsx lines 103–114
+  "hav-sizes": (s) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <HAv s={s} txt="AB" size={28} />
+      <HAv s={s} txt="AB" size={34} />
+      <HAv s={s} txt="AB" size={38} />
+    </div>
+  ),
+
+  "hav-group": (s) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <HAv s={s} txt="AB" size={34} group />
+      <HAv s={s} txt="AB" size={38} group />
+    </div>
+  ),
+
+  "hav-status": (s) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <HAv s={s} txt="AB" size={38} status="online" ring={s.c.bg} />
+      <HAv s={s} txt="AB" size={38} status="offline" ring={s.c.bg} />
     </div>
   ),
 };
