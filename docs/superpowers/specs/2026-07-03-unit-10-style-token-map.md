@@ -102,7 +102,7 @@ code (arbitrary values allowed; `check-tokens` only polices color/typography):
 header minH 52, tab bar h 54, button h 44, field h 40, toggle 38×22 (knob 16,
 offsets 2/18), avatar default 34, icon sizes 15/16/17/20, row padding
 `12px 14px`, header padding `0 12px`, bubble padding `8px 11px` (attachment
-`6`), QR module grid (5×5, gap 3, 62% of box). Fab 52 (offset right/bottom 16), toast icon circle 22, DesktopWindow bar h 38 / traffic lights 11 (#e2696e #e6b450 #5fb87f — decorative constants, stay inline), phone-frame numbers are stage dressing (not ported).
+`6`), QR module grid (5×5, gap 3, 62% of box). Fab 52 (offset right/bottom 16), toast icon circle 22, DesktopWindow bar h 38 / traffic lights 11 (#e2696e #e6b450 #5fb87f — decorative constants, stay inline), phone-frame numbers are stage dressing (not ported), fab shadow geometry 0 8px 22px (proto:148), dot glow 0 0 10px (proto:574), toast/window shadow geometry in their --shadow-* tokens.
 
 ## Legacy tokens (not in the prototype — do not use in new kit code)
 

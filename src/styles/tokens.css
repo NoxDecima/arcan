@@ -33,7 +33,7 @@
   --color-avatar-group-fg: #bb9af7;               /* HAv group initials (hf-kit:106) */
   --color-cosmic-dot: #bb9af7;                    /* violet accent dot (proto:575/666) */
   --color-green-wash: rgba(158, 206, 106, 0.2);   /* toast success wash: alpha(green,.2) */
-  --color-red-wash: rgba(247, 118, 142, 0.2);     /* toast error wash */
+  --color-red-wash: rgba(247, 118, 142, 0.2);     /* toast error wash: alpha(red,.2) */
   --color-neutral-wash: rgba(138, 147, 178, 0.2); /* toast neutral wash: alpha(text2,.2) */
   --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.55);   /* proto:595 */
   --shadow-window: 0 34px 90px rgba(0, 0, 0, 0.62);  /* DesktopWindow, proto:679 */
@@ -64,6 +64,7 @@
   --fs-ui-tab: 9.5px;    /* PTabBar labels */
   --fs-ui-caps: 9px;     /* PSectionLabel, PField label, "new" divider */
   --fs-ui-time: 8.5px;   /* bubble timestamps */
+  /* (appended Phase 1 — not in descending order) */
   --fs-ui-toast: 12px;      /* Toast text (proto:597) */
   --fs-ui-empty: 15px;      /* DesktopEmpty title (proto:669) */
   --fs-ui-empty-sub: 11.5px;/* DesktopEmpty sub (proto:670) */
@@ -162,7 +163,7 @@
   --color-red-border: rgba(214, 69, 93, 0.5);     /* alpha(#d6455d, .5) */
   --color-media-veil: rgba(255, 255, 255, 0.18);
   --shadow-bubble: 0 1px 2px rgba(20, 20, 40, 0.05);
-  --color-avatar-group-fg: #7a55c9;
+  --color-avatar-group-fg: #7a55c9; /* HAv group fg, light variant (hf-kit:106) */
   --color-cosmic-dot: #bb9af7;
   --color-green-wash: rgba(79, 138, 54, 0.14);   /* alpha(#4f8a36,.14) */
   --color-red-wash: rgba(214, 69, 93, 0.14);     /* alpha(#d6455d,.14) */

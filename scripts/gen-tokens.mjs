@@ -72,6 +72,10 @@ export function accentTokens(key, theme) {
       theme === "dark" ? alpha(fill, 0.3) : alpha(fill, 0.2),
     "--color-accent-glow": alpha(fill, 0.45),
     "--color-accent-dot": alpha(fill, 0.6),
+    // wash uses the text-safe accent path (c.accent = shade(solid,-0.26) in
+    // light), NOT fill — a wash tints a surface that carries text. glow/dot
+    // above use fill because they shadow opaque painted surfaces.
+    // Sources: proto.jsx:593-596 (wash), :148 (glow), :574 (dot).
     "--color-accent-wash":
       theme === "dark"
         ? alpha(a.solid, 0.2)
