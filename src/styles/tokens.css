@@ -176,14 +176,23 @@
 }
 
 /* ---------- Base body styles ---------- */
+html {
+  /* Standard rem base: Tailwind's rem-scaled utilities must render their
+     nominal px (h-11 = 44px). Body text size is set on <body> below —
+     rem stays 16px. (Unit 10 Phase 1; was font-size: var(--fs-body),
+     which silently scaled every rem utility by 15/16.) */
+  font-size: 16px;
+}
 html, body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
-  font-size: var(--fs-body);
   line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+body {
+  font-size: var(--fs-body);
 }
 
 @keyframes arcan-toast-in {

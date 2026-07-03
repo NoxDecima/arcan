@@ -104,6 +104,13 @@ offsets 2/18), avatar default 34, icon sizes 15/16/17/20, row padding
 `12px 14px`, header padding `0 12px`, bubble padding `8px 11px` (attachment
 `6`), QR module grid (5×5, gap 3, 62% of box). Fab 52 (offset right/bottom 16), toast icon circle 22, DesktopWindow bar h 38 / traffic lights 11 (#e2696e #e6b450 #5fb87f — decorative constants, stay inline), phone-frame numbers are stage dressing (not ported), fab shadow geometry 0 8px 22px (proto:148), dot glow 0 0 10px (proto:574), toast/window shadow geometry in their --shadow-* tokens.
 
+## Rem base
+
+`html` is fixed at `font-size: 16px` (body text is 15px via `--fs-body` on
+`<body>`). All rem-scaled Tailwind utilities therefore render their nominal
+px — `h-11` = 44px, `px-3` = 12px, `gap-2` = 8px — and the cluster strings
+in this table can be used as written. Do not set font-size on `html`.
+
 ## Legacy tokens (not in the prototype — do not use in new kit code)
 
 `--color-faint`, `--shadow-glow-accent`, `--fs-hero/display/h1/h2/h3`,
