@@ -63,6 +63,12 @@ describe("render + inject", () => {
     expect(() => inject("no markers here", "X")).toThrow(/marker/);
   });
 
+  it("throws when markers are in wrong order", () => {
+    const swapped =
+      "/* @generated accents:end */\nOLD\n/* @generated accents:start */";
+    expect(() => inject(swapped, "X")).toThrow(/order/);
+  });
+
   it("emits all 6 accents × both themes plus fallbacks", () => {
     const out = render();
     for (const k of ["tokyo", "violet", "teal", "lime", "amber", "rose"]) {

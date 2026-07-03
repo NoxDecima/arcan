@@ -21,7 +21,7 @@ const ACCENTS = {
 };
 const ACCENT_KEYS = ["tokyo", "violet", "teal", "lime", "amber", "rose"];
 
-// --- color math copied verbatim from design/hf-kit.jsx ---
+// --- color math ported from design/hf-kit.jsx (hf-kit names: _hx, _to) ---
 function hx(h) {
   h = h.replace("#", "");
   return [
@@ -109,6 +109,11 @@ export function inject(css, generated) {
   const e = css.indexOf(END);
   if (s === -1 || e === -1) {
     throw new Error("tokens.css is missing the @generated accents markers");
+  }
+  if (e < s) {
+    throw new Error(
+      "tokens.css @generated accents markers are in wrong order (end before start)",
+    );
   }
   return css.slice(0, s + START.length) + "\n" + generated + "\n" + css.slice(e);
 }
