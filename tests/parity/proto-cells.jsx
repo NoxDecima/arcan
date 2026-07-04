@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn } = window;
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -226,6 +226,20 @@ const PROTO_CELLS = {
       <div style={{ position: 'relative', height: 64 }}><Toast s={s} data={{ tone: 'accent', icon: 'copy', text: 'code copied' }} /></div>
     </div>
   ),
+
+  /* hf-kit.jsx:195–241 (ArcanMark) */
+  "arcanmark-tiers": (s) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <ArcanMark s={s} size={58} stacked={true} />
+      <ArcanMark s={s} size={24} showWord={true} />
+      <span style={{ color: s.c.text }}><ArcanMark s={s} size={12} showWord={false} mono={true} /></span>
+    </div>
+  ),
+
+  "arcanmark-accents": (s) => <ArcanMark s={s} size={24} showWord={true} />,
+
+  /* advisory: compares proto ArcanMark glyph to existing app Lattice */
+  "lattice-verdict": (s) => <ArcanMark s={s} size={58} showWord={false} />,
 };
 
 (async () => {

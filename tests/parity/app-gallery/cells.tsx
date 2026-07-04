@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, type IconName } from "@/ui/kit";
+import { Lattice } from "@/components/lattice";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -185,4 +186,18 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
       <div className="relative h-[64px]"><KitToast tone="accent" icon="copy" text="code copied" /></div>
     </div>
   ),
+
+  // hf-kit.jsx:195–241 (ArcanMark)
+  "arcanmark-tiers": () => (
+    <div className="flex items-center gap-6">
+      <ArcanMark size={58} stacked />
+      <ArcanMark size={24} showWord />
+      <span className="text-text"><ArcanMark size={12} showWord={false} mono /></span>
+    </div>
+  ),
+
+  "arcanmark-accents": () => <ArcanMark size={24} showWord />,
+
+  // advisory: existing Lattice vs proto ArcanMark glyph
+  "lattice-verdict": () => <Lattice size={58} />,
 };

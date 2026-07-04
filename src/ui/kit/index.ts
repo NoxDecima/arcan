@@ -24,3 +24,5 @@ export type { BubbleMsg } from "./bubble";
 export { Fab } from "./fab";
 export { KitToast } from "./toast";
 export type { KitToastTone } from "./toast";
+export { latticePaths, dots, seg } from "./lattice-paths";
+export { ArcanMark } from "./arcan-mark";
