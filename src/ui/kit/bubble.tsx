@@ -22,11 +22,17 @@ export function Bubble({
   m,
   w,
   attSlot,
+  bodyTestId,
+  timeTestId,
 }: {
   m: BubbleMsg;
   w: number;
   /** Rung 4, real attachments from the container. */
   attSlot?: ReactNode;
+  /** Optional testid on the body text span (e.g. "bubble-body"). Sanctioned: ChatScreen presenter. */
+  bodyTestId?: string;
+  /** Optional testid on the time span (e.g. "bubble-time"). Sanctioned: ChatScreen presenter. */
+  timeTestId?: string;
 }): JSX.Element {
   const mine = m.who === "me";
   return (
@@ -64,9 +70,17 @@ export function Bubble({
         </div>
       )}
       <div className="flex items-end gap-2">
-        <span className="flex-1 font-body text-ui-bubble">{m.text}</span>
+        <span
+          className="flex-1 font-body text-ui-bubble"
+          {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
+        >
+          {m.text}
+        </span>
         {m.time && (
-          <span className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px">
+          <span
+            className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
+            {...(timeTestId ? { "data-testid": timeTestId } : {})}
+          >
             {m.time}
           </span>
         )}
@@ -80,15 +94,27 @@ export function MessageRow({
   m,
   w,
   attSlot,
+  testId,
+  bodyTestId,
+  timeTestId,
 }: {
   m: BubbleMsg;
   w: number;
   attSlot?: ReactNode;
+  /** Optional testid on the row wrapper div (e.g. "message-mine" / "message-other"). Sanctioned: ChatScreen presenter. */
+  testId?: string;
+  /** Forwarded to Bubble: testid on the body text span. */
+  bodyTestId?: string;
+  /** Forwarded to Bubble: testid on the time span. */
+  timeTestId?: string;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
     return (
-      <div className="self-center font-mono text-ui-sys text-dim text-center py-0.5">
+      <div
+        className="self-center font-mono text-ui-sys text-dim text-center py-0.5"
+        {...(testId ? { "data-testid": testId } : {})}
+      >
         {"// "}
         {m.text}
       </div>
@@ -97,7 +123,10 @@ export function MessageRow({
   // new-messages divider
   if (m.who === "new") {
     return (
-      <div className="flex items-center gap-2.5 my-0.5">
+      <div
+        className="flex items-center gap-2.5 my-0.5"
+        {...(testId ? { "data-testid": testId } : {})}
+      >
         <div className="flex-1 h-px bg-arcan-accent opacity-50" />
         <span className="font-mono font-semibold text-ui-caps tracking-caps uppercase text-arcan-accent">
           new
@@ -110,6 +139,7 @@ export function MessageRow({
   return (
     <div
       className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
+      {...(testId ? { "data-testid": testId } : {})}
     >
       {!mine && <HAv txt={m.ini ?? ""} size={28} />}
       <div
@@ -122,7 +152,7 @@ export function MessageRow({
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} attSlot={attSlot} />
+        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} timeTestId={timeTestId} />
       </div>
     </div>
   );
