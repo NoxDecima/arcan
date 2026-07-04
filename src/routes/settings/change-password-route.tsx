@@ -60,7 +60,7 @@ export function ChangePasswordRoute() {
 
   return (
     <div
-      className="min-h-screen bg-panel-2"
+      className="flex-1 min-h-0 overflow-y-auto bg-panel-2"
       data-testid="change-password-route"
     >
       <div className="max-w-xl mx-auto px-4 py-6">

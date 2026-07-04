@@ -26,7 +26,6 @@ import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
-import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
 
@@ -218,10 +217,10 @@ function App() {
                 channels land silently on the Pending Connections list. */}
             {isAuthenticated && <IncomingConnectionPrompt />}
             {routeTable}
-            {/* Unit 4 Phase 4: mobile bottom tab bar — fixed on root screens
-                only; hidden on non-root paths. Reads the shared sidebar tab
-                state. Authenticated only. */}
-            {isAuthenticated && <MobileTabBar />}
+            {/* Unit 10 Wave A: MobileTabBar removed — AppShell's MobileShell
+                now provides the kit PTabBar in its tabBar slot. The
+                src/components/mobile-tab-bar.tsx file stays on disk until
+                Phase 4 cleanup. */}
           </SidebarTabProvider>
         </ToastProvider>
       </AccentProvider>

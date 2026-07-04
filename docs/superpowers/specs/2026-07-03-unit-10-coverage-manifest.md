@@ -59,3 +59,55 @@ happen so nothing waits for phase exit.
   composed borders/fills). Pixel-identical.
 - a11y follow-ups tracked (task list): PToggle switch role, PHeader back
   aria-label, avatar-button contract, PTabBar tablist semantics.
+
+## Screens (Phase 2)
+
+### Avatar image resolution — home lists (Wave A Task 5 review fix)
+
+Container `useHomeLists` resolves avatar images via one-shot container effects
+(snapshot, not reactive):
+
+- **Own profile header**: `useState` + `useEffect` on `me.profile.avatar.data.$jazz.id`
+  → `co.fileStream().loadAsBlob` → objectURL; revoked on cleanup.
+- **Conversation icons**: combined effect iterates `knownConversations`; each
+  entry with `icon.data.$jazz.id` is blob-loaded into the `id → objectURL` map.
+  `icon: true` added to the `$each` resolve spec to make the FileBlob available.
+- **Contact photos**: EFFECTIVELY INITIALS-ONLY in Wave A. The combined effect
+  calls `resolveAvatarFileBlob({ accountID, me })`, but its contactBook branch
+  is a documented no-op (Contact stores a plain accountID string — no
+  `$jazz.refs.account` to walk; see `src/jazz/avatarResolver.ts`). The old
+  Sidebar carried contact photos via the per-row `useRemoteAvatar`
+  subscription, which Wave A dropped. Only the group-members path can
+  occasionally yield a blob.
+
+Deliberate, tracked deferral: reinstating the `useRemoteAvatar` mechanism (not
+merely adding reactivity) is the followup; `profile-avatar.spec.ts` is
+`test.fixme`'d on exactly this. Own-profile avatar + conversation icons DO
+resolve (snapshot; no live remote update).
+
+### Wave A coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Home / chats list (mobile) | `/` | 1 | proto ChatsScreen (86–114) | PASS 0.000% | presence omitted (NOX-31) |
+| Home / contacts list (mobile) | `/` (contacts tab) | 1 + 4 | proto ContactsScreen (116–143) | PASS 0.000% | pendingSlot = PendingRequestsSection (Rung 4, no proto ref) |
+| Desktop nav column | shell | 1 + 4 | proto DesktopApp extraction (731–780) | PASS 0.000% | active-row state via useParams; pendingSlot Rung 4 |
+| Desktop empty pane | `/` desktop | 1 | proto DesktopEmpty | PASS (Phase 1 cell) | replaces EmptyPane on home |
+| Window-on-stage desktop shell | shell | 1 | proto DesktopWindow/DesktopApp | PASS (Phase 1 cell) | whole authenticated app renders inside it |
+| Mobile shell + tab bar | shell | 1 | proto MobileApp chrome | PASS (Phase 1 cell) | PTabBar on root paths only; MobileTabBar unmounted |
+| Toast rendering | app-wide | 1 | proto Toast (590–600) | PASS (toast-tones) | legacy API/testids kept; stacked toasts Rung 4 |
+| Empty/loading states | home | 4 | — | — | legacy copy + NavListSkeleton kept |
+
+### Wave A e2e drift (vs 44/44 baseline)
+
+- 42/44 on first run after integration. `unread-badges` updated to the
+  prototype's weight convention (unread = bold, read = semibold) — now green.
+- `profile-avatar` marked `test.fixme` — contact photos don't resolve on home
+  lists (see avatar section above; followup task tracks it). 43 runnable,
+  43 green.
+- Merge-review fix: five route roots (`/settings` + 3 sub-routes,
+  `/conversations/new`) used `min-h-screen`/`h-screen`, which clips inside the
+  fixed-height `DesktopWindow` (and `MobileShell`) with no scroll ancestor —
+  converted to `flex-1 min-h-0` (+ `overflow-y-auto` where the route is its
+  own scroll container). Wave B-D rule: route roots must fill the pane, never
+  the viewport.

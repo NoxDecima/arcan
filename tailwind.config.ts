@@ -96,6 +96,9 @@ export default {
         'ui-empty': ['var(--fs-ui-empty)', { lineHeight: '1.3' }],
         'ui-empty-sub': ['var(--fs-ui-empty-sub)', { lineHeight: '1' }],
         'ui-chrome': ['var(--fs-ui-chrome)', { lineHeight: '1' }],
+        'ui-nav': ['var(--fs-ui-nav)', { lineHeight: 'var(--lh-ui)' }],
+        'ui-preview': ['var(--fs-ui-value)', { lineHeight: '1.3' }],   // row preview 11px/1.3 (proto:752)
+        'ui-contact': ['var(--fs-ui-btn)', { lineHeight: 'var(--lh-ui)' }], // ContactRow name 13px/1.2 (proto:139)
       },
       letterSpacing: {
         caps: 'var(--tracking-caps)',

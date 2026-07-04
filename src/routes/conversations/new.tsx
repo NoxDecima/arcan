@@ -156,7 +156,7 @@ export function NewConversationRoute() {
         : "message";
 
   return (
-    <div className="flex flex-col h-screen bg-bg">
+    <div className="flex flex-col flex-1 min-h-0 bg-bg">
       <header className="p-4 border-b border-hairline flex items-center gap-3">
         <button
           type="button"

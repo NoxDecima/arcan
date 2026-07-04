@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
+import { ChatsScreen, ContactsScreen, NavColumn, type ConvoItem, type ContactItem } from "@/ui/screens";
+import { HF_CONVOS, HF_CONTACTS } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -239,5 +241,65 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         </Body>
       </MobileShell>
     </div>
+  ),
+
+  // proto.jsx:86–114 (ChatsScreen) — patched: presence dropped (NOX-31)
+  "chats-screen": () => (
+    <div className="flex flex-col h-full">
+      <ChatsScreen
+        profile={{ name: "decima", initials: "me" }}
+        convos={HF_CONVOS}
+        onOpenConvo={() => {}}
+        onOwnProfile={() => {}}
+        onSettings={() => {}}
+        onNewConvo={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:116–143 (ContactsScreen + ContactRow) — patched: presence dropped (NOX-31)
+  "contacts-screen": () => (
+    <div className="flex flex-col h-full">
+      <ContactsScreen
+        profile={{ name: "decima", initials: "me" }}
+        contacts={HF_CONTACTS}
+        onOpenContact={() => {}}
+        onOwnProfile={() => {}}
+        onSettings={() => {}}
+        onAddContact={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:731–780 (DesktopApp left column) — patched: presence dropped (NOX-31)
+  "nav-column": () => (
+    <NavColumn
+      profile={{ name: "decima", initials: "me" }}
+      tab="chats"
+      onTab={() => {}}
+      convos={HF_CONVOS}
+      contacts={HF_CONTACTS}
+      activeConvoId="c1"
+      onOpenConvo={() => {}}
+      onOpenContact={() => {}}
+      onOwnProfile={() => {}}
+      onSettings={() => {}}
+      onFab={() => {}}
+    />
+  ),
+
+  "nav-column-contacts": () => (
+    <NavColumn
+      profile={{ name: "decima", initials: "me" }}
+      tab="contacts"
+      onTab={() => {}}
+      convos={HF_CONVOS}
+      contacts={HF_CONTACTS}
+      onOpenConvo={() => {}}
+      onOpenContact={() => {}}
+      onOwnProfile={() => {}}
+      onSettings={() => {}}
+      onFab={() => {}}
+    />
   ),
 };
