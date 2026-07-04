@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR } = window;
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -104,6 +104,36 @@ const PROTO_CELLS = {
 
   // proto-ui.jsx lines 121–130
   "pqr": (s) => <PQR s={s} size={128} />,
+
+  // proto-ui.jsx lines 17-41 (PHeader) + 45-61 (PTabBar)
+  "pheader-plain": (s) => (
+    <PHeader s={s} title="decima"
+      avatar={<HAv s={s} txt="me" size={30} />}
+      onAvatar={() => {}}
+      right={<button style={tapBtn} onClick={() => {}}><Icon d="gear" c={s.c.text2} size={20} /></button>}
+    />
+  ),
+
+  "pheader-back": (s) => (
+    <PHeader s={s}
+      onBack={() => {}}
+      title="settings"
+      sub={<span style={{ font: `400 10.5px/1.2 ${s.body}`, color: s.c.dim }}>manage your account</span>}
+    />
+  ),
+
+  "pheader-ontitle": (s) => (
+    <PHeader s={s}
+      avatar={<HAv s={s} txt="AK" size={30} />}
+      title="ada · keyring"
+      onTitle={() => {}}
+      right={<button style={tapBtn} onClick={() => {}}><Icon d="dots" c={s.c.text2} size={20} /></button>}
+    />
+  ),
+
+  "ptabbar": (s) => <PTabBar s={s} active="chats" onTab={() => {}} />,
+
+  "ptabbar-contacts": (s) => <PTabBar s={s} active="contacts" onTab={() => {}} />,
 };
 
 (async () => {

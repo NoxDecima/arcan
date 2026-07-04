@@ -12,6 +12,11 @@
     { "id": "pcard-rows" },
     { "id": "pfield" },
     { "id": "ptoggle", "accents": ["tokyo", "rose"] },
-    { "id": "pqr" }
+    { "id": "pqr" },
+    { "id": "pheader-plain", "pad": 0 },
+    { "id": "pheader-back", "pad": 0 },
+    { "id": "pheader-ontitle", "pad": 0 },
+    { "id": "ptabbar", "pad": 0 },
+    { "id": "ptabbar-contacts", "pad": 0 }
   ]
 }

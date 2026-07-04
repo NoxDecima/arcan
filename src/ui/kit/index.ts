@@ -16,3 +16,6 @@ export { PRow } from "./prow";
 export { PField } from "./pfield";
 export { PToggle } from "./ptoggle";
 export { PQR } from "./pqr";
+export { Body } from "./body";
+export { PHeader } from "./pheader";
+export { PTabBar } from "./ptabbar";

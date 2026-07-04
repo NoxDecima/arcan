@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -107,4 +107,43 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
 
   // proto-ui.jsx lines 121–130
   "pqr": () => <PQR size={128} />,
+
+  // proto-ui.jsx lines 17-41 (PHeader) + 45-61 (PTabBar)
+  "pheader-plain": () => (
+    <PHeader
+      title="decima"
+      avatar={<HAv txt="me" size={30} />}
+      onAvatar={() => {}}
+      right={
+        <button className={tapClass} onClick={() => {}}>
+          <Icon d="gear" size={20} className="text-text-2" />
+        </button>
+      }
+    />
+  ),
+
+  "pheader-back": () => (
+    <PHeader
+      onBack={() => {}}
+      title="settings"
+      sub={<span className="text-ui-sub text-dim">manage your account</span>}
+    />
+  ),
+
+  "pheader-ontitle": () => (
+    <PHeader
+      avatar={<HAv txt="AK" size={30} />}
+      title="ada · keyring"
+      onTitle={() => {}}
+      right={
+        <button className={tapClass} onClick={() => {}}>
+          <Icon d="dots" size={20} className="text-text-2" />
+        </button>
+      }
+    />
+  ),
+
+  "ptabbar": () => <PTabBar active="chats" onTab={() => {}} />,
+
+  "ptabbar-contacts": () => <PTabBar active="contacts" onTab={() => {}} />,
 };
