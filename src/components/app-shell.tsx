@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { useHomeLists } from "@/components/use-home-lists";
 import { useSidebarTab } from "@/components/sidebar-tab";
-import { DesktopWindow, MobileShell, PTabBar } from "@/ui/kit";
+import { MobileShell, PTabBar } from "@/ui/kit";
 import { NavColumn } from "@/ui/screens";
 import { PendingRequestsSection } from "@/components/pending-requests-section";
 import { NavListSkeleton } from "@/components/skeleton";
@@ -11,8 +11,12 @@ import { NavListSkeleton } from "@/components/skeleton";
  * Authenticated layout shell — Unit 10 Wave A.
  *
  * Desktop (≥ 768px, Tailwind `md`):
- *   window-on-stage chrome (bg-bg-stage + DesktopWindow) with NavColumn fed
- *   by useHomeLists() on the left and the routed pane (Outlet) on the right.
+ *   full-viewport split: NavColumn fed by useHomeLists() on the left and the
+ *   routed pane (Outlet) on the right. USER DECISION (2026-07-05 walkthrough):
+ *   the prototype's window-on-stage presentation (bg-bg-stage + DesktopWindow
+ *   with fake OS chrome) was rejected — the window CONTENT fills the screen.
+ *   DesktopWindow stays in the kit (parity-gated) but is not mounted here.
+ *   Recorded in the coverage manifest as a user-directed deviation.
  *
  * Mobile (< 768px):
  *   full-screen MobileShell; kit PTabBar appears as the tabBar slot on root
@@ -52,8 +56,7 @@ export function AppShell() {
 
   if (isDesktop) {
     return (
-      <div className="h-screen w-screen bg-bg-stage flex items-center justify-center overflow-hidden">
-        <DesktopWindow>
+      <div className="h-screen w-screen flex bg-bg overflow-hidden">
           {/* NavColumn — or loading skeleton while Jazz resolves (sidebar-loading
               testid carried from legacy Sidebar loading state). */}
           {shell.loading ? (
@@ -87,11 +90,10 @@ export function AppShell() {
               }
             />
           )}
-          {/* Routed pane — Outlet fills this flex column. */}
-          <div className="flex-1 min-w-0 relative flex flex-col bg-bg">
-            <Outlet />
-          </div>
-        </DesktopWindow>
+        {/* Routed pane — Outlet fills this flex column. */}
+        <div className="flex-1 min-w-0 relative flex flex-col bg-bg">
+          <Outlet />
+        </div>
       </div>
     );
   }

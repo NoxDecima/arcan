@@ -93,7 +93,7 @@ resolve (snapshot; no live remote update).
 | Home / contacts list (mobile) | `/` (contacts tab) | 1 + 4 | proto ContactsScreen (116–143) | PASS 0.000% | pendingSlot = PendingRequestsSection (Rung 4, no proto ref) |
 | Desktop nav column | shell | 1 + 4 | proto DesktopApp extraction (731–780) | PASS 0.000% | active-row state via useParams; pendingSlot Rung 4 |
 | Desktop empty pane | `/` desktop | 1 | proto DesktopEmpty | PASS (Phase 1 cell) | replaces EmptyPane on home |
-| Window-on-stage desktop shell | shell | 1 | proto DesktopWindow/DesktopApp | PASS (Phase 1 cell) | whole authenticated app renders inside it |
+| Desktop shell | shell | 1 (amended) | proto DesktopApp content | PASS (nav-column cells) | USER DECISION 2026-07-05: window-on-stage (DesktopWindow chrome + stage bg) rejected — nav column + pane fill the viewport. DesktopWindow stays in the kit, unmounted. |
 | Mobile shell + tab bar | shell | 1 | proto MobileApp chrome | PASS (Phase 1 cell) | PTabBar on root paths only; MobileTabBar unmounted |
 | Toast rendering | app-wide | 1 | proto Toast (590–600) | PASS (toast-tones) | legacy API/testids kept; stacked toasts Rung 4 |
 | Empty/loading states | home | 4 | — | — | legacy copy + NavListSkeleton kept |
