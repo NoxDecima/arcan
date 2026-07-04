@@ -9,3 +9,6 @@ export type { ConvoItem, ContactItem, HomeProfile } from "./home-types";
 export { ChatScreen } from "./chat-screen";
 export { ChatComposer } from "./chat-composer";
 export type { ChatTimelineItem, ChatHeaderVM } from "./chat-types";
+export { ProfileScreen } from "./profile-screen";
+export { OwnProfileScreen } from "./own-profile-screen";
+export type { ProfileScreenVM, OwnProfileScreenVM } from "./profile-types";

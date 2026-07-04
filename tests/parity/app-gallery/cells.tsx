@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
-import { ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer, type ConvoItem, type ContactItem } from "@/ui/screens";
-import { HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS } from "./fixtures";
+import { ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer, ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem } from "@/ui/screens";
+import { HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -359,6 +359,34 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onChange={() => {}}
         onSend={() => {}}
         placeholder="message ada"
+      />
+    </div>
+  ),
+
+  // proto.jsx:205–236 (ProfileScreen) — patched: '@' dropped, safety collapsed, shared=soon.
+  "profile-screen": () => (
+    <div className="flex flex-col h-full">
+      <ProfileScreen
+        vm={PROFILE_FIXTURE}
+        onBack={() => {}}
+        onMenu={() => {}}
+        onMessage={() => {}}
+        safetyOpen={false}
+        onToggleSafety={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:238–259 (OwnProfileScreen) — patched: '@' dropped, no inline edit, no extra sections.
+  "own-profile-screen": () => (
+    <div className="flex flex-col h-full">
+      <OwnProfileScreen
+        vm={OWN_PROFILE_FIXTURE}
+        onBack={() => {}}
+        onEditName={() => {}}
+        onEditAvatar={() => {}}
+        onAddContact={() => {}}
+        onSettings={() => {}}
       />
     </div>
   ),

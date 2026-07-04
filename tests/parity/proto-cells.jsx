@@ -302,6 +302,64 @@ function PNavColumn({ s, tab }) {
 }
 /* end patched copy */
 
+/* patched copy: design/proto.jsx:205–236 — '@' prefix dropped (rule 4);
+   safety collapsed (no useState — open=false always);
+   toast/nav stubbed; sharedConversations=undefined → "soon" row. */
+function PProfileScreen({ s, params }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="profile" onBack={() => {}} right={<button style={tapBtn} onClick={() => {}}><Icon d="dots" c={c.text2} size={18} fill /></button>} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+          <HAv s={s} txt={params.ini} size={80} />
+          <div style={{ textAlign: 'center' }}>
+            {/* '@' prefix dropped — rule 4 */}
+            <div style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>{params.name}</div>
+            <div style={{ marginTop: 5, font: `400 11px/1 ${s.font}`, color: c.dim }}>co_z1a8…4f2</div>
+          </div>
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="message" onClick={() => {}} /></div>
+          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
+            <PRow s={s} icon="chat" label="shared conversations" right={<span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.1em', textTransform: 'uppercase', color: c.dim }}>soon</span>} />
+            {/* safety expander — collapsed (open=false); no expanded body rendered */}
+            <button onClick={() => {}} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px' }}>
+              <Icon d="check" c={c.accent} size={16} /><span style={{ flex: 1, font: `500 12px/1 ${s.body}`, color: c.text }}>verify safety number</span><span style={{ font: `600 13px/1 ${s.font}`, color: c.dim }}>▸</span>
+            </button>
+          </PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:238–259 — '@' prefix dropped (rule 4);
+   toast handlers replaced with no-op stubs; no extra sections. */
+function POwnProfileScreen({ s, params }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="your profile" onBack={() => {}} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+          <div style={{ position: 'relative' }}>
+            <HAv s={s} txt="me" size={80} />
+            <button onClick={() => {}} style={{ ...tapBtn, position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 999, background: c.accentFill, border: `2px solid ${c.bg}`, justifyContent: 'center' }}><Icon d="camera" c={c.onAccent} size={14} /></button>
+          </div>
+          {/* '@' prefix dropped — rule 4; toast stub → no-op */}
+          <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}><span style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span><Icon d="pencil" c={c.dim} size={15} /></button>
+          <div style={{ font: `400 11px/1 ${s.font}`, color: c.dim, marginTop: -8 }}>co_z1a8…4f2</div>
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="plus" label="add a contact" onClick={() => {}} /></div>
+          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
+            <PRow s={s} icon="gear" label="account & settings" onClick={() => {}} last />
+          </PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -508,6 +566,20 @@ const PROTO_CELLS = {
         <PTabBar s={s} active="chats" onTab={() => {}} />
         <Toast s={s} data={{ tone: 'neutral', icon: 'bell', text: 'saved' }} />
       </div>
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:205–236 (ProfileScreen) — '@' dropped, safety collapsed */
+  "profile-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PProfileScreen s={s} params={{ name: 'ada · keyring', ini: 'AK' }} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:238–259 (OwnProfileScreen) — '@' dropped, toast stubbed */
+  "own-profile-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <POwnProfileScreen s={s} params={{ name: 'decima', ini: 'me' }} />
     </div>
   ),
 

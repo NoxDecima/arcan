@@ -1,4 +1,4 @@
-import type { ConvoItem, ContactItem, ChatTimelineItem } from "@/ui/screens";
+import type { ConvoItem, ContactItem, ChatTimelineItem, ProfileScreenVM, OwnProfileScreenVM } from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
 // "·" = U+00B7 (middle dot). No avatarSrc — initials-only for parity cells.
@@ -31,3 +31,17 @@ export const HF_CHAT_ITEMS: ChatTimelineItem[] = [
   { kind: "msg",  mine: false, text: "pushed a fix — 40ms p99 now", time: "9:24", authorName: "ada", authorInitials: "AK", key: "msg-5" },
   { kind: "msg",  mine: false, text: "take a look when you can", time: "9:25", authorName: "ada", authorInitials: "AK", key: "msg-6" },
 ];
+
+// Profile screen fixtures — mirroring proto.jsx:205–259 placeholder values.
+// "…" = U+2026 HORIZONTAL ELLIPSIS (proto hardcodes "co_z1a8…4f2").
+export const PROFILE_FIXTURE: ProfileScreenVM = {
+  name: "ada · keyring",   // no "@" — rule 4
+  initials: "AK",
+  idShort: "co_z1a8…4f2",
+  // sharedConversations: undefined → renders proto "soon" row
+};
+export const OWN_PROFILE_FIXTURE: OwnProfileScreenVM = {
+  name: "decima",
+  initials: "me",
+  idShort: "co_z1a8…4f2",
+};
