@@ -1,12 +1,31 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
+import { ChatsScreen, ContactsScreen, type ConvoItem, type ContactItem } from "@/ui/screens";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
   "paperclip", "chat", "people", "pencil", "copy", "share", "camera",
   "check", "dots", "bell", "at", "device", "key", "shield", "logout",
   "sun", "moon", "sparkle", "alert", "refresh", "close", "message",
+];
+
+// Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
+// "·" = U+00B7 (middle dot). No avatarSrc — initials-only for parity cells.
+const HF_CONVOS: ConvoItem[] = [
+  { id: "c1", name: "ada · keyring",   initials: "AK", preview: "take a look when you can", time: "9:25", unread: 2 },
+  { id: "c2", name: "retrieval-squad",      initials: "RS", group: true, preview: "rana: 40ms p99 now", time: "Tue", unread: 5 },
+  { id: "c3", name: "jun mori",             initials: "JM", preview: "sent the schema diff",      time: "Tue", unread: 0 },
+  { id: "c4", name: "theo z.",              initials: "TZ", preview: "sow-042.md",                 time: "Mon", unread: 0 },
+  { id: "c5", name: "eli · device-2",  initials: "EL", preview: "you: pulled, thanks",        time: "Mon", unread: 0 },
+];
+const HF_CONTACTS: ContactItem[] = [
+  { id: "ct1", name: "ada · keyring",  initials: "AK" },
+  { id: "ct2", name: "eli · device-2", initials: "EL" },
+  { id: "ct3", name: "jun mori",            initials: "JM" },
+  { id: "ct4", name: "rana",                initials: "RA" },
+  { id: "ct5", name: "theo z.",             initials: "TZ" },
+  { id: "ct6", name: "nox / ops",           initials: "NX" },
 ];
 
 export const APP_CELLS: Record<string, () => ReactNode> = {
@@ -238,6 +257,34 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
           </PCard>
         </Body>
       </MobileShell>
+    </div>
+  ),
+
+  // proto.jsx:86–114 (ChatsScreen) — patched: presence dropped (NOX-31)
+  "chats-screen": () => (
+    <div className="flex flex-col h-full">
+      <ChatsScreen
+        profile={{ name: "decima", initials: "me" }}
+        convos={HF_CONVOS}
+        onOpenConvo={() => {}}
+        onOwnProfile={() => {}}
+        onSettings={() => {}}
+        onNewConvo={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:116–143 (ContactsScreen + ContactRow) — patched: presence dropped (NOX-31)
+  "contacts-screen": () => (
+    <div className="flex flex-col h-full">
+      <ContactsScreen
+        profile={{ name: "decima", initials: "me" }}
+        contacts={HF_CONTACTS}
+        onOpenContact={() => {}}
+        onOwnProfile={() => {}}
+        onSettings={() => {}}
+        onAddContact={() => {}}
+      />
     </div>
   ),
 };

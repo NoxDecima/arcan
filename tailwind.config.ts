@@ -3,6 +3,9 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{ts,tsx}", "./tests/parity/app-gallery/**/*.{ts,tsx}"],
+  // Safelist: classes that only appear in dynamically-loaded files (e.g. rows.tsx)
+  // and would be missed by Tailwind's JIT scanner in some dev-server contexts.
+  safelist: ["text-ui-preview", "text-ui-contact"],
   theme: {
     container: {
       center: true,

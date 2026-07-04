@@ -4,6 +4,7 @@
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
 const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
+const { HF_CONVOS, HF_CONTACTS } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -119,6 +120,66 @@ function DesktopWindow({ s, children, narrow }) {
     </div>
   );
 }
+
+/* patched copy: design/proto.jsx:86–143 — presence dropped (NOX-31), see manifest */
+function PChatsScreen({ s, nav }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="decima" avatar={<HAv s={s} txt="me" size={30} />} onAvatar={() => nav.push('ownprofile')}
+        right={<button onClick={() => nav.push('settings')} style={tapBtn}><Icon d="gear" c={c.text2} size={20} /></button>} />
+      <Body s={s}>
+        <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {HF_CONVOS.map((d, i) => (
+            <button key={i} onClick={() => nav.push('chat', { name: d.n, ini: d.i, group: d.group })} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px', borderRadius: s.radius }}>
+              {/* patched: status={d.online ? 'online' : undefined} dropped (NOX-31) */}
+              <HAv s={s} txt={d.i} size={38} group={d.group} ring={c.bg} />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ flex: 1, font: `${d.unread ? 700 : 600} 12.5px/1.2 ${s.body}`, color: c.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.n}</span>
+                  <span style={{ font: `500 9.5px/1 ${s.font}`, color: c.dim }}>{d.time}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ flex: 1, font: `${d.unread ? 500 : 400} 11px/1.3 ${s.body}`, color: d.unread ? c.text2 : c.dim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.last}</span>
+                  {d.unread ? <span style={{ minWidth: 17, height: 17, padding: '0 5px', borderRadius: 999, background: c.accentFill, color: c.onAccent, font: `700 9.5px/17px ${s.font}`, textAlign: 'center' }}>{d.unread}</span> : null}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </Body>
+      <Fab s={s} onClick={() => nav.push('newconvo')} />
+    </React.Fragment>
+  );
+}
+function PContactRow({ s, d, onClick }) {
+  const c = s.c;
+  return (
+    <button onClick={onClick} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: s.radius }}>
+      <HAv s={s} txt={d.i} size={38} />
+      <span style={{ flex: 1, font: `600 13px/1.2 ${s.body}`, color: c.text }}>{d.n}</span>
+      <Icon d="chev" c={c.dim} size={16} />
+    </button>
+  );
+}
+function PContactsScreen({ s, nav }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="decima" avatar={<HAv s={s} txt="me" size={30} />} onAvatar={() => nav.push('ownprofile')}
+        right={<button onClick={() => nav.push('settings')} style={tapBtn}><Icon d="gear" c={c.text2} size={20} /></button>} />
+      <Body s={s}>
+        <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {HF_CONTACTS.map((d, i) => (
+            <PContactRow key={i} s={s} d={d} onClick={() => nav.push('profile', { name: d.n, ini: d.i })} />
+          ))}
+        </div>
+      </Body>
+      <Fab s={s} onClick={() => nav.push('addcontact')} />
+    </React.Fragment>
+  );
+}
+/* end patched copy */
 
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
@@ -328,6 +389,26 @@ const PROTO_CELLS = {
       </div>
     </div>
   ),
+
+  /* patched copy: design/proto.jsx:86–114 (ChatsScreen) — presence dropped (NOX-31) */
+  "chats-screen": (s) => {
+    const nav = { push: () => {} };
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <PChatsScreen s={s} nav={nav} />
+      </div>
+    );
+  },
+
+  /* patched copy: design/proto.jsx:116–143 (ContactsScreen + ContactRow) — presence dropped (NOX-31) */
+  "contacts-screen": (s) => {
+    const nav = { push: () => {} };
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <PContactsScreen s={s} nav={nav} />
+      </div>
+    );
+  },
 };
 
 (async () => {
