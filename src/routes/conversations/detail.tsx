@@ -197,17 +197,25 @@ export function ConversationDetailRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iconStreamId]);
 
+  // Divider anchor state — declared before the positioning effect that
+  // gates on it; captured by the effect further down.
+  const [anchorReadyFor, setAnchorReadyFor] = useState<string | null>(null);
+  const lastReadLoaded = Boolean((me as any)?.root?.lastReadAt);
+
   // Timeline positioning (walkthrough 2026-07-05):
   //  - on OPENING a conversation: jump instantly to the new-messages divider
-  //    (centered) if present, else to the very bottom — smooth scrolling on
-  //    mount was interruptible by late layout (avatars/attachments) and could
-  //    strand the view at the top;
+  //    (top of viewport) if present, else to the very bottom — smooth
+  //    scrolling on mount was interruptible by late layout and could strand
+  //    the view at the top;
   //  - on NEW messages while open: smooth-scroll to bottom as before.
   const messageCount = (conversation as any)?.messages?.length ?? 0;
   const positionedForRef = useRef<string | null>(null);
   useEffect(() => {
     const convKey = (conversation as any)?.$jazz?.id as string | undefined;
     if (!convKey || messageCount === 0) return;
+    // Wait for the divider anchor: positioning before capture would land at
+    // the bottom and then have the divider pop in above the fold.
+    if (anchorReadyFor !== convKey) return;
     if (positionedForRef.current === convKey) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       return;
@@ -234,7 +242,7 @@ export function ConversationDetailRoute() {
     }, 0);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageCount, (conversation as any)?.$jazz?.id]);
+  }, [messageCount, (conversation as any)?.$jazz?.id, anchorReadyFor]);
 
   // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
   // anchorRef captures lastReadAt at mount for the "new messages" divider.
@@ -243,15 +251,24 @@ export function ConversationDetailRoute() {
   const anchorRef = useRef<number | null>(null);
   const latestRenderedSentAtRef = useRef<number>(0);
 
-  // Capture anchor lastReadAt at mount.
+  // Capture the divider anchor ONCE per conversation — but only after BOTH
+  // the conversation AND me.root.lastReadAt have loaded. The old effect keyed
+  // only on the conversation id: when lastReadAt loaded a beat later (hard
+  // refresh straight into a conversation), the anchor froze at 0 and the
+  // divider planted itself at the first incoming message ever — and the
+  // open-positioning then stopped at that phantom divider (walkthrough
+  // 2026-07-05 round 3). anchorReadyFor is state (not a ref) so the divider
+  // computation re-renders when capture completes.
   useEffect(() => {
     const lastReadMap = (me as any)?.root?.lastReadAt;
     const convId = (conversation as any)?.$jazz?.id as string | undefined;
-    if (!convId) return;
-    const prev = lastReadMap?.[convId];
+    if (!convId || !lastReadMap) return;
+    if (anchorReadyFor === convId) return; // frozen for this conversation
+    const prev = lastReadMap[convId];
     anchorRef.current = typeof prev === "number" ? prev : 0;
+    setAnchorReadyFor(convId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [(conversation as any)?.$jazz?.id]);
+  }, [(conversation as any)?.$jazz?.id, lastReadLoaded]);
 
   // Track the latest rendered message's sentAt.
   useEffect(() => {
@@ -433,6 +450,9 @@ export function ConversationDetailRoute() {
       const next = Date.now();
       if (next > cur) lastReadMap.$jazz.set(convId, next);
     }
+    // Sending your own message dismisses the new-messages divider (the
+    // frozen mount anchor would otherwise keep it pinned all session).
+    anchorRef.current = Date.now();
   }
 
   async function handleGetWriteGroup() {
@@ -597,11 +617,12 @@ export function ConversationDetailRoute() {
     }
     return { kind: "event" as const, sortAt: item.sortAt };
   });
-  const dividerBeforeIndex = findNewMarkIndex(
-    dividerInput,
-    anchorRef.current,
-    myAccountID,
-  );
+  // No divider until the anchor is captured for THIS conversation — a
+  // null/0 anchor would mark all history as unread (phantom divider).
+  const dividerBeforeIndex =
+    anchorReadyFor === ((conversation as any)?.$jazz?.id as string)
+      ? findNewMarkIndex(dividerInput, anchorRef.current, myAccountID)
+      : -1;
 
   // ---- Day marker helpers ----
   const nowTs = Date.now();
