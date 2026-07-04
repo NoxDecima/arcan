@@ -1,10 +1,15 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // jsdom doesn't implement scrollIntoView; the route's auto-scroll effect calls
 // it on mount. Stub it so the component can render under test.
 Element.prototype.scrollIntoView = vi.fn();
+
+// useIsDesktop → false (mobile) so the back button is rendered.
+vi.mock("@/components/use-is-desktop", () => ({
+  useIsDesktop: () => false,
+}));
 
 // Mock Jazz so the route renders without a real node.
 const GROUP = {
@@ -41,16 +46,31 @@ vi.mock("@/jazz/avatarResolver", () => ({
 vi.mock("@/jazz/messages", () => ({
   sendMessage: vi.fn(),
   getAuthorAccountIDFromMessage: () => null,
+  editMessage: vi.fn(),
+  deleteMessage: vi.fn(),
 }));
 vi.mock("@/jazz/conversation", () => ({
   isArchived: () => false,
   ensureMyWriteGroup: vi.fn(),
 }));
+vi.mock("@/jazz/displayName", () => ({ resolveDisplayName: () => "bob" }));
+
+// Capture navigate calls; MemoryRouter provides a real navigate but we
+// spy on useNavigate to assert the header-link target.
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 
 import { ConversationDetailRoute } from "@/routes/conversations/detail";
 
 describe("ConversationDetailRoute header", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockNavigate.mockReset();
+  });
 
   function renderRoute() {
     return render(
@@ -60,10 +80,13 @@ describe("ConversationDetailRoute header", () => {
     );
   }
 
-  test("header row is a single link to the members route", () => {
+  test("header link navigates to the members route on click", () => {
     const { getByTestId } = renderRoute();
     const headerLink = getByTestId("conversation-header-link");
-    expect(headerLink.getAttribute("href")).toBe(
+    // The link is now a <button> rendered by PHeader (not an <a>).
+    expect(headerLink.tagName.toLowerCase()).toBe("button");
+    fireEvent.click(headerLink);
+    expect(mockNavigate).toHaveBeenCalledWith(
       "/conversations/co_zConv/members",
     );
   });
@@ -73,11 +96,13 @@ describe("ConversationDetailRoute header", () => {
     expect(queryByTestId("members-link")).toBeNull();
   });
 
-  test("renders a mobile-only back arrow link to /conversations", () => {
+  test("renders a mobile-only back button (mobile branch: useIsDesktop = false)", () => {
     const { getByTestId } = renderRoute();
+    // chat-back-arrow is present because useIsDesktop is mocked to false.
     const back = getByTestId("chat-back-arrow");
-    expect(back.getAttribute("href")).toBe("/conversations");
-    // mobile-only: hidden on md+ screens
-    expect(back.className).toContain("md:hidden");
+    expect(back.tagName.toLowerCase()).toBe("button");
+    // Clicking the back button should navigate to /conversations.
+    fireEvent.click(back);
+    expect(mockNavigate).toHaveBeenCalledWith("/conversations");
   });
 });

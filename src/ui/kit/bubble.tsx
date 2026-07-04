@@ -24,6 +24,7 @@ export function Bubble({
   attSlot,
   bodyTestId,
   timeTestId,
+  bodyOverride,
 }: {
   m: BubbleMsg;
   w: number;
@@ -33,6 +34,8 @@ export function Bubble({
   bodyTestId?: string;
   /** Optional testid on the time span (e.g. "bubble-time"). Sanctioned: ChatScreen presenter. */
   timeTestId?: string;
+  /** Rung 4: replaces the body text+time row (e.g. inline edit input). Parity unaffected (default undefined). */
+  bodyOverride?: ReactNode;
 }): JSX.Element {
   const mine = m.who === "me";
   return (
@@ -69,22 +72,24 @@ export function Bubble({
           )}
         </div>
       )}
-      <div className="flex items-end gap-2">
-        <span
-          className="flex-1 font-body text-ui-bubble"
-          {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
-        >
-          {m.text}
-        </span>
-        {m.time && (
+      {bodyOverride ?? (
+        <div className="flex items-end gap-2">
           <span
-            className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
-            {...(timeTestId ? { "data-testid": timeTestId } : {})}
+            className="flex-1 font-body text-ui-bubble"
+            {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
           >
-            {m.time}
+            {m.text}
           </span>
-        )}
-      </div>
+          {m.time && (
+            <span
+              className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
+              {...(timeTestId ? { "data-testid": timeTestId } : {})}
+            >
+              {m.time}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -97,6 +102,7 @@ export function MessageRow({
   testId,
   bodyTestId,
   timeTestId,
+  bodyOverride,
 }: {
   m: BubbleMsg;
   w: number;
@@ -107,6 +113,8 @@ export function MessageRow({
   bodyTestId?: string;
   /** Forwarded to Bubble: testid on the time span. */
   timeTestId?: string;
+  /** Rung 4: forwarded to Bubble — replaces body text+time (e.g. inline edit). Parity unaffected (default undefined). */
+  bodyOverride?: ReactNode;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -152,7 +160,7 @@ export function MessageRow({
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} timeTestId={timeTestId} />
+        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} timeTestId={timeTestId} bodyOverride={bodyOverride} />
       </div>
     </div>
   );

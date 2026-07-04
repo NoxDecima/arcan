@@ -20,6 +20,10 @@ export function PHeader({
   onAvatar,
   onTitle,
   right,
+  rootTestId,
+  titleButtonTestId,
+  backTestId,
+  titleTestId,
 }: {
   title: string;
   sub?: ReactNode;
@@ -28,10 +32,21 @@ export function PHeader({
   onAvatar?: () => void;
   onTitle?: () => void;
   right?: ReactNode;
+  /** Optional data-testid on the root div. Sanctioned: container testid carry. */
+  rootTestId?: string;
+  /** Optional data-testid on the onTitle button. Sanctioned: conversation-header-link carry. */
+  titleButtonTestId?: string;
+  /** Optional data-testid on the back button. Sanctioned: chat-back-arrow carry. */
+  backTestId?: string;
+  /** Optional data-testid on the title text div. Sanctioned: conversation-title carry. */
+  titleTestId?: string;
 }): JSX.Element {
   const titleBlock = (
     <div className="flex-1 min-w-0">
-      <div className="font-mono font-bold text-ui-title tracking-title truncate text-text">
+      <div
+        className="font-mono font-bold text-ui-title tracking-title truncate text-text"
+        {...(titleTestId ? { "data-testid": titleTestId } : {})}
+      >
         {title}
       </div>
       {sub && (
@@ -41,9 +56,16 @@ export function PHeader({
   );
 
   return (
-    <div className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg">
+    <div
+      className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg"
+      {...(rootTestId ? { "data-testid": rootTestId } : {})}
+    >
       {onBack && (
-        <button onClick={onBack} className={tapClass}>
+        <button
+          onClick={onBack}
+          className={tapClass}
+          {...(backTestId ? { "data-testid": backTestId } : {})}
+        >
           <Icon d="back" size={20} className="text-text-2" />
         </button>
       )}
@@ -51,6 +73,7 @@ export function PHeader({
         <button
           onClick={onTitle}
           className={`${tapClass} flex-1 min-w-0 gap-[11px] text-left`}
+          {...(titleButtonTestId ? { "data-testid": titleButtonTestId } : {})}
         >
           {avatar}
           {titleBlock}

@@ -21,6 +21,10 @@ export function ChatScreen({
   banner,
   emptyText,
   bottomRef,
+  headerLinkTestId,
+  backBtnTestId,
+  titleTestId,
+  avatarTestId,
 }: {
   header: ChatHeaderVM;
   items: ChatTimelineItem[];
@@ -38,6 +42,14 @@ export function ChatScreen({
   emptyText?: string;
   /** container's autoscroll anchor */
   bottomRef?: Ref<HTMLDivElement>;
+  /** Sanctioned: data-testid on the PHeader title button (e.g. "conversation-header-link"). */
+  headerLinkTestId?: string;
+  /** Sanctioned: data-testid on the PHeader back button (e.g. "chat-back-arrow"). */
+  backBtnTestId?: string;
+  /** Sanctioned: data-testid on the title text (e.g. "conversation-title"). */
+  titleTestId?: string;
+  /** Sanctioned: data-testid on the HAv avatar (e.g. "conversation-header-avatar"). */
+  avatarTestId?: string;
 }): JSX.Element {
   // Sub text — rendered only when header.sub is set (groups only; 1:1 presence dropped NOX-31/33).
   // v5 headMono=true + sysComment=true: font-mono, "// " prefix. proto:177.
@@ -61,9 +73,13 @@ export function ChatScreen({
             src={header.avatarSrc}
             size={34}
             group={header.group}
+            testId={avatarTestId}
           />
         }
         onTitle={onOpenInfo}
+        titleButtonTestId={headerLinkTestId}
+        backTestId={backBtnTestId}
+        titleTestId={titleTestId}
       />
 
       {/* Rung 4: connection banner above timeline */}
@@ -164,6 +180,7 @@ export function ChatScreen({
                       testId={item.mine ? "message-mine" : "message-other"}
                       bodyTestId="bubble-body"
                       timeTestId="bubble-time"
+                      bodyOverride={item.bodyOverride}
                     />
                     {/* Rung 4: edit/delete menu after the bubble */}
                     {item.menuSlot}

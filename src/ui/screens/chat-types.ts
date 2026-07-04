@@ -25,6 +25,8 @@ export type ChatTimelineItem =
       malformed?: boolean;
       /** Rung 4: edit/delete affordance rendered after the bubble. */
       menuSlot?: ReactNode;
+      /** Rung 4: replaces bubble body+time (e.g. inline edit input). Parity unaffected (default undefined). */
+      bodyOverride?: ReactNode;
     };
 
 export interface ChatHeaderVM {

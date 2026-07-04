@@ -14,6 +14,7 @@ export function HAv({
   status,
   ring,
   className,
+  testId,
 }: {
   txt: string;
   src?: string;
@@ -22,12 +23,15 @@ export function HAv({
   status?: "online" | "offline";
   ring?: string;
   className?: string;
+  /** Optional data-testid on the root element (e.g. "conversation-header-avatar"). Sanctioned: container testid carry. */
+  testId?: string;
 }): JSX.Element {
   const dot = Math.max(8, Math.round(size * 0.28));
   return (
     <div
       className={`relative shrink-0${className ? ` ${className}` : ""}`}
       style={{ width: size, height: size }}
+      {...(testId ? { "data-testid": testId } : {})}
     >
       <div
         className={[
