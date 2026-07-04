@@ -1,6 +1,6 @@
 // src/ui/kit/toast.tsx — port of design/proto.jsx:590–600.
 // Named KitToast to avoid collision with legacy toast until Phase 4.
-// Entry animation uses the existing arcan-toast-in keyframe (tokens.css:198)
+// Entry animation uses the existing arcan-toast-in keyframe (grep "@keyframes arcan-toast-in" in tokens.css)
 // via inline style — no utility exists; galleries disable animations anyway.
 
 import { Icon } from "./icon";
