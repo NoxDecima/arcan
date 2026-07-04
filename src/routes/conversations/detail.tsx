@@ -129,8 +129,9 @@ export function ConversationDetailRoute() {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
 
-  // Autoscroll anchor
+  // Autoscroll anchor + the scrollable timeline element
   const bottomRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Composer state (moved from Composer component to this container)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -221,24 +222,32 @@ export function ConversationDetailRoute() {
       return;
     }
     positionedForRef.current = convKey;
-    // tick delay so the timeline items have rendered before we position
-    const t = setTimeout(() => {
-      const divider = document.querySelector(
+    // Direct scrollTop on the timeline element — scrollIntoView could pick
+    // the wrong scroll ancestor / fire pre-layout and leave the view at the
+    // top (walkthrough round 4). Divider goes to the viewport top (short
+    // unread tails clamp so the bottom stays visible); no divider → bottom.
+    const position = () => {
+      const el = timelineRef.current;
+      if (!el) return;
+      const divider = el.querySelector(
         '[data-testid="new-messages-divider"]',
-      );
+      ) as HTMLElement | null;
       if (divider) {
-        // block:"start" (walkthrough round 3): the divider goes to the TOP
-        // of the viewport so the unread tail fills the screen below it —
-        // and when the tail is shorter than a screen the browser clamps,
-        // leaving the very bottom visible too. block:"center" parked the
-        // view at the divider with the bottom cut off.
-        (divider as HTMLElement).scrollIntoView({
-          block: "start",
-          behavior: "auto",
-        });
+        const target =
+          divider.getBoundingClientRect().top -
+          el.getBoundingClientRect().top +
+          el.scrollTop -
+          8; // breathing room above the divider
+        el.scrollTop = Math.max(0, target);
       } else {
-        bottomRef.current?.scrollIntoView({ behavior: "auto" });
+        el.scrollTop = el.scrollHeight;
       }
+    };
+    // position after this commit's layout, then re-assert on the next frame
+    // (late layout: fonts/avatars can shift heights under the first pass)
+    const t = setTimeout(() => {
+      position();
+      requestAnimationFrame(position);
     }, 0);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -937,6 +946,7 @@ export function ConversationDetailRoute() {
         banner={<ConnectionBanner />}
         emptyText="No messages yet. Say hello!"
         bottomRef={bottomRef}
+        timelineRef={timelineRef}
         headerLinkTestId="conversation-header-link"
         backBtnTestId="chat-back-arrow"
         titleTestId="conversation-title"

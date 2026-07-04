@@ -22,6 +22,7 @@ export function ChatScreen({
   banner,
   emptyText,
   bottomRef,
+  timelineRef,
   headerLinkTestId,
   backBtnTestId,
   titleTestId,
@@ -43,6 +44,9 @@ export function ChatScreen({
   emptyText?: string;
   /** container's autoscroll anchor */
   bottomRef?: Ref<HTMLDivElement>;
+  /** Container seam: the scrollable timeline element, for direct scrollTop
+   * positioning (scrollIntoView proved unreliable across scroll ancestors). */
+  timelineRef?: Ref<HTMLDivElement>;
   /** Sanctioned: data-testid on the PHeader title button (e.g. "conversation-header-link"). */
   headerLinkTestId?: string;
   /** Sanctioned: data-testid on the PHeader back button (e.g. "chat-back-arrow"). */
@@ -88,6 +92,7 @@ export function ChatScreen({
 
       {/* Timeline — proto:184 cluster */}
       <div
+        ref={timelineRef}
         data-testid="message-timeline"
         className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 p-3 bg-bg"
       >
