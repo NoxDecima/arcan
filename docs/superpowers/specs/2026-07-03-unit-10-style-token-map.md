@@ -74,6 +74,11 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `400 11.5px/1` body (empty-state sub) | `font-body text-ui-empty-sub` |
 | `500 10px/1` mono `.04em` (window chrome) | `font-mono font-medium text-ui-chrome tracking-tab` |
 | `600 size*.34px/1` mono `-.02em` (HAv initials) | `font-mono font-semibold tracking-avatar` + computed inline font-size |
+| `700 14px/1.2` mono (nav header name) | `font-mono font-bold text-ui-nav` |
+| `500|600 11.5px/1` mono `.04em` (desktop nav tabs) | `font-mono font-medium|font-semibold text-ui-empty-sub tracking-tab` (size reuse) |
+| `400|500 11px/1.3` body (row preview) | `font-body text-ui-preview` (+`font-medium` when unread) |
+| `600 13px/1.2` body (contact row name) | `font-body font-semibold text-ui-contact` |
+| `700 9.5px/17px` mono (unread pill) | `font-mono font-bold text-ui-tab` + inline `lineHeight: "17px"` |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -92,6 +97,12 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | Bubble (own, v5 tint) | `bg-bubble-own border border-accent-border text-text rounded-r-5` + tail `rounded-br-r-1` |
 | Bubble (theirs) | `bg-panel border border-hairline text-text rounded-r-5 shadow-bubble` + tail `rounded-bl-r-1` |
 | Attachment placeholder (own / theirs) | `bg-media-veil` / `bg-rail`, radius `rounded-[8px]` (max(3, bubbleRadius−6)) |
+| Convo/contact list container | `px-2 py-1.5 flex flex-col gap-px` (proto `6px 8px`, gap 1) |
+| Convo row | tap + `w-full text-left flex items-center gap-[11px] px-2.5 py-[9px] rounded-r-4` (+ active: `bg-accent-soft`, HAv ring = accent-soft) |
+| Contact row | tap + `w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-r-4` |
+| Unread pill | `min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center` |
+| Desktop nav tab | tap + `flex-1 justify-center gap-[7px] py-[11px] -mb-px border-b-2` (active `border-arcan-accent-fill`, else `border-transparent`); icon 15 |
+| Nav header | `flex items-center gap-2.5 pt-[13px] px-3.5 pb-2.5`; avatar 32; gear 19 |
 | Sys row | `font-mono text-ui-sys text-dim text-center` with literal `// ` prefix |
 | "new" divider | lines `bg-arcan-accent opacity-50`, label `font-mono font-semibold text-ui-caps tracking-caps uppercase text-arcan-accent` |
 | Section label | `font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim` with literal `// ` prefix |

@@ -70,6 +70,7 @@
   --fs-ui-empty: 15px;      /* DesktopEmpty title (proto:669) */
   --fs-ui-empty-sub: 11.5px;/* DesktopEmpty sub (proto:670) */
   --fs-ui-chrome: 10px;     /* DesktopWindow title-bar pill (proto:684) */
+  --fs-ui-nav: 14px;        /* NavColumn header name (proto:767 700 14px/1.2) */
 
   --lh-tight: 1.05;
   --lh-snug: 1.15;
