@@ -99,6 +99,7 @@ export default {
         'ui-nav': ['var(--fs-ui-nav)', { lineHeight: 'var(--lh-ui)' }],
         'ui-preview': ['var(--fs-ui-value)', { lineHeight: '1.3' }],   // row preview 11px/1.3 (proto:752)
         'ui-contact': ['var(--fs-ui-btn)', { lineHeight: 'var(--lh-ui)' }], // ContactRow name 13px/1.2 (proto:139)
+        'ui-chatsub': ['var(--fs-ui-sys)', { lineHeight: '1' }],
       },
       letterSpacing: {
         caps: 'var(--tracking-caps)',

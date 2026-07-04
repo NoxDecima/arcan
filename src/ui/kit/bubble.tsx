@@ -3,6 +3,7 @@
 // v5 skin resolves: ownStyle=tint, fam=noir, bubbleRadius=14, soft=true.
 // Styling is token-only; no inline paint values.
 
+import type { ReactNode } from "react";
 import { HAv } from "./hav";
 import { Icon } from "./icon";
 
@@ -17,7 +18,16 @@ export interface BubbleMsg {
 
 // v5 own paint: tint → bg-bubble-own / border-accent-border / text text-text / time text-dim
 // v5 theirs:   fam=noir → bg-panel / border-hairline / shadow-bubble / time text-dim
-export function Bubble({ m, w }: { m: BubbleMsg; w: number }): JSX.Element {
+export function Bubble({
+  m,
+  w,
+  attSlot,
+}: {
+  m: BubbleMsg;
+  w: number;
+  /** Rung 4, real attachments from the container. */
+  attSlot?: ReactNode;
+}): JSX.Element {
   const mine = m.who === "me";
   return (
     <div
@@ -35,18 +45,22 @@ export function Bubble({ m, w }: { m: BubbleMsg; w: number }): JSX.Element {
     >
       {m.att && (
         // attachment placeholder: width w-12, height 84, radius max(3,14-6)=8
+        // When attSlot present: min-h-[84px] auto-growing; else fixed 84px (parity-locked).
         <div
           className={[
             "flex items-center justify-center rounded-[8px] mb-[5px]",
             mine ? "bg-media-veil" : "bg-rail",
+            ...(attSlot ? ["min-h-[84px]"] : []),
           ].join(" ")}
-          style={{ width: w - 12, height: 84 }}
+          style={{ width: w - 12, ...(attSlot ? {} : { height: 84 }) }}
         >
-          <Icon
-            d="image"
-            size={20}
-            className={mine ? "text-white/80" : "text-dim"}
-          />
+          {attSlot ?? (
+            <Icon
+              d="image"
+              size={20}
+              className={mine ? "text-white/80" : "text-dim"}
+            />
+          )}
         </div>
       )}
       <div className="flex items-end gap-2">
@@ -62,7 +76,15 @@ export function Bubble({ m, w }: { m: BubbleMsg; w: number }): JSX.Element {
 }
 
 // proto's `Row` — sys and new branches live here exactly as in proto.jsx:53–70.
-export function MessageRow({ m, w }: { m: BubbleMsg; w: number }): JSX.Element {
+export function MessageRow({
+  m,
+  w,
+  attSlot,
+}: {
+  m: BubbleMsg;
+  w: number;
+  attSlot?: ReactNode;
+}): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
     return (
@@ -100,7 +122,7 @@ export function MessageRow({ m, w }: { m: BubbleMsg; w: number }): JSX.Element {
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} />
+        <Bubble m={m} w={w} attSlot={attSlot} />
       </div>
     </div>
   );
