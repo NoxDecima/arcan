@@ -4,16 +4,14 @@
 //
 // patched copy: design/proto.jsx:116–143 — presence dropped (NOX-31), see manifest.
 //
-// Header is assembled from kit primitives (tapClass, HAv, Icon) rather than PHeader
-// to allow testids — the visual output is identical to PHeader's onAvatar layout.
-//
 // pendingSlot (Rung 4): rendered between the header and the contacts list when provided.
 // No proto reference — kept out of the parity fixture (Rung 4 only).
 
 import type { ReactNode } from "react";
-import { HAv, Body, Fab, Icon, tapClass } from "../kit";
+import { Body, Fab } from "../kit";
 import type { HomeProfile, ContactItem } from "./home-types";
 import { ContactRow } from "./rows";
+import { HomeScreenHeader } from "./home-screen-header";
 
 // Default copy sourced from the legacy sidebar.tsx contacts empty-state title.
 const DEFAULT_CONTACTS_EMPTY = "no contacts yet";
@@ -44,35 +42,12 @@ export function ContactsScreen({
 
   return (
     <>
-      {/* Header — mirrors PHeader's onAvatar layout for visual parity */}
-      <div className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg">
-        <button
-          type="button"
-          data-testid={tid("sidebar-header-profile")}
-          aria-label="your profile"
-          onClick={onOwnProfile}
-          className={tapClass}
-        >
-          <div data-testid={tid("sidebar-avatar")}>
-            <HAv txt={profile.initials} src={profile.avatarSrc} size={30} />
-          </div>
-        </button>
-        <div
-          data-testid={tid("sidebar-display-name")}
-          className="flex-1 min-w-0 font-mono font-bold text-ui-title tracking-title truncate text-text"
-        >
-          {profile.name}
-        </div>
-        <button
-          type="button"
-          data-testid={tid("sidebar-settings-gear")}
-          aria-label="settings"
-          onClick={onSettings}
-          className={tapClass}
-        >
-          <Icon d="gear" size={20} className="text-text-2" />
-        </button>
-      </div>
+      <HomeScreenHeader
+        profile={profile}
+        onOwnProfile={onOwnProfile}
+        onSettings={onSettings}
+        testScope={testScope}
+      />
 
       <Body>
         {/* Rung 4: pending requests slot (container passes PendingRequestsSection here) */}
