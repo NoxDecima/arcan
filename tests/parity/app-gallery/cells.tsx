@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -72,6 +72,19 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
     <div className="flex flex-col gap-2.5">
       <PButton label="sign in" primary full />
       <PButton label="send message" primary full icon="send" />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 63–86
+  "pcard-rows": () => (
+    <div>
+      <PSectionLabel>security</PSectionLabel>
+      <PCard>
+        <PRow icon="key" label="recovery code" sub="view or rotate" onClick={() => {}} />
+        <PRow label="link valid for" value="24h" />
+        <PRow icon="shield" label="verified devices" onClick={() => {}} />
+        <PRow icon="logout" label="sign out" danger last />
+      </PCard>
     </div>
   ),
 };

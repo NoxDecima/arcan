@@ -10,3 +10,6 @@ export type { IconName } from "./icon";
 export { HAv } from "./hav";
 export { tapClass } from "./tap";
 export { PButton } from "./pbutton";
+export { PCard } from "./pcard";
+export { PSectionLabel } from "./psection-label";
+export { PRow } from "./prow";

@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton } = window;
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -69,6 +69,19 @@ const PROTO_CELLS = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <PButton s={s} label="sign in" primary full onClick={() => {}} />
       <PButton s={s} label="send message" primary full icon="send" onClick={() => {}} />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 63–86
+  "pcard-rows": (s) => (
+    <div>
+      <PSectionLabel s={s}>security</PSectionLabel>
+      <PCard s={s}>
+        <PRow s={s} icon="key" label="recovery code" sub="view or rotate" onClick={() => {}} />
+        <PRow s={s} label="link valid for" value="24h" />
+        <PRow s={s} icon="shield" label="verified devices" onClick={() => {}} />
+        <PRow s={s} icon="logout" label="sign out" danger last />
+      </PCard>
     </div>
   ),
 };
