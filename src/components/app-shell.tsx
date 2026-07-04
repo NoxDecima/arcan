@@ -1,23 +1,118 @@
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "@/components/sidebar";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useIsDesktop } from "@/components/use-is-desktop";
+import { useHomeLists } from "@/components/use-home-lists";
+import { useSidebarTab } from "@/components/sidebar-tab";
+import { DesktopWindow, MobileShell, PTabBar } from "@/ui/kit";
+import { NavColumn } from "@/ui/screens";
+import { PendingRequestsSection } from "@/components/pending-requests-section";
+import { NavListSkeleton } from "@/components/skeleton";
 
 /**
- * Authenticated layout shell. Desktop: persistent sidebar + routed pane
- * (the design's HiDesktop = NavColumn + pane, always both). Mobile: the
- * sidebar is hidden (md:flex) so the routed content is full-screen, and
- * the bottom tab bar (mounted in App.tsx) provides nav.
+ * Authenticated layout shell — Unit 10 Wave A.
  *
- * Replaces the prior per-route `<Sidebar />` mounts (Unit 9-2 / 2-F).
+ * Desktop (≥ 768px, Tailwind `md`):
+ *   window-on-stage chrome (bg-bg-stage + DesktopWindow) with NavColumn fed
+ *   by useHomeLists() on the left and the routed pane (Outlet) on the right.
+ *
+ * Mobile (< 768px):
+ *   full-screen MobileShell; kit PTabBar appears as the tabBar slot on root
+ *   paths ("/", "/conversations"), hidden on deep routes. The routed pane
+ *   (ConversationsRoute, ConversationDetailRoute, etc.) fills the screen.
+ *
+ * CRITICAL — single <Outlet />:
+ *   Exactly one <Outlet /> is rendered at any time. A CSS dual-mount of both
+ *   branches would mount every route twice, doubling Jazz subscriptions and
+ *   effects such as mark-as-read. useIsDesktop() switches branches in JS:
+ *   crossing 768px unmounts one branch and mounts the other (one-time cost,
+ *   acceptable). See: src/components/use-is-desktop.ts
+ *
+ * MobileTabBar (src/components/mobile-tab-bar.tsx) is no longer mounted in
+ * App.tsx — PTabBar from the kit replaces it on this mobile shell.
+ * The file stays on disk until Phase 4.
  */
 export function AppShell() {
+  const isDesktop = useIsDesktop();
+  // Called unconditionally (hook rules). Desktop NavColumn consumes it;
+  // mobile ConversationsRoute calls its own separate useHomeLists instance.
+  const shell = useHomeLists();
+  const { tab, setTab } = useSidebarTab();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Derive active conversation ID from the pathname. The layout route cannot
+  // useParams(':id') — that param is only in scope on the nested route — so
+  // we match the pathname manually.
+  const convoMatch = pathname.match(/^\/conversations\/([^/]+)$/);
+  const activeConvoId = convoMatch ? convoMatch[1] : undefined;
+
+  // isRoot mirrors mobile-tab-bar.tsx's ROOT_PATHS: show tab bar only on the
+  // home/list surfaces, not on deep routes (conversation detail, settings, etc.).
+  const isRoot = pathname === "/" || pathname === "/conversations";
+
+  if (isDesktop) {
+    return (
+      <div className="h-screen w-screen bg-bg-stage flex items-center justify-center overflow-hidden">
+        <DesktopWindow>
+          {/* NavColumn — or loading skeleton while Jazz resolves (sidebar-loading
+              testid carried from legacy Sidebar loading state). */}
+          {shell.loading ? (
+            <div
+              className="w-[320px] shrink-0 border-r border-hairline bg-bg flex flex-col"
+              data-testid="sidebar-loading"
+            >
+              <NavListSkeleton rows={6} />
+            </div>
+          ) : (
+            <NavColumn
+              profile={shell.profile}
+              tab={tab}
+              onTab={setTab}
+              convos={shell.convos}
+              contacts={shell.contacts}
+              activeConvoId={activeConvoId}
+              onOpenConvo={(id) => navigate(`/conversations/${id}`)}
+              onOpenContact={(id) => navigate(`/profile/${id}`)}
+              onOwnProfile={() =>
+                shell.accountId && navigate(`/profile/${shell.accountId}`)
+              }
+              onSettings={() => navigate("/settings")}
+              onFab={() =>
+                navigate(
+                  tab === "contacts" ? "/contacts/add" : "/conversations/new",
+                )
+              }
+              pendingSlot={
+                tab === "contacts" ? <PendingRequestsSection /> : undefined
+              }
+            />
+          )}
+          {/* Routed pane — Outlet fills this flex column. */}
+          <div className="flex-1 min-w-0 relative flex flex-col bg-bg">
+            <Outlet />
+          </div>
+        </DesktopWindow>
+      </div>
+    );
+  }
+
+  // Mobile branch — PTabBar is the kit replacement for the legacy MobileTabBar.
   return (
-    <div className="flex h-screen">
-      <div className="hidden md:flex">
-        <Sidebar />
-      </div>
-      <div className="flex-1 min-w-0 flex flex-col">
+    <div className="h-screen w-screen flex flex-col">
+      <MobileShell
+        tabBar={
+          isRoot ? (
+            <PTabBar
+              active={tab}
+              onTab={(t) => {
+                setTab(t);
+                navigate("/");
+              }}
+            />
+          ) : undefined
+        }
+      >
         <Outlet />
-      </div>
+      </MobileShell>
     </div>
   );
 }
