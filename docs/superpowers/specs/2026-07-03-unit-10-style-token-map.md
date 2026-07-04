@@ -35,6 +35,13 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `alpha(c.red, .5)` (danger border) | `border-red-border` |
 | `alpha('#fff', .18)` (attachment veil) | `bg-media-veil` |
 | HAv group tint `alpha(#bb9af7/#7a55c9, …)` | `bg-avatar-group` |
+| Fab glow `alpha(c.accentFill, .45)` | `shadow-fab` |
+| cosmic dot glow `alpha(c.accentFill, .6)` | `shadow-dot` (dot itself `bg-arcan-accent-fill`) |
+| fixed violet dot `#bb9af7`/`#7a55c9` | `bg-cosmic-dot` / HAv group fg `text-avatar-group-fg` |
+| toast washes `alpha(col, .2/.14)` | `bg-{green,red,neutral,accent}-wash` |
+| toast shadow | `shadow-toast` |
+| DesktopWindow shadow | `shadow-window` |
+| watermark opacity .05/.06 | inline `opacity: var(--opacity-watermark)` |
 | `s.font` (JetBrains Mono) | `font-mono` |
 | `s.body` (Inter) | `font-body` |
 | `s.radius` (12) | `rounded-r-4` |
@@ -62,6 +69,11 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `600 9px/1` mono `.16em` caps (section labels) | `font-mono font-semibold text-ui-caps tracking-caps uppercase` |
 | `600 9px/1` mono `.14em` caps (field labels) | `font-mono font-semibold text-ui-caps tracking-caps-sm uppercase` |
 | `500 8.5px/1` mono (bubble time) | `font-mono font-medium text-ui-time` |
+| `500 12px/1.3` body (toast text) | `font-body font-medium text-ui-toast` |
+| `600 15px/1.3` mono (empty-state title) | `font-mono font-semibold text-ui-empty` |
+| `400 11.5px/1` body (empty-state sub) | `font-body text-ui-empty-sub` |
+| `500 10px/1` mono `.04em` (window chrome) | `font-mono font-medium text-ui-chrome tracking-tab` |
+| `600 size*.34px/1` mono `-.02em` (HAv initials) | `font-mono font-semibold tracking-avatar` + computed inline font-size |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -75,8 +87,8 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | PButton outline | `bg-transparent text-text border border-hairline` |
 | PButton ghost | `bg-transparent text-text-2` |
 | PToggle track on/off | `bg-arcan-accent-fill` / `bg-panel-2 border border-hairline`; knob transition `duration-switch` |
-| PHeader bar (minH 52) | `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` |
-| PTabBar (h 54) | `h-[54px] flex items-stretch border-t border-hairline bg-bg` |
+|  `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` | `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` |
+| PTabBar (h 54, shrink-0) | `h-[54px] shrink-0 flex items-stretch border-t border-hairline bg-bg` |
 | Bubble (own, v5 tint) | `bg-bubble-own border border-accent-border text-text rounded-r-5` + tail `rounded-br-r-1` |
 | Bubble (theirs) | `bg-panel border border-hairline text-text rounded-r-5 shadow-bubble` + tail `rounded-bl-r-1` |
 | Attachment placeholder (own / theirs) | `bg-media-veil` / `bg-rail`, radius `rounded-[8px]` (max(3, bubbleRadius−6)) |
@@ -91,7 +103,14 @@ code (arbitrary values allowed; `check-tokens` only polices color/typography):
 header minH 52, tab bar h 54, button h 44, field h 40, toggle 38×22 (knob 16,
 offsets 2/18), avatar default 34, icon sizes 15/16/17/20, row padding
 `12px 14px`, header padding `0 12px`, bubble padding `8px 11px` (attachment
-`6`), QR module grid (5×5, gap 3, 62% of box).
+`6`), QR module grid (5×5, gap 3, 62% of box). Fab 52 (offset right/bottom 16), toast icon circle 22, DesktopWindow bar h 38 / traffic lights 11 (#e2696e #e6b450 #5fb87f — decorative constants, stay inline), phone-frame numbers are stage dressing (not ported), fab shadow geometry 0 8px 22px (proto:148), dot glow 0 0 10px (proto:574), toast/window shadow geometry in their --shadow-* tokens.
+
+## Rem base
+
+`html` is fixed at `font-size: 16px` (body text is 15px via `--fs-body` on
+`<body>`). All rem-scaled Tailwind utilities therefore render their nominal
+px — `h-11` = 44px, `px-3` = 12px, `gap-2` = 8px — and the cluster strings
+in this table can be used as written. Do not set font-size on `html`.
 
 ## Legacy tokens (not in the prototype — do not use in new kit code)
 

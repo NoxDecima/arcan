@@ -1,0 +1,32 @@
+// src/ui/kit — the transliterated prototype kit (Unit 10 Phase 1).
+// Every component here is a node-for-node port of its twin in
+// design/proto-ui.jsx, design/hf-kit.jsx, or design/proto.jsx, styled
+// exclusively through the mapping table
+// (docs/superpowers/specs/2026-07-03-unit-10-style-token-map.md).
+// Purity: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
+
+export { Icon, IPATHS } from "./icon";
+export type { IconName } from "./icon";
+export { HAv } from "./hav";
+export { tapClass } from "./tap";
+export { PButton } from "./pbutton";
+export { PCard } from "./pcard";
+export { PSectionLabel } from "./psection-label";
+export { PRow } from "./prow";
+export { PField } from "./pfield";
+export { PToggle } from "./ptoggle";
+export { PQR } from "./pqr";
+export { Body } from "./body";
+export { PHeader } from "./pheader";
+export { PTabBar } from "./ptabbar";
+export { Bubble, MessageRow } from "./bubble";
+export type { BubbleMsg } from "./bubble";
+export { Fab } from "./fab";
+export { KitToast } from "./toast";
+export type { KitToastTone } from "./toast";
+export { latticePaths, dots, seg } from "./lattice-paths";
+export { ArcanMark } from "./arcan-mark";
+export { AuthShell } from "./auth-shell";
+export { DesktopEmpty } from "./desktop-empty";
+export { DesktopWindow } from "./desktop-window";
+export { MobileShell } from "./mobile-shell";

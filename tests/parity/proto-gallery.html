@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>parity — prototype side</title>
+<style>
+  /* Fonts: SAME fontsource files the app loads (weights: Inter 300–700, Mono 400–700). */
+  @font-face { font-family: 'Inter'; font-weight: 300; src: url('/node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 400; src: url('/node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 500; src: url('/node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 600; src: url('/node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 700; src: url('/node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 600; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2') format('woff2'); }
+  html, body { margin: 0; background: #333; }
+  * { box-sizing: border-box; }
+  button { font-family: inherit; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body>
+<div id="cells"></div>
+<script src="/tests/parity/out/vendor.js"></script>
+<script src="/design/lattice.js"></script>
+<script src="/tests/parity/out/hf-kit.js"></script>
+<script src="/tests/parity/out/proto-ui.js"></script>
+<script src="/tests/parity/out/proto-cells.js"></script>
+</body>
+</html>
