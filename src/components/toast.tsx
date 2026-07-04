@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { KitToast } from "@/ui/kit";
+import type { IconName } from "@/ui/kit";
 
 export type ToastTone = "neutral" | "success" | "accent" | "error";
 
@@ -16,6 +18,14 @@ interface ToastItem extends ToastOptions {
 type ToastFn = (opts: ToastOptions) => void;
 
 const ToastContext = createContext<ToastFn | null>(null);
+
+// Default icon per tone — matches parity cell defaults (toast-tones).
+const toneIcon: Record<ToastTone, IconName> = {
+  neutral: "bell",
+  success: "check",
+  error:   "alert",
+  accent:  "bell",
+};
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -41,17 +51,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 function ToastViewport({ items }: { items: ToastItem[] }) {
   if (items.length === 0) return null;
   return (
+    // Fixed container anchored to screen bottom; KitToast's absolute
+    // left-3.5 right-3.5 bottom-[18px] resolves against each relative slot.
+    // Rung 4 note: multiple stacked toasts each occupy a 64px relative slot
+    // (same slot height used in the toast-tones parity cell). No prototype
+    // counterpart for multi-toast stacking; behavior preserved, slots provide
+    // visual separation without a legacy close button.
     <div
       role="status"
       aria-live="polite"
       style={{
         position: "fixed",
-        left: "var(--sp-4)",
-        right: "var(--sp-4)",
-        bottom: "var(--sp-5)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--sp-2)",
+        left: 0,
+        right: 0,
+        bottom: 0,
         pointerEvents: "none",
         zIndex: 1000,
       }}
@@ -65,60 +78,19 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
 
 function Toast({ item }: { item: ToastItem }) {
   const tone = item.tone ?? "neutral";
+  // Cast caller-supplied icon string to IconName; fall back to tone default.
+  const icon = (item.icon as IconName | undefined) ?? toneIcon[tone];
   return (
+    // relative slot: gives KitToast's absolute positioning a local context.
+    // data-toast-tone preserved for test assertions and external selectors.
     <div
       data-toast-tone={tone}
-      style={{
-        pointerEvents: "auto",
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--sp-3)",
-        padding: "11px 14px",
-        borderRadius: "var(--r-3)",
-        background: "var(--color-panel)",
-        border: "1px solid var(--color-border)",
-        color: "var(--color-text)",
-        font: `500 12px/1.3 var(--font-body)`,
-        boxShadow: "var(--shadow-2)",
-        animation: "arcan-toast-in 250ms var(--ease-out) both",
-      }}
+      className="relative h-[64px]"
+      style={{ pointerEvents: "auto" }}
     >
-      <span
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 999,
-          background: toneBg(tone),
-          color: toneFg(tone),
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          fontSize: 13,
-        }}
-      >
-        ●
-      </span>
-      <span>{item.text}</span>
+      <KitToast text={item.text} icon={icon} tone={tone} />
     </div>
   );
-}
-
-function toneBg(t: ToastTone): string {
-  switch (t) {
-    case "success": return "rgba(158, 206, 106, 0.18)";
-    case "accent":  return "var(--color-accent-soft)";
-    case "error":   return "rgba(247, 118, 142, 0.18)";
-    default:        return "rgba(138, 147, 178, 0.18)";
-  }
-}
-function toneFg(t: ToastTone): string {
-  switch (t) {
-    case "success": return "var(--color-green)";
-    case "accent":  return "var(--color-accent)";
-    case "error":   return "var(--color-red)";
-    default:        return "var(--color-text-2)";
-  }
 }
 
 export function useToast(): ToastFn {
