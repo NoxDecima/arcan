@@ -9,6 +9,9 @@
     { "id": "hav-status" },
     { "id": "pbutton-variants", "accents": ["tokyo", "rose"] },
     { "id": "pbutton-full", "accents": ["tokyo", "rose"] },
-    { "id": "pcard-rows" }
+    { "id": "pcard-rows" },
+    { "id": "pfield" },
+    { "id": "ptoggle", "accents": ["tokyo", "rose"] },
+    { "id": "pqr" }
   ]
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -87,4 +87,24 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
       </PCard>
     </div>
   ),
+
+  // proto-ui.jsx lines 108–118
+  "pfield": () => (
+    <div className="flex flex-col gap-3">
+      <PField label="email" ph="you@domain.dev" />
+      <PField label="display name" value="ada" />
+      <PField label="recovery code" value="A1B2-C3D4-E5F6" mono />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 100–107
+  "ptoggle": () => (
+    <div className="flex gap-3">
+      <PToggle on={true} />
+      <PToggle on={false} />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 121–130
+  "pqr": () => <PQR size={128} />,
 };

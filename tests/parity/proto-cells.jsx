@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow } = window;
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -84,6 +84,26 @@ const PROTO_CELLS = {
       </PCard>
     </div>
   ),
+
+  // proto-ui.jsx lines 108–118
+  "pfield": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <PField s={s} label="email" ph="you@domain.dev" />
+      <PField s={s} label="display name" value="ada" />
+      <PField s={s} label="recovery code" value="A1B2-C3D4-E5F6" mono />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 100–107
+  "ptoggle": (s) => (
+    <div style={{ display: 'flex', gap: 12 }}>
+      <PToggle s={s} on={true} />
+      <PToggle s={s} on={false} />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 121–130
+  "pqr": (s) => <PQR s={s} size={128} />,
 };
 
 (async () => {
