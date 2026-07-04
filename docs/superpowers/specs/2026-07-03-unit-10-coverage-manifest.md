@@ -123,6 +123,16 @@ resolve (snapshot; no live remote update).
 | Real attachments + lightbox | chat | 4 | kit Bubble attSlot | — | moved to src/components/message-attachments.tsx, behavior preserved |
 | Connection banner / write-group handshake | chat | 4 | — | — | logic untouched, banner slot above timeline |
 
+### Wave B e2e drift
+
+- First run 39/44: three attachment specs + messaging-1to1 failed on the moved
+  Rung-4 surfaces. Root causes: tray/tile/lightbox testids dropped in the
+  restyle; send button not armed for attachment-only messages; **paste-to-attach
+  handler entirely missing** (feature regression — restored); **"(edited)"
+  indicator missing** (feature regression — restored via BubbleMsg.edited);
+  deleted copy assertion updated to design-language "message deleted".
+- Final: 43 green + 1 fixme (profile-avatar, pre-existing).
+
 ### Wave A e2e drift (vs 44/44 baseline)
 
 - 42/44 on first run after integration. `unread-badges` updated to the
