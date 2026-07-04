@@ -22,6 +22,15 @@ happen so nothing waits for phase exit.
   compares against intent, not the bug. No other 3-digit hex `alpha()` call
   exists anywhere in `design/` (grep-verified).
 
+### Lattice verdict (spec §5 gate)
+
+- **KEEP** — advisory parity cell `lattice-verdict` measured 0.000% diff
+  (both themes) between the existing `src/components/lattice.tsx` (Unit 7)
+  and the prototype's `ArcanMark` glyph at size 58. The kit's `ArcanMark`
+  adds the wordmark lockups (normal/stacked) the old component lacks; which
+  of the two survives Phase 4 cleanup is decided when screen usage is known
+  (they render identical glyphs).
+
 ### Deliberate kit deviations (sanctioned by spec §8)
 
 - `TypingRow` (proto.jsx:72–82) NOT ported — typing indicators dropped
