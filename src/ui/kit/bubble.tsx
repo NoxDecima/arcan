@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { HAv } from "./hav";
 import { Icon } from "./icon";
+import type { JSX } from "react";
 
 export interface BubbleMsg {
   who: "me" | "them" | "sys" | "new";

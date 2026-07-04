@@ -11,6 +11,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./icon";
 import { tapClass } from "./tap";
+import type { JSX } from "react";
 
 export function PHeader({
   title,

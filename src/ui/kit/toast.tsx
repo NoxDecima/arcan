@@ -5,6 +5,7 @@
 
 import { Icon } from "./icon";
 import type { IconName } from "./icon";
+import type { JSX } from "react";
 
 export type KitToastTone = "neutral" | "success" | "error" | "accent";
 

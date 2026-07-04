@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { latticePaths } from "./lattice-paths";
+import type { JSX } from "react";
 
 export function AuthShell({ children }: { children: ReactNode }): JSX.Element {
   return (

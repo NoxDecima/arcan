@@ -12,6 +12,7 @@ import { Body, Fab } from "../kit";
 import type { HomeProfile, ContactItem } from "./home-types";
 import { ContactRow } from "./rows";
 import { HomeScreenHeader } from "./home-screen-header";
+import type { JSX } from "react";
 
 // Default copy sourced from the legacy sidebar.tsx contacts empty-state title.
 const DEFAULT_CONTACTS_EMPTY = "no contacts yet";

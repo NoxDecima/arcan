@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "audit:capture": "npx tsx scripts/audit/capture-screens.ts",
     "check-tokens": "./scripts/check-tokens.sh",
+    "typecheck": "tsc -b",
     "check-ui-purity": "./scripts/check-ui-purity.sh",
     "parity": "node tests/parity/run-parity.mjs"
   },

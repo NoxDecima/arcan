@@ -3,6 +3,7 @@
 
 import { ArcanMark } from "./arcan-mark";
 import { latticePaths } from "./lattice-paths";
+import type { JSX } from "react";
 
 export function DesktopEmpty({ tab }: { tab: "chats" | "contacts" }): JSX.Element {
   return (

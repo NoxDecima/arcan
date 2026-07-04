@@ -10,6 +10,7 @@ import { HAv } from "../kit/hav";
 import { PHeader } from "../kit/pheader";
 import { MessageRow } from "../kit/bubble";
 import type { ChatTimelineItem, ChatHeaderVM } from "./chat-types";
+import type { JSX } from "react";
 
 export function ChatScreen({
   header,

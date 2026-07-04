@@ -6,6 +6,7 @@
 // Filled module indexes: [0,1,4,5,6,8,12,16,18,19,20,23,24,3,10,14]
 // (verbatim from proto — not semantic, just a recognisable QR-like silhouette).
 
+import type { JSX } from "react";
 const FILLED = new Set([0, 1, 4, 5, 6, 8, 12, 16, 18, 19, 20, 23, 24, 3, 10, 14]);
 
 export function PQR({ size = 128 }: { size?: number }): JSX.Element {

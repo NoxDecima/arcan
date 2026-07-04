@@ -8,6 +8,7 @@
 // (on) / `border border-hairline` (off) — do NOT use a conditional border-width.
 
 import { tapClass } from "./tap";
+import type { JSX } from "react";
 
 export function PToggle({
   on,

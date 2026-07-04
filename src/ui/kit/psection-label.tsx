@@ -12,6 +12,7 @@
 // render identically. The span's own text-ui-caps (9px/1) is unaffected.
 
 import type { ReactNode } from "react";
+import type { JSX } from "react";
 
 export function PSectionLabel({
   children,

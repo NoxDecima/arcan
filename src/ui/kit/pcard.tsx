@@ -3,6 +3,7 @@
 // Cluster from mapping table (verbatim): rounded-r-5 border border-hairline bg-panel overflow-hidden
 
 import type { ReactNode } from "react";
+import type { JSX } from "react";
 
 export function PCard({
   children,

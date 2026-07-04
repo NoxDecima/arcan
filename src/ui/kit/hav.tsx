@@ -6,6 +6,7 @@
 // real avatar images replace initials when resolved; initials remain the fallback.
 // No proto reference (HAv in the proto always uses initials).
 
+import type { JSX } from "react";
 export function HAv({
   txt,
   src,

@@ -5,6 +5,7 @@
 //
 import { Icon, type IconName } from "./icon";
 import { tapClass } from "./tap";
+import type { JSX } from "react";
 
 export function PButton({
   label,

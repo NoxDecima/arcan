@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "../kit/icon";
 import { tapClass } from "../kit/tap";
+import type { JSX } from "react";
 
 export function ChatComposer({
   value,

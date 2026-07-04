@@ -12,6 +12,7 @@
 
 import { HAv, Icon, tapClass } from "../kit";
 import type { HomeProfile } from "./home-types";
+import type { JSX } from "react";
 
 // Header mirrors PHeader's onAvatar layout for visual parity.
 export function HomeScreenHeader({
