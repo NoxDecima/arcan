@@ -7,7 +7,7 @@ const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PH
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
-/* verbatim copy: design/proto.jsx:33–71 */
+/* patched copy: design/proto.jsx:33–71 — one intent-fix, see Bubble:att inline note */
 function ownPaintP(s) {
   const c = s.c;
   if (s.ownStyle === 'grad') return { bg: c.accentGrad, fg: c.onAccent, bd: 'transparent', time: alpha(c.onAccent, .6) };
@@ -20,7 +20,7 @@ function Bubble({ s, m, w }) {
   const p = mine ? ownPaintP(s) : { bg: c.panel, fg: c.text, bd: s.fam === 'soft' ? 'transparent' : c.border, time: c.dim };
   return (
     <div style={{ maxWidth: w, background: p.bg, border: p.bd !== 'transparent' ? `1px solid ${p.bd}` : 'none', color: p.fg, padding: m.att ? 6 : '8px 11px', borderRadius: s.bubbleRadius, borderBottomRightRadius: mine ? Math.max(2, s.bubbleRadius - 12) : s.bubbleRadius, borderBottomLeftRadius: mine ? s.bubbleRadius : Math.max(2, s.bubbleRadius - 12), boxShadow: s.soft && !mine && s.theme === 'light' ? '0 1px 2px rgba(20,20,40,.05)' : 'none' }}>
-      {/* note: '#fff' → '#ffffff' — _hx() in hf-kit.jsx doesn't handle 3-digit shorthand (parseInt('',16)=NaN) */}
+      {/* intent-fix: '#fff' → '#ffffff' — _hx('#fff') → [255,15,NaN] (3-digit shorthand: first two chars pair up, third slice empty → NaN); invalid rgba drops the veil in the raw proto. hf-chat.jsx:126 already uses #ffffff (designer's corrected version). */}
       {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#0e1019' : '#eef0f5'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
         <span style={{ flex: 1, font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
@@ -48,7 +48,7 @@ function Row({ s, m, w }) {
     </div>
   );
 }
-/* end verbatim copy */
+/* end patched copy */
 
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
