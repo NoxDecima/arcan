@@ -156,8 +156,43 @@ export function ConversationDetailRoute() {
   });
 
   const conversation = useCoState(Conversation, id as any, {
-    resolve: { messages: { $each: true } },
+    // icon: true — the conversation's icon FileBlob feeds the header avatar
+    // (same one-shot resolution pattern as use-home-lists.ts).
+    resolve: { messages: { $each: true }, icon: true },
   });
+
+  // Header avatar: one-shot conversation-icon resolution (Wave A pattern).
+  // Per-message author photos stay initials-only — folded into the tracked
+  // remote-avatar followup (same useRemoteAvatar mechanism as home lists).
+  const [headerAvatarUrl, setHeaderAvatarUrl] = useState<string | null>(null);
+  const iconStreamId: string | null =
+    (conversation as any)?.icon?.data?.$jazz?.id ?? null;
+  useEffect(() => {
+    if (!iconStreamId) {
+      setHeaderAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    void (async () => {
+      try {
+        const { co } = await import("jazz-tools");
+        const blob = await co
+          .fileStream()
+          .loadAsBlob(iconStreamId, { loadAs: me as any });
+        if (cancelled || !blob) return;
+        createdUrl = URL.createObjectURL(blob);
+        setHeaderAvatarUrl(createdUrl);
+      } catch {
+        if (!cancelled) setHeaderAvatarUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iconStreamId]);
 
   // Auto-scroll to bottom whenever the message list grows
   const messageCount = (conversation as any)?.messages?.length ?? 0;
@@ -761,6 +796,7 @@ export function ConversationDetailRoute() {
     title: headerTitle,
     sub: headerSub,
     initials: initialsFromTitle(conversationTitle),
+    avatarSrc: headerAvatarUrl ?? undefined,
     group: !contact,
   };
 

@@ -123,6 +123,14 @@ resolve (snapshot; no live remote update).
 | Real attachments + lightbox | chat | 4 | kit Bubble attSlot | — | moved to src/components/message-attachments.tsx, behavior preserved |
 | Connection banner / write-group handshake | chat | 4 | — | — | logic untouched, banner slot above timeline |
 
+### Wave B avatar note (merge-review)
+
+- Chat header avatar: conversation icon resolves via the Wave A one-shot
+  pattern (`icon: true` resolve + blob effect in detail.tsx).
+- Per-message author photos: initials-only — same per-row `useRemoteAvatar`
+  mechanism as the home-list contact photos; folded into that followup task.
+  The presenter fields (`authorAvatarSrc`) are wired and waiting.
+
 ### Wave B e2e drift
 
 - First run 39/44: three attachment specs + messaging-1to1 failed on the moved
