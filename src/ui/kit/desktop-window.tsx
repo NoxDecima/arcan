@@ -1,6 +1,6 @@
 // src/ui/kit/desktop-window.tsx — port of design/proto.jsx:676-691.
 // Desktop window chrome: traffic lights + address pill + main content area.
-// Traffic light colours are decorative constants (mapping table) — stay inline.
+// Traffic light colours are decorative hex constants — not tokenized by design.
 
 import type { ReactNode } from "react";
 import { ArcanMark } from "./arcan-mark";
@@ -19,7 +19,7 @@ export function DesktopWindow({
 
   return (
     <div
-      className="rounded-[14px] overflow-hidden border border-hairline bg-bg shadow-window flex flex-col"
+      className="rounded-r-5 overflow-hidden border border-hairline bg-bg shadow-window flex flex-col"
       style={{ width: w, height: h }}
     >
       {/* title bar */}
