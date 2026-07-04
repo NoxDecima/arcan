@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { useHomeLists } from "@/components/use-home-lists";
 import { useSidebarTab } from "@/components/sidebar-tab";
@@ -39,11 +39,12 @@ export function AppShell() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  // Derive active conversation ID from the pathname. The layout route cannot
-  // useParams(':id') — that param is only in scope on the nested route — so
-  // we match the pathname manually.
-  const convoMatch = pathname.match(/^\/conversations\/([^/]+)$/);
-  const activeConvoId = convoMatch ? convoMatch[1] : undefined;
+  // React Router 6 merges child-route params into layout-route elements.
+  // useParams() sees :id from /conversations/:id and /conversations/:id/members.
+  // /conversations/new matches the static route (not :id) → id is undefined,
+  // so activeConvoId is correctly undefined (no false active highlight).
+  const { id } = useParams<{ id: string }>();
+  const activeConvoId = id;
 
   // isRoot mirrors mobile-tab-bar.tsx's ROOT_PATHS: show tab bar only on the
   // home/list surfaces, not on deep routes (conversation detail, settings, etc.).

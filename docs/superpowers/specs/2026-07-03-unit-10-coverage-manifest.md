@@ -59,3 +59,22 @@ happen so nothing waits for phase exit.
   composed borders/fills). Pixel-identical.
 - a11y follow-ups tracked (task list): PToggle switch role, PHeader back
   aria-label, avatar-button contract, PTabBar tablist semantics.
+
+## Screens (Phase 2)
+
+### Avatar image resolution — home lists (Wave A Task 5 review fix)
+
+Container `useHomeLists` resolves avatar images via one-shot container effects
+(snapshot, not reactive):
+
+- **Own profile header**: `useState` + `useEffect` on `me.profile.avatar.data.$jazz.id`
+  → `co.fileStream().loadAsBlob` → objectURL; revoked on cleanup.
+- **Conversation icons**: combined effect iterates `knownConversations`; each
+  entry with `icon.data.$jazz.id` is blob-loaded into the `id → objectURL` map.
+  `icon: true` added to the `$each` resolve spec to make the FileBlob available.
+- **Contact photos**: same combined effect; `resolveAvatarFileBlob({ accountID, me })`
+  returns the FileBlob (sync, from contactBook / group members), then blob-loaded.
+
+Deliberate degradation: `useRemoteAvatar` (live remote-profile subscription) is
+NOT used — no reactive update when a contact's remote profile changes mid-session.
+Tracked as a followup for a later wave. Wave A snapshot behavior is intentional.

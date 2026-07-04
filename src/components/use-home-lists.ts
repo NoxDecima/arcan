@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { useAccount } from "jazz-tools/react";
+import { co } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { getUnreadCount, getLastMessagePreview } from "@/jazz/notifications";
+import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
 import type { ConvoItem, ContactItem, HomeProfile } from "@/ui/screens/home-types";
 
 // ---------------------------------------------------------------------------
@@ -112,16 +115,24 @@ export interface HomeListsResult {
 }
 
 /**
- * Container hook: resolves home-screen data from Jazz.
+ * Container hook: resolves home-screen data from Jazz, including avatar images.
  *
  * Extracts the data layer that was previously embedded inside
  * src/components/sidebar.tsx (Unit 10 Wave A, Task 5). The logic is moved
  * verbatim — same useAccount resolve spec, isArchived filter, sort, helpers.
  * Sidebar.tsx retains its own copies until Phase 4.
  *
- * avatarSrc fields are undefined in Rung 1: HAv falls back to initials. Real
- * avatar resolution (FileBlob → URL, per-contact useRemoteAvatar) is deferred
- * to Rung 4 (manifest note: §8.5d data-driven deviation).
+ * Avatar resolution (review fix applied after d8e7506):
+ *   - Own profile: unconditional useState/useEffect; resolves
+ *     me.profile.avatar.data.$jazz.id → objectURL.
+ *   - Convos + contacts: one combined effect builds an id → objectURL map;
+ *     conversation icons via icon.data.$jazz.id, contact photos via
+ *     resolveAvatarFileBlob → loadAsBlob.
+ *
+ * Deliberate degradation — Wave A snapshot behavior: no live remote-profile
+ * subscription (old useRemoteAvatar hook is NOT used). Avatar URLs are resolved
+ * once per list change and not reactively updated when a contact's remote
+ * profile changes. This is tracked as a followup for a later wave.
  *
  * Called unconditionally in AppShell (hook rules); desktop NavColumn consumes
  * it there. Mobile ConversationsRoute calls its own instance for screen
@@ -141,13 +152,135 @@ export function useHomeLists(): HomeListsResult {
         // indefinitely and me.$isLoaded stays false.
         // Slice 8: also resolve `messages` so getUnreadCount can iterate
         // them without tripping on a NotLoaded list proxy.
-        knownConversations: { $each: { messages: true, $onError: "catch" } },
+        // `icon: true` loads the conversation's FileBlob so we can read
+        // icon.data.$jazz.id for blob-URL resolution below.
+        knownConversations: { $each: { messages: true, icon: true, $onError: "catch" } },
         // Slice 8: per-conversation read cutoff for unread-badge computation.
         lastReadAt: true,
       },
     },
   });
 
+  // ---------------------------------------------------------------------------
+  // Own profile avatar — unconditional (hooks must precede any early return).
+  // ---------------------------------------------------------------------------
+  const [ownAvatarUrl, setOwnAvatarUrl] = useState<string | null>(null);
+
+  // Derive stream ID for own profile; null until Jazz is loaded.
+  const ownStreamId: string | null = me.$isLoaded
+    ? ((me as any).profile?.avatar?.data?.$jazz?.id ?? null)
+    : null;
+
+  useEffect(() => {
+    if (!ownStreamId) {
+      setOwnAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    void (async () => {
+      try {
+        const blob = await co.fileStream().loadAsBlob(ownStreamId, { loadAs: me });
+        if (cancelled || !blob) return;
+        createdUrl = URL.createObjectURL(blob);
+        setOwnAvatarUrl(createdUrl);
+      } catch {
+        // Silent — falls back to initials.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // `me` intentionally omitted: ownStreamId is derived from it; closure
+    // captures the correct `me` for the lifetime of this stream ID.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownStreamId]);
+
+  // ---------------------------------------------------------------------------
+  // Convos + contacts avatar map — one effect, id → objectURL.
+  // ---------------------------------------------------------------------------
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+
+  // Stable dep strings: joined IDs. Effect re-runs when the visible set changes.
+  const convosDep = me.$isLoaded
+    ? Array.from(me.root?.knownConversations ?? [])
+        .filter(Boolean)
+        .map((c: any) => (c as any)?.$jazz?.id ?? "")
+        .join(",")
+    : "";
+  const contactsDep = me.$isLoaded
+    ? Array.from(me.root?.contactBook ?? [])
+        .filter((c: any) => c?.contactAccountID)
+        .map((c: any) => c.contactAccountID as string)
+        .join(",")
+    : "";
+  const listsDep = `${convosDep}|${contactsDep}`;
+
+  useEffect(() => {
+    if (!me.$isLoaded) return;
+    let cancelled = false;
+    const createdUrls: string[] = [];
+
+    void (async () => {
+      const nextMap: Record<string, string> = {};
+
+      // Conversations with icons: icon is a FileBlob; read stream ID from data.$jazz.id.
+      // Pattern mirrors ConversationAvatar.tsx.
+      for (const c of Array.from(me.root?.knownConversations ?? []) as any[]) {
+        if (!c) continue;
+        const convID = (c as any).$jazz?.id as string | undefined;
+        if (!convID) continue;
+        const streamId: string | null = (c as any).icon?.data?.$jazz?.id ?? null;
+        if (!streamId) continue;
+        try {
+          const blob = await co.fileStream().loadAsBlob(streamId, { loadAs: me });
+          if (cancelled || !blob) continue;
+          const url = URL.createObjectURL(blob);
+          createdUrls.push(url);
+          nextMap[convID] = url;
+        } catch {
+          // No icon available — fall through (monogram shows).
+        }
+      }
+
+      // Contacts: resolveAvatarFileBlob for sync lookup, loadAsBlob for URL.
+      // Note: useRemoteAvatar is NOT called here — snapshot resolution only
+      // (live remote-profile updates are a followup, not Wave A scope).
+      for (const c of Array.from(me.root?.contactBook ?? []) as any[]) {
+        if (!c?.contactAccountID) continue;
+        const accountID = c.contactAccountID as string;
+        const fileBlob = resolveAvatarFileBlob({ accountID, me });
+        if (!fileBlob) continue;
+        const streamId: string | null = (fileBlob as any)?.data?.$jazz?.id ?? null;
+        if (!streamId) continue;
+        try {
+          const blob = await co.fileStream().loadAsBlob(streamId, { loadAs: me });
+          if (cancelled || !blob) continue;
+          const url = URL.createObjectURL(blob);
+          createdUrls.push(url);
+          nextMap[accountID] = url;
+        } catch {
+          // No avatar available — fall through (initials show).
+        }
+      }
+
+      if (!cancelled) setAvatarMap(nextMap);
+    })();
+
+    return () => {
+      cancelled = true;
+      for (const url of createdUrls) URL.revokeObjectURL(url);
+    };
+    // `me` intentionally omitted: listsDep is derived from it; adding `me`
+    // would re-run on every Jazz subscription tick (too frequent for blob
+    // loading). Wave A snapshot behavior is correct here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listsDep, me.$isLoaded]);
+
+  // ---------------------------------------------------------------------------
+  // Early loading gate — all hooks above this line are unconditional.
+  // ---------------------------------------------------------------------------
   if (!me.$isLoaded) {
     return {
       loading: true,
@@ -165,9 +298,8 @@ export function useHomeLists(): HomeListsResult {
   const profile: HomeProfile = {
     name: displayName,
     initials: displayName[0] ?? "?",
-    // Rung 4: FileBlob → URL resolution is async; HAv initials are the
-    // Rung 1 fallback. Manifest note: §8.5d data-driven deviation.
-    avatarSrc: undefined,
+    // ownAvatarUrl resolves asynchronously; undefined → initials fallback.
+    avatarSrc: ownAvatarUrl ?? undefined,
   };
 
   // --- conversations ---
@@ -216,8 +348,8 @@ export function useHomeLists(): HomeListsResult {
       id: convID,
       name: label,
       initials: label[0] ?? "?",
-      // Rung 4: conversation avatar images (§8.5d deviation manifest note).
-      avatarSrc: undefined,
+      // avatarMap[convID] is set asynchronously; undefined until blob resolves.
+      avatarSrc: avatarMap[convID],
       group,
       preview,
       time,
@@ -237,8 +369,8 @@ export function useHomeLists(): HomeListsResult {
         id: c.contactAccountID as string,
         name,
         initials: name[0] ?? "?",
-        // Rung 4: contact avatar images (§8.5d deviation manifest note).
-        avatarSrc: undefined,
+        // avatarMap[accountID] is set asynchronously; undefined until blob resolves.
+        avatarSrc: avatarMap[c.contactAccountID as string],
       };
     });
 
