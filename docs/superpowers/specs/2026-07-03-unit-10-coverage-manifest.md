@@ -9,6 +9,16 @@ happen so nothing waits for phase exit.
 
 ### Prototype bugs fixed to intent (spec §12 "prototype quirks" — flagged, not silent)
 
+- **Composer input UA padding** (`tests/parity/proto-cells.jsx` — PChatScreen + PComposerBar):
+  `design/proto.jsx:149,173` render the composer pill with bare `<input>` elements
+  that carry Chrome's UA stylesheet padding (`1px 2px`). The app's global preflight
+  (`@tailwind base`) resets all inputs to `padding:0; margin:0`, so the UA padding
+  is absent in production. The proto-cells patched copies apply `margin:0; padding:0`
+  to match the app baseline, and `minWidth:0; overflow:hidden` on the pill wrapper
+  to prevent flex min-width:auto blowout in the fixed-width parity cell. Parity
+  compares against the intended layout; the inline intent-fix comments in
+  `proto-cells.jsx` identify the patched properties.
+
 - **Attachment veil + icon on own bubbles** (`src/ui/kit/bubble.tsx`):
   `design/proto.jsx:45` uses `alpha('#fff', .18)` / `alpha('#fff', .8)`, but
   hf-kit's `_hx()` only parses 6-digit hex — `_hx('#fff')` → `[255,15,NaN]`,
@@ -98,6 +108,39 @@ resolve (snapshot; no live remote update).
 | Toast rendering | app-wide | 1 | proto Toast (590–600) | PASS (toast-tones) | legacy API/testids kept; stacked toasts Rung 4 |
 | Empty/loading states | home | 4 | — | — | legacy copy + NavListSkeleton kept |
 
+### Wave B coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Chat screen (mobile) | `/conversations/:id` | 1 | proto ChatScreen (154–203) | PASS 0.072% | typing + presence/verified dropped (NOX-31/33) |
+| Chat screen (desktop pane) | `/conversations/:id` | 1 | proto ChatScreen, desktop w=460 | PASS 0.034% | back arrow mobile-only |
+| Composer | chat | 1 + 4 | proto :189–200 | PASS (0.004 override, AA-characterized) | real upload flow container-side; pending chips + error = Rung 4 slots |
+| Day markers | chat timeline | 1 + 4 | proto "today" (:185) | in-screen cells | "yesterday"/"d MMM" for older days is an inference |
+| New-messages divider | chat timeline | 1 | kit new-divider (proto :56–60 equiv) | PASS (Phase 1 cell) | position from existing findNewMarkIndex |
+| System-event rows | chat timeline | 1 | kit sys row | PASS (Phase 1 cell) | text via formatSystemEventMessage, kind testids kept |
+| Message edit/delete | chat | 4 | — | — | menu ⋮ + inline edit restyled with kit tokens; hover-reveal dropped (menu always visible — walkthrough item) |
+| Deleted/malformed states | chat | 4 | — | — | italic dim text in bubble shell, testids kept |
+| Real attachments + lightbox | chat | 4 | kit Bubble attSlot | — | moved to src/components/message-attachments.tsx, behavior preserved |
+| Connection banner / write-group handshake | chat | 4 | — | — | logic untouched, banner slot above timeline |
+
+### Wave B avatar note (merge-review)
+
+- Chat header avatar: conversation icon resolves via the Wave A one-shot
+  pattern (`icon: true` resolve + blob effect in detail.tsx).
+- Per-message author photos: initials-only — same per-row `useRemoteAvatar`
+  mechanism as the home-list contact photos; folded into that followup task.
+  The presenter fields (`authorAvatarSrc`) are wired and waiting.
+
+### Wave B e2e drift
+
+- First run 39/44: three attachment specs + messaging-1to1 failed on the moved
+  Rung-4 surfaces. Root causes: tray/tile/lightbox testids dropped in the
+  restyle; send button not armed for attachment-only messages; **paste-to-attach
+  handler entirely missing** (feature regression — restored); **"(edited)"
+  indicator missing** (feature regression — restored via BubbleMsg.edited);
+  deleted copy assertion updated to design-language "message deleted".
+- Final: 43 green + 1 fixme (profile-avatar, pre-existing).
+
 ### Wave A e2e drift (vs 44/44 baseline)
 
 - 42/44 on first run after integration. `unread-badges` updated to the
@@ -111,3 +154,10 @@ resolve (snapshot; no live remote update).
   converted to `flex-1 min-h-0` (+ `overflow-y-auto` where the route is its
   own scroll container). Wave B-D rule: route roots must fill the pane, never
   the viewport.
+
+### Parity threshold overrides
+
+- **`chat-composer-states` 0.004** — diffuse AA residual on › prompt / placeholder
+  text / send glyph at 300×200 (small denominator amplifies per-pixel antialiasing
+  noise); characterized 2026-07-04, no structural offset confirmed via triptych
+  inspection (diff confined to sub-pixel glyph edges, no block/edge shifts).

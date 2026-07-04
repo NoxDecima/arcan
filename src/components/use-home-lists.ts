@@ -185,7 +185,7 @@ export function useHomeLists(): HomeListsResult {
     let createdUrl: string | null = null;
     void (async () => {
       try {
-        const blob = await co.fileStream().loadAsBlob(ownStreamId, { loadAs: me });
+        const blob = await co.fileStream().loadAsBlob(ownStreamId, { loadAs: me as any });
         if (cancelled || !blob) return;
         createdUrl = URL.createObjectURL(blob);
         setOwnAvatarUrl(createdUrl);

@@ -4,6 +4,7 @@
 // from KitToast itself (absolute within MobileShell's relative root).
 
 import type { ReactNode } from "react";
+import type { JSX } from "react";
 
 export function MobileShell({
   children,

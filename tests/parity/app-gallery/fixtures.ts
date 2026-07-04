@@ -1,4 +1,4 @@
-import type { ConvoItem, ContactItem } from "@/ui/screens";
+import type { ConvoItem, ContactItem, ChatTimelineItem } from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
 // "·" = U+00B7 (middle dot). No avatarSrc — initials-only for parity cells.
@@ -16,4 +16,18 @@ export const HF_CONTACTS: ContactItem[] = [
   { id: "ct4", name: "rana",           initials: "RA" },
   { id: "ct5", name: "theo z.",        initials: "TZ" },
   { id: "ct6", name: "nox / ops",      initials: "NX" },
+];
+
+// HF_CHAT_ITEMS mirrors design/hf-kit.jsx:HF_MSGS + the proto:185 "today" day marker
+// rendered at the top of the ChatScreen timeline.
+// SEED['ada · keyring'] === HF_MSGS; proto renders: day-marker "today", then msgs.map(Row).
+export const HF_CHAT_ITEMS: ChatTimelineItem[] = [
+  { kind: "day",  label: "today", key: "day-today" },
+  { kind: "sys",  text: "conversation created · end-to-end encrypted", key: "sys-0" },
+  { kind: "msg",  mine: false, text: "schema diff looks good — merging now", time: "9:18", authorName: "ada", authorInitials: "AK", key: "msg-1" },
+  { kind: "msg",  mine: true,  text: "nice. shipping it tonight.", time: "9:22", key: "msg-2" },
+  { kind: "msg",  mine: true,  att: true, text: "sow-042.png", time: "9:22", key: "msg-3" },
+  { kind: "new",  key: "new-0" },
+  { kind: "msg",  mine: false, text: "pushed a fix — 40ms p99 now", time: "9:24", authorName: "ada", authorInitials: "AK", key: "msg-5" },
+  { kind: "msg",  mine: false, text: "take a look when you can", time: "9:25", authorName: "ada", authorInitials: "AK", key: "msg-6" },
 ];

@@ -4,6 +4,7 @@
 
 import { useId } from "react";
 import { latticePaths } from "./lattice-paths";
+import type { JSX } from "react";
 
 export function ArcanMark({
   size = 24,

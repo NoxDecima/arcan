@@ -6,6 +6,12 @@ import { MemoryRouter } from "react-router-dom";
 // the divider auto-scroll effect) call it. Stub so the component can render.
 Element.prototype.scrollIntoView = vi.fn();
 
+// useIsDesktop → false (mobile branch) so the component renders without
+// window.matchMedia issues in jsdom.
+vi.mock("@/components/use-is-desktop", () => ({
+  useIsDesktop: () => false,
+}));
+
 const GROUP = {
   getDirectMembers: () => [
     { account: { $jazz: { id: "co_zMe" } }, role: "admin" },
@@ -15,7 +21,7 @@ const GROUP = {
 };
 
 // One incoming message (authored by co_zBob, not me) with no lastReadAt entry,
-// so the anchor is 0 → the message is unread → the NewMark divider renders.
+// so the anchor is 0 → the message is unread → the new-mark divider renders.
 const INCOMING = {
   $jazz: { id: "co_zMsg1" },
   body: "hey — got a minute?",
@@ -51,6 +57,8 @@ vi.mock("@/jazz/avatarResolver", () => ({
 vi.mock("@/jazz/messages", () => ({
   sendMessage: vi.fn(),
   getAuthorAccountIDFromMessage: () => "co_zBob", // incoming (not me)
+  editMessage: vi.fn(),
+  deleteMessage: vi.fn(),
 }));
 vi.mock("@/jazz/conversation", () => ({
   isArchived: () => false,
@@ -68,9 +76,7 @@ describe("NewMark divider", () => {
       </MemoryRouter>,
     );
     const divider = await findByTestId("new-messages-divider");
-    // Accent styling lives on the divider's children (the hairlines use
-    // bg-arcan-accent; the label uses text-arcan-accent) — assert against the
-    // rendered subtree, and confirm the uppercase "new" label.
+    // The kit's new-divider has bg-arcan-accent hairlines and text-arcan-accent label.
     expect(divider.outerHTML).toContain("arcan-accent");
     expect(divider.textContent?.toLowerCase()).toContain("new");
   });

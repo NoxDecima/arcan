@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { HAv, Icon, Fab, tapClass } from "../kit";
 import type { HomeProfile, ConvoItem, ContactItem } from "./home-types";
 import { ConvoRow, ContactRow } from "./rows";
+import type { JSX } from "react";
 
 const DEFAULT_CHATS_EMPTY = "no conversations yet";
 const DEFAULT_CONTACTS_EMPTY = "no contacts yet";

@@ -12,6 +12,7 @@
 
 import { HAv, Icon, tapClass } from "../kit";
 import type { ConvoItem, ContactItem } from "./home-types";
+import type { JSX } from "react";
 
 export function ConvoRow({
   item,

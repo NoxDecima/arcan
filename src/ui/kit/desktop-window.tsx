@@ -4,6 +4,7 @@
 
 import type { ReactNode } from "react";
 import { ArcanMark } from "./arcan-mark";
+import type { JSX } from "react";
 
 const TRAFFIC = ["#e2696e", "#e6b450", "#5fb87f"] as const;
 

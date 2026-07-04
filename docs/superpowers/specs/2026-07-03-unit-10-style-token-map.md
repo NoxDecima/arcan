@@ -79,6 +79,10 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `400|500 11px/1.3` body (row preview) | `font-body text-ui-preview` (+`font-medium` when unread) |
 | `600 13px/1.2` body (contact row name) | `font-body font-semibold text-ui-contact` |
 | `700 9.5px/17px` mono (unread pill) | `font-mono font-bold text-ui-tab` + inline `lineHeight: "17px"` |
+| `400 10px/1` (chat header sub) | `font-body text-ui-chatsub` (mono when headMono context: `font-mono`) |
+| `500 9px/1` mono `.14em` caps (day marker) | `font-mono font-medium text-ui-caps tracking-caps-sm uppercase text-dim self-center` |
+| `600 13px/1` mono (composer prompt ›) | `font-mono font-semibold text-ui-btn text-arcan-accent` |
+| `400 12.5px/1` body (composer input) | `font-body text-ui-row leading-none text-text` + inline `caretColor: var(--color-accent-fill)` |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -106,6 +110,11 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | Sys row | `font-mono text-ui-sys text-dim text-center` with literal `// ` prefix |
 | "new" divider | lines `bg-arcan-accent opacity-50`, label `font-mono font-semibold text-ui-caps tracking-caps uppercase text-arcan-accent` |
 | Section label | `font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim` with literal `// ` prefix |
+| Timeline body | `flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 p-3 bg-bg` |
+| Composer bar | `shrink-0 border-t border-hairline p-2.5 flex items-center gap-[9px] bg-bg` |
+| Composer input pill | `min-w-0 overflow-hidden flex-1 h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3` |
+| Composer send button | tap + `w-[38px] h-[38px] rounded-pill justify-center transition-colors duration-[150ms]`; armed `bg-arcan-accent-fill` icon `text-on-accent`, empty `bg-panel-2` icon `text-dim`; Icon send 16 fill |
+| Composer attach button | tap + Icon plusc 22 `text-text-2` (v5 soft) |
 
 ## Component metrics stay literal
 

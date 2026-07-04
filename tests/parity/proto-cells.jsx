@@ -4,7 +4,7 @@
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
 const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
-const { HF_CONVOS, HF_CONTACTS } = window;
+const { HF_CONVOS, HF_CONTACTS, HF_MSGS } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -117,6 +117,66 @@ function DesktopWindow({ s, children, narrow }) {
         <div style={{ width: 52 }} />
       </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>{children}</div>
+    </div>
+  );
+}
+
+/* patched copy: design/proto.jsx:154–203 — typing + presence/verified dropped (NOX-31/33) */
+/* 1:1 sub dropped entirely; status on HAv dropped; TypingRow removed; toast/nav stubbed. */
+/* intent-fix: minWidth:0+overflow:hidden on the pill (flex min-width:auto overflow in fixed-width cells) and margin:0/padding:0 on the input (Chrome UA padding 1px 2px — absent under the app's preflight; the pill's explicit '0 12px' padding is the designed inset) */
+function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
+  const c = s.c;
+  /* v5 headMono=true: '@' prefix for 1:1; groups use bare name (proto:175) */
+  const title = isGroup ? name : (s.headMono ? '@' + name : name);
+  /* 1:1 sub: presence/verified dropped (NOX-31/33) → undefined */
+  /* group sub: sysComment=true → '// N members', headMono=true → font-mono (proto:177) */
+  const sub = isGroup
+    ? <span style={{ font: `400 10px/1 ${s.font}`, color: c.text2 }}>{s.sysComment ? '// 5 members' : '5 members'}</span>
+    : undefined;
+  return (
+    <React.Fragment>
+      {/* header: status dropped on HAv; onBack desktop=undefined else stub (proto:182) */}
+      <PHeader s={s} title={title} sub={sub} onBack={desktop ? undefined : () => {}}
+        avatar={<HAv s={s} txt={ini} size={34} group={isGroup} ring={c.bg} />}
+        onTitle={() => {}} />
+      {/* timeline: flex-1 min-h-0, gap 10, pad 12, bg (proto:184); day marker top (proto:185) */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 12, background: c.bg }}>
+        <div style={{ alignSelf: 'center', font: `500 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>today</div>
+        {msgs.map((m, i) => <Row key={i} s={s} m={m} w={desktop ? 460 : 190} />)}
+      </div>
+      {/* composer bar (proto:189): v5 soft=true → plusc 22, rounded-pill; prompt=true → › */}
+      <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
+        <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
+        <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+          <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
+          <input value="" readOnly placeholder={'message ' + name.split(' ')[0]}
+            style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+        </div>
+        {/* empty state → panel2 bg, dim icon (proto:197) */}
+        <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: c.panel2, justifyContent: 'center' }}>
+          <Icon d="send" c={c.dim} size={16} fill />
+        </button>
+      </div>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:189–200 — same intent-fixes as PChatScreen's composer bar */
+function PComposerBar({ s, text }) {
+  const c = s.c;
+  const armed = Boolean(text && text.trim());
+  return (
+    <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
+      <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
+      <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+        <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
+        <input value={text || ''} readOnly placeholder="message ada"
+          style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+      </div>
+      <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: armed ? c.accentFill : c.panel2, justifyContent: 'center' }}>
+        <Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill />
+      </button>
     </div>
   );
 }
@@ -474,6 +534,29 @@ const PROTO_CELLS = {
   /* patched copy: design/proto.jsx:731–780 (DesktopApp left column) — presence dropped (NOX-31) */
   "nav-column": (s) => <PNavColumn s={s} tab="chats" />,
   "nav-column-contacts": (s) => <PNavColumn s={s} tab="contacts" />,
+
+  /* patched copy: design/proto.jsx:154–203 — typing + presence/verified dropped (NOX-31/33) */
+  /* Seed: SEED['ada · keyring'] === HF_MSGS; proto renders day-marker + msgs.map(Row). */
+  "chat-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PChatScreen s={s} msgs={HF_MSGS} desktop={false} name="ada · keyring" ini="AK" isGroup={false} />
+    </div>
+  ),
+
+  /* desktop variant: same seed, w=460, no back button (proto: desktop ? undefined : nav.pop) */
+  "chat-screen-desktop": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PChatScreen s={s} msgs={HF_MSGS} desktop={true} name="ada · keyring" ini="AK" isGroup={false} />
+    </div>
+  ),
+
+  /* two composer bars: empty + "on it" armed (proto:189–200) */
+  "chat-composer-states": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', background: s.c.bg }}>
+      <PComposerBar s={s} text="" />
+      <PComposerBar s={s} text="on it" />
+    </div>
+  ),
 };
 
 (async () => {

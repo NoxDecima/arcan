@@ -5,6 +5,7 @@
 // inline-only children with no height constraint — so no fontSize pin applies.
 
 import type { ReactNode } from "react";
+import type { JSX } from "react";
 
 export function Body({
   children,

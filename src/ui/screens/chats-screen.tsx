@@ -8,6 +8,7 @@ import { Body, Fab } from "../kit";
 import type { HomeProfile, ConvoItem } from "./home-types";
 import { ConvoRow } from "./rows";
 import { HomeScreenHeader } from "./home-screen-header";
+import type { JSX } from "react";
 
 // Rung 4 note: empty state is a simple text div (no EmptyPane) per the Wave A spec.
 // Default copy sourced from the legacy sidebar.tsx empty-state title.

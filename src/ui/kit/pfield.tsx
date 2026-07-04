@@ -6,6 +6,7 @@
 // inline formatting context, and both spans set their own font explicitly,
 // so ambient font context cannot leak into this component's geometry.
 
+import type { JSX } from "react";
 export function PField({
   label,
   ph,

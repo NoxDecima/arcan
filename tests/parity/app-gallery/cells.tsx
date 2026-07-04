@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
-import { ChatsScreen, ContactsScreen, NavColumn, type ConvoItem, type ContactItem } from "@/ui/screens";
-import { HF_CONVOS, HF_CONTACTS } from "./fixtures";
+import { ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer, type ConvoItem, type ContactItem } from "@/ui/screens";
+import { HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -301,5 +301,65 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
       onSettings={() => {}}
       onFab={() => {}}
     />
+  ),
+
+  // proto.jsx:154–203 (ChatScreen) — patched: typing + presence/verified dropped (NOX-31/33)
+  // Seed: SEED['ada · keyring'] === HF_MSGS; proto renders day-marker + msgs.map(Row).
+  "chat-screen": () => (
+    <div className="flex flex-col h-full">
+      <ChatScreen
+        header={{ title: "@ada · keyring", initials: "AK" }}
+        items={HF_CHAT_ITEMS}
+        bubbleWidth={190}
+        onBack={() => {}}
+        onOpenInfo={() => {}}
+        composer={
+          <ChatComposer
+            value=""
+            onChange={() => {}}
+            onSend={() => {}}
+            placeholder="message ada"
+          />
+        }
+      />
+    </div>
+  ),
+
+  // proto.jsx:154–203 (ChatScreen desktop) — same seed, w=460, no back button.
+  "chat-screen-desktop": () => (
+    <div className="flex flex-col h-full">
+      <ChatScreen
+        header={{ title: "@ada · keyring", initials: "AK" }}
+        items={HF_CHAT_ITEMS}
+        bubbleWidth={460}
+        onOpenInfo={() => {}}
+        composer={
+          <ChatComposer
+            value=""
+            onChange={() => {}}
+            onSend={() => {}}
+            placeholder="message ada"
+          />
+        }
+      />
+    </div>
+  ),
+
+  // proto.jsx:189–200 (ChatScreen composer bar) — two bars: empty + "on it" armed.
+  "chat-composer-states": () => (
+    <div className="flex flex-col bg-bg">
+      <ChatComposer
+        value=""
+        onChange={() => {}}
+        onSend={() => {}}
+        placeholder="message ada"
+      />
+      <ChatComposer
+        value="on it"
+        onChange={() => {}}
+        onSend={() => {}}
+        placeholder="message ada"
+      />
+    </div>
   ),
 };

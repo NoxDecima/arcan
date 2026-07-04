@@ -3,6 +3,7 @@
 // Prototype uses a `c` color prop; this kit version is pixel-identical
 // because currentColor resolves to the same computed color value.
 
+import type { JSX } from "react";
 export type IconName =
   | "search" | "plus" | "gear" | "back" | "chev" | "send" | "plusc"
   | "image" | "paperclip" | "chat" | "people" | "pencil" | "copy"
