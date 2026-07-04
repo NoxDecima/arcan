@@ -1,8 +1,16 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
-import { ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer, ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem } from "@/ui/screens";
-import { HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE } from "./fixtures";
+import {
+  ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer,
+  ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem,
+  SettingsScreen, FeedbackScreen, LinkDeviceScreen, type ThemeName,
+} from "@/ui/screens";
+import {
+  HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
+  SETTINGS_ACCOUNT_FIXTURE, ACCENT_KEYS_FIXTURE, ACCENT_SOLID,
+  SETTINGS_NOTIF_FIXTURE, SETTINGS_DEVICES_FIXTURE,
+} from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -387,6 +395,85 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onEditAvatar={() => {}}
         onAddContact={() => {}}
         onSettings={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:261–317 (SettingsScreen) — patched: toast/nav stubbed; theme/accent from
+  // data-theme/data-accent DOM attrs (set per-run by the parity harness).
+  "settings-screen": () => {
+    const theme = (document.documentElement.getAttribute("data-theme") ?? "dark") as ThemeName;
+    const accent = document.documentElement.getAttribute("data-accent") ?? "tokyo";
+    return (
+      <div className="flex flex-col h-full">
+        <SettingsScreen
+          account={SETTINGS_ACCOUNT_FIXTURE}
+          theme={theme}
+          accent={accent}
+          accentKeys={ACCENT_KEYS_FIXTURE}
+          accentSolid={ACCENT_SOLID}
+          notifications={SETTINGS_NOTIF_FIXTURE}
+          devices={SETTINGS_DEVICES_FIXTURE}
+          onOpenProfile={() => {}}
+          onChangePassword={() => {}}
+          onRecoveryCode={() => {}}
+          onFeedback={() => {}}
+          onTheme={() => {}}
+          onAccent={() => {}}
+          onLinkDevice={() => {}}
+          onSignOut={() => {}}
+          onBack={() => {}}
+        />
+      </div>
+    );
+  },
+
+  // proto.jsx:487–531 (FeedbackScreen) — empty state (message='', cat=null).
+  // attachmentSlot = proto-matching static dropzone fixture (not attached).
+  "feedback-screen": () => (
+    <div className="flex flex-col h-full">
+      <FeedbackScreen
+        onBack={() => {}}
+        message=""
+        onMessage={() => {}}
+        category={null}
+        categories={[
+          ["bug", "bug"],
+          ["idea", "idea"],
+          ["question", "question"],
+          ["praise", "praise"],
+        ]}
+        onCategory={() => {}}
+        attachmentSlot={
+          /* proto-matching dropzone element (pure fixture; not-attached state) */
+          <button
+            type="button"
+            className={`${tapClass} flex w-full justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent`}
+          >
+            <Icon d="paperclip" size={15} className="text-text-2" />
+            <span className="font-body font-medium text-ui-empty-sub text-text-2">
+              add a screenshot
+            </span>
+          </button>
+        }
+        email=""
+        onEmail={() => {}}
+        canSubmit={false}
+        submitting={false}
+        onSubmit={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:462–475 (LinkDeviceScreen) — qrSlot=<PQR size={150}> (real QR is Rung-4).
+  // Waiting-pulse animation is frozen by gallery's animation:none!important.
+  "link-device-screen": () => (
+    <div className="flex flex-col h-full">
+      <LinkDeviceScreen
+        onBack={() => {}}
+        linkUrl="arcan.app/link#k2f…a81"
+        onCopy={() => {}}
+        qrSlot={<PQR size={150} />}
       />
     </div>
   ),

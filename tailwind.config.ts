@@ -142,6 +142,18 @@ export default {
         'fab': '0 8px 22px var(--color-accent-glow)',
         'dot': '0 0 10px var(--color-accent-dot)',
       },
+      keyframes: {
+        // loading-affordance dot for LinkDeviceScreen (port of hf-typing keyframe).
+        // Parity galleries freeze animation (animation:none!important) so the dot
+        // renders at its base state (opacity:1) on both sides.
+        'waiting-pulse': {
+          '0%, 70%, 100%': { transform: 'translateY(0)', opacity: '0.35' },
+          '35%': { transform: 'translateY(-3px)', opacity: '1' },
+        },
+      },
+      animation: {
+        'waiting-pulse': 'waiting-pulse 1.1s ease-in-out infinite',
+      },
       backgroundImage: {
         // Gradient tokens — see src/styles/tokens.css.
         // Usage: <div className="bg-gradient-primary"> etc.

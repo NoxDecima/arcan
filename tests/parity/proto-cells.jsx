@@ -360,6 +360,179 @@ function POwnProfileScreen({ s, params }) {
 }
 /* end patched copy */
 
+/* patched copy: design/proto.jsx:261–317 (SettingsScreen) —
+   toast/nav stubbed; theme/accent from s.theme/s.accentKey (skin object);
+   ACCENT_KEYS/ACCENTS/lum from window (hf-kit); boxShadow glow dropped (matches app). */
+function PSettingsScreen({ s }) {
+  const c = s.c;
+  const theme = s.theme;
+  const accent = s.accentKey;
+  const [notif, setNotif] = React.useState(true);
+  const [ment, setMent] = React.useState(true);
+  const ACCENT_KEYS = window.ACCENT_KEYS;
+  const ACCENTS = window.ACCENTS;
+  const lum = window.lum;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="settings" onBack={() => {}} />
+      <Body s={s} pad={14}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* account */}
+          <div>
+            <PSectionLabel s={s}>account</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} label="decima" sub="view your profile" onClick={() => {}} right={<HAv s={s} txt="me" size={34} />} />
+              <PRow s={s} icon="key" label="change password" onClick={() => {}} />
+              <PRow s={s} icon="shield" label="recovery code" onClick={() => {}} last />
+            </PCard>
+          </div>
+          {/* feedback */}
+          <PCard s={s}><PRow s={s} icon="message" iconColor={c.accent} label="give feedback" sub="report a bug or share an idea" onClick={() => {}} last /></PCard>
+          {/* appearance */}
+          <div>
+            <PSectionLabel s={s}>appearance</PSectionLabel>
+            <PCard s={s}>
+              {/* theme row — proto:280–285 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${c.border}` }}>
+                <Icon d={theme === 'dark' ? 'moon' : 'sun'} c={c.text2} size={17} />
+                <span style={{ flex: 1, font: `500 12.5px/1 ${s.body}`, color: c.text }}>theme</span>
+                <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 999, background: c.panel2, border: `1px solid ${c.border}` }}>
+                  {['light', 'dark'].map(t => (
+                    <button key={t} onClick={() => {}} style={{ ...tapBtn, borderRadius: 999, padding: '5px 12px', font: `600 10.5px/1 ${s.font}`, color: theme === t ? c.onAccent : c.text2, background: theme === t ? c.accentFill : 'transparent' }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              {/* accent row — proto:287–296; boxShadow glow dropped (matches app) */}
+              <div style={{ padding: '13px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Icon d="sparkle" c={c.text2} size={17} />
+                  <span style={{ flex: 1, font: `500 12.5px/1 ${s.body}`, color: c.text }}>accent color</span>
+                  <span style={{ font: `400 11px/1 ${s.font}`, color: c.accent }}>{accent}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 14, paddingLeft: 29 }}>
+                  {ACCENT_KEYS.map(k => {
+                    const col = ACCENTS[k].solid, on = accent === k;
+                    return (
+                      <button key={k} onClick={() => {}} title={k} style={{ ...tapBtn, width: 28, height: 28, borderRadius: 999, background: col, border: on ? `2px solid ${c.text}` : '2px solid transparent', boxShadow: on ? `0 0 0 2px ${c.panel}` : 'none', justifyContent: 'center' }}>
+                        {on && <Icon d="check" c={lum(col) > 0.55 ? '#0b0d14' : '#fff'} size={14} sw={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </PCard>
+          </div>
+          {/* notifications — patched: proto icons kept (bell/at) matching app fixture icons */}
+          <div>
+            <PSectionLabel s={s}>notifications</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} icon="bell" label="new messages" right={<PToggle s={s} on={notif} onClick={() => setNotif(v => !v)} />} />
+              <PRow s={s} icon="at" label="mentions only" sub="for group conversations" right={<PToggle s={s} on={ment} onClick={() => setMent(v => !v)} />} last />
+            </PCard>
+          </div>
+          {/* devices */}
+          <div>
+            <PSectionLabel s={s}>devices</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} icon="device" label="this device · macbook" value="active now" />
+              <PRow s={s} icon="plus" label="link a device" onClick={() => {}} last />
+            </PCard>
+          </div>
+          {/* sign out */}
+          <PCard s={s}><PRow s={s} icon="logout" label="sign out" danger onClick={() => {}} last /></PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:487–531 (FeedbackScreen) —
+   toast/nav stubbed; state initialized to empty (text='', cat=null, attached=false);
+   attachmentSlot = static dropzone matching empty state. */
+function PFeedbackScreen({ s }) {
+  const c = s.c;
+  const [text, setText] = React.useState('');
+  const [cat, setCat] = React.useState(null);
+  const cats = [['bug', 'bug'], ['idea', 'idea'], ['question', 'question'], ['praise', 'praise']];
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="give feedback" onBack={() => {}} />
+      <Body s={s} pad={16}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520, width: '100%', margin: '0 auto' }}>
+          {/* intro */}
+          <div style={{ font: `400 11.5px/1.5 ${s.body}`, color: c.text2 }}>found a bug or have an idea? tell me — it goes straight to the maker.</div>
+          {/* your feedback */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>your feedback</span>
+            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="what's on your mind?"
+              style={{ minHeight: 110, resize: 'none', borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, color: c.text, padding: '11px 12px', font: `400 12.5px/1.5 ${s.body}`, outline: 'none', caretColor: c.accentFill }} />
+          </div>
+          {/* category */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>category · optional</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {cats.map(([k, lb]) => { const on = cat === k; return (
+                <button key={k} onClick={() => setCat(on ? null : k)} style={{ ...tapBtn, padding: '7px 13px', borderRadius: s.soft ? 999 : s.radius, border: `1px solid ${on ? c.accentFill : c.border}`, background: on ? c.accentSoft : 'transparent', font: `600 11px/1 ${s.headMono ? s.font : s.body}`, color: on ? c.accent : c.text2 }}>{lb}</button>
+              ); })}
+            </div>
+          </div>
+          {/* attachment — not attached state (proto:520–522) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>attachment · optional</span>
+            <button onClick={() => {}} style={{ ...tapBtn, justifyContent: 'center', gap: 8, padding: '12px', borderRadius: s.radius, border: `1px dashed ${c.border}`, background: 'transparent' }}>
+              <Icon d="paperclip" c={c.text2} size={15} /><span style={{ font: `500 11.5px/1 ${s.body}`, color: c.text2 }}>add a screenshot</span>
+            </button>
+          </div>
+          {/* email — patched: PField replaced with native <input> (app renders real input, not display-only PField;
+               PField's placeholder text wraps outside its 40px div, causing layout diff) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>email · optional</span>
+            <input type="email" defaultValue="" placeholder="for follow-up — leave blank to stay anonymous"
+              style={{ height: 40, borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, color: c.text, padding: '0 12px', font: `400 12.5px/1 ${s.body}`, outline: 'none', boxSizing: 'border-box', width: '100%' }} />
+          </div>
+          {/* submit — opacity:.5 because text is empty */}
+          <PButton s={s} primary full label="submit feedback" icon="send" onClick={() => {}} style={{ opacity: 0.5 }} />
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:462–475 (LinkDeviceScreen) —
+   toast/nav stubbed; linkUrl from prop; QR = PQR size=150;
+   hf-typing-dot class retained (animation frozen by gallery: animation:none!important). */
+function PLinkDeviceScreen({ s }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="link a device" onBack={() => {}} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ textAlign: 'center', font: `400 11.5px/1.5 ${s.body}`, color: c.text2 }}>open this link on your other device, or scan it</div>
+          <PQR s={s} size={150} />
+          <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', maxWidth: 320, border: `1px solid ${c.border}`, borderRadius: s.radius, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: '0 12px', display: 'flex', alignItems: 'center', background: c.panel }}>
+              <span style={{ font: `400 11px/1 ${s.font}`, color: c.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>arcan.app/link#k2f…a81</span>
+            </div>
+            <button onClick={() => {}} style={{ ...tapBtn, padding: '10px 13px', borderLeft: `1px solid ${c.border}`, background: c.panel, gap: 6 }}>
+              <Icon d="copy" c={c.accent} size={13} />
+              <span style={{ font: `600 11px/1 ${s.body}`, color: c.accent }}>copy</span>
+            </button>
+          </div>
+          {/* waiting row — hf-typing-dot class retained (animation disabled in gallery) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 7, background: c.accentFill }} className="hf-typing-dot" />
+            <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>waiting for your other device…</span>
+          </div>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -580,6 +753,28 @@ const PROTO_CELLS = {
   "own-profile-screen": (s) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <POwnProfileScreen s={s} params={{ name: 'decima', ini: 'me' }} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:261–317 (SettingsScreen) — toast/nav stubbed;
+     theme/accent from skin; ACCENT_KEYS/ACCENTS/lum from window; boxShadow glow dropped. */
+  "settings-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PSettingsScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:487–531 (FeedbackScreen) — empty state (text='', cat=null). */
+  "feedback-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PFeedbackScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:462–475 (LinkDeviceScreen) — QR = PQR; pulse static. */
+  "link-device-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PLinkDeviceScreen s={s} />
     </div>
   ),
 

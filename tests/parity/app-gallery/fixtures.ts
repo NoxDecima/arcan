@@ -1,4 +1,13 @@
-import type { ConvoItem, ContactItem, ChatTimelineItem, ProfileScreenVM, OwnProfileScreenVM } from "@/ui/screens";
+import type {
+  ConvoItem,
+  ContactItem,
+  ChatTimelineItem,
+  ProfileScreenVM,
+  OwnProfileScreenVM,
+  SettingsAccountVM,
+  SettingsToggleRow,
+  SettingsDeviceRow,
+} from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
 // "·" = U+00B7 (middle dot). No avatarSrc — initials-only for parity cells.
@@ -45,3 +54,57 @@ export const OWN_PROFILE_FIXTURE: OwnProfileScreenVM = {
   initials: "me",
   idShort: "co_z1a8…4f2",
 };
+
+// ── Settings cluster fixtures (Task 3) ──────────────────────────────────────
+// Mirrors the proto.jsx SettingsScreen placeholder values.
+
+export const SETTINGS_ACCOUNT_FIXTURE: SettingsAccountVM = {
+  name: "decima",
+  initials: "me",
+};
+
+/** Accent keys matching ACCENT_KEYS from design/hf-kit.jsx. */
+export const ACCENT_KEYS_FIXTURE = [
+  "tokyo",
+  "violet",
+  "teal",
+  "lime",
+  "amber",
+  "rose",
+];
+
+/** Solid hex per accent key — mirrors ACCENT_SWATCH from appearance-section.tsx. */
+export const ACCENT_SOLID: Record<string, string> = {
+  tokyo:  "#7aa2f7",
+  violet: "#bb9af7",
+  teal:   "#73daca",
+  lime:   "#9ece6a",
+  amber:  "#e0af68",
+  rose:   "#f7768e",
+};
+
+/** Proto's two notification rows; initial on=true matches proto's useState(true). */
+export const SETTINGS_NOTIF_FIXTURE: SettingsToggleRow[] = [
+  {
+    key: "notif",
+    label: "new messages",
+    on: true,
+    onToggle: () => {},
+    ariaLabel: "new messages",
+    icon: "bell",
+  },
+  {
+    key: "ment",
+    label: "mentions only",
+    sub: "for group conversations",
+    on: true,
+    onToggle: () => {},
+    ariaLabel: "mentions only",
+    icon: "at",
+  },
+];
+
+/** Proto's device row (link-a-device is the fixed footer row, not in this array). */
+export const SETTINGS_DEVICES_FIXTURE: SettingsDeviceRow[] = [
+  { key: "dev0", label: "this device · macbook", value: "active now" },
+];

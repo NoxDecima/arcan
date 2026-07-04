@@ -40,6 +40,9 @@
     { "id": "chat-screen-desktop", "width": 640, "height": 560, "pad": 0 },
     { "id": "chat-composer-states", "width": 300, "height": 200, "pad": 0, "maxDiffRatio": 0.004 },
     { "id": "profile-screen", "width": 300, "height": 560, "pad": 0, "maxDiffRatio": 0.004 },
-    { "id": "own-profile-screen", "width": 300, "height": 560, "pad": 0 }
+    { "id": "own-profile-screen", "width": 300, "height": 560, "pad": 0 },
+    { "id": "settings-screen", "width": 300, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "feedback-screen", "width": 300, "height": 640, "pad": 0 },
+    { "id": "link-device-screen", "width": 300, "height": 560, "pad": 0 }
   ]
 }

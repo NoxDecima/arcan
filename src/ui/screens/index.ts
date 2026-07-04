@@ -12,3 +12,12 @@ export type { ChatTimelineItem, ChatHeaderVM } from "./chat-types";
 export { ProfileScreen } from "./profile-screen";
 export { OwnProfileScreen } from "./own-profile-screen";
 export type { ProfileScreenVM, OwnProfileScreenVM } from "./profile-types";
+export { SettingsScreen } from "./settings-screen";
+export { FeedbackScreen } from "./feedback-screen";
+export { LinkDeviceScreen } from "./link-device-screen";
+export type {
+  SettingsAccountVM,
+  SettingsToggleRow,
+  SettingsDeviceRow,
+  ThemeName,
+} from "./settings-types";
