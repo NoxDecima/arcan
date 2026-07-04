@@ -73,7 +73,7 @@ export function FeedbackRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-bg">
       {/* PaneHeader: back + title (proto.jsx FeedbackScreen line 488) */}
       <header className="flex h-14 items-center gap-3 border-b border-hairline px-4">
         <button

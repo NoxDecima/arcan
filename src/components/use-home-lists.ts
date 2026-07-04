@@ -129,10 +129,15 @@ export interface HomeListsResult {
  *     conversation icons via icon.data.$jazz.id, contact photos via
  *     resolveAvatarFileBlob → loadAsBlob.
  *
- * Deliberate degradation — Wave A snapshot behavior: no live remote-profile
- * subscription (old useRemoteAvatar hook is NOT used). Avatar URLs are resolved
- * once per list change and not reactively updated when a contact's remote
- * profile changes. This is tracked as a followup for a later wave.
+ * Deliberate degradation — Wave A: CONTACT PHOTOS EFFECTIVELY DON'T RESOLVE.
+ * resolveAvatarFileBlob's contactBook branch is a documented no-op (Contact
+ * stores contactAccountID as a plain string — no $jazz.refs.account to walk;
+ * see src/jazz/avatarResolver.ts header). The old Sidebar carried contact
+ * photos via the per-row useRemoteAvatar subscription, which Wave A dropped.
+ * Net: contact rows render initials until the followup restores the
+ * useRemoteAvatar mechanism. Own-profile avatar + conversation icons DO
+ * resolve here (their FileBlobs are locally reachable) but as snapshots —
+ * no reactive update on remote profile change. Tracked as a followup.
  *
  * Called unconditionally in AppShell (hook rules); desktop NavColumn consumes
  * it there. Mobile ConversationsRoute calls its own instance for screen

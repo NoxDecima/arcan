@@ -72,12 +72,18 @@ Container `useHomeLists` resolves avatar images via one-shot container effects
 - **Conversation icons**: combined effect iterates `knownConversations`; each
   entry with `icon.data.$jazz.id` is blob-loaded into the `id → objectURL` map.
   `icon: true` added to the `$each` resolve spec to make the FileBlob available.
-- **Contact photos**: same combined effect; `resolveAvatarFileBlob({ accountID, me })`
-  returns the FileBlob (sync, from contactBook / group members), then blob-loaded.
+- **Contact photos**: EFFECTIVELY INITIALS-ONLY in Wave A. The combined effect
+  calls `resolveAvatarFileBlob({ accountID, me })`, but its contactBook branch
+  is a documented no-op (Contact stores a plain accountID string — no
+  `$jazz.refs.account` to walk; see `src/jazz/avatarResolver.ts`). The old
+  Sidebar carried contact photos via the per-row `useRemoteAvatar`
+  subscription, which Wave A dropped. Only the group-members path can
+  occasionally yield a blob.
 
-Deliberate degradation: `useRemoteAvatar` (live remote-profile subscription) is
-NOT used — no reactive update when a contact's remote profile changes mid-session.
-Tracked as a followup for a later wave. Wave A snapshot behavior is intentional.
+Deliberate, tracked deferral: reinstating the `useRemoteAvatar` mechanism (not
+merely adding reactivity) is the followup; `profile-avatar.spec.ts` is
+`test.fixme`'d on exactly this. Own-profile avatar + conversation icons DO
+resolve (snapshot; no live remote update).
 
 ### Wave A coverage rows
 
@@ -96,5 +102,12 @@ Tracked as a followup for a later wave. Wave A snapshot behavior is intentional.
 
 - 42/44 on first run after integration. `unread-badges` updated to the
   prototype's weight convention (unread = bold, read = semibold) — now green.
-- `profile-avatar` marked `test.fixme` — known-failing on the live-avatar-sync
-  degradation above (followup task tracks it). 43 runnable, 43 green.
+- `profile-avatar` marked `test.fixme` — contact photos don't resolve on home
+  lists (see avatar section above; followup task tracks it). 43 runnable,
+  43 green.
+- Merge-review fix: five route roots (`/settings` + 3 sub-routes,
+  `/conversations/new`) used `min-h-screen`/`h-screen`, which clips inside the
+  fixed-height `DesktopWindow` (and `MobileShell`) with no scroll ancestor —
+  converted to `flex-1 min-h-0` (+ `overflow-y-auto` where the route is its
+  own scroll container). Wave B-D rule: route roots must fill the pane, never
+  the viewport.

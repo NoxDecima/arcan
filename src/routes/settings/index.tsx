@@ -25,7 +25,7 @@ import { FeedbackRoute } from "./feedback-route";
  */
 function SettingsBody() {
   return (
-    <div className="min-h-screen bg-bg" data-testid="settings-body">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-bg" data-testid="settings-body">
       <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 p-4">
         {/* account — owned by 9-5a */}
         <AccountSection />
