@@ -175,6 +175,7 @@ export function ChatScreen({
                         ini: item.authorInitials,
                         time: item.time,
                         att: item.att,
+                        edited: item.edited,
                       }}
                       w={bubbleWidth}
                       attSlot={item.attSlot}

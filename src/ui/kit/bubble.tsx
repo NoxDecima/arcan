@@ -15,6 +15,8 @@ export interface BubbleMsg {
   ini?: string;
   time?: string;
   att?: boolean;
+  /** Rung 4: message was edited — renders "(edited)" indicator below the body row. */
+  edited?: boolean;
 }
 
 // v5 own paint: tint → bg-bubble-own / border-accent-border / text text-text / time text-dim
@@ -74,22 +76,29 @@ export function Bubble({
         </div>
       )}
       {bodyOverride ?? (
-        <div className="flex items-end gap-2">
-          <span
-            className="flex-1 font-body text-ui-bubble"
-            {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
-          >
-            {m.text}
-          </span>
-          {m.time && (
+        <>
+          <div className="flex items-end gap-2">
             <span
-              className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
-              {...(timeTestId ? { "data-testid": timeTestId } : {})}
+              className="flex-1 font-body text-ui-bubble"
+              {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
             >
-              {m.time}
+              {m.text}
+            </span>
+            {m.time && (
+              <span
+                className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
+                {...(timeTestId ? { "data-testid": timeTestId } : {})}
+              >
+                {m.time}
+              </span>
+            )}
+          </div>
+          {m.edited && (
+            <span className="block font-mono text-ui-time text-dim mt-0.5">
+              (edited)
             </span>
           )}
-        </div>
+        </>
       )}
     </div>
   );

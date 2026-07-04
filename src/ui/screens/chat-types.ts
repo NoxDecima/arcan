@@ -19,6 +19,8 @@ export type ChatTimelineItem =
       att?: boolean;
       /** Rung 4: real attachment content from the container. */
       attSlot?: ReactNode;
+      /** Rung 4: message was edited — bubble shows "(edited)" indicator. */
+      edited?: boolean;
       /** Rung 4: deleted message state — renders special bubble shell. */
       deleted?: boolean;
       /** Rung 4: malformed message state — renders special bubble shell. */

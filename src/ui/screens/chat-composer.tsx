@@ -17,6 +17,8 @@ export function ChatComposer({
   onAttach,
   attachSlot,
   errorSlot,
+  hasAttachments,
+  onPaste,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -31,8 +33,12 @@ export function ChatComposer({
   attachSlot?: ReactNode;
   /** Rung 4: composer-error line. */
   errorSlot?: ReactNode;
+  /** Rung 4: true when pending attachments are present — enables send even with empty text. */
+  hasAttachments?: boolean;
+  /** Rung 4: paste handler for clipboard-image ingestion. */
+  onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
 }): JSX.Element {
-  const armed = Boolean(value.trim()) && !disabled;
+  const armed = (Boolean(value.trim()) || (hasAttachments ?? false)) && !disabled;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") onSend();
@@ -68,6 +74,7 @@ export function ChatComposer({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={onPaste}
             placeholder={placeholder}
             disabled={disabled}
             data-testid="composer-input"

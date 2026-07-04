@@ -34,7 +34,7 @@
  * is unreadable — we redirect to /conversations rather than render a stub.
  */
 
-import { useRef, useEffect, useState, type ChangeEvent } from "react";
+import { useRef, useEffect, useState, type ChangeEvent, type ClipboardEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -417,6 +417,17 @@ export function ConversationDetailRoute() {
     setPending((prev) => prev.filter((p) => p.tempId !== tempId));
   }
 
+  function handleComposerPaste(e: ClipboardEvent<HTMLInputElement>) {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      const realFiles = Array.from(files).filter((f) => f.size > 0);
+      if (realFiles.length > 0) {
+        e.preventDefault();
+        ingestFiles(realFiles);
+      }
+    }
+  }
+
   async function handleComposerSend() {
     if (isSending || composerDisabled) return;
     const trimmed = composerText.trim();
@@ -714,6 +725,7 @@ export function ConversationDetailRoute() {
         authorInitials,
         att: hasAttachments,
         attSlot,
+        edited: !isDeleted && Boolean(message?.edited),
         deleted: isDeleted,
         malformed,
         menuSlot,
@@ -776,7 +788,9 @@ export function ConversationDetailRoute() {
         onSend={handleComposerSend}
         placeholder={composerPlaceholder}
         disabled={composerDisabled || isSending}
+        hasAttachments={pending.length > 0}
         onAttach={handlePickClick}
+        onPaste={handleComposerPaste}
         attachSlot={
           pending.length > 0 ? (
             <ComposerAttachmentTray

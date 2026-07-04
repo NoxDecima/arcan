@@ -108,6 +108,21 @@ resolve (snapshot; no live remote update).
 | Toast rendering | app-wide | 1 | proto Toast (590–600) | PASS (toast-tones) | legacy API/testids kept; stacked toasts Rung 4 |
 | Empty/loading states | home | 4 | — | — | legacy copy + NavListSkeleton kept |
 
+### Wave B coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Chat screen (mobile) | `/conversations/:id` | 1 | proto ChatScreen (154–203) | PASS 0.072% | typing + presence/verified dropped (NOX-31/33) |
+| Chat screen (desktop pane) | `/conversations/:id` | 1 | proto ChatScreen, desktop w=460 | PASS 0.034% | back arrow mobile-only |
+| Composer | chat | 1 + 4 | proto :189–200 | PASS (0.004 override, AA-characterized) | real upload flow container-side; pending chips + error = Rung 4 slots |
+| Day markers | chat timeline | 1 + 4 | proto "today" (:185) | in-screen cells | "yesterday"/"d MMM" for older days is an inference |
+| New-messages divider | chat timeline | 1 | kit new-divider (proto :56–60 equiv) | PASS (Phase 1 cell) | position from existing findNewMarkIndex |
+| System-event rows | chat timeline | 1 | kit sys row | PASS (Phase 1 cell) | text via formatSystemEventMessage, kind testids kept |
+| Message edit/delete | chat | 4 | — | — | menu ⋮ + inline edit restyled with kit tokens; hover-reveal dropped (menu always visible — walkthrough item) |
+| Deleted/malformed states | chat | 4 | — | — | italic dim text in bubble shell, testids kept |
+| Real attachments + lightbox | chat | 4 | kit Bubble attSlot | — | moved to src/components/message-attachments.tsx, behavior preserved |
+| Connection banner / write-group handshake | chat | 4 | — | — | logic untouched, banner slot above timeline |
+
 ### Wave A e2e drift (vs 44/44 baseline)
 
 - 42/44 on first run after integration. `unread-badges` updated to the

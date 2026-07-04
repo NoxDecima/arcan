@@ -137,7 +137,7 @@ test("1:1 messaging — send, receive, edit, delete", async ({ browser }) => {
     // Alice sees the deleted placeholder
     await expect(pageA.getByTestId("message-deleted")).toBeVisible({ timeout: 5_000 });
     await expect(pageA.getByTestId("message-timeline")).toContainText(
-      "This message was deleted",
+      "message deleted",
       { timeout: 5_000 },
     );
 
@@ -154,7 +154,7 @@ test("1:1 messaging — send, receive, edit, delete", async ({ browser }) => {
       await expect(pageB.getByTestId("message-deleted")).toBeVisible({ timeout: 15_000 });
     }
     await expect(pageB.getByTestId("message-timeline")).toContainText(
-      "This message was deleted",
+      "message deleted",
       { timeout: 10_000 },
     );
   } finally {
