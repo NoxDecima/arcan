@@ -27,6 +27,10 @@
     { "id": "toast-tones", "height": 256, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "arcanmark-tiers" },
     { "id": "arcanmark-accents", "accents": ["tokyo", "rose"] },
-    { "id": "lattice-verdict", "advisory": true }
+    { "id": "lattice-verdict", "advisory": true },
+    { "id": "auth-shell", "width": 360, "height": 480, "pad": 0 },
+    { "id": "desktop-empty", "width": 640, "height": 480, "pad": 0 },
+    { "id": "desktop-window", "width": 620, "height": 700, "pad": 24, "bg": "stage" },
+    { "id": "mobile-shell", "width": 300, "height": 560, "pad": 0 }
   ]
 }

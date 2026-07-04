@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark } = window;
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -67,6 +67,55 @@ function Toast({ s, data }) {
     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 18, zIndex: 30, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: s.radius + 2, background: c.panel, border: `1px solid ${c.border}`, boxShadow: s.theme === 'dark' ? '0 10px 30px rgba(0,0,0,.55)' : '0 10px 30px rgba(40,40,60,.18)', animation: 'hf-toastin .3s cubic-bezier(.2,.8,.2,1) both' }}>
       <span style={{ width: 22, height: 22, borderRadius: 999, background: alpha(col, s.theme === 'dark' ? .2 : .14), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon d={data.icon || 'bell'} c={col} size={13} /></span>
       <span style={{ flex: 1, font: `500 12px/1.3 ${s.body}`, color: c.text }}>{data.text}</span>
+    </div>
+  );
+}
+
+/* verbatim copy: design/proto.jsx:567–579 (AuthShell), :658–673 (DesktopEmpty), :676–691 (DesktopWindow) */
+function AuthShell({ s, children }) {
+  const c = s.c;
+  return (
+    <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.bg, overflow: 'hidden' }}>
+      <svg width="320" height="320" viewBox="0 0 100 100" aria-hidden="true"
+        style={{ position: 'absolute', right: -74, bottom: -86, color: c.text, opacity: s.theme === 'dark' ? 0.05 : 0.06, userSelect: 'none', pointerEvents: 'none' }}
+        dangerouslySetInnerHTML={{ __html: (window.LATTICE ? window.LATTICE.full('currentColor') : '') }} />
+      <div style={{ position: 'absolute', left: '22%', top: '20%', width: 4, height: 4, borderRadius: 4, background: c.accentFill, boxShadow: `0 0 10px ${alpha(c.accentFill, .6)}` }} />
+      <div style={{ position: 'absolute', right: '24%', top: '26%', width: 3, height: 3, borderRadius: 3, background: '#bb9af7' }} />
+      <div style={{ width: 280, maxWidth: '86%', display: 'flex', flexDirection: 'column', gap: 13, position: 'relative', padding: 18 }}>{children}</div>
+    </div>
+  );
+}
+function DesktopEmpty({ s, tab }) {
+  const c = s.c;
+  return (
+    <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, background: c.bg, overflow: 'hidden' }}>
+      <svg width="360" height="360" viewBox="0 0 100 100" aria-hidden="true"
+        style={{ position: 'absolute', right: -84, bottom: -96, color: c.text, opacity: s.theme === 'dark' ? 0.05 : 0.06, userSelect: 'none', pointerEvents: 'none' }}
+        dangerouslySetInnerHTML={{ __html: (window.LATTICE ? window.LATTICE.full('currentColor') : '') }} />
+      <div style={{ position: 'absolute', left: '30%', top: '28%', width: 4, height: 4, borderRadius: 4, background: c.accentFill, boxShadow: `0 0 10px ${alpha(c.accentFill, .6)}` }} />
+      <div style={{ position: 'absolute', right: '32%', top: '34%', width: 3, height: 3, borderRadius: 3, background: '#bb9af7' }} />
+      <ArcanMark s={s} size={58} stacked />
+      <div style={{ textAlign: 'center', position: 'relative' }}>
+        <div style={{ font: `600 15px/1.3 ${s.headMono ? s.font : s.body}`, color: c.text2 }}>{tab === 'contacts' ? 'select a contact' : 'select a conversation'}</div>
+        <div style={{ marginTop: 6, font: `400 11.5px/1 ${s.body}`, color: c.dim }}>{s.sysComment ? '// end-to-end encrypted' : 'end-to-end encrypted'}</div>
+      </div>
+    </div>
+  );
+}
+function DesktopWindow({ s, children, narrow }) {
+  const c = s.c;
+  return (
+    <div style={{ width: narrow ? 'min(520px, 92vw)' : 'min(1200px, 95vw)', height: narrow ? 'min(620px, 88vh)' : 'min(88vh, 820px)', borderRadius: 14, overflow: 'hidden', border: `1px solid ${c.border}`, background: c.bg, boxShadow: s.theme === 'dark' ? '0 34px 90px rgba(0,0,0,.62)' : '0 34px 90px rgba(40,40,60,.24)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+        <div style={{ display: 'flex', gap: 7 }}>{['#e2696e', '#e6b450', '#5fb87f'].map(col => <span key={col} style={{ width: 11, height: 11, borderRadius: 999, background: col, opacity: .9 }} />)}</div>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 14px', borderRadius: 999, background: c.bg, border: `1px solid ${c.border}` }}>
+            <ArcanMark s={s} size={12} mono showWord={false} /><span style={{ font: `500 10px/1 ${s.font}`, color: c.dim, letterSpacing: '.04em' }}>arcan · local-first</span>
+          </div>
+        </div>
+        <div style={{ width: 52 }} />
+      </div>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>{children}</div>
     </div>
   );
 }
@@ -240,6 +289,45 @@ const PROTO_CELLS = {
 
   /* advisory: compares proto ArcanMark glyph to existing app Lattice */
   "lattice-verdict": (s) => <ArcanMark s={s} size={58} showWord={false} />,
+
+  /* verbatim copy: design/proto.jsx:567–579 (AuthShell), :658–673 (DesktopEmpty), :676–691 (DesktopWindow) */
+  "auth-shell": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <AuthShell s={s}>
+        <PField s={s} label="email" ph="you@domain.dev" />
+        <PButton s={s} primary full label="sign in" onClick={() => {}} />
+      </AuthShell>
+    </div>
+  ),
+
+  "desktop-empty": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <DesktopEmpty s={s} tab="chats" />
+    </div>
+  ),
+
+  "desktop-window": (s) => (
+    <DesktopWindow s={s} narrow>
+      <DesktopEmpty s={s} tab="chats" />
+    </DesktopWindow>
+  ),
+
+  /* mobile-shell: no verbatim — assembled from Body + PTabBar + Toast mirroring proto.jsx:642–649 minus dressing */
+  "mobile-shell": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', background: s.c.bg }}>
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Body s={s} pad={16}>
+            <PCard s={s}>
+              <PRow s={s} icon="key" label="recovery code" sub="view or rotate" onClick={() => {}} last />
+            </PCard>
+          </Body>
+        </div>
+        <PTabBar s={s} active="chats" onTab={() => {}} />
+        <Toast s={s} data={{ tone: 'neutral', icon: 'bell', text: 'saved' }} />
+      </div>
+    </div>
+  ),
 };
 
 (async () => {

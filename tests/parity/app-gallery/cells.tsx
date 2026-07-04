@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
 
 const ICON_NAMES: IconName[] = [
@@ -200,4 +200,44 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
 
   // advisory: existing Lattice vs proto ArcanMark glyph
   "lattice-verdict": () => <Lattice size={58} />,
+
+  // proto.jsx:567–579 (AuthShell)
+  "auth-shell": () => (
+    <div className="flex flex-col h-full">
+      <AuthShell>
+        <PField label="email" ph="you@domain.dev" />
+        <PButton primary full label="sign in" />
+      </AuthShell>
+    </div>
+  ),
+
+  // proto.jsx:658–673 (DesktopEmpty)
+  "desktop-empty": () => (
+    <div className="flex flex-col h-full">
+      <DesktopEmpty tab="chats" />
+    </div>
+  ),
+
+  // proto.jsx:676–691 (DesktopWindow, narrow with DesktopEmpty child)
+  "desktop-window": () => (
+    <DesktopWindow narrow>
+      <DesktopEmpty tab="chats" />
+    </DesktopWindow>
+  ),
+
+  // mobile-shell: MobileShell with Body + PTabBar + KitToast
+  "mobile-shell": () => (
+    <div className="flex flex-col h-full">
+      <MobileShell
+        tabBar={<PTabBar active="chats" onTab={() => {}} />}
+        toast={<KitToast tone="neutral" icon="bell" text="saved" />}
+      >
+        <Body pad={16}>
+          <PCard>
+            <PRow icon="key" label="recovery code" sub="view or rotate" onClick={() => {}} last />
+          </PCard>
+        </Body>
+      </MobileShell>
+    </div>
+  ),
 };

@@ -26,3 +26,7 @@ export { KitToast } from "./toast";
 export type { KitToastTone } from "./toast";
 export { latticePaths, dots, seg } from "./lattice-paths";
 export { ArcanMark } from "./arcan-mark";
+export { AuthShell } from "./auth-shell";
+export { DesktopEmpty } from "./desktop-empty";
+export { DesktopWindow } from "./desktop-window";
+export { MobileShell } from "./mobile-shell";

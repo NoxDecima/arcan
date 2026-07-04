@@ -41,6 +41,7 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | toast washes `alpha(col, .2/.14)` | `bg-{green,red,neutral,accent}-wash` |
 | toast shadow | `shadow-toast` |
 | DesktopWindow shadow | `shadow-window` |
+| watermark opacity .05/.06 | inline `opacity: var(--opacity-watermark)` |
 | `s.font` (JetBrains Mono) | `font-mono` |
 | `s.body` (Inter) | `font-body` |
 | `s.radius` (12) | `rounded-r-4` |

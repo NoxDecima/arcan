@@ -37,6 +37,7 @@
   --color-neutral-wash: rgba(138, 147, 178, 0.2); /* toast neutral wash: alpha(text2,.2) */
   --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.55);   /* proto:595 */
   --shadow-window: 0 34px 90px rgba(0, 0, 0, 0.62);  /* DesktopWindow, proto:679 */
+  --opacity-watermark: 0.05;                          /* lattice watermark SVG, dark (proto:572,665) */
 
   /* Typography */
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
@@ -170,6 +171,7 @@
   --color-neutral-wash: rgba(60, 66, 90, 0.14);  /* alpha(#3c425a,.14) */
   --shadow-toast: 0 10px 30px rgba(40, 40, 60, 0.18);
   --shadow-window: 0 34px 90px rgba(40, 40, 60, 0.24);
+  --opacity-watermark: 0.06;                          /* lattice watermark SVG, light (proto:572,665) */
 
   --shadow-1: 0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(40,40,60,0.08);
   --shadow-2: 0 4px 16px rgba(40,40,60,0.16), 0 1px 0 rgba(255,255,255,0.6) inset;
