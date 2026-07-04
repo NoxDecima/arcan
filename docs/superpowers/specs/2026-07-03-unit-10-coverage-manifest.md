@@ -31,6 +31,23 @@ happen so nothing waits for phase exit.
   of the two survives Phase 4 cleanup is decided when screen usage is known
   (they render identical glyphs).
 
+### Phase 2 handoff notes (from Phase 1 exit review)
+
+1. **rem base 15px → 16px** (`html { font-size: 16px }`): every rem-scaled
+   utility on EXISTING screens grew ~6.7%. Accepted as transitional skew
+   (controller ack, 2026-07-04) — those screens are replaced wave by wave;
+   do an early visual smoke of legacy screens before building on them.
+2. Interactive kit primitives lacking testids (PToggle, PHeader buttons,
+   PTabBar tabs) — add as Wave e2e wiring needs them (sanctioned deviation).
+3. a11y follow-ups tracked in the task list (see below).
+4. `PSectionLabel` deliberately pins `fontSize:16/lineHeight:1.125` (proto
+   strut) — do NOT "fix" it to ambient rhythm during integration.
+5. `Fab`/`KitToast` are absolutely positioned — compositions must preserve a
+   `relative` ancestor (MobileShell provides one).
+6. Spec §5's "hover/pressed/disabled/active" gate sentence is narrower in
+   practice: the prototype has no hover/pressed CSS states, so parity gates
+   prop states only (plan Ground Rule 3).
+
 ### Deliberate kit deviations (sanctioned by spec §8)
 
 - `TypingRow` (proto.jsx:72–82) NOT ported — typing indicators dropped
