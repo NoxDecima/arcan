@@ -219,8 +219,13 @@ export function ConversationDetailRoute() {
         '[data-testid="new-messages-divider"]',
       );
       if (divider) {
+        // block:"start" (walkthrough round 3): the divider goes to the TOP
+        // of the viewport so the unread tail fills the screen below it —
+        // and when the tail is shorter than a screen the browser clamps,
+        // leaving the very bottom visible too. block:"center" parked the
+        // view at the divider with the bottom cut off.
         (divider as HTMLElement).scrollIntoView({
-          block: "center",
+          block: "start",
           behavior: "auto",
         });
       } else {
