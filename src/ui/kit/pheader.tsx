@@ -41,7 +41,7 @@ export function PHeader({
   );
 
   return (
-    <div className="min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg">
+    <div className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg">
       {onBack && (
         <button onClick={onBack} className={tapClass}>
           <Icon d="back" size={20} className="text-text-2" />

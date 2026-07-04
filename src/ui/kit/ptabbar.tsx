@@ -37,7 +37,7 @@ export function PTabBar({
   };
 
   return (
-    <div className="h-[54px] flex items-stretch border-t border-hairline bg-bg">
+    <div className="h-[54px] shrink-0 flex items-stretch border-t border-hairline bg-bg">
       {tab("chats", "chat", "chats")}
       {tab("contacts", "people", "contacts")}
     </div>

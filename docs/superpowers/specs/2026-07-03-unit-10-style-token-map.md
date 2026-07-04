@@ -86,8 +86,8 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | PButton outline | `bg-transparent text-text border border-hairline` |
 | PButton ghost | `bg-transparent text-text-2` |
 | PToggle track on/off | `bg-arcan-accent-fill` / `bg-panel-2 border border-hairline`; knob transition `duration-switch` |
-| PHeader bar (minH 52) | `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` |
-| PTabBar (h 54) | `h-[54px] flex items-stretch border-t border-hairline bg-bg` |
+|  `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` | `min-h-[52px] flex items-center gap-[11px] px-3 border-b border-hairline bg-bg` |
+| PTabBar (h 54, shrink-0) | `h-[54px] shrink-0 flex items-stretch border-t border-hairline bg-bg` |
 | Bubble (own, v5 tint) | `bg-bubble-own border border-accent-border text-text rounded-r-5` + tail `rounded-br-r-1` |
 | Bubble (theirs) | `bg-panel border border-hairline text-text rounded-r-5 shadow-bubble` + tail `rounded-bl-r-1` |
 | Attachment placeholder (own / theirs) | `bg-media-veil` / `bg-rail`, radius `rounded-[8px]` (max(3, bubbleRadius−6)) |
