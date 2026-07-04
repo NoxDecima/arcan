@@ -137,23 +137,23 @@ export function NavColumn(props: {
               data-testid="sidebar-contacts-list"
               className="px-2 py-1.5 flex flex-col gap-px"
             >
-            {contacts.length === 0 ? (
-              <div
-                data-testid="sidebar-contacts-empty"
-                className="px-4 py-8 text-center font-body text-ui-sub text-dim"
-              >
-                {contactsEmptyText}
-              </div>
-            ) : (
-              contacts.map((item, i) => (
-                <ContactRow
-                  key={item.id}
-                  item={item}
-                  onClick={() => onOpenContact(item.id)}
-                  data-testid={`contact-row-${i}`}
-                />
-              ))
-            )}
+              {contacts.length === 0 ? (
+                <div
+                  data-testid="sidebar-contacts-empty"
+                  className="px-4 py-8 text-center font-body text-ui-sub text-dim"
+                >
+                  {contactsEmptyText}
+                </div>
+              ) : (
+                contacts.map((item, i) => (
+                  <ContactRow
+                    key={item.id}
+                    item={item}
+                    onClick={() => onOpenContact(item.id)}
+                    data-testid={`contact-row-${i}`}
+                  />
+                ))
+              )}
             </nav>
           </>
         )}
