@@ -536,14 +536,11 @@ export function ConversationDetailRoute() {
   let lastDateStr: string | null = null;
 
   for (let i = 0; i < rawItems.length; i++) {
-    // Insert new-mark divider before the target item
-    if (i === dividerBeforeIndex) {
-      timelineItems.push({ kind: "new", key: "new-mark" });
-    }
-
     const item = rawItems[i];
 
-    // Day marker: insert when the item crosses into a new local date
+    // Day marker first: when the divider and a date boundary coincide, the
+    // day label must precede the new-mark ("today → new → msg", not
+    // "new → today → msg").
     const itemDateStr = localDateStr(item.sortAt);
     if (itemDateStr !== lastDateStr) {
       lastDateStr = itemDateStr;
@@ -552,6 +549,11 @@ export function ConversationDetailRoute() {
         label: dayLabel(itemDateStr, todayStr, yesterdayStr),
         key: `day-${itemDateStr}`,
       });
+    }
+
+    // Insert new-mark divider before the target item
+    if (i === dividerBeforeIndex) {
+      timelineItems.push({ kind: "new", key: "new-mark" });
     }
 
     if (item.kind === "event") {
@@ -752,8 +754,9 @@ export function ConversationDetailRoute() {
 
   // ---- Composer element (container-rendered; pure ChatComposer is visual-only) ----
 
+  // proto:194 — first word of the name, original casing ("message ada").
   const composerPlaceholder = contact
-    ? `message ${conversationTitle}`
+    ? `message ${conversationTitle.split(" ")[0]}`
     : "message group";
 
   const composerElement = (
