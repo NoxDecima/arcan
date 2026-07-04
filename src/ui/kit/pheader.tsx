@@ -17,6 +17,7 @@ export function PHeader({
   title,
   sub,
   onBack,
+  backLabel,
   avatar,
   onAvatar,
   onTitle,
@@ -29,6 +30,8 @@ export function PHeader({
   title: string;
   sub?: ReactNode;
   onBack?: () => void;
+  /** Accessible label for the back button. Defaults to "back". */
+  backLabel?: string;
   avatar?: ReactNode;
   onAvatar?: () => void;
   onTitle?: () => void;
@@ -64,6 +67,7 @@ export function PHeader({
       {onBack && (
         <button
           onClick={onBack}
+          aria-label={backLabel ?? "back"}
           className={tapClass}
           {...(backTestId ? { "data-testid": backTestId } : {})}
         >

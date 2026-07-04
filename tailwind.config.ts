@@ -100,6 +100,9 @@ export default {
         'ui-preview': ['var(--fs-ui-value)', { lineHeight: '1.3' }],   // row preview 11px/1.3 (proto:752)
         'ui-contact': ['var(--fs-ui-btn)', { lineHeight: 'var(--lh-ui)' }], // ContactRow name 13px/1.2 (proto:139)
         'ui-chatsub': ['var(--fs-ui-sys)', { lineHeight: '1' }],
+        // Wave C — settings cluster
+        'ui-name': ['var(--fs-ui-name)', { lineHeight: 'var(--lh-ui)' }],       // profile display name 19px/1.2
+        'ui-heading': ['var(--fs-ui-heading)', { lineHeight: 'var(--lh-ui)' }], // add-contact heading / group name 18px/1.2
       },
       letterSpacing: {
         caps: 'var(--tracking-caps)',
@@ -108,6 +111,10 @@ export default {
         tab: 'var(--tracking-tab)',
         avatar: 'var(--tracking-avatar)',
         title: 'var(--tracking-title)',
+        // Wave C — settings cluster caps tracking
+        'caps-12': 'var(--tracking-caps-12)',
+        'caps-10': 'var(--tracking-caps-10)',
+        'caps-08': 'var(--tracking-caps-08)',
       },
       transitionDuration: {
         switch: 'var(--dur-switch)',
