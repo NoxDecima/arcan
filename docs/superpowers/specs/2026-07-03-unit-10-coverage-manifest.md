@@ -78,3 +78,23 @@ Container `useHomeLists` resolves avatar images via one-shot container effects
 Deliberate degradation: `useRemoteAvatar` (live remote-profile subscription) is
 NOT used — no reactive update when a contact's remote profile changes mid-session.
 Tracked as a followup for a later wave. Wave A snapshot behavior is intentional.
+
+### Wave A coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Home / chats list (mobile) | `/` | 1 | proto ChatsScreen (86–114) | PASS 0.000% | presence omitted (NOX-31) |
+| Home / contacts list (mobile) | `/` (contacts tab) | 1 + 4 | proto ContactsScreen (116–143) | PASS 0.000% | pendingSlot = PendingRequestsSection (Rung 4, no proto ref) |
+| Desktop nav column | shell | 1 + 4 | proto DesktopApp extraction (731–780) | PASS 0.000% | active-row state via useParams; pendingSlot Rung 4 |
+| Desktop empty pane | `/` desktop | 1 | proto DesktopEmpty | PASS (Phase 1 cell) | replaces EmptyPane on home |
+| Window-on-stage desktop shell | shell | 1 | proto DesktopWindow/DesktopApp | PASS (Phase 1 cell) | whole authenticated app renders inside it |
+| Mobile shell + tab bar | shell | 1 | proto MobileApp chrome | PASS (Phase 1 cell) | PTabBar on root paths only; MobileTabBar unmounted |
+| Toast rendering | app-wide | 1 | proto Toast (590–600) | PASS (toast-tones) | legacy API/testids kept; stacked toasts Rung 4 |
+| Empty/loading states | home | 4 | — | — | legacy copy + NavListSkeleton kept |
+
+### Wave A e2e drift (vs 44/44 baseline)
+
+- 42/44 on first run after integration. `unread-badges` updated to the
+  prototype's weight convention (unread = bold, read = semibold) — now green.
+- `profile-avatar` marked `test.fixme` — known-failing on the live-avatar-sync
+  degradation above (followup task tracks it). 43 runnable, 43 green.

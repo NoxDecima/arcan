@@ -150,7 +150,7 @@ export function NavColumn(props: {
                     key={item.id}
                     item={item}
                     onClick={() => onOpenContact(item.id)}
-                    data-testid={`contact-row-${i}`}
+                    data-testid={`sidebar-contact-row-${i}`}
                   />
                 ))
               )}

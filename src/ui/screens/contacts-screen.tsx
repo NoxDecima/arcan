@@ -73,7 +73,7 @@ export function ContactsScreen({
                 key={item.id}
                 item={item}
                 onClick={() => onOpenContact(item.id)}
-                data-testid={tid(`contact-row-${i}`)}
+                data-testid={tid(`sidebar-contact-row-${i}`)}
               />
             ))
           )}
