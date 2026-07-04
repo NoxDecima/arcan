@@ -362,7 +362,7 @@ function POwnProfileScreen({ s, params }) {
 
 /* patched copy: design/proto.jsx:261–317 (SettingsScreen) —
    toast/nav stubbed; theme/accent from s.theme/s.accentKey (skin object);
-   ACCENT_KEYS/ACCENTS/lum from window (hf-kit); boxShadow glow dropped (matches app). */
+   ACCENT_KEYS/ACCENTS/lum from window (hf-kit). */
 function PSettingsScreen({ s }) {
   const c = s.c;
   const theme = s.theme;
@@ -402,7 +402,7 @@ function PSettingsScreen({ s }) {
                   ))}
                 </div>
               </div>
-              {/* accent row — proto:287–296; boxShadow glow dropped (matches app) */}
+              {/* accent row — proto:287–296 */}
               <div style={{ padding: '13px 14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Icon d="sparkle" c={c.text2} size={17} />
@@ -413,7 +413,7 @@ function PSettingsScreen({ s }) {
                   {ACCENT_KEYS.map(k => {
                     const col = ACCENTS[k].solid, on = accent === k;
                     return (
-                      <button key={k} onClick={() => {}} title={k} style={{ ...tapBtn, width: 28, height: 28, borderRadius: 999, background: col, border: on ? `2px solid ${c.text}` : '2px solid transparent', boxShadow: on ? `0 0 0 2px ${c.panel}` : 'none', justifyContent: 'center' }}>
+                      <button key={k} onClick={() => {}} title={k} style={{ ...tapBtn, width: 28, height: 28, borderRadius: 999, background: col, border: on ? `2px solid ${c.text}` : '2px solid transparent', boxShadow: on ? `0 0 0 2px ${c.panel}, 0 0 10px ${alpha(col, .6)}` : 'none', justifyContent: 'center' }}>
                         {on && <Icon d="check" c={lum(col) > 0.55 ? '#0b0d14' : '#fff'} size={14} sw={3} />}
                       </button>
                     );

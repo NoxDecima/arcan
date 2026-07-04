@@ -247,8 +247,9 @@ export function SettingsScreen({
                           border: on
                             ? "2px solid var(--color-text)"
                             : "2px solid transparent",
+                          // ring + glow (shadow-dot) — proto:294, selected-only
                           boxShadow: on
-                            ? "0 0 0 2px var(--color-panel)"
+                            ? "0 0 0 2px var(--color-panel), 0 0 10px var(--color-accent-dot)"
                             : "none",
                         }}
                       >
