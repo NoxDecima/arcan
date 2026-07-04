@@ -17,6 +17,11 @@
     { "id": "pheader-back", "pad": 0 },
     { "id": "pheader-ontitle", "pad": 0 },
     { "id": "ptabbar", "pad": 0 },
-    { "id": "ptabbar-contacts", "pad": 0 }
+    { "id": "ptabbar-contacts", "pad": 0 },
+    { "id": "bubble-own", "width": 300, "accents": ["tokyo", "rose"] },
+    { "id": "bubble-theirs", "width": 300 },
+    { "id": "bubble-att", "width": 300 },
+    { "id": "bubble-sys", "width": 300 },
+    { "id": "bubble-new", "width": 300 }
   ]
 }

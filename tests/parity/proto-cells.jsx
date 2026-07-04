@@ -7,6 +7,49 @@ const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PH
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
+/* verbatim copy: design/proto.jsx:33–71 */
+function ownPaintP(s) {
+  const c = s.c;
+  if (s.ownStyle === 'grad') return { bg: c.accentGrad, fg: c.onAccent, bd: 'transparent', time: alpha(c.onAccent, .6) };
+  if (s.ownStyle === 'solid') return { bg: c.accentFill, fg: c.onAccent, bd: 'transparent', time: alpha(c.onAccent, .6) };
+  const al = s.ownTint ? s.ownTint[s.theme] : (s.theme === 'dark' ? 0.16 : 0.12);
+  return { bg: alpha(c.accentFill, al), fg: c.text, bd: c.accentBorder, time: c.dim };
+}
+function Bubble({ s, m, w }) {
+  const c = s.c, mine = m.who === 'me';
+  const p = mine ? ownPaintP(s) : { bg: c.panel, fg: c.text, bd: s.fam === 'soft' ? 'transparent' : c.border, time: c.dim };
+  return (
+    <div style={{ maxWidth: w, background: p.bg, border: p.bd !== 'transparent' ? `1px solid ${p.bd}` : 'none', color: p.fg, padding: m.att ? 6 : '8px 11px', borderRadius: s.bubbleRadius, borderBottomRightRadius: mine ? Math.max(2, s.bubbleRadius - 12) : s.bubbleRadius, borderBottomLeftRadius: mine ? s.bubbleRadius : Math.max(2, s.bubbleRadius - 12), boxShadow: s.soft && !mine && s.theme === 'light' ? '0 1px 2px rgba(20,20,40,.05)' : 'none' }}>
+      {/* note: '#fff' → '#ffffff' — _hx() in hf-kit.jsx doesn't handle 3-digit shorthand (parseInt('',16)=NaN) */}
+      {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#0e1019' : '#eef0f5'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        <span style={{ flex: 1, font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
+        {m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
+      </div>
+    </div>
+  );
+}
+function Row({ s, m, w }) {
+  const c = s.c;
+  if (m.who === 'sys') return <div style={{ alignSelf: 'center', font: `400 10px/1.4 ${s.font}`, color: c.dim, padding: '2px 0', textAlign: 'center' }}>{s.sysComment ? '// ' : ''}{m.text}</div>;
+  if (m.who === 'new') return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0' }}>
+      <div style={{ flex: 1, height: 1, background: c.accent, opacity: .5 }} /><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.accent }}>new</span><div style={{ flex: 1, height: 1, background: c.accent, opacity: .5 }} />
+    </div>
+  );
+  const mine = m.who === 'me';
+  return (
+    <div style={{ display: 'flex', flexDirection: mine ? 'row-reverse' : 'row', gap: 8, alignItems: 'flex-end' }}>
+      {!mine && <HAv s={s} txt={m.ini} size={28} />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: mine ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+        {!mine && m.name && <span style={{ font: `600 9.5px/1 ${s.headMono ? s.font : s.body}`, color: c.text2, marginLeft: 3 }}>{m.name}</span>}
+        <Bubble s={s} m={m} w={w} />
+      </div>
+    </div>
+  );
+}
+/* end verbatim copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -134,6 +177,21 @@ const PROTO_CELLS = {
   "ptabbar": (s) => <PTabBar s={s} active="chats" onTab={() => {}} />,
 
   "ptabbar-contacts": (s) => <PTabBar s={s} active="contacts" onTab={() => {}} />,
+
+  /* verbatim copy: design/proto.jsx:33–71 */
+  "bubble-own": (s) => <Row s={s} m={{ who: 'me', text: 'nice. shipping it tonight.', time: '9:22' }} w={220} />,
+  "bubble-theirs": (s) => <Row s={s} m={{ who: 'them', name: 'ada', ini: 'AK', text: 'schema diff looks good — merging now', time: '9:18' }} w={220} />,
+  "bubble-att": (s) => <Row s={s} m={{ who: 'me', att: true, text: 'sow-042.png', time: '9:22' }} w={220} />,
+  "bubble-sys": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Row s={s} m={{ who: 'sys', text: 'conversation created · end-to-end encrypted' }} w={300} />
+    </div>
+  ),
+  "bubble-new": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Row s={s} m={{ who: 'new' }} w={300} />
+    </div>
+  ),
 };
 
 (async () => {

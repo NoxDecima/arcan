@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -146,4 +146,30 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
   "ptabbar": () => <PTabBar active="chats" onTab={() => {}} />,
 
   "ptabbar-contacts": () => <PTabBar active="contacts" onTab={() => {}} />,
+
+  // proto.jsx:33–71 (Bubble + MessageRow)
+  "bubble-own": () => (
+    <MessageRow m={{ who: "me", text: "nice. shipping it tonight.", time: "9:22" }} w={220} />
+  ),
+
+  "bubble-theirs": () => (
+    <MessageRow m={{ who: "them", name: "ada", ini: "AK", text: "schema diff looks good — merging now", time: "9:18" }} w={220} />
+  ),
+
+  "bubble-att": () => (
+    <MessageRow m={{ who: "me", att: true, text: "sow-042.png", time: "9:22" }} w={220} />
+  ),
+
+  // sys/new need flex-col wrapper so self-center resolves correctly
+  "bubble-sys": () => (
+    <div className="flex flex-col">
+      <MessageRow m={{ who: "sys", text: "conversation created · end-to-end encrypted" }} w={300} />
+    </div>
+  ),
+
+  "bubble-new": () => (
+    <div className="flex flex-col">
+      <MessageRow m={{ who: "new" }} w={300} />
+    </div>
+  ),
 };

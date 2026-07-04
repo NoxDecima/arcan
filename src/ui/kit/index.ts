@@ -19,3 +19,5 @@ export { PQR } from "./pqr";
 export { Body } from "./body";
 export { PHeader } from "./pheader";
 export { PTabBar } from "./ptabbar";
+export { Bubble, MessageRow } from "./bubble";
+export type { BubbleMsg } from "./bubble";
