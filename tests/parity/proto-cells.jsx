@@ -50,6 +50,27 @@ function Row({ s, m, w }) {
 }
 /* end patched copy */
 
+/* verbatim copy: design/proto.jsx:145–152 (Fab) + :590–600 (Toast) */
+function Fab({ s, onClick }) {
+  const c = s.c;
+  return (
+    <button onClick={onClick} style={{ ...tapBtn, position: 'absolute', right: 16, bottom: 16, width: 52, height: 52, borderRadius: s.soft ? 999 : s.radius + 6, background: s.ownStyle === 'grad' ? c.accentGrad : c.accentFill, justifyContent: 'center', boxShadow: `0 8px 22px ${alpha(c.accentFill, .45)}`, zIndex: 4 }}>
+      <Icon d="plus" c={c.onAccent} size={24} sw={2.2} />
+    </button>
+  );
+}
+function Toast({ s, data }) {
+  const c = s.c;
+  const tone = data.tone || 'neutral';
+  const col = tone === 'success' ? c.green : tone === 'error' ? c.red : tone === 'accent' ? c.accent : c.text2;
+  return (
+    <div style={{ position: 'absolute', left: 14, right: 14, bottom: 18, zIndex: 30, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: s.radius + 2, background: c.panel, border: `1px solid ${c.border}`, boxShadow: s.theme === 'dark' ? '0 10px 30px rgba(0,0,0,.55)' : '0 10px 30px rgba(40,40,60,.18)', animation: 'hf-toastin .3s cubic-bezier(.2,.8,.2,1) both' }}>
+      <span style={{ width: 22, height: 22, borderRadius: 999, background: alpha(col, s.theme === 'dark' ? .2 : .14), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon d={data.icon || 'bell'} c={col} size={13} /></span>
+      <span style={{ flex: 1, font: `500 12px/1.3 ${s.body}`, color: c.text }}>{data.text}</span>
+    </div>
+  );
+}
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -190,6 +211,19 @@ const PROTO_CELLS = {
   "bubble-new": (s) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Row s={s} m={{ who: 'new' }} w={300} />
+    </div>
+  ),
+
+  /* verbatim copy: design/proto.jsx:145–152 (Fab) */
+  "fab": (s) => <Fab s={s} onClick={() => {}} />,
+
+  /* verbatim copy: design/proto.jsx:590–600 (Toast) */
+  "toast-tones": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', height: 64 }}><Toast s={s} data={{ tone: 'neutral', icon: 'bell', text: 'saved' }} /></div>
+      <div style={{ position: 'relative', height: 64 }}><Toast s={s} data={{ tone: 'success', icon: 'check', text: 'invite link copied' }} /></div>
+      <div style={{ position: 'relative', height: 64 }}><Toast s={s} data={{ tone: 'error', icon: 'alert', text: "couldn't load invite" }} /></div>
+      <div style={{ position: 'relative', height: 64 }}><Toast s={s} data={{ tone: 'accent', icon: 'copy', text: 'code copied' }} /></div>
     </div>
   ),
 };

@@ -21,3 +21,6 @@ export { PHeader } from "./pheader";
 export { PTabBar } from "./ptabbar";
 export { Bubble, MessageRow } from "./bubble";
 export type { BubbleMsg } from "./bubble";
+export { Fab } from "./fab";
+export { KitToast } from "./toast";
+export type { KitToastTone } from "./toast";

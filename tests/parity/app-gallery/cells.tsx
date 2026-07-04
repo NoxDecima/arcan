@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -170,6 +170,19 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
   "bubble-new": () => (
     <div className="flex flex-col">
       <MessageRow m={{ who: "new" }} w={300} />
+    </div>
+  ),
+
+  // proto.jsx:145–152 (Fab)
+  "fab": () => <Fab aria-label="add" />,
+
+  // proto.jsx:590–600 (Toast)
+  "toast-tones": () => (
+    <div className="flex flex-col">
+      <div className="relative h-[64px]"><KitToast tone="neutral" icon="bell" text="saved" /></div>
+      <div className="relative h-[64px]"><KitToast tone="success" icon="check" text="invite link copied" /></div>
+      <div className="relative h-[64px]"><KitToast tone="error" icon="alert" text="couldn't load invite" /></div>
+      <div className="relative h-[64px]"><KitToast tone="accent" icon="copy" text="code copied" /></div>
     </div>
   ),
 };
