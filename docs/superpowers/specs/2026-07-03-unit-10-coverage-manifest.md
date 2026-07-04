@@ -163,7 +163,13 @@ resolve (snapshot; no live remote update).
   fixed-height `DesktopWindow` (and `MobileShell`) with no scroll ancestor —
   converted to `flex-1 min-h-0` (+ `overflow-y-auto` where the route is its
   own scroll container). Wave B-D rule: route roots must fill the pane, never
-  the viewport.
+  the viewport — AND own their scroll (`min-h-0 overflow-y-auto`) when content
+  can exceed it (the pane itself never scrolls; the chat timeline depends on
+  that). Walkthrough bug 2026-07-05: detail.tsx's main lacked min-h-0 → long
+  conversations couldn't scroll and hid the composer (+ fresh attachment
+  chips, masquerading as a broken attach button). Remaining content-height
+  roots (pending, live-invites, contacts/add+detail, profile-view, members)
+  carry the same latent clip — fix as their waves restyle them.
 
 ### Parity threshold overrides
 

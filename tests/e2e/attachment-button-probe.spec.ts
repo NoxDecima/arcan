@@ -33,6 +33,20 @@ for (const vp of [{ name: "desktop", width: 1280, height: 800 }]) {
       await establishContact(pageA, pageB, "Alice", "Bob");
       await openDirectChat(pageA, "Bob");
 
+      // Long-conversation regression (walkthrough 2026-07-05): fill the
+      // timeline past one screen, then verify the composer is still visible
+      // and the timeline actually scrolls (missing min-h-0 on <main> made
+      // the pane overflow instead of scrolling, hiding composer + tray).
+      for (let i = 1; i <= 22; i++) {
+        await pageA.getByTestId("composer-input").fill(`filler ${i}`);
+        await pageA.getByTestId("composer-send-btn").click();
+      }
+      await expect(pageA.getByTestId("composer-send-btn")).toBeInViewport();
+      const scrollable = await pageA
+        .getByTestId("message-timeline")
+        .evaluate((el) => el.scrollHeight > el.clientHeight + 10);
+      expect(scrollable).toBe(true);
+
       await attachViaButton(pageA);
       await expect(
         pageA.getByTestId("composer-attachment-tray-item"),

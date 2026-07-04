@@ -852,7 +852,11 @@ export function ConversationDetailRoute() {
 
   return (
     <main
-      className="flex-1 flex flex-col min-w-0"
+      // min-h-0 is load-bearing: without it this flex item's min-height:auto
+      // grows to content height on long conversations — the timeline never
+      // scrolls and the composer is pushed below the clipped fold
+      // (walkthrough bug 2026-07-05).
+      className="flex-1 min-h-0 flex flex-col min-w-0"
       data-testid="conversation-detail"
       // Drag-drop upload (walkthrough feedback 2026-07-05): dropping files
       // anywhere on the chat pane ingests them through the same path as the
