@@ -47,7 +47,7 @@ Linear: team=Nox project=Arcan
 
 ## Conventions
 
-- TypeScript everywhere; strict; React 18; Tailwind v3 (not v4 — shadcn compat); shadcn/ui primitives in `src/components/ui/`.
+- TypeScript everywhere; strict; React 19; Tailwind v3 (not v4 — shadcn compat); shadcn/ui primitives in `src/components/ui/`.
 - Schema files in `src/jazz/schema/` use PascalCase filenames matching the exported schema name (e.g. `ArcanAccount.ts`).
 - Jazz 0.20.18 uses a Zod-based functional API: `co.map({ field: z.string() })`, `co.list(X)`, `co.account({ profile, root })`. The plan documents from Slice 1 use older class-based syntax in places; always cross-check against the API notes.
 - Tests: Vitest for unit (`tests/unit/`), Playwright for e2e (`tests/e2e/`). Vitest is scoped to `tests/unit/` only — don't put `.spec.ts` files there expecting them to run via vitest.
