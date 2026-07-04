@@ -14,6 +14,7 @@ export function ChatComposer({
   onSend,
   placeholder,
   disabled,
+  sending,
   onAttach,
   attachSlot,
   errorSlot,
@@ -25,8 +26,13 @@ export function ChatComposer({
   onSend: () => void;
   /** "message ada" / "message group" (proto:194) */
   placeholder: string;
-  /** Rung 4: renders dimmed, input disabled. */
+  /** Rung 4 (hard-disabled: conversation has no other member): renders
+   * dimmed, input disabled. */
   disabled?: boolean;
+  /** Rung 4 (soft: a send/upload is in flight): gates send + attach but the
+   * input STAYS ENABLED — disabling it would drop keyboard focus mid-flow
+   * (walkthrough 2026-07-05: Enter-send deselected the text field). */
+  sending?: boolean;
   /** Triggers container's file input. */
   onAttach?: () => void;
   /** Rung 4: pending-attachment chips row above the bar. */
@@ -38,7 +44,10 @@ export function ChatComposer({
   /** Rung 4: paste handler for clipboard-image ingestion. */
   onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
 }): JSX.Element {
-  const armed = (Boolean(value.trim()) || (hasAttachments ?? false)) && !disabled;
+  const armed =
+    (Boolean(value.trim()) || (hasAttachments ?? false)) &&
+    !disabled &&
+    !sending;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") onSend();
@@ -56,7 +65,7 @@ export function ChatComposer({
         <button
           className={tapClass}
           onClick={onAttach}
-          disabled={disabled}
+          disabled={disabled || sending}
           data-testid="composer-attach-btn"
           aria-label="attach file"
         >
@@ -77,6 +86,7 @@ export function ChatComposer({
             onPaste={onPaste}
             placeholder={placeholder}
             disabled={disabled}
+            // NOTE: deliberately NOT disabled while `sending` — see prop doc.
             data-testid="composer-input"
             className="flex-1 border-none outline-none bg-transparent font-body text-ui-row leading-none text-text"
             style={{ caretColor: "var(--color-accent-fill)" }}
@@ -95,11 +105,15 @@ export function ChatComposer({
           ].join(" ")}
           aria-label="send"
         >
+          {/* USER DECISION (2026-07-05): the send glyph is visually
+              right-heavy (also in the proto) — nudge 1px left+down to center
+              it optically. Proto parity copies carry the same nudge. */}
           <Icon
             d="send"
             size={16}
             fill
             className={armed ? "text-on-accent" : "text-dim"}
+            style={{ transform: "translate(-1px, 1px)" }}
           />
         </button>
       </div>

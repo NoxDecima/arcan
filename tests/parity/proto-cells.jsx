@@ -154,7 +154,7 @@ function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
         </div>
         {/* empty state → panel2 bg, dim icon (proto:197) */}
         <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: c.panel2, justifyContent: 'center' }}>
-          <Icon d="send" c={c.dim} size={16} fill />
+          <span style={{ display: "flex", transform: "translate(-1px, 1px)" }}>{/* user-decision patch: optical centering nudge, mirrors kit */}<Icon d="send" c={c.dim} size={16} fill /></span>
         </button>
       </div>
     </React.Fragment>
@@ -175,7 +175,7 @@ function PComposerBar({ s, text }) {
           style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
       </div>
       <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: armed ? c.accentFill : c.panel2, justifyContent: 'center' }}>
-        <Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill />
+        <span style={{ display: "flex", transform: "translate(-1px, 1px)" }}>{/* user-decision patch: optical centering nudge, mirrors kit */}<Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill /></span>
       </button>
     </div>
   );

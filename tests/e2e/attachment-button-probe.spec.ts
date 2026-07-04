@@ -42,6 +42,17 @@ for (const vp of [{ name: "desktop", width: 1280, height: 800 }]) {
         await pageA.getByTestId("composer-send-btn").click();
       }
       await expect(pageA.getByTestId("composer-send-btn")).toBeInViewport();
+
+      // Enter-send keeps keyboard focus in the input (walkthrough
+      // 2026-07-05: the sending state used to hard-disable the input,
+      // dropping focus after every message).
+      await pageA.getByTestId("composer-input").fill("focus check");
+      await pageA.getByTestId("composer-input").press("Enter");
+      await expect(pageA.getByTestId("message-timeline")).toContainText(
+        "focus check",
+        { timeout: 10_000 },
+      );
+      await expect(pageA.getByTestId("composer-input")).toBeFocused();
       const scrollable = await pageA
         .getByTestId("message-timeline")
         .evaluate((el) => el.scrollHeight > el.clientHeight + 10);

@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { ToastProvider } from "@/components/toast";
 
 // jsdom doesn't implement scrollIntoView; the route's auto-scroll effect (and
 // the divider auto-scroll effect) call it. Stub so the component can render.
@@ -71,9 +72,11 @@ import { ConversationDetailRoute } from "@/routes/conversations/detail";
 describe("NewMark divider", () => {
   test("renders the new-messages divider for an unread incoming message", async () => {
     const { findByTestId } = render(
+      <ToastProvider>
       <MemoryRouter initialEntries={["/conversations/co_zConv"]}>
         <ConversationDetailRoute />
-      </MemoryRouter>,
+      </MemoryRouter>
+      </ToastProvider>,
     );
     const divider = await findByTestId("new-messages-divider");
     // The kit's new-divider has bg-arcan-accent hairlines and text-arcan-accent label.

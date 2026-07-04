@@ -66,6 +66,7 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from "@/jazz/attachments";
 import { formatSystemEventMessage } from "@/components/system-event";
+import { useToast } from "@/components/toast";
 import {
   ChatScreen,
   ChatComposer,
@@ -143,6 +144,8 @@ export function ConversationDetailRoute() {
   const [editText, setEditText] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
+  const toast = useToast();
+
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
@@ -194,11 +197,39 @@ export function ConversationDetailRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iconStreamId]);
 
-  // Auto-scroll to bottom whenever the message list grows
+  // Timeline positioning (walkthrough 2026-07-05):
+  //  - on OPENING a conversation: jump instantly to the new-messages divider
+  //    (centered) if present, else to the very bottom — smooth scrolling on
+  //    mount was interruptible by late layout (avatars/attachments) and could
+  //    strand the view at the top;
+  //  - on NEW messages while open: smooth-scroll to bottom as before.
   const messageCount = (conversation as any)?.messages?.length ?? 0;
+  const positionedForRef = useRef<string | null>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messageCount]);
+    const convKey = (conversation as any)?.$jazz?.id as string | undefined;
+    if (!convKey || messageCount === 0) return;
+    if (positionedForRef.current === convKey) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    positionedForRef.current = convKey;
+    // tick delay so the timeline items have rendered before we position
+    const t = setTimeout(() => {
+      const divider = document.querySelector(
+        '[data-testid="new-messages-divider"]',
+      );
+      if (divider) {
+        (divider as HTMLElement).scrollIntoView({
+          block: "center",
+          behavior: "auto",
+        });
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageCount, (conversation as any)?.$jazz?.id]);
 
   // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
   // anchorRef captures lastReadAt at mount for the "new messages" divider.
@@ -271,18 +302,7 @@ export function ConversationDetailRoute() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(conversation as any)?.$jazz?.id]);
 
-  // Phase 7: auto-scroll the new-messages divider into view on mount.
-  // Runs once per conversation switch; if there's no divider we no-op.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const el = document.querySelector('[data-testid="new-messages-divider"]');
-      if (el) {
-        (el as HTMLElement).scrollIntoView({ block: "center", behavior: "auto" });
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [(conversation as any)?.$jazz?.id]);
+  // (Divider positioning is handled by the unified effect above.)
 
   // ---- derived values (safe to call before early returns) ----
 
@@ -436,7 +456,13 @@ export function ConversationDetailRoute() {
       }
     }
     if (accepted.length > 0) setPending((prev) => [...prev, ...accepted]);
-    if (rejections.length > 0) showComposerError(rejections.join(" "));
+    if (rejections.length > 0) {
+      // Inline error line keeps its testid (e2e); the toast makes the
+      // rejection impossible to miss (walkthrough 2026-07-05: silent-looking
+      // failures on desktop).
+      showComposerError(rejections.join(" "));
+      toast({ tone: "error", icon: "alert", text: rejections.join(" ") });
+    }
   }
 
   function handlePickClick() {
@@ -824,7 +850,8 @@ export function ConversationDetailRoute() {
         onChange={setComposerText}
         onSend={handleComposerSend}
         placeholder={composerPlaceholder}
-        disabled={composerDisabled || isSending}
+        disabled={composerDisabled}
+        sending={isSending}
         hasAttachments={pending.length > 0}
         onAttach={handlePickClick}
         onPaste={handleComposerPaste}

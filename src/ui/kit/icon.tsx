@@ -3,7 +3,7 @@
 // Prototype uses a `c` color prop; this kit version is pixel-identical
 // because currentColor resolves to the same computed color value.
 
-import type { JSX } from "react";
+import type { JSX, CSSProperties } from "react";
 export type IconName =
   | "search" | "plus" | "gear" | "back" | "chev" | "send" | "plusc"
   | "image" | "paperclip" | "chat" | "people" | "pencil" | "copy"
@@ -54,17 +54,22 @@ export function Icon({
   size = 18,
   sw = 1.6,
   fill,
+  style,
 }: {
   d: IconName;
   className?: string;
   size?: number;
   sw?: number;
   fill?: boolean;
+  /** Optional inline style passthrough (e.g. optical-centering nudges).
+   * Default undefined — parity cells unaffected. */
+  style?: CSSProperties;
 }): JSX.Element {
   return (
     <svg
       width={size}
       height={size}
+      style={style}
       viewBox="0 0 24 24"
       fill={fill ? "currentColor" : "none"}
       stroke={fill ? "none" : "currentColor"}

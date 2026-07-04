@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { ToastProvider } from "@/components/toast";
 
 // jsdom doesn't implement scrollIntoView; the route's auto-scroll effect calls
 // it on mount. Stub it so the component can render under test.
@@ -74,9 +75,11 @@ describe("ConversationDetailRoute header", () => {
 
   function renderRoute() {
     return render(
+      <ToastProvider>
       <MemoryRouter initialEntries={["/conversations/co_zConv"]}>
         <ConversationDetailRoute />
-      </MemoryRouter>,
+      </MemoryRouter>
+      </ToastProvider>,
     );
   }
 
