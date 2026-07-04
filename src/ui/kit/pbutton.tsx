@@ -3,16 +3,8 @@
 // Color and typography exclusively via mapping-table tokens.
 // Icon inherits variant text color via currentColor.
 //
-// Note on tapClass: tapClass (tap.ts) includes `border-none` and `bg-transparent`
-// which conflict with bordered/filled variants via Tailwind CSS cascade order.
-// PButton builds its own interactive reset, omitting those two:
-//   • Tailwind preflight already sets border-style:solid / border-width:0 on all
-//     elements, so `border-none` is not needed to reset button UA styles.
-//   • Preflight also sets background-color:transparent on button elements, so
-//     `bg-transparent` in the base would fight accent-fill and win unpredictably.
-// tapClass remains the shared utility for simple icon/tab buttons (no bg/border).
-
 import { Icon, type IconName } from "./icon";
+import { tapClass } from "./tap";
 
 export function PButton({
   label,
@@ -37,7 +29,9 @@ export function PButton({
 }): JSX.Element {
   let variantClass: string;
   if (primary) {
-    variantClass = "bg-arcan-accent-fill text-on-accent";
+    // proto has `border: 1px solid transparent` — keeps all variants' box
+    // geometry identical when stacked next to bordered siblings
+    variantClass = "bg-arcan-accent-fill text-on-accent border border-transparent";
   } else if (danger) {
     variantClass = "bg-transparent text-red border border-red-border";
   } else if (ghost) {
@@ -52,9 +46,7 @@ export function PButton({
       onClick={onClick}
       data-testid={testId}
       className={[
-        // Interactive reset — same intent as tapClass minus bg-transparent/border-none
-        // (preflight provides those defaults; omitting avoids cascade conflict with variants)
-        "p-0 m-0 cursor-pointer flex items-center [-webkit-tap-highlight-color:transparent]",
+        tapClass,
         // PButton structure (mapping table)
         "h-11 rounded-pill font-mono font-semibold text-ui-btn",
         "justify-center gap-2",
