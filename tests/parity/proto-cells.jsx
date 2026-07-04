@@ -3,7 +3,7 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv } = window;
+const { Icon, HAv, PButton } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -52,6 +52,23 @@ const PROTO_CELLS = {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <HAv s={s} txt="AB" size={38} status="online" ring={s.c.bg} />
       <HAv s={s} txt="AB" size={38} status="offline" ring={s.c.bg} />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 87–99
+  "pbutton-variants": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <PButton s={s} label="connect" primary onClick={() => {}} />
+      <PButton s={s} label="cancel" onClick={() => {}} />
+      <PButton s={s} label="sign out" danger onClick={() => {}} />
+      <PButton s={s} label="skip" ghost onClick={() => {}} />
+    </div>
+  ),
+
+  "pbutton-full": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <PButton s={s} label="sign in" primary full onClick={() => {}} />
+      <PButton s={s} label="send message" primary full icon="send" onClick={() => {}} />
     </div>
   ),
 };

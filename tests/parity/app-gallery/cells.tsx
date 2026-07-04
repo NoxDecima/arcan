@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon, HAv, type IconName } from "@/ui/kit";
+import { Icon, HAv, PButton, type IconName } from "@/ui/kit";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -55,6 +55,23 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
     <div className="flex items-center gap-2">
       <HAv txt="AB" size={38} status="online" ring="var(--color-bg)" />
       <HAv txt="AB" size={38} status="offline" ring="var(--color-bg)" />
+    </div>
+  ),
+
+  // proto-ui.jsx lines 87–99
+  "pbutton-variants": () => (
+    <div className="flex flex-col gap-2.5">
+      <PButton label="connect" primary />
+      <PButton label="cancel" />
+      <PButton label="sign out" danger />
+      <PButton label="skip" ghost />
+    </div>
+  ),
+
+  "pbutton-full": () => (
+    <div className="flex flex-col gap-2.5">
+      <PButton label="sign in" primary full />
+      <PButton label="send message" primary full icon="send" />
     </div>
   ),
 };

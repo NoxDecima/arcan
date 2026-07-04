@@ -8,3 +8,5 @@
 export { Icon, IPATHS } from "./icon";
 export type { IconName } from "./icon";
 export { HAv } from "./hav";
+export { tapClass } from "./tap";
+export { PButton } from "./pbutton";

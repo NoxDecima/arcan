@@ -6,6 +6,8 @@
     { "id": "icon-modes" },
     { "id": "hav-sizes" },
     { "id": "hav-group" },
-    { "id": "hav-status" }
+    { "id": "hav-status" },
+    { "id": "pbutton-variants", "accents": ["tokyo", "rose"] },
+    { "id": "pbutton-full", "accents": ["tokyo", "rose"] }
   ]
 }
