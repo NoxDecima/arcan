@@ -4,7 +4,7 @@
 //
 // cursor note: tapClass carries cursor-pointer; non-clickable rows need
 // cursor-default. Tailwind generates cursor-default before cursor-pointer in the
-// stylesheet (alphabetical by key), so a class override can't win. We use
+// stylesheet in indeterminate JIT order, so a class override can't reliably win. We use
 // `style={{ cursor: 'default' }}` instead — matching the prototype's own
 // approach (`cursor: onClick ? 'pointer' : 'default'`). Inline style always
 // beats utility-layer classes.

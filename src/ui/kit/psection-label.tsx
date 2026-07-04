@@ -5,7 +5,7 @@
 //
 // Strut note: the outer div contains an inline span, so the browser creates an
 // implicit line box whose height = max(strut, span). The proto gallery inherits
-// browser-default font-size (16px) and line-height (normal ≈ 1.2 for Inter),
+// browser-default font-size (16px) and line-height (normal ≈ 1.125 for Inter at 16px),
 // giving a strut of ~19px. The app body carries font-size: 15px and
 // line-height: 1.6, raising the strut to 24px and making the div 5px taller.
 // Fix: inline-style the outer div to the same context the proto sees so both
