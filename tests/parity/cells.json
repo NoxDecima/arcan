@@ -33,6 +33,8 @@
     { "id": "desktop-window", "width": 620, "height": 700, "pad": 24, "bg": "stage" },
     { "id": "mobile-shell", "width": 300, "height": 560, "pad": 0 },
     { "id": "chats-screen", "width": 300, "height": 560, "pad": 0 },
-    { "id": "contacts-screen", "width": 300, "height": 560, "pad": 0 }
+    { "id": "contacts-screen", "width": 300, "height": 560, "pad": 0 },
+    { "id": "nav-column", "width": 320, "height": 560, "pad": 0 },
+    { "id": "nav-column-contacts", "width": 320, "height": 560, "pad": 0 }
   ]
 }

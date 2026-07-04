@@ -181,6 +181,67 @@ function PContactsScreen({ s, nav }) {
 }
 /* end patched copy */
 
+/* patched copy: design/proto.jsx:731–780 — presence dropped (NOX-31) */
+function PNavColumn({ s, tab }) {
+  const c = s.c;
+  const selName = tab === 'chats' ? 'ada · keyring' : null;
+
+  const pTabBtn = (key, label) => {
+    const on = tab === key;
+    return (
+      <button key={key} style={{ ...tapBtn, flex: 1, justifyContent: 'center', gap: 7, padding: '11px 0', borderBottom: `2px solid ${on ? c.accentFill : 'transparent'}`, marginBottom: -1 }}>
+        <Icon d={key === 'contacts' ? 'people' : 'chat'} c={on ? c.accent : c.dim} size={15} />
+        <span style={{ font: `${on ? 600 : 500} 11.5px/1 ${s.headMono ? s.font : s.body}`, color: on ? c.text : c.dim, letterSpacing: s.headMono ? '.04em' : 0 }}>{label}</span>
+      </button>
+    );
+  };
+
+  const pConvoRow = (d, i) => {
+    const active = d.n === selName;
+    return (
+      <button key={i} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px', borderRadius: s.radius, background: active ? c.accentSoft : 'transparent' }}>
+        {/* patched: status={d.online ? 'online' : undefined} dropped (NOX-31) */}
+        <HAv s={s} txt={d.i} size={38} group={d.group} ring={active ? c.accentSoft : c.bg} />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ flex: 1, font: `${d.unread ? 700 : 600} 12.5px/1.2 ${s.body}`, color: c.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.n}</span>
+            <span style={{ font: `500 9.5px/1 ${s.font}`, color: c.dim }}>{d.time}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ flex: 1, font: `${d.unread ? 500 : 400} 11px/1.3 ${s.body}`, color: d.unread ? c.text2 : c.dim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.last}</span>
+            {d.unread ? <span style={{ minWidth: 17, height: 17, padding: '0 5px', borderRadius: 999, background: c.accentFill, color: c.onAccent, font: `700 9.5px/17px ${s.font}`, textAlign: 'center' }}>{d.unread}</span> : null}
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ width: 320, flexShrink: 0, position: 'relative', borderRight: `1px solid ${c.border}`, background: c.bg, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px 10px' }}>
+        <button style={{ ...tapBtn, gap: 10, flex: 1, minWidth: 0 }}>
+          <HAv s={s} txt="me" size={32} />
+          <span style={{ font: `700 14px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span>
+        </button>
+        <button style={tapBtn}><Icon d="gear" c={c.text2} size={19} /></button>
+      </div>
+      <div style={{ display: 'flex', borderBottom: `1px solid ${c.border}`, padding: '0 8px' }}>
+        {pTabBtn('chats', 'chats')}
+        {pTabBtn('contacts', 'contacts')}
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {tab === 'chats'
+          ? HF_CONVOS.map(pConvoRow)
+          : HF_CONTACTS.map((d, i) => <PContactRow key={i} s={s} d={d} onClick={() => {}} />)}
+      </div>
+      <button style={{ ...tapBtn, position: 'absolute', right: 16, bottom: 16, width: 50, height: 50, borderRadius: s.soft ? 999 : s.radius + 6, background: s.ownStyle === 'grad' ? c.accentGrad : c.accentFill, justifyContent: 'center', boxShadow: `0 8px 22px ${alpha(c.accentFill, .45)}`, zIndex: 4 }}>
+        <Icon d="plus" c={c.onAccent} size={23} sw={2.2} />
+      </button>
+    </div>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -409,6 +470,10 @@ const PROTO_CELLS = {
       </div>
     );
   },
+
+  /* patched copy: design/proto.jsx:731–780 (DesktopApp left column) — presence dropped (NOX-31) */
+  "nav-column": (s) => <PNavColumn s={s} tab="chats" />,
+  "nav-column-contacts": (s) => <PNavColumn s={s} tab="contacts" />,
 };
 
 (async () => {

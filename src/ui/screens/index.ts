@@ -4,4 +4,5 @@
 export { ConvoRow, ContactRow } from "./rows";
 export { ChatsScreen } from "./chats-screen";
 export { ContactsScreen } from "./contacts-screen";
+export { NavColumn } from "./nav-column";
 export type { ConvoItem, ContactItem, HomeProfile } from "./home-types";
