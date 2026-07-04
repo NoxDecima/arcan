@@ -113,6 +113,7 @@ export function MessageRow({
   bodyTestId,
   timeTestId,
   bodyOverride,
+  endSlot,
 }: {
   m: BubbleMsg;
   w: number;
@@ -125,6 +126,10 @@ export function MessageRow({
   timeTestId?: string;
   /** Rung 4: forwarded to Bubble — replaces body text+time (e.g. inline edit). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
+  /** Rung 4: rendered as the row's last flex child, self-centered — with
+   * row-reverse (own messages) it sits visually beside the bubble in the
+   * empty gutter (e.g. the edit/delete ⋮ menu). Parity unaffected. */
+  endSlot?: ReactNode;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -172,6 +177,7 @@ export function MessageRow({
         )}
         <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} timeTestId={timeTestId} bodyOverride={bodyOverride} />
       </div>
+      {endSlot && <div className="self-center shrink-0">{endSlot}</div>}
     </div>
   );
 }

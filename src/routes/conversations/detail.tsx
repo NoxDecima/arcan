@@ -786,9 +786,10 @@ export function ConversationDetailRoute() {
     }
   }
 
-  // 1:1 → "@name" (PHeader always renders font-mono so @ gives the headMono feel, proto:175)
-  // group → plain title
-  const headerTitle = contact ? `@${conversationTitle}` : conversationTitle;
+  // USER DECISION (2026-07-05 walkthrough): no "@" prefix on 1:1 titles —
+  // the prototype's `'@' + name` (proto:175) is rejected; plain name for
+  // both 1:1 and group.
+  const headerTitle = conversationTitle;
   const headerSub =
     !contact && memberCount !== null ? `${memberCount} members` : undefined;
 
@@ -853,6 +854,19 @@ export function ConversationDetailRoute() {
     <main
       className="flex-1 flex flex-col min-w-0"
       data-testid="conversation-detail"
+      // Drag-drop upload (walkthrough feedback 2026-07-05): dropping files
+      // anywhere on the chat pane ingests them through the same path as the
+      // attach button — the natural desktop gesture the picker doesn't cover.
+      onDragOver={(e) => {
+        if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          e.preventDefault();
+          ingestFiles(files);
+        }
+      }}
     >
       <ChatScreen
         header={headerVM}

@@ -131,6 +131,16 @@ resolve (snapshot; no live remote update).
   mechanism as the home-list contact photos; folded into that followup task.
   The presenter fields (`authorAvatarSrc`) are wired and waiting.
 
+### Wave B walkthrough decisions (2026-07-05)
+
+- **No `@` prefix on 1:1 chat titles** — user rejected proto:175's
+  `'@' + name`; plain contact name.
+- **Edit/delete menu beside the bubble** (MessageRow `endSlot`, self-centered
+  in the row gutter) instead of a row below it.
+- **Drag-drop upload added** to the chat pane (desktop gesture the prototype
+  never covered — Rung 4); same ingestion path as the attach button.
+  Real-UI attach-button regression probe added (attachment-button-probe.spec).
+
 ### Wave B e2e drift
 
 - First run 39/44: three attachment specs + messaging-1to1 failed on the moved

@@ -183,9 +183,11 @@ export function ChatScreen({
                       bodyTestId="bubble-body"
                       timeTestId="bubble-time"
                       bodyOverride={item.bodyOverride}
+                      // Rung 4: edit/delete menu — beside the bubble in the
+                      // row gutter (walkthrough feedback 2026-07-05), not a
+                      // stray row below it.
+                      endSlot={item.menuSlot}
                     />
-                    {/* Rung 4: edit/delete menu after the bubble */}
-                    {item.menuSlot}
                   </Fragment>
                 );
               }
