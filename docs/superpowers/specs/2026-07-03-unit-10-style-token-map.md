@@ -112,7 +112,7 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | Section label | `font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim` with literal `// ` prefix |
 | Timeline body | `flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 p-3 bg-bg` |
 | Composer bar | `shrink-0 border-t border-hairline p-2.5 flex items-center gap-[9px] bg-bg` |
-| Composer input pill | `flex-1 h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3` |
+| Composer input pill | `min-w-0 overflow-hidden flex-1 h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3` |
 | Composer send button | tap + `w-[38px] h-[38px] rounded-pill justify-center transition-colors duration-[150ms]`; armed `bg-arcan-accent-fill` icon `text-on-accent`, empty `bg-panel-2` icon `text-dim`; Icon send 16 fill |
 | Composer attach button | tap + Icon plusc 22 `text-text-2` (v5 soft) |
 

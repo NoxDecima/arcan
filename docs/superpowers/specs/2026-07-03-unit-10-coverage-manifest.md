@@ -9,6 +9,16 @@ happen so nothing waits for phase exit.
 
 ### Prototype bugs fixed to intent (spec §12 "prototype quirks" — flagged, not silent)
 
+- **Composer input UA padding** (`tests/parity/proto-cells.jsx` — PChatScreen + PComposerBar):
+  `design/proto.jsx:149,173` render the composer pill with bare `<input>` elements
+  that carry Chrome's UA stylesheet padding (`1px 2px`). The app's global preflight
+  (`@tailwind base`) resets all inputs to `padding:0; margin:0`, so the UA padding
+  is absent in production. The proto-cells patched copies apply `margin:0; padding:0`
+  to match the app baseline, and `minWidth:0; overflow:hidden` on the pill wrapper
+  to prevent flex min-width:auto blowout in the fixed-width parity cell. Parity
+  compares against the intended layout; the inline intent-fix comments in
+  `proto-cells.jsx` identify the patched properties.
+
 - **Attachment veil + icon on own bubbles** (`src/ui/kit/bubble.tsx`):
   `design/proto.jsx:45` uses `alpha('#fff', .18)` / `alpha('#fff', .8)`, but
   hf-kit's `_hx()` only parses 6-digit hex — `_hx('#fff')` → `[255,15,NaN]`,
@@ -111,3 +121,10 @@ resolve (snapshot; no live remote update).
   converted to `flex-1 min-h-0` (+ `overflow-y-auto` where the route is its
   own scroll container). Wave B-D rule: route roots must fill the pane, never
   the viewport.
+
+### Parity threshold overrides
+
+- **`chat-composer-states` 0.004** — diffuse AA residual on › prompt / placeholder
+  text / send glyph at 300×200 (small denominator amplifies per-pixel antialiasing
+  noise); characterized 2026-07-04, no structural offset confirmed via triptych
+  inspection (diff confined to sub-pixel glyph edges, no block/edge shifts).

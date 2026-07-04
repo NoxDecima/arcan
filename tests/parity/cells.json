@@ -38,6 +38,6 @@
     { "id": "nav-column-contacts", "width": 320, "height": 560, "pad": 0 },
     { "id": "chat-screen", "width": 300, "height": 560, "pad": 0 },
     { "id": "chat-screen-desktop", "width": 640, "height": 560, "pad": 0 },
-    { "id": "chat-composer-states", "width": 300, "height": 200, "pad": 0 }
+    { "id": "chat-composer-states", "width": 300, "height": 200, "pad": 0, "maxDiffRatio": 0.004 }
   ]
 }

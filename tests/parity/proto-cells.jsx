@@ -123,6 +123,7 @@ function DesktopWindow({ s, children, narrow }) {
 
 /* patched copy: design/proto.jsx:154–203 — typing + presence/verified dropped (NOX-31/33) */
 /* 1:1 sub dropped entirely; status on HAv dropped; TypingRow removed; toast/nav stubbed. */
+/* intent-fix: minWidth:0+overflow:hidden on the pill (flex min-width:auto overflow in fixed-width cells) and margin:0/padding:0 on the input (Chrome UA padding 1px 2px — absent under the app's preflight; the pill's explicit '0 12px' padding is the designed inset) */
 function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
   const c = s.c;
   /* v5 headMono=true: '@' prefix for 1:1; groups use bare name (proto:175) */
@@ -146,10 +147,10 @@ function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
       {/* composer bar (proto:189): v5 soft=true → plusc 22, rounded-pill; prompt=true → › */}
       <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
         <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+        <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
           <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
           <input value="" readOnly placeholder={'message ' + name.split(' ')[0]}
-            style={{ flex: 1, margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+            style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
         </div>
         {/* empty state → panel2 bg, dim icon (proto:197) */}
         <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: c.panel2, justifyContent: 'center' }}>
@@ -161,17 +162,17 @@ function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
 }
 /* end patched copy */
 
-/* composer bar helper — proto:189–200, two states (empty / armed) */
+/* patched copy: design/proto.jsx:189–200 — same intent-fixes as PChatScreen's composer bar */
 function PComposerBar({ s, text }) {
   const c = s.c;
   const armed = Boolean(text && text.trim());
   return (
     <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
       <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
-      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+      <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
         <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
         <input value={text || ''} readOnly placeholder="message ada"
-          style={{ flex: 1, margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+          style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
       </div>
       <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: armed ? c.accentFill : c.panel2, justifyContent: 'center' }}>
         <Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill />
