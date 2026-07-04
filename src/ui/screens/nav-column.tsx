@@ -130,11 +130,13 @@ export function NavColumn(props: {
             )}
           </nav>
         ) : (
-          <nav
-            data-testid="sidebar-contacts-list"
-            className="px-2 py-1.5 flex flex-col gap-px"
-          >
+          <>
+            {/* Rung 4: pending requests slot above the contacts nav — same position as ContactsScreen */}
             {pendingSlot}
+            <nav
+              data-testid="sidebar-contacts-list"
+              className="px-2 py-1.5 flex flex-col gap-px"
+            >
             {contacts.length === 0 ? (
               <div
                 data-testid="sidebar-contacts-empty"
@@ -152,7 +154,8 @@ export function NavColumn(props: {
                 />
               ))
             )}
-          </nav>
+            </nav>
+          </>
         )}
       </div>
 
