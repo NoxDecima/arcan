@@ -91,7 +91,7 @@ export function AttachmentTile({
       <button
         type="button"
         onClick={onImageClick}
-        className="block max-w-xs"
+        className="block max-w-full"
         data-testid="attachment-tile-sent-image"
         aria-label={`Open ${filename}`}
       >

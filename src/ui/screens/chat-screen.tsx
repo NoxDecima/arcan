@@ -94,7 +94,7 @@ export function ChatScreen({
       <div
         ref={timelineRef}
         data-testid="message-timeline"
-        className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 p-3 bg-bg"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col gap-2.5 p-3 bg-bg"
       >
         {items.length === 0 && emptyText ? (
           <div className="self-center font-body text-ui-sub text-dim py-8">
