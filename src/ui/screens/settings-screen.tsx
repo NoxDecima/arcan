@@ -5,6 +5,13 @@
 // appearance section uses local lum/accentCheckColor (verbatim from proto formula);
 // notification rows data-driven from props; device rows data-driven from props.
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
+//
+// User decisions (2026-07-05 walkthrough):
+//   1. Content column capped at 600px (mx-auto) — full-viewport desktop needs a
+//      cap; the proto's pane was ~620px inside DesktopWindow.
+//   2. MeRow avatar is leftmost (proto:272 has it right-aligned). Custom button
+//      row used instead of PRow to support a leading ReactNode slot. Parity
+//      proto-cells.jsx MeRow patched to match.
 
 import type { ReactNode, JSX } from "react";
 import {
@@ -119,27 +126,43 @@ export function SettingsScreen({
       {onBack && <PHeader title="settings" onBack={onBack} />}
 
       <Body pad={14}>
+        {/* 600px content cap — proto's pane was ~620px inside DesktopWindow;
+            full-viewport desktop (user decision) needs an explicit cap. */}
+        <div className="w-full max-w-[600px] mx-auto">
         <div className="flex flex-col gap-4">
 
           {/* ── account ─────────────────────────────────────────────────── */}
           <div>
             <PSectionLabel>account</PSectionLabel>
             <PCard>
-              {/* MeRow — proto:272 */}
-              <PRow
-                label={account.name}
-                sub="view your profile"
+              {/* MeRow — proto:272 had avatar right-aligned; user decision
+                  (2026-07-05 walkthrough): avatar moves to far left. Custom
+                  button row (not PRow) to allow leading ReactNode slot.
+                  Proto-cells.jsx MeRow patched to match. */}
+              <button
                 onClick={onOpenProfile}
-                right={
-                  <HAv
-                    txt={account.initials}
-                    src={account.avatarSrc}
-                    size={34}
-                    testId={meAvatarTestId}
-                  />
-                }
                 data-testid={meRowTestId}
-              />
+                className={[
+                  tapClass,
+                  "w-full text-left flex items-center gap-3 px-3.5 py-3 border-b border-hairline",
+                ].join(" ")}
+              >
+                <HAv
+                  txt={account.initials}
+                  src={account.avatarSrc}
+                  size={34}
+                  testId={meAvatarTestId}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-body font-medium text-ui-row text-text">
+                    {account.name}
+                  </div>
+                  <div className="mt-[3px] font-body text-ui-sub text-dim">
+                    view your profile
+                  </div>
+                </div>
+                <Icon d="chev" size={15} className="text-dim" />
+              </button>
               <PRow
                 icon="key"
                 label="change password"
@@ -339,6 +362,7 @@ export function SettingsScreen({
           </PCard>
 
         </div>
+        </div>{/* end max-w-[600px] cap */}
       </Body>
     </div>
   );

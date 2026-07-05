@@ -1,5 +1,6 @@
-import { useState, useRef, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { useAccount, useCoState } from "jazz-tools/react";
+import { co } from "jazz-tools";
 import { Link, useNavigate } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
@@ -9,6 +10,7 @@ import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { PButton } from "@/ui/kit";
 import { OwnProfileScreen } from "@/ui/screens/own-profile-screen";
 import { ProfileScreen } from "@/ui/screens/profile-screen";
 
@@ -56,9 +58,46 @@ export function ProfileView({ accountID }: ProfileViewProps) {
       )
     : undefined;
 
-  // Avatar resolution: self → me.profile.avatar; other → resolveAvatarFileBlob
+  // ── own-profile avatar (item 6 fix) ─────────────────────────────────────────
+  // Mirrors use-home-lists.ts's own-avatar effect: extract stream ID from the
+  // FileBlob ref, load as objectURL, key the effect on the stream ID so a new
+  // upload (which produces a new stream ID) causes a re-run and shows the new
+  // photo. Previously the raw FileBlob was passed as avatarSrc which HAv cannot
+  // use as an <img src>. (user decision, 2026-07-05 walkthrough)
+  const ownStreamId: string | null =
+    isOwn && me.$isLoaded
+      ? ((me as any).profile?.avatar?.data?.$jazz?.id ?? null)
+      : null;
+  const [ownAvatarUrl, setOwnAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ownStreamId) {
+      setOwnAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    void (async () => {
+      try {
+        const blob = await co.fileStream().loadAsBlob(ownStreamId, { loadAs: me as any });
+        if (cancelled || !blob) return;
+        createdUrl = URL.createObjectURL(blob);
+        setOwnAvatarUrl(createdUrl);
+      } catch {
+        // Silent — falls back to initials.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // ownStreamId changes when the user uploads a new avatar → effect re-runs.
+    // `me` omitted: ownStreamId is derived from it; closure captures the correct
+    // `me` for the lifetime of this stream ID (same pattern as use-home-lists.ts).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownStreamId]);
+
+  // Avatar resolution: self → objectURL from effect above; other → resolveAvatarFileBlob
   // (local) with remote fallback for the contact-book branch.
-  const ownAvatar = isOwn ? ((me as any)?.profile?.avatar ?? undefined) : undefined;
   const otherLocalAvatar =
     !isOwn && me.$isLoaded
       ? resolveAvatarFileBlob({ accountID, me })
@@ -67,7 +106,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     isOwn || otherLocalAvatar ? null : accountID,
   );
   const otherAvatar = !isOwn ? (otherLocalAvatar ?? otherRemoteAvatar) : undefined;
-  const avatarSrc = isOwn ? ownAvatar : otherAvatar;
+  const avatarSrc = isOwn ? (ownAvatarUrl ?? undefined) : otherAvatar;
 
   if (!me.$isLoaded) return null;
 
@@ -173,9 +212,25 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     }
   }
 
+  // Remove-contact handler (item 9): mirrors detail.tsx's handleRemove.
+  // Removes the contactBook entry by its $jazz.id, then navigates home.
+  function handleRemoveContact() {
+    if (!contact) return;
+    const contactJazzId = (contact as any)?.$jazz?.id;
+    if (!contactJazzId) return;
+    if (!confirm("remove this contact?")) return;
+    (me as any).root.contactBook.$jazz.remove(
+      (c: any) => c?.$jazz?.id === contactJazzId,
+    );
+    navigate("/");
+  }
+
   const idShort = `${accountID.slice(0, 6)}…${accountID.slice(-3)}`;
 
   // ── own-branch extra sections (Rung-4 app-only) ──────────────────────────
+  // Section order (user decision, 2026-07-05 walkthrough, item 8):
+  // "view security code" moves directly below the action-buttons block;
+  // "your conversations" list moves below it.
   const ownExtraSections = (
     <>
       {avatarError && (
@@ -184,32 +239,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
         </p>
       )}
 
-      {/* Your conversations */}
-      <section className="w-full" data-testid="profile-shared-section">
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-dim">
-          your conversations
-        </h3>
-        {sharedGroups.length === 0 ? (
-          <p className="text-sm text-text-2" data-testid="profile-shared-empty">
-            Conversations you start with contacts appear here.
-          </p>
-        ) : (
-          <ul className="space-y-1" data-testid="profile-shared-list">
-            {sharedGroups.map((g) => (
-              <li key={g.id}>
-                <Link
-                  to={`/conversations/${g.id}`}
-                  className="block rounded-r-2 p-2 text-sm text-text hover:bg-panel-2"
-                >
-                  {g.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Safety number */}
+      {/* Safety number — directly below action-buttons block (reordered per item 8) */}
       <section className="w-full" data-testid="profile-safety-section">
         <button
           type="button"
@@ -234,8 +264,33 @@ export function ProfileView({ accountID }: ProfileViewProps) {
         )}
       </section>
 
+      {/* Your conversations — below safety number (reordered per item 8) */}
+      <section className="w-full" data-testid="profile-shared-section">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-dim">
+          your conversations
+        </h3>
+        {sharedGroups.length === 0 ? (
+          <p className="text-sm text-text-2" data-testid="profile-shared-empty">
+            Conversations you start with contacts appear here.
+          </p>
+        ) : (
+          <ul className="space-y-1" data-testid="profile-shared-list">
+            {sharedGroups.map((g) => (
+              <li key={g.id}>
+                <Link
+                  to={`/conversations/${g.id}`}
+                  className="block rounded-r-2 p-2 text-sm text-text hover:bg-panel-2"
+                >
+                  {g.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Remove avatar */}
-      {ownAvatar && (
+      {ownStreamId && (
         <button
           type="button"
           onClick={() => void handleAvatarRemove()}
@@ -303,7 +358,6 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           avatarChangeTestId="profile-avatar-change"
           nameTestId="profile-display-name"
           editNameTestId="profile-edit-name"
-          idTestId="profile-account-id"
           addContactTestId="profile-add-contact"
           settingsTestId="profile-settings-link"
         />
@@ -328,11 +382,23 @@ export function ProfileView({ accountID }: ProfileViewProps) {
               <p className="text-xs text-dim">Security code not available.</p>
             )
           }
+          // item 9: remove-contact danger zone when a contactBook entry exists.
+          // Uses same removal flow as src/routes/contacts/detail.tsx handleRemove.
+          dangerZone={
+            contact ? (
+              <PButton
+                danger
+                full
+                label="remove contact"
+                onClick={handleRemoveContact}
+                data-testid="contact-remove-btn"
+              />
+            ) : undefined
+          }
           // testid carries
           backTestId="profile-back"
           avatarTestId="profile-avatar"
           nameTestId="profile-display-name"
-          idTestId="profile-account-id"
           messageTestId="profile-message"
           safetyToggleTestId="profile-safety-toggle"
         />

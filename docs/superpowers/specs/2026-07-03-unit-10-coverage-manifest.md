@@ -206,3 +206,20 @@ resolve (snapshot; no live remote update).
   text / send glyph at 300×200 (small denominator amplifies per-pixel antialiasing
   noise); characterized 2026-07-04, no structural offset confirmed via triptych
   inspection (diff confined to sub-pixel glyph edges, no block/edge shifts).
+
+### Wave C walkthrough decisions (2026-07-05)
+
+These items were decided during the 2026-07-05 walkthrough session and are recorded
+here as sanctioned deviations from the prototype or from earlier defaults.
+
+| # | Surface | Decision | Parity impact |
+|---|---------|----------|---------------|
+| 1 | Settings / Feedback / Profile / Own-profile | **Desktop content cap** — content column inside Body gets `w-full max-w-[600px] mx-auto`. The proto's pane was ~620px inside DesktopWindow; our full-viewport desktop needs an explicit cap. All parity cells are 300px wide so the cap never binds. | Parity-safe (cap doesn't bind at cell width) |
+| 2 | Settings MeRow | **Avatar leftmost** — proto:272 renders the HAv in the `right` slot (far right); user decision moves it to the far left. Custom button row replaces PRow to allow a leading ReactNode slot. Proto-cells.jsx PSettingsScreen MeRow patched. | Proto-cells patched (visible change) |
+| 3 | Feedback form | **Email field removed** — proto:527's `email · optional` PField/input dropped; email is inferred server-side from the authenticated account session. FeedbackScreen presenter, FeedbackRoute container, and proto-cells.jsx PFeedbackScreen all updated. | Proto-cells patched (visible change) |
+| 4 | Dev environment | **API proxy broadened** — vite.config.ts proxy entry changed from `"/api/auth"` to `"/api"` so that the feedback endpoint (and future `/api/*` routes) reach the dev auth-server on :4300 instead of 404-ing at Vite. Auth cookies remain same-origin. | Dev-env fix only; no parity impact |
+| 5 | Toast viewport | **Desktop toast offset** — `--arcan-toast-left` CSS variable (default 0px) set to 320px by AppShell's desktop branch so toasts don't underlap the NavColumn. Coupled to NavColumn's `w-[320px]`; update both if that changes. Auth screens (no shell) keep full width. | No parity impact (toast-tones cell is narrow) |
+| 7 | Profile / Own-profile | **Account-id line removed** — the "co_z1a8…4f2" sub-text below the display name (proto:217, proto:250) is dropped entirely. idTestId prop removed from both presenters. Proto-cells.jsx PProfileScreen and POwnProfileScreen patched. | Proto-cells patched (visible change) |
+| 8 | Profile section order | **"view security code" moves below action-buttons** — both profile screens now order: action-button(s) → verify-safety-number → shared-conversations. Proto had shared-convos first. ProfileScreen reordered within its PCard; profile-view.tsx ownExtraSections reordered. Proto-cells.jsx PProfileScreen patched. | Proto-cells patched (visible change) |
+| 9 | Contact profile | **Remove-contact button on /profile/:id** — when the viewed account has a contactBook entry, a `dangerZone` PButton (danger variant, testid `contact-remove-btn`) is rendered below the card, using the same removal flow as `/contacts/:id/detail`. | No parity impact (Rung-4 app-only) |
+| 10 | PRow kit primitive | **Nested-button fix (structural a11y deviation)** — PRow wrapper changed from `<button>` to `<div role="button">` + `tabIndex=0` + Enter/Space keydown so that PToggle buttons nested in the `right` slot don't produce a React 19 "button cannot be a descendant of button" hydration error. Full keyboard semantics retained. Plain div when onClick is absent. | No parity impact (visually identical) |

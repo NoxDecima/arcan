@@ -8,8 +8,15 @@
 // `style={{ cursor: 'default' }}` instead — matching the prototype's own
 // approach (`cursor: onClick ? 'pointer' : 'default'`). Inline style always
 // beats utility-layer classes.
+//
+// Structural a11y deviation (user decision, 2026-07-05 walkthrough):
+// The wrapper is a <div> (not <button>) so that PToggle / other button children
+// nested in the `right` slot don't produce a "button cannot be a descendant of
+// button" React 19 hydration error. When `onClick` is supplied the div carries
+// role="button" + tabIndex=0 + Enter/Space keydown, preserving full keyboard
+// semantics. Plain div (no role) when not clickable.
 
-import type { ReactNode } from "react";
+import type { ReactNode, KeyboardEvent } from "react";
 import { Icon, type IconName } from "./icon";
 import { tapClass } from "./tap";
 import type { JSX } from "react";
@@ -37,9 +44,18 @@ export function PRow({
   last?: boolean;
   "data-testid"?: string;
 }): JSX.Element {
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick?.();
+    }
+  }
   return (
-    <button
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
       data-testid={testId}
       style={!onClick ? { cursor: "default" } : undefined}
       className={[
@@ -77,6 +93,6 @@ export function PRow({
       {onClick && !right && !value && (
         <Icon d="chev" size={15} className="text-dim" />
       )}
-    </button>
+    </div>
   );
 }

@@ -112,8 +112,10 @@ describe("kit PRow", () => {
     );
   });
 
-  test("renders as a button element", () => {
+  test("renders as a button-role element (div with role=button)", () => {
     render(<PRow label="go" onClick={() => {}} />);
+    // PRow changed from <button> to <div role="button"> (item 10, nested-button fix).
+    // getByRole("button") finds explicit role="button" on a div as well as <button>.
     expect(screen.getByRole("button", { name: /go/ })).toBeTruthy();
   });
 

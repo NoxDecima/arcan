@@ -26,7 +26,7 @@ export function FeedbackRoute() {
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [email, setEmail] = useState("");
+  // email state removed (user decision, 2026-07-05 walkthrough): inferred server-side
   const [submitting, setSubmitting] = useState(false);
 
   const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
@@ -49,7 +49,7 @@ export function FeedbackRoute() {
       body.set("message", message.trim());
       const found = CATEGORIES.find(([k]) => k === category);
       if (found) body.set("category", found[1]);
-      if (email.trim()) body.set("email", email.trim());
+      // email field removed — server infers from authenticated account session
       for (const f of files) body.append("attachment", f);
       const res = await fetch("/api/feedback", {
         method: "POST",
@@ -125,8 +125,6 @@ export function FeedbackRoute() {
       categories={CATEGORIES}
       onCategory={(k) => setCategory((prev) => (prev === k ? null : k))}
       attachmentSlot={attachmentSlot}
-      email={email}
-      onEmail={setEmail}
       canSubmit={canSubmit}
       submitting={submitting}
       onSubmit={() => void submit()}
@@ -134,7 +132,6 @@ export function FeedbackRoute() {
       backTestId="feedback-back"
       messageTestId="feedback-message"
       categoryContainerTestId="feedback-category"
-      emailTestId="feedback-email"
       submitTestId="feedback-submit"
     />
   );

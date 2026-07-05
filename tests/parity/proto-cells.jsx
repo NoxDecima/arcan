@@ -316,15 +316,17 @@ function PProfileScreen({ s, params }) {
           <div style={{ textAlign: 'center' }}>
             {/* '@' prefix dropped — rule 4 */}
             <div style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>{params.name}</div>
-            <div style={{ marginTop: 5, font: `400 11px/1 ${s.font}`, color: c.dim }}>co_z1a8…4f2</div>
+            {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           </div>
           <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="message" onClick={() => {}} /></div>
           <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
-            <PRow s={s} icon="chat" label="shared conversations" right={<span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.1em', textTransform: 'uppercase', color: c.dim }}>soon</span>} />
+            {/* Section order — user decision patch (2026-07-05 walkthrough):
+                safety moved directly below action-buttons; shared-convos below it. */}
             {/* safety expander — collapsed (open=false); no expanded body rendered */}
             <button onClick={() => {}} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px' }}>
               <Icon d="check" c={c.accent} size={16} /><span style={{ flex: 1, font: `500 12px/1 ${s.body}`, color: c.text }}>verify safety number</span><span style={{ font: `600 13px/1 ${s.font}`, color: c.dim }}>▸</span>
             </button>
+            <PRow s={s} icon="chat" label="shared conversations" last right={<span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.1em', textTransform: 'uppercase', color: c.dim }}>soon</span>} />
           </PCard>
         </div>
       </Body>
@@ -348,7 +350,7 @@ function POwnProfileScreen({ s, params }) {
           </div>
           {/* '@' prefix dropped — rule 4; toast stub → no-op */}
           <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}><span style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span><Icon d="pencil" c={c.dim} size={15} /></button>
-          <div style={{ font: `400 11px/1 ${s.font}`, color: c.dim, marginTop: -8 }}>co_z1a8…4f2</div>
+          {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="plus" label="add a contact" onClick={() => {}} /></div>
           <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
             <PRow s={s} icon="gear" label="account & settings" onClick={() => {}} last />
@@ -381,7 +383,17 @@ function PSettingsScreen({ s }) {
           <div>
             <PSectionLabel s={s}>account</PSectionLabel>
             <PCard s={s}>
-              <PRow s={s} label="decima" sub="view your profile" onClick={() => {}} right={<HAv s={s} txt="me" size={34} />} />
+              {/* MeRow: avatar moved to far left — user decision patch (2026-07-05 walkthrough);
+                  proto:272 had it right-aligned. Custom row to allow leading ReactNode.
+                  Font metrics match proto-ui.js PRow (12.5px/1.2 label, 10.5px/1.2 sub). */}
+              <button onClick={() => {}} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${c.border}` }}>
+                <HAv s={s} txt="me" size={34} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: `500 12.5px/1.2 ${s.body}`, color: c.text }}>decima</div>
+                  <div style={{ marginTop: 3, font: `400 10.5px/1.2 ${s.body}`, color: c.dim }}>view your profile</div>
+                </div>
+                <Icon d="chev" c={c.dim} size={15} />
+              </button>
               <PRow s={s} icon="key" label="change password" onClick={() => {}} />
               <PRow s={s} icon="shield" label="recovery code" onClick={() => {}} last />
             </PCard>
@@ -484,13 +496,8 @@ function PFeedbackScreen({ s }) {
               <Icon d="paperclip" c={c.text2} size={15} /><span style={{ font: `500 11.5px/1 ${s.body}`, color: c.text2 }}>add a screenshot</span>
             </button>
           </div>
-          {/* email — patched: PField replaced with native <input> (app renders real input, not display-only PField;
-               PField's placeholder text wraps outside its 40px div, causing layout diff) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>email · optional</span>
-            <input type="email" defaultValue="" placeholder="for follow-up — leave blank to stay anonymous"
-              style={{ height: 40, borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, color: c.text, padding: '0 12px', font: `400 12.5px/1 ${s.body}`, outline: 'none', boxSizing: 'border-box', width: '100%' }} />
-          </div>
+          {/* email field removed — user decision patch (2026-07-05 walkthrough):
+              email inferred server-side from the authenticated account. */}
           {/* submit — opacity:.5 because text is empty */}
           <PButton s={s} primary full label="submit feedback" icon="send" onClick={() => {}} style={{ opacity: 0.5 }} />
         </div>

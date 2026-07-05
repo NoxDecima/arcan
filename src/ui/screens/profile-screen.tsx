@@ -3,6 +3,13 @@
 //
 // patched copy: design/proto.jsx:205–236 — '@' prefix dropped (rule 4);
 // safety collapsed (safetyOpen prop); shared=soon when sharedConversations=undefined.
+//
+// User decisions (2026-07-05 walkthrough):
+//   1. Content column capped at 600px (mx-auto).
+//   7. Account-id line removed (proto:217's "co_z1a8…4f2" sub-text dropped).
+//   8. "Verify safety number" moves directly below the action-buttons block;
+//      shared-conversations list moves below it. Proto had shared-convos first.
+//      Both items in same PCard, reordered. Proto-cells.jsx patched to match.
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
 import type { ReactNode, JSX } from "react";
@@ -23,7 +30,6 @@ export function ProfileScreen({
   backTestId,
   avatarTestId,
   nameTestId,
-  idTestId,
   messageTestId,
   safetyToggleTestId,
 }: {
@@ -42,7 +48,7 @@ export function ProfileScreen({
   backTestId?: string;                  // "profile-back"
   avatarTestId?: string;                // "profile-avatar"
   nameTestId?: string;                  // "profile-display-name"
-  idTestId?: string;                    // "profile-account-id"
+  // idTestId removed — account-id line dropped (user decision 2026-07-05 walkthrough)
   messageTestId?: string;               // "profile-message"
   safetyToggleTestId?: string;          // "profile-safety-toggle"
 }): JSX.Element {
@@ -64,6 +70,8 @@ export function ProfileScreen({
         }
       />
       <Body pad={"24px 20px"}>
+        {/* 600px content cap — full-viewport desktop (user decision 2026-07-05) */}
+        <div className="w-full max-w-[600px] mx-auto">
         <div className="flex flex-col items-center gap-[13px]">
           <HAv
             txt={vm.initials}
@@ -78,14 +86,8 @@ export function ProfileScreen({
             >
               {vm.name}
             </div>
-            {/* proto:217 — 400 11px/1 mono; marginTop:5 is structural (5px, not a multiple of 4) */}
-            <div
-              className="font-mono text-ui-value text-dim"
-              style={{ marginTop: 5 }}
-              {...(idTestId ? { "data-testid": idTestId } : {})}
-            >
-              {vm.idShort}
-            </div>
+            {/* account-id line removed (user decision, 2026-07-05 walkthrough):
+                proto:217's "co_z1a8…4f2" sub-text dropped per user feedback. */}
           </div>
 
           {/* primary CTA — maxWidth:320 mirrors proto:219 */}
@@ -101,34 +103,12 @@ export function ProfileScreen({
           </div>
 
           <PCard className="w-full max-w-[320px]">
-            {/* Shared conversations row — proto:221 */}
-            {vm.sharedConversations === undefined ? (
-              <PRow
-                icon="chat"
-                label="shared conversations"
-                right={
-                  /* "soon" badge — 600 9px/1 .1em caps */
-                  <span className="font-mono font-semibold text-ui-caps tracking-caps-10 uppercase text-dim">
-                    soon
-                  </span>
-                }
-              />
-            ) : (
-              vm.sharedConversations.map((conv) => (
-                <PRow
-                  key={conv.id}
-                  icon="chat"
-                  label={conv.title}
-                  onClick={
-                    onOpenConversation
-                      ? () => onOpenConversation(conv.id)
-                      : undefined
-                  }
-                />
-              ))
-            )}
+            {/* Section order (user decision, 2026-07-05 walkthrough):
+                "verify safety number" moved directly below the action-buttons block;
+                shared-conversations list moves below it.
+                Proto:221–230 had shared convos first, then safety. */}
 
-            {/* Verify safety number expander — proto:222–230 */}
+            {/* Verify safety number expander — proto:222–230 (moved up) */}
             <button
               className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px]`}
               onClick={onToggleSafety}
@@ -164,10 +144,40 @@ export function ProfileScreen({
                 </div>
               </div>
             )}
+
+            {/* Shared conversations row — proto:221 (moved below safety) */}
+            {vm.sharedConversations === undefined ? (
+              <PRow
+                icon="chat"
+                label="shared conversations"
+                last
+                right={
+                  /* "soon" badge — 600 9px/1 .1em caps */
+                  <span className="font-mono font-semibold text-ui-caps tracking-caps-10 uppercase text-dim">
+                    soon
+                  </span>
+                }
+              />
+            ) : (
+              vm.sharedConversations.map((conv, i) => (
+                <PRow
+                  key={conv.id}
+                  icon="chat"
+                  label={conv.title}
+                  last={i === (vm.sharedConversations?.length ?? 0) - 1}
+                  onClick={
+                    onOpenConversation
+                      ? () => onOpenConversation(conv.id)
+                      : undefined
+                  }
+                />
+              ))
+            )}
           </PCard>
           {/* Rung-4: danger zone below the card (e.g. remove contact) */}
           {dangerZone && <div className="w-full max-w-[320px] mt-2">{dangerZone}</div>}
         </div>
+        </div>{/* end max-w-[600px] cap */}
       </Body>
     </div>
   );

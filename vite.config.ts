@@ -48,9 +48,11 @@ export default defineConfig({
   server: {
     allowedHosts: parseAllowedHosts(),
     proxy: {
-      // Better Auth router: dev auth-server runs on :4300, proxied so
-      // the browser sees same-origin cookies (Better Auth requires that).
-      "/api/auth": "http://localhost:4300",
+      // All /api/* routes: dev auth-server runs on :4300. Proxied as a
+      // single prefix so the browser sees same-origin cookies (Better Auth
+      // requires that). Previously "/api/auth" only — feedback + future
+      // routes 404'd at Vite (user decision, 2026-07-05 walkthrough).
+      "/api": "http://localhost:4300",
       // Jazz sync WebSocket: dev sync server runs on :4200.
       "/sync": { target: "ws://localhost:4200", ws: true },
     },

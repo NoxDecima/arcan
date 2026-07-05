@@ -62,7 +62,10 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
       aria-live="polite"
       style={{
         position: "fixed",
-        left: 0,
+        // Desktop: offset by NavColumn's width (--arcan-toast-left set by
+        // AppShell desktop branch; mirrors NavColumn's w-[320px] coupling).
+        // Auth screens (no shell) and mobile keep the default 0px.
+        left: "var(--arcan-toast-left, 0px)",
         right: 0,
         bottom: 0,
         pointerEvents: "none",

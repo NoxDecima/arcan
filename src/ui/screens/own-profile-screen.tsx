@@ -3,6 +3,11 @@
 //
 // patched copy: design/proto.jsx:238–259 — '@' prefix dropped (rule 4);
 // toast handlers replaced with onEditName / onEditAvatar callbacks.
+//
+// User decisions (2026-07-05 walkthrough):
+//   1. Content column capped at 600px (mx-auto).
+//   7. Account-id line removed (proto:250's "co_z1a8…4f2" sub-text dropped).
+//      idTestId prop removed accordingly. Proto-cells.jsx patched to match.
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
 import type { ReactNode, JSX } from "react";
@@ -25,7 +30,6 @@ export function OwnProfileScreen({
   avatarChangeTestId,
   nameTestId,
   editNameTestId,
-  idTestId,
   addContactTestId,
   settingsTestId,
 }: {
@@ -45,7 +49,7 @@ export function OwnProfileScreen({
   avatarChangeTestId?: string;          // "profile-avatar-change"
   nameTestId?: string;                  // "profile-display-name"
   editNameTestId?: string;              // "profile-edit-name"
-  idTestId?: string;                    // "profile-account-id"
+  // idTestId removed — account-id line dropped (user decision 2026-07-05 walkthrough)
   addContactTestId?: string;            // "profile-add-contact"
   settingsTestId?: string;              // "profile-settings-link"
 }): JSX.Element {
@@ -60,6 +64,8 @@ export function OwnProfileScreen({
         backTestId={backTestId}
       />
       <Body pad={"24px 20px"}>
+        {/* 600px content cap — full-viewport desktop (user decision 2026-07-05) */}
+        <div className="w-full max-w-[600px] mx-auto">
         <div className="flex flex-col items-center gap-[13px]">
           {/* Avatar + camera badge — proto:245–248 */}
           <div className="relative">
@@ -101,14 +107,8 @@ export function OwnProfileScreen({
             </button>
           )}
 
-          {/* Account ID — proto:250: 400 11px/1 mono; marginTop:-8 is structural */}
-          <div
-            className="font-mono text-ui-value text-dim"
-            style={{ marginTop: -8 }}
-            {...(idTestId ? { "data-testid": idTestId } : {})}
-          >
-            {vm.idShort}
-          </div>
+          {/* Account-id line removed (user decision, 2026-07-05 walkthrough):
+              proto:250's "co_z1a8…4f2" sub-text dropped per user feedback. */}
 
           {/* Primary CTA — proto:251: maxWidth:320 */}
           <div className="w-full max-w-[320px]">
@@ -133,9 +133,12 @@ export function OwnProfileScreen({
             />
           </PCard>
 
-          {/* Rung-4: app-only sections (your conversations, safety, remove-avatar) */}
+          {/* Rung-4: app-only sections (safety, your-conversations, remove-avatar)
+              Section order (user decision, 2026-07-05 walkthrough):
+              safety moved directly below the action-buttons block. */}
           {extraSections}
         </div>
+        </div>{/* end max-w-[600px] cap */}
       </Body>
     </div>
   );

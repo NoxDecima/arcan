@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { useHomeLists } from "@/components/use-home-lists";
@@ -53,6 +54,18 @@ export function AppShell() {
   // isRoot mirrors mobile-tab-bar.tsx's ROOT_PATHS: show tab bar only on the
   // home/list surfaces, not on deep routes (conversation detail, settings, etc.).
   const isRoot = pathname === "/" || pathname === "/conversations";
+
+  // Toast width on desktop (user decision, 2026-07-05 walkthrough): offset
+  // the toast viewport by NavColumn's width (320px) so toasts don't underlap
+  // the nav. Coupled to NavColumn's w-[320px] — update both if that changes.
+  // Auth screens (no AppShell) keep --arcan-toast-left at its default 0px.
+  useEffect(() => {
+    if (!isDesktop) return;
+    document.documentElement.style.setProperty("--arcan-toast-left", "320px");
+    return () => {
+      document.documentElement.style.removeProperty("--arcan-toast-left");
+    };
+  }, [isDesktop]);
 
   if (isDesktop) {
     return (

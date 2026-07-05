@@ -459,8 +459,6 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
             </span>
           </button>
         }
-        email=""
-        onEmail={() => {}}
         canSubmit={false}
         submitting={false}
         onSubmit={() => {}}

@@ -1,9 +1,13 @@
 // src/ui/screens/feedback-screen.tsx — feedback presenter.
 // Node-for-node port of design/proto.jsx:487–531 (FeedbackScreen).
 //
-// patched-copy rules: state lifted to container (message/category/email/submitting);
+// patched-copy rules: state lifted to container (message/category/submitting);
 // attachmentSlot accepted as ReactNode (container owns file state);
 // categories prop-driven (app uses bug/idea/question/note; proto uses praise).
+//
+// user decision (2026-07-05 walkthrough): email field removed — inferred
+// server-side from the authenticated account. Proto:527's PField is removed
+// from this presenter and from the parity proto-cells.jsx copy.
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
 import type { ReactNode, JSX } from "react";
@@ -17,8 +21,6 @@ export function FeedbackScreen({
   categories,
   onCategory,
   attachmentSlot,
-  email,
-  onEmail,
   canSubmit,
   submitting,
   onSubmit,
@@ -26,7 +28,6 @@ export function FeedbackScreen({
   backTestId,
   messageTestId,
   categoryContainerTestId,
-  emailTestId,
   submitTestId,
 }: {
   onBack: () => void;
@@ -38,8 +39,6 @@ export function FeedbackScreen({
   onCategory: (k: string) => void;
   /** Rung-4: dropzone / file chips (container owns files). Parity: static dropzone fixture. */
   attachmentSlot?: ReactNode;
-  email: string;
-  onEmail: (v: string) => void;
   canSubmit: boolean;
   submitting: boolean;
   onSubmit: () => void;
@@ -47,7 +46,6 @@ export function FeedbackScreen({
   backTestId?: string;                  // "feedback-back"
   messageTestId?: string;               // "feedback-message"
   categoryContainerTestId?: string;     // "feedback-category"
-  emailTestId?: string;                 // "feedback-email"
   submitTestId?: string;                // "feedback-submit"
 }): JSX.Element {
   return (
@@ -60,8 +58,10 @@ export function FeedbackScreen({
 
       {/* Body pad={16} — proto:489 */}
       <Body pad={16}>
-        {/* maxWidth 520 column gap 16 — proto:490 */}
-        <div className="flex flex-col gap-4 max-w-[520px] w-full mx-auto">
+        {/* maxWidth 600 column gap 16 — proto:490 used 520; capped to 600 here
+            (user decision, 2026-07-05 walkthrough: full-viewport desktop needs
+            a content cap; the proto's pane was ~620px inside DesktopWindow). */}
+        <div className="flex flex-col gap-4 max-w-[600px] w-full mx-auto">
 
           {/* intro paragraph — proto:491 */}
           {/* 400 11.5px/1.5 body → font-body text-ui-empty-sub leading-normal */}
@@ -139,21 +139,8 @@ export function FeedbackScreen({
             )}
           </div>
 
-          {/* email · optional — proto:527 (PField-style label + real input) */}
-          <div className="flex flex-col gap-1.5">
-            <span className="font-mono font-semibold text-ui-caps tracking-caps-sm uppercase text-dim">
-              email · optional
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => onEmail(e.target.value)}
-              placeholder="for follow-up — leave blank to stay anonymous"
-              data-testid={emailTestId}
-              className="h-10 rounded-r-4 border border-hairline bg-panel px-3 font-body text-ui-row text-text placeholder:text-dim outline-none"
-              style={{ caretColor: "var(--color-accent-fill)" }}
-            />
-          </div>
+          {/* email field removed (user decision, 2026-07-05 walkthrough):
+              email is inferred server-side from the authenticated account. */}
 
           {/* submit button — proto:529 */}
           <div style={{ opacity: canSubmit ? 1 : 0.5 }}>
