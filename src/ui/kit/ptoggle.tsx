@@ -22,6 +22,8 @@ export function PToggle({
   return (
     <button
       onClick={onClick}
+      role="switch"
+      aria-checked={on}
       aria-label={ariaLabel}
       className={[
         tapClass,

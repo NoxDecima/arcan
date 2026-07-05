@@ -1,8 +1,19 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
-import { ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer, type ConvoItem, type ContactItem } from "@/ui/screens";
-import { HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS } from "./fixtures";
+import {
+  ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer,
+  ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem,
+  SettingsScreen, FeedbackScreen, LinkDeviceScreen, type ThemeName,
+  ConvoSettingsScreen, NewConvoScreen, AddPeopleScreen, AddContactScreen,
+} from "@/ui/screens";
+import {
+  HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
+  SETTINGS_ACCOUNT_FIXTURE, ACCENT_KEYS_FIXTURE, ACCENT_SOLID,
+  SETTINGS_NOTIF_FIXTURE, SETTINGS_DEVICES_FIXTURE,
+  CONVO_MEMBERS_ADMINS, CONVO_MEMBERS_WRITERS,
+  ADD_PEOPLE_POOL, ADD_CONTACT_TTL_OPTIONS,
+} from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
   "search", "plus", "gear", "back", "chev", "send", "plusc", "image",
@@ -359,6 +370,194 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onChange={() => {}}
         onSend={() => {}}
         placeholder="message ada"
+      />
+    </div>
+  ),
+
+  // proto.jsx:205–236 (ProfileScreen) — patched: '@' dropped, safety collapsed, shared=soon.
+  "profile-screen": () => (
+    <div className="flex flex-col h-full">
+      <ProfileScreen
+        vm={PROFILE_FIXTURE}
+        onBack={() => {}}
+        onMenu={() => {}}
+        onMessage={() => {}}
+        safetyOpen={false}
+        onToggleSafety={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:238–259 (OwnProfileScreen) — patched: '@' dropped, no inline edit, no extra sections.
+  "own-profile-screen": () => (
+    <div className="flex flex-col h-full">
+      <OwnProfileScreen
+        vm={OWN_PROFILE_FIXTURE}
+        onBack={() => {}}
+        onEditName={() => {}}
+        onEditAvatar={() => {}}
+        onAddContact={() => {}}
+        onSettings={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:261–317 (SettingsScreen) — patched: toast/nav stubbed; theme/accent from
+  // data-theme/data-accent DOM attrs (set per-run by the parity harness).
+  "settings-screen": () => {
+    const theme = (document.documentElement.getAttribute("data-theme") ?? "dark") as ThemeName;
+    const accent = document.documentElement.getAttribute("data-accent") ?? "tokyo";
+    return (
+      <div className="flex flex-col h-full">
+        <SettingsScreen
+          account={SETTINGS_ACCOUNT_FIXTURE}
+          theme={theme}
+          accent={accent}
+          accentKeys={ACCENT_KEYS_FIXTURE}
+          accentSolid={ACCENT_SOLID}
+          notifications={SETTINGS_NOTIF_FIXTURE}
+          devices={SETTINGS_DEVICES_FIXTURE}
+          onOpenProfile={() => {}}
+          onChangePassword={() => {}}
+          onRecoveryCode={() => {}}
+          onFeedback={() => {}}
+          onTheme={() => {}}
+          onAccent={() => {}}
+          onLinkDevice={() => {}}
+          onSignOut={() => {}}
+          onBack={() => {}}
+        />
+      </div>
+    );
+  },
+
+  // proto.jsx:487–531 (FeedbackScreen) — empty state (message='', cat=null).
+  // attachmentSlot = proto-matching static dropzone fixture (not attached).
+  "feedback-screen": () => (
+    <div className="flex flex-col h-full">
+      <FeedbackScreen
+        onBack={() => {}}
+        message=""
+        onMessage={() => {}}
+        category={null}
+        categories={[
+          ["bug", "bug"],
+          ["idea", "idea"],
+          ["question", "question"],
+          ["praise", "praise"],
+        ]}
+        onCategory={() => {}}
+        attachmentSlot={
+          /* proto-matching dropzone element (pure fixture; not-attached state) */
+          <button
+            type="button"
+            className={`${tapClass} flex w-full justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent`}
+          >
+            <Icon d="paperclip" size={15} className="text-text-2" />
+            <span className="font-body font-medium text-ui-empty-sub text-text-2">
+              add a screenshot
+            </span>
+          </button>
+        }
+        email=""
+        onEmail={() => {}}
+        canSubmit={false}
+        submitting={false}
+        onSubmit={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:462–475 (LinkDeviceScreen) — qrSlot=<PQR size={150}> (real QR is Rung-4).
+  // Waiting-pulse animation is frozen by gallery's animation:none!important.
+  "link-device-screen": () => (
+    <div className="flex flex-col h-full">
+      <LinkDeviceScreen
+        onBack={() => {}}
+        linkUrl="arcan.app/link#k2f…a81"
+        onCopy={() => {}}
+        qrSlot={<PQR size={150} />}
+      />
+    </div>
+  ),
+
+  // proto.jsx:331–353 (ConvoSettingsScreen) — MEMBERS fixture (proto-local) defined in fixtures.ts.
+  // renderMemberEnd omitted (Rung-4 kebab; dropped in BOTH sides for parity match).
+  // accents exercise admin role badge (accent-soft).
+  "convo-settings-screen": () => (
+    <div className="flex flex-col h-full">
+      <ConvoSettingsScreen
+        onBack={() => {}}
+        title="retrieval-squad"
+        initials="RS"
+        sub="5 members · created 2026-04-18"
+        admins={CONVO_MEMBERS_ADMINS}
+        writers={CONVO_MEMBERS_WRITERS}
+        iAmAdmin={true}
+        onAddPeople={() => {}}
+        onLeave={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:368–394 (NewConvoScreen) — HF_CONTACTS contacts; sel={ct1,ct4} (AK+RA → isGroup=true).
+  // groupNameSlot = proto-matching static placeholder pill.
+  // accents exercise selected accent-soft pick rows.
+  "new-convo-screen": () => (
+    <div className="flex flex-col h-full">
+      <NewConvoScreen
+        onBack={() => {}}
+        contacts={HF_CONTACTS}
+        selected={new Set(["ct1", "ct4"])}
+        onToggle={() => {}}
+        groupNameSlot={
+          /* proto-matching static placeholder pill — proto:373 */
+          <div className="flex-1 h-9 rounded-r-4 border border-hairline bg-panel flex items-center px-3">
+            <span className="font-body text-ui-toast leading-none text-dim">
+              group name (optional)
+            </span>
+          </div>
+        }
+        submitLabel="create group · 2 members"
+        submitDisabled={false}
+        onSubmit={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:439–455 (AddPeopleScreen) — pool fixture (proto-local) defined in fixtures.ts.
+  // sel={ap0,ap1} → EL+NX selected (indices 0,1); groupName="retrieval-squad".
+  // accents exercise selected accent-soft pick rows.
+  "add-people-screen": () => (
+    <div className="flex flex-col h-full">
+      <AddPeopleScreen
+        onBack={() => {}}
+        groupName="retrieval-squad"
+        pool={ADD_PEOPLE_POOL}
+        selected={new Set(["ap0", "ap1"])}
+        onToggle={() => {}}
+        onAdd={() => {}}
+        addDisabled={false}
+      />
+    </div>
+  ),
+
+  // proto.jsx:401–429 (AddContactScreen) — patched: one adaptive button (9-7 §2-J);
+  // ttlOptions = app presets (1h/24h/7d); ttl="24h"; qrSlot=<PQR size={128}>.
+  // hiddenUrlSlot omitted (sr-only, no pixels).
+  "add-contact-screen": () => (
+    <div className="flex flex-col h-full">
+      <AddContactScreen
+        onBack={() => {}}
+        idShort="co_z1a8…4f2"
+        qrSlot={<PQR size={128} />}
+        ttl="24h"
+        ttlOptions={[...ADD_CONTACT_TTL_OPTIONS]}
+        onTtl={() => {}}
+        primaryLabel="copy link"
+        onPrimary={() => {}}
+        onScan={() => {}}
+        onPaste={() => {}}
       />
     </div>
   ),

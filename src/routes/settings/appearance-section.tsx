@@ -4,7 +4,14 @@ import { useTheme, type Theme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
 import { useToast } from "@/components/toast";
 import { Skel } from "@/components/skeleton";
-import { Card, SectionLabel, Icon } from "./settings-kit";
+import { PCard, PSectionLabel, Icon } from "@/ui/kit";
+
+/**
+ * appearance-section.tsx — Wave C: settings-kit imports replaced with @/ui/kit.
+ * AppearanceSection and AccentSwatches are no longer rendered by SettingsBody
+ * (logic folded into the container that renders <SettingsScreen>). Both exports
+ * stay functional for isolated unit tests; Phase 4 deletes them.
+ */
 
 const ACCENT_SWATCH: Record<Accent, string> = {
   tokyo:  "#7aa2f7",
@@ -15,9 +22,7 @@ const ACCENT_SWATCH: Record<Accent, string> = {
   rose:   "#f7768e",
 };
 
-// Relative luminance (sRGB) — matches design/proto.jsx window.lum. The kit
-// (9-5a) does not export accentCheckColor, so we define the contrast-aware
-// foreground locally (proto formula: lum(col) > 0.55 ? "#0b0d14" : "#fff").
+// Relative luminance (sRGB) — matches design/proto.jsx window.lum.
 function lum(hex: string): number {
   const h = hex.replace("#", "");
   const r = parseInt(h.slice(0, 2), 16) / 255;
@@ -30,14 +35,8 @@ function accentCheckColor(hex: string): string {
 }
 
 /**
- * AccentSwatches: the six colored swatch buttons. Pure presentation so it can
- * be unit-tested without the Jazz account. The selected swatch renders a
- * contrast-aware check-mark (proto.jsx SettingsScreen line 294).
- *
- * The kit Icon strokes with currentColor and does not accept a colour prop, so
- * the contrast colour is applied via inline `style` on a wrapping span (which
- * also carries the per-swatch test id). Inline style colours are token-neutral
- * data, not Tailwind classes, so check-tokens ignores them.
+ * AccentSwatches: the six colored swatch buttons. Pure presentation; kept
+ * functional so appearance-accent-check.test.tsx can continue to pass.
  */
 export function AccentSwatches({
   accent,
@@ -92,8 +91,8 @@ export function AppearanceSection() {
   if (!me.$isLoaded) {
     return (
       <div data-testid="appearance-section-loading">
-        <SectionLabel>appearance</SectionLabel>
-        <Card>
+        <PSectionLabel>appearance</PSectionLabel>
+        <PCard>
           <div className="flex flex-col gap-4 px-3.5 py-3">
             <div className="flex items-center gap-3">
               <Skel w="40%" h={14} />
@@ -108,7 +107,7 @@ export function AppearanceSection() {
               </div>
             </div>
           </div>
-        </Card>
+        </PCard>
       </div>
     );
   }
@@ -129,9 +128,9 @@ export function AppearanceSection() {
 
   return (
     <div>
-      <SectionLabel>appearance</SectionLabel>
-      <Card>
-        {/* theme — row icon is moon/sun (proto line 281) */}
+      <PSectionLabel>appearance</PSectionLabel>
+      <PCard>
+        {/* theme — row icon is moon/sun */}
         <div className="flex items-center gap-3 border-b border-hairline px-3.5 py-3">
           <span className="text-text-2">
             <Icon d={theme === "dark" ? "moon" : "sun"} size={17} />
@@ -157,7 +156,7 @@ export function AppearanceSection() {
           </div>
         </div>
 
-        {/* accent — row icon is sparkle (proto line 289) */}
+        {/* accent — row icon is sparkle */}
         <div className="px-3.5 py-3">
           <div className="flex items-center gap-3">
             <span className="text-text-2">
@@ -168,7 +167,7 @@ export function AppearanceSection() {
           </div>
           <AccentSwatches accent={accent} onPick={(a) => apply({ accent: a })} />
         </div>
-      </Card>
+      </PCard>
     </div>
   );
 }

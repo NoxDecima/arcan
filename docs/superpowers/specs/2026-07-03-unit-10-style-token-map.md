@@ -83,6 +83,26 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `500 9px/1` mono `.14em` caps (day marker) | `font-mono font-medium text-ui-caps tracking-caps-sm uppercase text-dim self-center` |
 | `600 13px/1` mono (composer prompt ›) | `font-mono font-semibold text-ui-btn text-arcan-accent` |
 | `400 12.5px/1` body (composer input) | `font-body text-ui-row leading-none text-text` + inline `caretColor: var(--color-accent-fill)` |
+| `700 19px/1.2` + headMono (profile name) | `font-mono font-bold text-ui-name` (no letterSpacing — proto sets none) |
+| `700 18px/1.25`\|`700 18px/1.2` + headMono (add-contact heading / group name) | `font-mono font-bold text-ui-heading` (add-contact adds `leading-[1.25]` only if parity needs it) |
+| `600 22px/1` mono (convoset 70px group-avatar initials) | `font-mono font-semibold text-avatar-group-fg` + inline `fontSize:22` (bespoke avatar — see T4) |
+| `600 14px/1` mono (new-convo 42px group-placeholder "?") | `font-mono font-semibold text-ui-nav leading-none` + inline color `text-avatar-group-fg` |
+| `600 12.5px/1.2` body (member / pick-row name) | `font-body font-semibold text-ui-row` |
+| `500 12.5px/1` body (settings theme/accent labels) | `font-body font-medium text-ui-row leading-none` |
+| `500 12px/1` body (profile "verify safety number" label) | `font-body font-medium text-ui-toast leading-none` |
+| `500 13px/1` mono (profile safety-number digits) | `font-mono font-medium text-ui-btn` |
+| `500 11.5px/1` body (feedback attachment filename) | `font-body font-medium text-ui-empty-sub` |
+| `500 11px/1` body (add-contact "link valid for") | `font-body font-medium text-ui-value` |
+| `600 11px/1` mono\|body (add-people btn, linkdevice copy) | `font-mono\|font-body font-semibold text-ui-value` |
+| `600 10.5px/1` mono (settings theme light/dark labels) | `font-mono font-semibold text-ui-sub leading-none` |
+| `600 10px/1` mono (add-contact TTL segment) | `font-mono font-semibold text-ui-chatsub` |
+| `400 12.5px/1.5` body (feedback textarea) | `font-body text-ui-row leading-normal` |
+| `400 12px/1` body (new-convo group-name placeholder) | `font-body text-ui-toast leading-none text-dim` |
+| `400 11.5px/1.5`\|`/1.4` body (screen descriptions) | `font-body text-ui-empty-sub leading-normal` (`.4` → `leading-[1.4]`) |
+| `400 10.5px/1` body ("or paste a link" etc.) | `font-body text-ui-sub leading-none` |
+| `400 10px/1` body (add-people sub, new-convo hint) | `font-body text-ui-chatsub` |
+| `400 9.5px/1.4` body (profile compare-in-person hint) | `font-body text-ui-tab leading-[1.4]` |
+| `600 9px/1` mono `.12em`\|`.1em`\|`.08em` caps | `font-mono font-semibold text-ui-caps tracking-caps-{12,10,08} uppercase` |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -115,6 +135,15 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | Composer input pill | `min-w-0 overflow-hidden flex-1 h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3` |
 | Composer send button | tap + `w-[38px] h-[38px] rounded-pill justify-center transition-colors duration-[150ms]`; armed `bg-arcan-accent-fill` icon `text-on-accent`, empty `bg-panel-2` icon `text-dim`; Icon send 16 fill |
 | Composer attach button | tap + Icon plusc 22 `text-text-2` (v5 soft) |
+| Segmented pill toggle (theme / TTL / link-valid-for) | outer `flex gap-0.5 p-0.5 rounded-pill bg-panel-2 border border-hairline`; segment `rounded-pill px-3 py-[5px]`, active `bg-arcan-accent-fill text-on-accent`, idle `text-text-2 bg-transparent` |
+| Accent swatch button (settings) | `w-7 h-7 rounded-pill justify-center` + inline `background:<hex>`, border `2px solid var(--color-text)` when selected else transparent, boxShadow `0 0 0 2px var(--color-panel)` when selected; check glyph color inline (contrast-aware) |
+| Pick-row (new-convo / add-people) | tap + `w-full text-left flex items-center gap-3 px-3 py-[9px] rounded-r-4` (+ selected `bg-accent-soft`); trailing check box `w-5 h-5 rounded-r-3 border-[1.5px]`, selected `bg-arcan-accent-fill border-transparent` else `border-hairline` |
+| Role badge (convoset) | `px-2 py-1 rounded-pill font-mono font-semibold text-ui-caps tracking-caps-08 uppercase`; admin `bg-accent-soft text-arcan-accent border border-accent-border`, writer `bg-panel-2 text-text-2 border border-hairline` |
+| Labeled divider ("add someone") | `flex items-center gap-2`; rules `flex-1 h-px bg-hairline`; label `font-mono font-semibold text-ui-caps tracking-caps-12 uppercase text-dim` |
+| Group-avatar w/ camera badge (convoset 70 / new-convo 42) | bespoke `bg-avatar-group text-avatar-group-fg border border-hairline flex items-center justify-center` + inline size/`rounded-[radius+n]`/fontSize; camera button `absolute -right-0.5 -bottom-0.5 rounded-pill bg-arcan-accent-fill text-on-accent border-2 border-bg justify-center` |
+| Feedback textarea | `min-h-[110px] resize-none rounded-r-4 border border-hairline bg-panel text-text p-[11px_12px] font-body text-ui-row leading-normal outline-none` + inline `caretColor: var(--color-accent-fill)` |
+| Feedback category chip | tap + `px-[13px] py-[7px] rounded-pill font-mono font-semibold text-ui-value border`; on `border-accent-border bg-accent-soft text-arcan-accent`, off `border-hairline bg-transparent text-text-2` |
+| Feedback dropzone (empty) | tap + `justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent` |
 
 ## Component metrics stay literal
 

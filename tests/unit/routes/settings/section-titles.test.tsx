@@ -60,8 +60,12 @@ describe("settings section titles are lowercase", () => {
         <Section />
       </Wrap>
     );
-    const el = screen.getByText(label);
-    expect(el.textContent).toBe(label);
+    // PSectionLabel renders "// <label>" (PSectionLabel sections) or the raw
+    // label (FeedbackRow). Use an anchored regex to avoid false multi-match on
+    // substrings like "browser notifications" matching "notifications".
+    const els = screen.getAllByText(new RegExp(`^(// )?${label}$`));
+    expect(els.length).toBeGreaterThan(0);
+    expect(els[0]!.textContent).toContain(label);
     expect(label).toBe(label.toLowerCase());
   });
 });

@@ -302,6 +302,410 @@ function PNavColumn({ s, tab }) {
 }
 /* end patched copy */
 
+/* patched copy: design/proto.jsx:205–236 — '@' prefix dropped (rule 4);
+   safety collapsed (no useState — open=false always);
+   toast/nav stubbed; sharedConversations=undefined → "soon" row. */
+function PProfileScreen({ s, params }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="profile" onBack={() => {}} right={<button style={tapBtn} onClick={() => {}}><Icon d="dots" c={c.text2} size={18} fill /></button>} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+          <HAv s={s} txt={params.ini} size={80} />
+          <div style={{ textAlign: 'center' }}>
+            {/* '@' prefix dropped — rule 4 */}
+            <div style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>{params.name}</div>
+            <div style={{ marginTop: 5, font: `400 11px/1 ${s.font}`, color: c.dim }}>co_z1a8…4f2</div>
+          </div>
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="message" onClick={() => {}} /></div>
+          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
+            <PRow s={s} icon="chat" label="shared conversations" right={<span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.1em', textTransform: 'uppercase', color: c.dim }}>soon</span>} />
+            {/* safety expander — collapsed (open=false); no expanded body rendered */}
+            <button onClick={() => {}} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px' }}>
+              <Icon d="check" c={c.accent} size={16} /><span style={{ flex: 1, font: `500 12px/1 ${s.body}`, color: c.text }}>verify safety number</span><span style={{ font: `600 13px/1 ${s.font}`, color: c.dim }}>▸</span>
+            </button>
+          </PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:238–259 — '@' prefix dropped (rule 4);
+   toast handlers replaced with no-op stubs; no extra sections. */
+function POwnProfileScreen({ s, params }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="your profile" onBack={() => {}} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+          <div style={{ position: 'relative' }}>
+            <HAv s={s} txt="me" size={80} />
+            <button onClick={() => {}} style={{ ...tapBtn, position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 999, background: c.accentFill, border: `2px solid ${c.bg}`, justifyContent: 'center' }}><Icon d="camera" c={c.onAccent} size={14} /></button>
+          </div>
+          {/* '@' prefix dropped — rule 4; toast stub → no-op */}
+          <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}><span style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span><Icon d="pencil" c={c.dim} size={15} /></button>
+          <div style={{ font: `400 11px/1 ${s.font}`, color: c.dim, marginTop: -8 }}>co_z1a8…4f2</div>
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="plus" label="add a contact" onClick={() => {}} /></div>
+          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
+            <PRow s={s} icon="gear" label="account & settings" onClick={() => {}} last />
+          </PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:261–317 (SettingsScreen) —
+   toast/nav stubbed; theme/accent from s.theme/s.accentKey (skin object);
+   ACCENT_KEYS/ACCENTS/lum from window (hf-kit). */
+function PSettingsScreen({ s }) {
+  const c = s.c;
+  const theme = s.theme;
+  const accent = s.accentKey;
+  const [notif, setNotif] = React.useState(true);
+  const [ment, setMent] = React.useState(true);
+  const ACCENT_KEYS = window.ACCENT_KEYS;
+  const ACCENTS = window.ACCENTS;
+  const lum = window.lum;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="settings" onBack={() => {}} />
+      <Body s={s} pad={14}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* account */}
+          <div>
+            <PSectionLabel s={s}>account</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} label="decima" sub="view your profile" onClick={() => {}} right={<HAv s={s} txt="me" size={34} />} />
+              <PRow s={s} icon="key" label="change password" onClick={() => {}} />
+              <PRow s={s} icon="shield" label="recovery code" onClick={() => {}} last />
+            </PCard>
+          </div>
+          {/* feedback */}
+          <PCard s={s}><PRow s={s} icon="message" iconColor={c.accent} label="give feedback" sub="report a bug or share an idea" onClick={() => {}} last /></PCard>
+          {/* appearance */}
+          <div>
+            <PSectionLabel s={s}>appearance</PSectionLabel>
+            <PCard s={s}>
+              {/* theme row — proto:280–285 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${c.border}` }}>
+                <Icon d={theme === 'dark' ? 'moon' : 'sun'} c={c.text2} size={17} />
+                <span style={{ flex: 1, font: `500 12.5px/1 ${s.body}`, color: c.text }}>theme</span>
+                <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 999, background: c.panel2, border: `1px solid ${c.border}` }}>
+                  {['light', 'dark'].map(t => (
+                    <button key={t} onClick={() => {}} style={{ ...tapBtn, borderRadius: 999, padding: '5px 12px', font: `600 10.5px/1 ${s.font}`, color: theme === t ? c.onAccent : c.text2, background: theme === t ? c.accentFill : 'transparent' }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              {/* accent row — proto:287–296 */}
+              <div style={{ padding: '13px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Icon d="sparkle" c={c.text2} size={17} />
+                  <span style={{ flex: 1, font: `500 12.5px/1 ${s.body}`, color: c.text }}>accent color</span>
+                  <span style={{ font: `400 11px/1 ${s.font}`, color: c.accent }}>{accent}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 14, paddingLeft: 29 }}>
+                  {ACCENT_KEYS.map(k => {
+                    const col = ACCENTS[k].solid, on = accent === k;
+                    return (
+                      <button key={k} onClick={() => {}} title={k} style={{ ...tapBtn, width: 28, height: 28, borderRadius: 999, background: col, border: on ? `2px solid ${c.text}` : '2px solid transparent', boxShadow: on ? `0 0 0 2px ${c.panel}, 0 0 10px ${alpha(col, .6)}` : 'none', justifyContent: 'center' }}>
+                        {on && <Icon d="check" c={lum(col) > 0.55 ? '#0b0d14' : '#fff'} size={14} sw={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </PCard>
+          </div>
+          {/* notifications — patched: proto icons kept (bell/at) matching app fixture icons */}
+          <div>
+            <PSectionLabel s={s}>notifications</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} icon="bell" label="new messages" right={<PToggle s={s} on={notif} onClick={() => setNotif(v => !v)} />} />
+              <PRow s={s} icon="at" label="mentions only" sub="for group conversations" right={<PToggle s={s} on={ment} onClick={() => setMent(v => !v)} />} last />
+            </PCard>
+          </div>
+          {/* devices */}
+          <div>
+            <PSectionLabel s={s}>devices</PSectionLabel>
+            <PCard s={s}>
+              <PRow s={s} icon="device" label="this device · macbook" value="active now" />
+              <PRow s={s} icon="plus" label="link a device" onClick={() => {}} last />
+            </PCard>
+          </div>
+          {/* sign out */}
+          <PCard s={s}><PRow s={s} icon="logout" label="sign out" danger onClick={() => {}} last /></PCard>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:487–531 (FeedbackScreen) —
+   toast/nav stubbed; state initialized to empty (text='', cat=null, attached=false);
+   attachmentSlot = static dropzone matching empty state. */
+function PFeedbackScreen({ s }) {
+  const c = s.c;
+  const [text, setText] = React.useState('');
+  const [cat, setCat] = React.useState(null);
+  const cats = [['bug', 'bug'], ['idea', 'idea'], ['question', 'question'], ['praise', 'praise']];
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="give feedback" onBack={() => {}} />
+      <Body s={s} pad={16}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520, width: '100%', margin: '0 auto' }}>
+          {/* intro */}
+          <div style={{ font: `400 11.5px/1.5 ${s.body}`, color: c.text2 }}>found a bug or have an idea? tell me — it goes straight to the maker.</div>
+          {/* your feedback */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>your feedback</span>
+            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="what's on your mind?"
+              style={{ minHeight: 110, resize: 'none', borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, color: c.text, padding: '11px 12px', font: `400 12.5px/1.5 ${s.body}`, outline: 'none', caretColor: c.accentFill }} />
+          </div>
+          {/* category */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>category · optional</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {cats.map(([k, lb]) => { const on = cat === k; return (
+                <button key={k} onClick={() => setCat(on ? null : k)} style={{ ...tapBtn, padding: '7px 13px', borderRadius: s.soft ? 999 : s.radius, border: `1px solid ${on ? c.accentFill : c.border}`, background: on ? c.accentSoft : 'transparent', font: `600 11px/1 ${s.headMono ? s.font : s.body}`, color: on ? c.accent : c.text2 }}>{lb}</button>
+              ); })}
+            </div>
+          </div>
+          {/* attachment — not attached state (proto:520–522) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>attachment · optional</span>
+            <button onClick={() => {}} style={{ ...tapBtn, justifyContent: 'center', gap: 8, padding: '12px', borderRadius: s.radius, border: `1px dashed ${c.border}`, background: 'transparent' }}>
+              <Icon d="paperclip" c={c.text2} size={15} /><span style={{ font: `500 11.5px/1 ${s.body}`, color: c.text2 }}>add a screenshot</span>
+            </button>
+          </div>
+          {/* email — patched: PField replaced with native <input> (app renders real input, not display-only PField;
+               PField's placeholder text wraps outside its 40px div, causing layout diff) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>email · optional</span>
+            <input type="email" defaultValue="" placeholder="for follow-up — leave blank to stay anonymous"
+              style={{ height: 40, borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, color: c.text, padding: '0 12px', font: `400 12.5px/1 ${s.body}`, outline: 'none', boxSizing: 'border-box', width: '100%' }} />
+          </div>
+          {/* submit — opacity:.5 because text is empty */}
+          <PButton s={s} primary full label="submit feedback" icon="send" onClick={() => {}} style={{ opacity: 0.5 }} />
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:462–475 (LinkDeviceScreen) —
+   toast/nav stubbed; linkUrl from prop; QR = PQR size=150;
+   hf-typing-dot class retained (animation frozen by gallery: animation:none!important). */
+function PLinkDeviceScreen({ s }) {
+  const c = s.c;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="link a device" onBack={() => {}} />
+      <Body s={s} pad={'24px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ textAlign: 'center', font: `400 11.5px/1.5 ${s.body}`, color: c.text2 }}>open this link on your other device, or scan it</div>
+          <PQR s={s} size={150} />
+          <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', maxWidth: 320, border: `1px solid ${c.border}`, borderRadius: s.radius, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: '0 12px', display: 'flex', alignItems: 'center', background: c.panel }}>
+              <span style={{ font: `400 11px/1 ${s.font}`, color: c.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>arcan.app/link#k2f…a81</span>
+            </div>
+            <button onClick={() => {}} style={{ ...tapBtn, padding: '10px 13px', borderLeft: `1px solid ${c.border}`, background: c.panel, gap: 6 }}>
+              <Icon d="copy" c={c.accent} size={13} />
+              <span style={{ font: `600 11px/1 ${s.body}`, color: c.accent }}>copy</span>
+            </button>
+          </div>
+          {/* waiting row — hf-typing-dot class retained (animation disabled in gallery) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 7, background: c.accentFill }} className="hf-typing-dot" />
+            <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>waiting for your other device…</span>
+          </div>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:319–355 (ConvoSettingsScreen) —
+   toast/nav stubbed; MEMBERS fixture defined locally (proto-module-local);
+   dots kebab dropped in BOTH proto copy and app cell (renderMemberEnd=undefined → match);
+   bespoke 70px group avatar (radius 16 = s.radius+4), NOT HAv. */
+const PCONVO_MEMBERS = [
+  { i: 'DC', n: 'decima', r: 'admin', you: true }, { i: 'RA', n: 'rana', r: 'admin' },
+  { i: 'JM', n: 'jun mori', r: 'writer' }, { i: 'AK', n: 'ada', r: 'writer' }, { i: 'TZ', n: 'theo z.', r: 'writer' },
+];
+function PConvoSettingsScreen({ s }) {
+  const c = s.c;
+  const admins = PCONVO_MEMBERS.filter(m => m.r === 'admin');
+  const writers = PCONVO_MEMBERS.filter(m => m.r === 'writer');
+  /* dots kebab dropped (both sides) — parity: renderMemberEnd omitted in app cell */
+  const memRow = (m, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px' }}>
+      <HAv s={s} txt={m.i} size={36} />
+      <span style={{ flex: 1, minWidth: 0, font: `600 12.5px/1.2 ${s.body}`, color: c.text }}>
+        {m.n}{m.you && <span style={{ color: c.dim, fontWeight: 400 }}> · you</span>}
+      </span>
+      <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.08em', textTransform: 'uppercase', padding: '4px 8px', borderRadius: 999, background: m.r === 'admin' ? c.accentSoft : c.panel2, color: m.r === 'admin' ? c.accent : c.text2, border: `1px solid ${m.r === 'admin' ? c.accentBorder : c.border}` }}>{m.r}</span>
+      {/* dots button dropped — see patch note */}
+    </div>
+  );
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="conversation settings" onBack={() => {}} />
+      <Body s={s}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, padding: '24px 18px 18px', borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ position: 'relative' }}>
+            {/* bespoke 70px group avatar: radius 16 (s.radius+4), NOT HAv */}
+            <div style={{ width: 70, height: 70, borderRadius: 16, background: alpha('#bb9af7', s.theme === 'dark' ? .2 : .15), border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', font: `600 22px/1 ${s.font}`, color: '#bb9af7' }}>RS</div>
+            <button onClick={() => {}} style={{ ...tapBtn, position: 'absolute', right: -2, bottom: -2, width: 26, height: 26, borderRadius: 999, background: c.accentFill, border: `2px solid ${c.bg}`, justifyContent: 'center' }}><Icon d="camera" c={c.onAccent} size={13} /></button>
+          </div>
+          <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}>
+            <span style={{ font: `700 18px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>retrieval-squad</span>
+            <Icon d="pencil" c={c.dim} size={14} />
+          </button>
+          <span style={{ font: `400 11px/1 ${s.headMono ? s.font : s.body}`, color: c.dim }}>{'// 5 members · created 2026-04-18'}</span>
+        </div>
+        <div style={{ padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px 8px' }}>
+            <span style={{ flex: 1, font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// admins'}</span>
+            <button onClick={() => {}} style={{ ...tapBtn, gap: 6, padding: '5px 11px', borderRadius: 999, background: c.accentFill }}>
+              <Icon d="plus" c={c.onAccent} size={13} sw={2.4} />
+              <span style={{ font: `600 11px/1 ${s.headMono ? s.font : s.body}`, color: c.onAccent }}>add people</span>
+            </button>
+          </div>
+          {admins.map(memRow)}
+          <div style={{ padding: '14px 8px 8px' }}><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// members'}</span></div>
+          {writers.map(memRow)}
+          <div style={{ marginTop: 18 }}><PButton s={s} danger full label="leave conversation" onClick={() => {}} /></div>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:357–396 (NewConvoScreen) —
+   toast/nav stubbed; HF_CONTACTS from window; sel=[0,3] (AK+RA → isGroup=true);
+   groupNameSlot = static placeholder pill;
+   bespoke 42px group placeholder avatar: radius 14 (s.radius+2), NOT HAv. */
+function PNewConvoScreen({ s }) {
+  const c = s.c;
+  const [sel, setSel] = React.useState([0, 3]);
+  const toggle = i => setSel(a => a.includes(i) ? a.filter(x => x !== i) : [...a, i]);
+  const isGroup = sel.length >= 2;
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="new conversation" onBack={() => {}} />
+      {isGroup && (
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderBottom: `1px solid ${c.border}` }}>
+          {/* bespoke 42px group-placeholder avatar: radius 14 (s.radius+2), NOT HAv */}
+          <div style={{ width: 42, height: 42, borderRadius: 14, background: alpha('#bb9af7', s.theme === 'dark' ? .2 : .15), border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bb9af7', font: `600 14px/1 ${s.font}` }}>?</div>
+          <div style={{ flex: 1, height: 36, borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+            <span style={{ font: `400 12px/1 ${s.body}`, color: c.dim }}>group name (optional)</span>
+          </div>
+        </div>
+      )}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '12px 16px 6px' }}>
+        <span style={{ flex: 1, font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// contacts'}</span>
+        <span style={{ font: `400 10px/1 ${s.body}`, color: c.dim }}>one · two+ = group</span>
+      </div>
+      <Body s={s}>
+        <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {HF_CONTACTS.map((d, i) => { const on = sel.includes(i); return (
+            <button key={i} onClick={() => toggle(i)} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: s.radius, background: on ? c.accentSoft : 'transparent' }}>
+              <HAv s={s} txt={d.i} size={36} />
+              <span style={{ flex: 1, font: `600 12.5px/1.2 ${s.body}`, color: c.text }}>{d.n}</span>
+              <span style={{ width: 20, height: 20, borderRadius: s.radius - 2, border: `1.5px solid ${on ? c.accentFill : c.border}`, background: on ? c.accentFill : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on && <Icon d="check" c={c.onAccent} size={12} sw={3} />}</span>
+            </button>
+          ); })}
+        </div>
+      </Body>
+      <div style={{ flexShrink: 0, padding: 12, borderTop: `1px solid ${c.border}`, background: c.bg }}>
+        <PButton s={s} primary full label={`create group · ${sel.length} members`} onClick={() => {}} style={{ opacity: 1 }} />
+      </div>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:433–457 (AddPeopleScreen) —
+   toast/nav stubbed; local pool fixture defined (proto-module-local);
+   sel=[0,1] → EL+NX selected; groupName="retrieval-squad". */
+const PADD_PEOPLE_POOL = [{ i: 'EL', n: 'eli · device-2' }, { i: 'NX', n: 'nox / ops' }, { i: 'KS', n: 'ko shin' }, { i: 'MP', n: 'mara p.' }];
+function PAddPeopleScreen({ s }) {
+  const c = s.c;
+  const [sel, setSel] = React.useState([0, 1]);
+  const toggle = i => setSel(a => a.includes(i) ? a.filter(x => x !== i) : [...a, i]);
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="add people" sub={<span style={{ font: `400 10px/1 ${s.body}`, color: c.text2 }}>to retrieval-squad</span>} onBack={() => {}} />
+      <Body s={s}>
+        <div style={{ padding: '10px 8px 0' }}><PSectionLabel s={s}>contacts not in this group</PSectionLabel></div>
+        <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {PADD_PEOPLE_POOL.map((d, i) => { const on = sel.includes(i); return (
+            <button key={i} onClick={() => toggle(i)} style={{ ...tapBtn, width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: s.radius, background: on ? c.accentSoft : 'transparent' }}>
+              <HAv s={s} txt={d.i} size={36} />
+              <span style={{ flex: 1, font: `600 12.5px/1.2 ${s.body}`, color: c.text }}>{d.n}</span>
+              <span style={{ width: 20, height: 20, borderRadius: s.radius - 2, border: `1.5px solid ${on ? c.accentFill : c.border}`, background: on ? c.accentFill : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on && <Icon d="check" c={c.onAccent} size={12} sw={3} />}</span>
+            </button>
+          ); })}
+        </div>
+      </Body>
+      <div style={{ flexShrink: 0, padding: 12, borderTop: `1px solid ${c.border}` }}>
+        <PButton s={s} primary full label={`add ${sel.length} ${sel.length === 1 ? 'person' : 'people'}`} onClick={() => {}} style={{ opacity: sel.length ? 1 : .5 }} />
+      </div>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/proto.jsx:398–431 (AddContactScreen) —
+   toast/nav stubbed; QR = PQR size=128;
+   two-button copy/share → one adaptive action per 9-7 §2-J (see patch note inline);
+   TTL options patched to app presets ['1h','24h','7d'], '24h' selected (deviation noted in manifest). */
+function PAddContactScreen({ s }) {
+  const c = s.c;
+  const [ttl, setTtl] = React.useState('24h');
+  const ttlOpts = ['1h', '24h', '7d'];
+  return (
+    <React.Fragment>
+      <PHeader s={s} title="add contact" onBack={() => {}} />
+      <Body s={s} pad={'22px 20px'}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ font: `700 18px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text }}>add a contact</div>
+            <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>share your code so people can add you</div>
+          </div>
+          <PCard s={s} style={{ width: '100%', maxWidth: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11 }}>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// your code'}</span>
+            <PQR s={s} size={128} />
+            <span style={{ font: `400 11px/1 ${s.font}`, color: c.dim }}>co_z1a8…4f2</span>
+            {/* patched copy: two-button copy/share → one adaptive action per 9-7 §2-J */}
+            <PButton s={s} full label="copy link" icon="copy" onClick={() => {}} />
+            <div style={{ width: '100%', borderTop: `1px solid ${c.border}`, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ flex: 1, font: `500 11px/1 ${s.body}`, color: c.text2 }}>link valid for</span>
+              <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 999, background: c.bg, border: `1px solid ${c.border}` }}>
+                {ttlOpts.map(o => { const on = o === ttl; return <button key={o} onClick={() => setTtl(o)} style={{ ...tapBtn, padding: '4px 9px', borderRadius: 999, font: `600 10px/1 ${s.font}`, color: on ? c.onAccent : c.text2, background: on ? c.accentFill : 'transparent' }}>{o}</button>; })}
+              </div>
+            </div>
+          </PCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 300 }}><div style={{ flex: 1, height: 1, background: c.border }} /><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.12em', textTransform: 'uppercase', color: c.dim }}>add someone</span><div style={{ flex: 1, height: 1, background: c.border }} /></div>
+          <div style={{ width: '100%', maxWidth: 300 }}><PButton s={s} primary full label="scan their code" icon="search" onClick={() => {}} /></div>
+          <button style={tapBtn} onClick={() => {}}><span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>or paste a link</span></button>
+        </div>
+      </Body>
+    </React.Fragment>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -511,6 +915,42 @@ const PROTO_CELLS = {
     </div>
   ),
 
+  /* patched copy: design/proto.jsx:205–236 (ProfileScreen) — '@' dropped, safety collapsed */
+  "profile-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PProfileScreen s={s} params={{ name: 'ada · keyring', ini: 'AK' }} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:238–259 (OwnProfileScreen) — '@' dropped, toast stubbed */
+  "own-profile-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <POwnProfileScreen s={s} params={{ name: 'decima', ini: 'me' }} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:261–317 (SettingsScreen) — toast/nav stubbed;
+     theme/accent from skin; ACCENT_KEYS/ACCENTS/lum from window; boxShadow glow dropped. */
+  "settings-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PSettingsScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:487–531 (FeedbackScreen) — empty state (text='', cat=null). */
+  "feedback-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PFeedbackScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:462–475 (LinkDeviceScreen) — QR = PQR; pulse static. */
+  "link-device-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PLinkDeviceScreen s={s} />
+    </div>
+  ),
+
   /* patched copy: design/proto.jsx:86–114 (ChatsScreen) — presence dropped (NOX-31) */
   "chats-screen": (s) => {
     const nav = { push: () => {} };
@@ -555,6 +995,34 @@ const PROTO_CELLS = {
     <div style={{ display: 'flex', flexDirection: 'column', background: s.c.bg }}>
       <PComposerBar s={s} text="" />
       <PComposerBar s={s} text="on it" />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:319–355 (ConvoSettingsScreen) — dots dropped in both */
+  "convo-settings-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PConvoSettingsScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:357–396 (NewConvoScreen) — sel=[0,3]; groupNameSlot=static pill */
+  "new-convo-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PNewConvoScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:433–457 (AddPeopleScreen) — local pool; sel=[0,1] */
+  "add-people-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PAddPeopleScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:398–431 (AddContactScreen) — one adaptive button; app TTL options */
+  "add-contact-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PAddContactScreen s={s} />
     </div>
   ),
 };

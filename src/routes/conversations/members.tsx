@@ -3,23 +3,18 @@
  *
  * Route: /conversations/:id/members
  *
- * Per spec §8:
- *   - Ordered list of group members with role badges (RolePill)
- *   - Admin-only: "Add member" button (ContactPicker, excludes current members)
- *   - Admin-only row actions: promote writer → admin, demote admin → writer, remove
- *   - "Leave conversation" button visible to all (destructive, bottom of page)
- *     - If me is last admin AND other members remain → LeaveWithPromoteDialog
- *     - Otherwise → leaveConversation + navigate /conversations
- *   - Back button → /conversations/:id
+ * Wave C (Unit 10): container renders <ConvoSettingsScreen>. All data logic
+ * and handlers are moved verbatim from the prior hand-rolled render. Avatar
+ * resolution per-member (useRemoteAvatar) is Rung-4; member rows show initials
+ * for now. The MemberKebabMenu sub-component is kept for kebab state (menuOpen).
  */
 
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
-import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { ContactPicker } from "@/components/contact-picker";
-import { RolePill } from "@/components/role-pill";
 import { LeaveWithPromoteDialog } from "@/components/leave-with-promote-dialog";
 import { Button } from "@/components/ui/button";
 import { ChatHeaderSkeleton, NavListSkeleton } from "@/components/skeleton";
@@ -34,105 +29,78 @@ import {
   requestConnectionFromGroupMember,
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
-import { Avatar } from "@/components/avatar";
 import { ConversationAvatar } from "@/components/conversation-avatar";
-import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { useToast } from "@/components/toast";
 import { setConversationIcon } from "@/jazz/avatar";
 import {
   AttachmentTooLargeError,
   MAX_ATTACHMENT_BYTES,
 } from "@/jazz/attachments";
+import { ConvoSettingsScreen } from "@/ui/screens/convo-settings-screen";
+import type { ConvoMemberVM } from "@/ui/screens/picker-types";
 
-/**
- * Per-row component so each member row can call its own useRemoteAvatar
- * hook. For SELF, we resolve via the local fast path (me.profile.avatar
- * is already loaded). For OTHER members, the static resolver's group-
- * direct-member branch is unreliable (Jazz doesn't deeply auto-load
- * nested refs from peer-fetched CoValues), so we explicitly subscribe
- * to the remote account's profile.avatar via useRemoteAvatar.
- */
-function MemberRow(props: {
-  member: { accountID: string; displayName: string; role: "writer" | "admin" };
-  isMe: boolean;
-  me: any;
-  group: any;
-  iAmAdmin: boolean;
-  isAlreadyContact: boolean;
+// ── MemberKebabMenu ────────────────────────────────────────────────────────
+// Kept as a sub-component so it can hold its own `menuOpen` state.
+
+function MemberKebabMenu({
+  member,
+  canPromote,
+  canRemove,
+  canRequest,
+  actionInProgress,
+  onPromote,
+  onRemove,
+  onRequestConnection,
+}: {
+  member: ConvoMemberVM;
+  canPromote: boolean;
+  canRemove: boolean;
+  canRequest: boolean;
   actionInProgress: boolean;
   onPromote: () => void;
   onRemove: () => void;
   onRequestConnection: () => void;
 }) {
-  const { member, isMe, me, group, iAmAdmin, isAlreadyContact, actionInProgress, onPromote, onRemove, onRequestConnection } = props;
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const localAvatar = isMe
-    ? resolveAvatarFileBlob({ accountID: member.accountID, me, group })
-    : undefined;
-  const remoteAvatar = useRemoteAvatar(isMe ? null : member.accountID);
-  const avatar = localAvatar ?? remoteAvatar;
-
-  // Actions available to me on this row.
-  const canPromote = iAmAdmin && !isMe && member.role === "writer";
-  const canRemove = iAmAdmin && !isMe && member.role === "writer";
-  const canRequest = !isMe && !isAlreadyContact;
-  const hasActions = canPromote || canRemove || canRequest;
+  if (!canPromote && !canRemove && !canRequest) return null;
 
   return (
-    <div
-      className="relative flex items-center gap-3 px-[10px] py-[9px] rounded-r-3"
-      data-testid={`member-row-${member.accountID}`}
-    >
-      {/* avatar + name → the member's profile (proto: tap name/picture → profile) */}
-      <Link
-        to={`/profile/${member.accountID}`}
-        data-testid={`member-profile-link-${member.accountID}`}
-        className="flex flex-1 min-w-0 items-center gap-3 hover:opacity-90"
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-label={`Actions for ${member.name}`}
+        data-testid={`member-kebab-${member.accountID}`}
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-r-2 text-text-2 hover:bg-panel-2 ${menuOpen ? "bg-panel-2" : ""}`}
       >
-        <Avatar
-          src={avatar}
-          initials={member.displayName[0] ?? "?"}
-          size="md"
-          loadAs={me}
-          data-testid={`member-avatar-${member.accountID}`}
-        />
-        <span className="flex-1 text-[12.5px] font-semibold text-text truncate">
-          {member.displayName}
-          {isMe && <span className="ml-1 font-normal text-dim">· you</span>}
-        </span>
-      </Link>
-
-      <RolePill role={member.role} />
-
-      {hasActions && (
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label={`Actions for ${member.displayName}`}
-          data-testid={`member-kebab-${member.accountID}`}
-          className={`shrink-0 w-6 h-6 rounded-r-2 flex items-center justify-center text-text-2 hover:bg-panel-2 ${menuOpen ? "bg-panel-2" : ""}`}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <circle cx="12" cy="5" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="12" cy="19" r="1.6" />
-          </svg>
-        </button>
-      )}
+          <circle cx="12" cy="5" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="12" cy="19" r="1.6" />
+        </svg>
+      </button>
 
-      {menuOpen && hasActions && (
+      {menuOpen && (
         <div
           data-testid={`member-menu-${member.accountID}`}
-          className="absolute top-full right-2 mt-1 z-10 min-w-[150px] rounded-r-3 border border-hairline bg-panel p-1 shadow-level-2"
+          className="absolute right-2 top-full z-10 mt-1 min-w-[150px] rounded-r-3 border border-hairline bg-panel p-1 shadow-level-2"
         >
           {canPromote && (
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); onPromote(); }}
+              onClick={() => {
+                setMenuOpen(false);
+                onPromote();
+              }}
               disabled={actionInProgress}
               data-testid={`promote-${member.accountID}`}
-              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-text hover:bg-panel-2"
+              className="w-full rounded-r-2 px-[10px] py-2 text-left text-[11.5px] text-text hover:bg-panel-2"
             >
               promote to admin
             </button>
@@ -140,10 +108,13 @@ function MemberRow(props: {
           {canRequest && (
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); onRequestConnection(); }}
+              onClick={() => {
+                setMenuOpen(false);
+                onRequestConnection();
+              }}
               disabled={actionInProgress}
               data-testid={`request-connection-${member.accountID}`}
-              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-text hover:bg-panel-2"
+              className="w-full rounded-r-2 px-[10px] py-2 text-left text-[11.5px] text-text hover:bg-panel-2"
             >
               request connection
             </button>
@@ -151,10 +122,13 @@ function MemberRow(props: {
           {canRemove && (
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); onRemove(); }}
+              onClick={() => {
+                setMenuOpen(false);
+                onRemove();
+              }}
               disabled={actionInProgress}
               data-testid={`remove-${member.accountID}`}
-              className="w-full text-left px-[10px] py-2 rounded-r-2 text-[11.5px] text-red hover:bg-red/10"
+              className="w-full rounded-r-2 px-[10px] py-2 text-left text-[11.5px] text-red hover:bg-red/10"
             >
               remove
             </button>
@@ -165,6 +139,8 @@ function MemberRow(props: {
   );
 }
 
+// ── MembersRoute ──────────────────────────────────────────────────────────
+
 export function MembersRoute() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -174,7 +150,7 @@ export function MembersRoute() {
   const [actionInProgress, setActionInProgress] = useState(false);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
-  const [iconUploading, setIconUploading] = useState(false);
+  const [_iconUploading, setIconUploading] = useState(false);
   const toast = useToast();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
@@ -198,19 +174,18 @@ export function MembersRoute() {
   });
 
   // Redirect to /conversations when me has been revoked from this conversation.
-  // Same rationale as detail.tsx — the data is unreadable, no point rendering.
   const archivedForMe =
     me.$isLoaded && conversation ? isArchived(me, conversation) : false;
   useEffect(() => {
     if (archivedForMe) navigate("/conversations", { replace: true });
   }, [archivedForMe, navigate]);
 
-  // ---- loading / error states ----
+  // ── loading / error states ───────────────────────────────────────────────
 
   if (!me.$isLoaded) {
     return (
       <main
-        className="flex-1 flex flex-col min-w-0"
+        className="flex-1 min-h-0 flex flex-col min-w-0"
         data-testid="members-route-loading"
       >
         <ChatHeaderSkeleton />
@@ -230,7 +205,7 @@ export function MembersRoute() {
   if (!conversation) {
     return (
       <main
-        className="flex-1 flex flex-col min-w-0"
+        className="flex-1 min-h-0 flex flex-col min-w-0"
         data-testid="members-route-loading-late"
       >
         <ChatHeaderSkeleton />
@@ -239,7 +214,7 @@ export function MembersRoute() {
     );
   }
 
-  // ---- derive members from group ----
+  // ── derive members from group ────────────────────────────────────────────
 
   const myAccountID = (me as any).$jazz?.id as string | undefined;
   const group = (conversation as any).$jazz?.owner;
@@ -259,20 +234,20 @@ export function MembersRoute() {
       for (const m of directMembers) {
         const accountID: string = m.account?.$jazz?.id ?? m.id;
         const role = m.role as string;
-        if (role !== "admin" && role !== "writer") continue; // skip revoked / inherited
-        const displayName = resolveDisplayName({
+        if (role !== "admin" && role !== "writer") continue;
+        const displayName = resolveDisplayName({ accountID, me, group });
+        rawMembers.push({
           accountID,
-          me,
-          group,
+          role: role as "admin" | "writer",
+          displayName,
         });
-        rawMembers.push({ accountID, role: role as "admin" | "writer", displayName });
       }
     } catch {
-      // Group introspection unavailable
+      // Group introspection unavailable.
     }
   }
 
-  // Sort: admins first, then writers; within each group alphabetically
+  // Sort: admins first, then writers; within each group alphabetically.
   rawMembers.sort((a, b) => {
     if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
     return a.displayName.localeCompare(b.displayName);
@@ -280,13 +255,9 @@ export function MembersRoute() {
 
   const myRole = rawMembers.find((m) => m.accountID === myAccountID)?.role;
   const iAmAdmin = myRole === "admin";
-
   const currentMemberAccountIDs = rawMembers.map((m) => m.accountID);
 
-  // 1:1 conversations have no standalone settings screen — redirect to the
-  // other participant's profile. A DM is exactly two direct admin/writer
-  // members (me + one other); mirrors isOneToOneWith() in jazz/conversation.ts
-  // and the `contact` derivation in detail.tsx. Spec 9-6 §3.4(a).
+  // 1:1 conversations → redirect to the other participant's profile.
   const participants = rawMembers.filter(
     (m) => m.role === "admin" || m.role === "writer",
   );
@@ -297,15 +268,14 @@ export function MembersRoute() {
     }
   }
 
-  // Build the set of contact account IDs so we can skip the "request connection"
-  // affordance for members who are already in the user's ContactBook.
+  // Build the set of contact account IDs for "request connection" affordance.
   const knownContactIDs = new Set(
     Array.from(((me as any).root?.contactBook as Iterable<any>) ?? [])
       .map((c: any) => c?.contactAccountID)
-      .filter(Boolean)
+      .filter(Boolean),
   );
 
-  // ---- handlers ----
+  // ── handlers ─────────────────────────────────────────────────────────────
 
   async function handleAddMembers(contacts: any[]) {
     setAddPickerOpen(false);
@@ -350,7 +320,12 @@ export function MembersRoute() {
       setLeavePromoteOpen(true);
       return;
     }
-    if (!confirm("Leave this conversation? You will lose access to its messages.")) return;
+    if (
+      !confirm(
+        "Leave this conversation? You will lose access to its messages.",
+      )
+    )
+      return;
     setActionInProgress(true);
     try {
       await leaveConversation(me as any, conversation);
@@ -372,9 +347,18 @@ export function MembersRoute() {
     }
   }
 
+  async function handleRequestConnection(accountID: string) {
+    try {
+      await requestConnectionFromGroupMember(me as any, accountID);
+      toast({ icon: "check", text: "request sent", tone: "accent" });
+    } catch {
+      toast({ icon: "alert", text: "couldn't send request", tone: "error" });
+    }
+  }
+
   const conversationTitle = (conversation as any)?.title ?? "Conversation";
 
-  // ---- title edit handlers ----
+  // ── title edit handlers ──────────────────────────────────────────────────
 
   function startTitleEdit() {
     if (!iAmAdmin) return;
@@ -405,11 +389,10 @@ export function MembersRoute() {
     setTitleDraft("");
   }
 
-  // ---- icon upload handlers (Phase 8) ----
+  // ── icon upload ──────────────────────────────────────────────────────────
 
   async function handleIconChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    // Reset the value so picking the same file twice still fires onChange
     e.target.value = "";
     if (!file) return;
     if (!iAmAdmin) return;
@@ -436,33 +419,41 @@ export function MembersRoute() {
     }
   }
 
-  // ---- render ----
+  // ── view-model ───────────────────────────────────────────────────────────
+
+  const toVM = (m: typeof rawMembers[number]): ConvoMemberVM => ({
+    accountID: m.accountID,
+    name: m.displayName,
+    initials: m.displayName[0]?.toUpperCase() ?? "?",
+    role: m.role,
+    you: m.accountID === myAccountID,
+    // avatarSrc: undefined — Rung-4, avatar resolution via useRemoteAvatar is per-member
+  });
+
+  const admins = rawMembers.filter((m) => m.role === "admin").map(toVM);
+  const writers = rawMembers.filter((m) => m.role === "writer").map(toVM);
+
+  const memberCount = rawMembers.length;
+
+  // ── render ───────────────────────────────────────────────────────────────
 
   return (
-    <main
-      className="flex-1 flex flex-col min-w-0"
-      data-testid="members-route"
-    >
-      {/* Slim header bar — mobile-only back arrow (desktop uses the sidebar).
-          proto ConvoSettingsScreen PHeader title="conversation settings". */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline bg-panel">
-        <Link
-          to={`/conversations/${id}`}
-          aria-label="Back to conversation"
-          data-testid="back-btn"
-          className="md:hidden -ml-1 text-text-2 hover:text-text"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </Link>
-        <h1 className="flex-1 font-semibold text-text">conversation settings</h1>
-      </div>
+    <main className="flex-1 min-h-0 flex flex-col min-w-0" data-testid="members-route">
+      {/* Hidden file input for group icon (outside presenter) */}
+      <input
+        ref={iconInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleIconChange}
+        data-testid="conversation-icon-input"
+      />
 
-      {/* Group card — centered picture + editable name (group only; 1:1 redirects
-          before reaching here). proto ConvoSettingsScreen ~L334-341. */}
-      <div className="flex flex-col items-center gap-2 px-[18px] pt-6 pb-[18px] border-b border-hairline">
-        <div className="relative">
+      <ConvoSettingsScreen
+        onBack={() => navigate(`/conversations/${id}`)}
+        title={conversationTitle}
+        initials={conversationTitle[0]?.toUpperCase() ?? "?"}
+        avatarSlot={
           <ConversationAvatar
             conversationId={(conversation as any)?.$jazz?.id ?? ""}
             title={conversationTitle}
@@ -471,196 +462,94 @@ export function MembersRoute() {
             loadAs={me}
             data-testid="members-header-avatar"
           />
-          {iAmAdmin && (
-            <>
+        }
+        sub={`${memberCount} ${memberCount === 1 ? "member" : "members"}`}
+        onEditAvatar={
+          iAmAdmin
+            ? () => iconInputRef.current?.click()
+            : undefined
+        }
+        onEditTitle={iAmAdmin ? startTitleEdit : undefined}
+        titleEditSlot={
+          titleEditing ? (
+            <div className="flex items-center gap-2">
               <input
-                ref={iconInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={handleIconChange}
-                data-testid="conversation-icon-input"
+                ref={titleInputRef}
+                type="text"
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void saveTitleEdit();
+                  } else if (e.key === "Escape") {
+                    cancelTitleEdit();
+                  }
+                }}
+                maxLength={60}
+                disabled={actionInProgress}
+                className="rounded-r-2 border border-hairline bg-panel px-2 py-1 text-lg font-semibold text-text outline-none focus:border-arcan-accent"
+                data-testid="group-title-edit-input"
               />
-              <button
-                type="button"
-                onClick={() => iconInputRef.current?.click()}
-                disabled={iconUploading || actionInProgress}
-                aria-label="Change group picture"
-                data-testid="conversation-icon-upload"
-                className="absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-pill bg-arcan-accent text-on-accent border-2 border-bg flex items-center justify-center"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </button>
-            </>
-          )}
-        </div>
-
-        {titleEditing ? (
-          <div className="flex items-center gap-2">
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value.slice(0, 60))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void saveTitleEdit();
-                } else if (e.key === "Escape") {
-                  cancelTitleEdit();
-                }
-              }}
-              maxLength={60}
-              disabled={actionInProgress}
-              className="border border-hairline rounded-r-2 bg-panel px-2 py-1 text-lg font-semibold text-text outline-none focus:border-arcan-accent"
-              data-testid="group-title-edit-input"
-            />
-            <Button size="sm" onClick={() => void saveTitleEdit()} disabled={!titleDraft.trim() || actionInProgress} data-testid="group-title-save-btn">
-              save
-            </Button>
-            <Button size="sm" variant="outline" onClick={cancelTitleEdit} disabled={actionInProgress} data-testid="group-title-cancel-btn">
-              cancel
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2" data-testid="group-title-display">
-            <button
-              type="button"
-              onClick={iAmAdmin ? startTitleEdit : undefined}
-              disabled={!iAmAdmin}
-              className="text-lg font-semibold text-text disabled:cursor-default"
-            >
-              {conversationTitle}
-            </button>
-            {iAmAdmin && (
-              <button
-                type="button"
-                onClick={startTitleEdit}
-                aria-label="Edit group name"
-                data-testid="group-title-edit-btn"
-                className="text-dim hover:text-text"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
-
-        <span className="text-[11px] text-dim font-mono" data-testid="members-count">
-          {rawMembers.length} {rawMembers.length === 1 ? "member" : "members"}
-        </span>
-      </div>
-
-        {/* Member list — split into admins + members (proto ConvoSettingsScreen L342-349) */}
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          {/* admins */}
-          <div className="flex items-center gap-2 px-2 pt-1 pb-2">
-            <span className="flex-1 text-[9px] uppercase tracking-widest font-mono font-semibold text-dim">
-              admins
-            </span>
-            {iAmAdmin && (
               <Button
                 size="sm"
-                variant="primary"
-                className="h-7 px-3 text-[11px]"
-                onClick={() => setAddPickerOpen(true)}
-                disabled={actionInProgress}
-                data-testid="add-member-btn"
+                onClick={() => void saveTitleEdit()}
+                disabled={!titleDraft.trim() || actionInProgress}
+                data-testid="group-title-save-btn"
               >
-                + add people
+                save
               </Button>
-            )}
-          </div>
-          <div data-testid="members-section-admins">
-            {rawMembers
-              .filter((m) => m.role === "admin")
-              .map((member) => (
-                <MemberRow
-                  key={member.accountID}
-                  member={member}
-                  isMe={member.accountID === myAccountID}
-                  me={me}
-                  group={group}
-                  iAmAdmin={iAmAdmin}
-                  isAlreadyContact={knownContactIDs.has(member.accountID)}
-                  actionInProgress={actionInProgress}
-                  onPromote={() => void handlePromote(member.accountID)}
-                  onRemove={() => void handleRemove(member.accountID)}
-                  onRequestConnection={async () => {
-                    try {
-                      await requestConnectionFromGroupMember(me as any, member.accountID);
-                      toast({ icon: "check", text: "request sent", tone: "accent" });
-                    } catch {
-                      toast({ icon: "alert", text: "couldn't send request", tone: "error" });
-                    }
-                  }}
-                />
-              ))}
-          </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={cancelTitleEdit}
+                disabled={actionInProgress}
+                data-testid="group-title-cancel-btn"
+              >
+                cancel
+              </Button>
+            </div>
+          ) : undefined
+        }
+        admins={admins}
+        writers={writers}
+        iAmAdmin={iAmAdmin}
+        onAddPeople={() => setAddPickerOpen(true)}
+        renderMemberEnd={(m) => {
+          const isMe = m.you ?? false;
+          const canPromote = iAmAdmin && !isMe && m.role === "writer";
+          const canRemove = iAmAdmin && !isMe && m.role === "writer";
+          const canRequest = !isMe && !knownContactIDs.has(m.accountID);
+          return (
+            <MemberKebabMenu
+              member={m}
+              canPromote={canPromote}
+              canRemove={canRemove}
+              canRequest={canRequest}
+              actionInProgress={actionInProgress}
+              onPromote={() => void handlePromote(m.accountID)}
+              onRemove={() => void handleRemove(m.accountID)}
+              onRequestConnection={() => void handleRequestConnection(m.accountID)}
+            />
+          );
+        }}
+        onOpenMember={(accountID) => navigate(`/profile/${accountID}`)}
+        onLeave={() => void handleLeave()}
+        leaveInProgress={actionInProgress}
+        // testid carries (E2E)
+        backTestId="back-btn"
+        avatarTestId="members-header-avatar"
+        avatarEditTestId="conversation-icon-upload"
+        titleTestId="group-title-display"
+        editTitleTestId="group-title-edit-btn"
+        membersCountTestId="members-count"
+        addMemberTestId="add-member-btn"
+        adminsSectionTestId="members-section-admins"
+        writersSectionTestId="members-section-writers"
+        leaveTestId="leave-conversation-btn"
+      />
 
-          {/* members (writers) */}
-          <div className="px-2 pt-3.5 pb-2">
-            <span className="text-[9px] uppercase tracking-widest font-mono font-semibold text-dim">
-              members
-            </span>
-          </div>
-          <div data-testid="members-section-writers">
-            {rawMembers
-              .filter((m) => m.role === "writer")
-              .map((member) => (
-                <MemberRow
-                  key={member.accountID}
-                  member={member}
-                  isMe={member.accountID === myAccountID}
-                  me={me}
-                  group={group}
-                  iAmAdmin={iAmAdmin}
-                  isAlreadyContact={knownContactIDs.has(member.accountID)}
-                  actionInProgress={actionInProgress}
-                  onPromote={() => void handlePromote(member.accountID)}
-                  onRemove={() => void handleRemove(member.accountID)}
-                  onRequestConnection={async () => {
-                    try {
-                      await requestConnectionFromGroupMember(me as any, member.accountID);
-                      toast({ icon: "check", text: "request sent", tone: "accent" });
-                    } catch {
-                      toast({ icon: "alert", text: "couldn't send request", tone: "error" });
-                    }
-                  }}
-                />
-              ))}
-          </div>
-
-          {rawMembers.length === 0 && (
-            <p className="text-sm text-dim text-center py-8">no members found.</p>
-          )}
-        </div>
-
-        {/* Leave conversation — destructive, bottom */}
-        <div className="p-4 border-t border-border">
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => void handleLeave()}
-            disabled={actionInProgress}
-            data-testid="leave-conversation-btn"
-          >
-            {actionInProgress ? "working…" : "leave conversation"}
-          </Button>
-        </div>
-      {/* Dialogs (portal-based overlays; position in the tree is irrelevant) */}
-      {/* Add-member picker: kept as an overlay (ContactPicker / MobileBottomSheet)
-          rather than converted to a route. Per the 9-2 modal→route rule, a
-          contextual multi-select interrupt invoked from inside settings stays an
-          overlay; the prototype's AddPeopleScreen full-screen treatment is not
-          adopted here to avoid duplicating the contact-book deep-load + member
-          exclusion the picker already does. Decision recorded for Unit 9-6. */}
+      {/* Overlays */}
       {addPickerOpen && (
         <ContactPicker
           onSelect={handleAddMembers}
@@ -668,7 +557,6 @@ export function MembersRoute() {
           excludeAccountIDs={currentMemberAccountIDs}
         />
       )}
-
       {leavePromoteOpen && (
         <LeaveWithPromoteDialog
           candidates={rawMembers
@@ -678,7 +566,9 @@ export function MembersRoute() {
               displayName: m.displayName,
               currentRole: m.role,
             }))}
-          onLeave={(newAdminAccountID) => void handleLeaveWithPromote(newAdminAccountID)}
+          onLeave={(newAdminAccountID) =>
+            void handleLeaveWithPromote(newAdminAccountID)
+          }
           onCancel={() => setLeavePromoteOpen(false)}
         />
       )}

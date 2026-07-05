@@ -71,6 +71,9 @@
   --fs-ui-empty-sub: 11.5px;/* DesktopEmpty sub (proto:670) */
   --fs-ui-chrome: 10px;     /* DesktopWindow title-bar pill (proto:684) */
   --fs-ui-nav: 14px;        /* NavColumn header name (proto:767 700 14px/1.2) */
+  /* (appended Wave C — settings cluster) */
+  --fs-ui-name: 19px;       /* profile display name 700 19px/1.2 (proto:216,249) */
+  --fs-ui-heading: 18px;    /* add-contact heading / group name 700 18px/1.2 (proto:339,406) */
 
   --lh-tight: 1.05;
   --lh-snug: 1.15;
@@ -86,6 +89,10 @@
   --tracking-tab: 0.04em;       /* prototype PTabBar label (mono) */
   --tracking-avatar: -0.02em; /* HAv initials (hf-kit:110) */
   --tracking-caps-lg: 0.24em;
+  /* (appended Wave C — settings cluster caps tracking) */
+  --tracking-caps-12: .12em;    /* add-contact "add someone" divider (proto:424) */
+  --tracking-caps-10: .1em;     /* profile "soon" badge (proto:221) */
+  --tracking-caps-08: .08em;    /* convoset role badge (proto:326) */
 
   /* Spacing (8pt base, plus micro) */
   --sp-1: 4px;

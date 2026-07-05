@@ -13,7 +13,7 @@ export function Body({
   className,
 }: {
   children: ReactNode;
-  pad?: number;
+  pad?: number | string;
   className?: string;
 }): JSX.Element {
   return (

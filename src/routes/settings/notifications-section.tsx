@@ -3,25 +3,12 @@ import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useToast } from "@/components/toast";
 import { Skel } from "@/components/skeleton";
-import { Card, SectionLabel, SRow, Toggle } from "./settings-kit";
+import { PCard, PSectionLabel, PRow, PToggle } from "@/ui/kit";
 
 /**
- * NotificationsSection: slider toggles for notification preferences (Unit 9-5b,
- * 4-G). Two options:
- *   • sound on new messages  → settings.notifications.sound
- *   • browser notifications  → settings.notifications.browser, gated on the
- *     real Notification permission.
- *
- * Browser slider flow (preserved verbatim from Slice 8):
- *   - Flip ON  → Notification.requestPermission():
- *       "granted" → prefs.browser = true (slider shows ON)
- *       "denied"  → inline error, slider stays OFF
- *       "default" → user dismissed, no state change
- *   - Flip OFF → prefs.browser = false (OS permission untouched)
- * Effective ON = prefs.browser && Notification.permission === "granted".
- *
- * The kit Toggle (9-5a) has no `disabled` prop; when the Notification API is
- * unavailable the click handler short-circuits and surfaces the inline note.
+ * notifications-section.tsx — Wave C: settings-kit imports replaced with @/ui/kit.
+ * NotificationsSection is no longer rendered by SettingsBody (logic folded into
+ * the container). Stays functional for isolated unit tests; Phase 4 deletes.
  */
 export function NotificationsSection() {
   const me = useAccount(ArcanAccount, {
@@ -36,13 +23,13 @@ export function NotificationsSection() {
   if (!me.$isLoaded || !(me.root as any)?.settings?.notifications) {
     return (
       <div data-testid="notifications-section-loading">
-        <SectionLabel>notifications</SectionLabel>
-        <Card>
+        <PSectionLabel>notifications</PSectionLabel>
+        <PCard>
           <div className="flex flex-col gap-3 px-3.5 py-3">
             <Skel w="65%" h={14} />
             <Skel w="50%" h={14} />
           </div>
-        </Card>
+        </PCard>
       </div>
     );
   }
@@ -63,10 +50,6 @@ export function NotificationsSection() {
       return;
     }
     try {
-      // Call requestPermission unconditionally — checking Notification.permission
-      // first isn't reliable across browsers (Playwright reports "denied" via the
-      // getter even when a fresh request resolves "granted"). The browser decides
-      // whether to prompt or short-circuit to the previously-set value.
       const result = await Notification.requestPermission();
       setPermissionState(result);
       if (result === "granted") {
@@ -77,7 +60,6 @@ export function NotificationsSection() {
           "Notifications were declined. Re-enable in your browser settings to try again.",
         );
       }
-      // "default" → user dismissed; no state change.
     } catch (err) {
       setRequestError(
         err instanceof Error ? err.message : "Failed to request permission.",
@@ -97,20 +79,20 @@ export function NotificationsSection() {
 
   return (
     <div>
-      <SectionLabel>notifications</SectionLabel>
-      <Card>
-        <SRow
+      <PSectionLabel>notifications</PSectionLabel>
+      <PCard>
+        <PRow
           icon="bell"
           label="sound on new messages"
-          control={
-            <Toggle
+          right={
+            <PToggle
               on={prefs.sound}
               onClick={handleSoundToggle}
               aria-label="sound on new messages"
             />
           }
         />
-        <SRow
+        <PRow
           icon="bell"
           label="browser notifications"
           sub={
@@ -118,8 +100,8 @@ export function NotificationsSection() {
               ? "not available in this environment"
               : "system alerts when a tab is hidden"
           }
-          control={
-            <Toggle
+          right={
+            <PToggle
               on={browserEffective}
               onClick={handleBrowserToggle}
               aria-label="browser notifications"
@@ -127,7 +109,7 @@ export function NotificationsSection() {
           }
           last
         />
-      </Card>
+      </PCard>
       {requestError && (
         <p data-testid="browser-error" className="mt-2 text-sm text-red">
           {requestError}

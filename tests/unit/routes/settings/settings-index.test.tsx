@@ -31,6 +31,11 @@ vi.mock("@/auth/session", () => ({
 vi.mock("@/components/safety-number", () => ({
   SafetyNumber: () => <div />,
 }));
+// useIsDesktop: mock as desktop (true) so PHeader's back button does not render,
+// keeping the rendered output simple for these structural assertions.
+vi.mock("@/components/use-is-desktop", () => ({
+  useIsDesktop: () => true,
+}));
 
 function renderIndex() {
   return render(
@@ -65,8 +70,7 @@ describe("settings index scaffold", () => {
     expect(me.compareDocumentPosition(out) & 4).toBeTruthy();
   });
 
-  test("exposes the 9-5b insertion zone marker", () => {
-    renderIndex();
-    expect(screen.getByTestId("settings-9-5b-zone")).toBeTruthy();
-  });
+  // Wave C: the settings-9-5b-zone marker was a temporary insertion-zone div.
+  // It is removed now that all section logic is folded into the SettingsBody
+  // container that renders <SettingsScreen>. Test removed accordingly.
 });

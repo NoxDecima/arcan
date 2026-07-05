@@ -6,17 +6,15 @@ import { Avatar } from "@/components/avatar";
 import { SafetyNumber } from "@/components/safety-number";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { Skel } from "@/components/skeleton";
-import { Card, SectionLabel, SRow, Chev, Icon } from "./settings-kit";
+import { PCard, PSectionLabel, PRow, Icon } from "@/ui/kit";
 
 /**
- * AccountSection (Unit 9-5a): the FIRST card in settings, rebuilt against the
- * prototype (design/proto.jsx:270 + design/hf-settings.jsx:95-100).
+ * AccountSection (Unit 9-5a, Wave C): the FIRST card in settings, rebuilt against the
+ * prototype. In Wave C this component is no longer rendered by SettingsBody
+ * (logic folded into the SettingsBody container that renders <SettingsScreen>).
+ * The component stays functional for isolated unit tests; Phase 4 deletes it.
  *
- * Rows: MeRow (avatar + name + "view your profile" → /profile/<me-id>),
- * change password → /settings/change-password, recovery code →
- * /settings/recovery-code, then an expandable safety-number row.
- *
- * Sign-out moved out to its own danger-red card at the bottom (SignOutCard).
+ * Settings-kit imports replaced with @/ui/kit equivalents (Wave C cleanup).
  */
 export function AccountSection() {
   const me = useAccount(ArcanAccount, { resolve: { profile: true } });
@@ -26,12 +24,12 @@ export function AccountSection() {
   if (!me.$isLoaded) {
     return (
       <div data-testid="account-section-loading">
-        <SectionLabel>account</SectionLabel>
-        <Card>
+        <PSectionLabel>account</PSectionLabel>
+        <PCard>
           <div className="px-3.5 py-3">
             <Skel w="55%" h={14} />
           </div>
-        </Card>
+        </PCard>
       </div>
     );
   }
@@ -41,8 +39,8 @@ export function AccountSection() {
 
   return (
     <div>
-      <SectionLabel>account</SectionLabel>
-      <Card>
+      <PSectionLabel>account</PSectionLabel>
+      <PCard>
         {/* MeRow — whole row → profile (design MeRow, 44px avatar) */}
         <button
           type="button"
@@ -67,26 +65,27 @@ export function AccountSection() {
               view your profile
             </div>
           </div>
-          <Chev />
+          <Icon d="chev" size={15} className="text-dim" />
         </button>
 
-        <SRow
+        <PRow
           icon="key"
           label="change password"
-          control={<Chev />}
           onClick={() => navigate("/settings/change-password")}
           data-testid="change-password-btn"
         />
-        <SRow
+        <PRow
           icon="shield"
           label="recovery code"
-          control={<Chev />}
           onClick={() => navigate("/settings/recovery-code")}
           data-testid="view-recovery-code-btn"
         />
 
         {/* Expandable safety-number row (4-D). Collapsed shows a chevron that
-            rotates open; expanded renders the formatted number on panel-2. */}
+            rotates open; expanded renders the formatted number on panel-2.
+            NOTE: In Wave C, this row is DROPPED from the SettingsScreen presenter
+            (safety lives on the profile per proto). It remains here so existing
+            isolated unit tests for AccountSection continue to pass. */}
         <button
           type="button"
           data-testid="safety-number-toggle"
@@ -118,7 +117,7 @@ export function AccountSection() {
             <SafetyNumber fingerprintHex={fingerprintHex} />
           </div>
         )}
-      </Card>
+      </PCard>
     </div>
   );
 }

@@ -1,19 +1,23 @@
 /**
- * ContactDetailRoute: minimal contact detail page.
+ * ContactDetailRoute: contact detail page.
  *
- * Shows the contact's display name, safety number (for TOFU verification),
- * and a Remove button that tombstones the contact from the contactBook.
+ * Wave C (Unit 10): container renders <ProfileScreen> (contact variant). All
+ * data logic and handlers moved verbatim. The danger "remove contact" button
+ * is passed as dangerZone slot (Rung-4, app-only).
+ *
+ * Route: /contacts/:contactID/detail
  */
 
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
-import { Avatar } from "@/components/avatar";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { Skel } from "@/components/skeleton";
+import { ProfileScreen } from "@/ui/screens/profile-screen";
 
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
@@ -44,7 +48,10 @@ export function ContactDetailRoute() {
 
   if (!me.$isLoaded) {
     return (
-      <div className="flex flex-col items-center gap-4 p-6" data-testid="contact-detail-loading">
+      <div
+        className="flex flex-col items-center gap-4 p-6"
+        data-testid="contact-detail-loading"
+      >
         <Skel w={72} h={72} r={36} />
         <Skel w={140} h={14} />
         <Skel w={90} h={10} />
@@ -66,6 +73,15 @@ export function ContactDetailRoute() {
     );
   }
 
+  const displayName = (contact as any).displayNameLocal as string | undefined;
+  const accountID = (contact as any).contactAccountID as string | undefined;
+  const fingerprintHex = (contact as any).pinnedFingerprint ?? "";
+  const idShort = accountID
+    ? `${accountID.slice(0, 6)}…${accountID.slice(-3)}`
+    : "";
+
+  const [safetyOpen, setSafetyOpen] = useState(false);
+
   async function handleStartChat() {
     if (!contact) return;
     const conversation = await findOrCreate1to1Conversation(me as any, contact);
@@ -73,7 +89,6 @@ export function ContactDetailRoute() {
   }
 
   function handleRemove() {
-    // Remove the contact from the contactBook by predicate
     (me as any).root.contactBook.$jazz.remove(
       (c: any) => c.$jazz?.id === contactID,
     );
@@ -81,57 +96,36 @@ export function ContactDetailRoute() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-md mx-auto">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-          className="text-muted-foreground"
-        >
-          ← back
-        </Button>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-4 mb-4">
-          <Avatar
-            src={avatar}
-            initials={(contact as any).displayNameLocal?.[0] ?? "?"}
-            size="lg"
-            loadAs={me}
-          />
-          <h1
-            data-testid="contact-detail-name"
-            className="text-2xl font-bold text-text"
-          >
-            {(contact as any).displayNameLocal}
-          </h1>
-        </div>
-
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground font-medium">
-            safety number (verify out of band):
-          </p>
-          <SafetyNumber fingerprintHex={(contact as any).pinnedFingerprint ?? ""} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Button
-          onClick={() => void handleStartChat()}
-          data-testid="start-chat-btn"
-        >
-          start chat
-        </Button>
+    <ProfileScreen
+      vm={{
+        name: displayName ?? "Unknown",
+        initials: displayName?.[0]?.toUpperCase() ?? "?",
+        avatarSrc: avatar ?? undefined,
+        idShort,
+        sharedConversations: [],
+      }}
+      onBack={() => navigate(-1)}
+      onMessage={() => void handleStartChat()}
+      safetyOpen={safetyOpen}
+      onToggleSafety={() => setSafetyOpen((o) => !o)}
+      safetySlot={
+        fingerprintHex && fingerprintHex.length === 64 ? (
+          <SafetyNumber fingerprintHex={fingerprintHex} />
+        ) : undefined
+      }
+      dangerZone={
         <Button
           variant="destructive"
+          className="w-full"
           onClick={handleRemove}
           data-testid="contact-remove-btn"
         >
           remove contact
         </Button>
-      </div>
-    </div>
+      }
+      // testid carries
+      nameTestId="contact-detail-name"
+      messageTestId="start-chat-btn"
+    />
   );
 }

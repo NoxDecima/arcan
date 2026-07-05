@@ -4,39 +4,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
-import { Button } from "@/components/ui/button";
-import { Avatar } from "@/components/avatar";
-import { AuthSurface } from "@/components/auth-surface";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { OwnProfileScreen } from "@/ui/screens/own-profile-screen";
+import { ProfileScreen } from "@/ui/screens/profile-screen";
 
 /**
  * ProfileView: polymorphic profile component that renders either the local
  * user's own profile (when `accountID === me.$jazz.id`) or another account's
  * profile.
  *
- * Own branch:
- *   - Avatar with a camera overlay for upload / change / remove
- *   - Display name with a pencil-edit affordance
- *   - "add a contact" CTA → /contacts/add
- *   - Your conversations (via useSharedGroups against self — empty by design)
- *   - Safety number (own pubkey via getAccountPubkeyHex)
- *   - "account & settings" navigation row
- *
- * Other branch:
- *   - Avatar (read-only)
- *   - Display name from contactBook entry's displayNameLocal (or remote profile fallback)
- *   - Truncated account ID
- *   - "message" CTA → finds/creates 1:1 conversation
- *   - Shared conversations list
- *   - Safety number (pinnedFingerprint from contactBook; falls back to remote pubkey)
- *
- * The data wiring relies on existing helpers: avatarResolver for avatars,
- * the contactBook for pinnedFingerprint/displayNameLocal, and useRemoteAvatar
- * for the contact-list case where the schema stores only an account ID string.
+ * Wave C (Unit 10): drops AuthSurface wrapper; branches on isOwn to render
+ * <OwnProfileScreen> or <ProfileScreen>. All data logic and handlers are
+ * moved verbatim from the prior hand-rolled render.
  */
 interface ProfileViewProps {
   accountID: string;
@@ -76,40 +59,32 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   // Avatar resolution: self → me.profile.avatar; other → resolveAvatarFileBlob
   // (local) with remote fallback for the contact-book branch.
   const ownAvatar = isOwn ? ((me as any)?.profile?.avatar ?? undefined) : undefined;
-  const otherLocalAvatar = !isOwn && me.$isLoaded
-    ? resolveAvatarFileBlob({ accountID, me })
-    : undefined;
+  const otherLocalAvatar =
+    !isOwn && me.$isLoaded
+      ? resolveAvatarFileBlob({ accountID, me })
+      : undefined;
   const otherRemoteAvatar = useRemoteAvatar(
     isOwn || otherLocalAvatar ? null : accountID,
   );
   const otherAvatar = !isOwn ? (otherLocalAvatar ?? otherRemoteAvatar) : undefined;
   const avatarSrc = isOwn ? ownAvatar : otherAvatar;
 
-  if (!me.$isLoaded) {
-    return (
-      <AuthSurface forceDark>
-        <div
-          className="flex flex-col items-center gap-4"
-          data-testid="profile-loading"
-        >
-          <p className="text-sm text-dim">loading…</p>
-        </div>
-      </AuthSurface>
-    );
-  }
+  if (!me.$isLoaded) return null;
 
   // Display name resolution.
   const ownDisplayName = (me as any).profile?.displayName ?? "";
-  const contactDisplayName = (contact as any)?.displayNameLocal as string | undefined;
-  const remoteDisplayName = (otherAccount as any)?.profile?.displayName as string | undefined;
+  const contactDisplayName = (contact as any)?.displayNameLocal as
+    | string
+    | undefined;
+  const remoteDisplayName = (otherAccount as any)?.profile?.displayName as
+    | string
+    | undefined;
   const displayName = isOwn
     ? ownDisplayName
     : contactDisplayName ?? remoteDisplayName ?? "unknown";
 
   // Fingerprint: own → derive from current signing key; other → contact pin if
-  // present, else the remote account's pubkey (best-effort — won't match the
-  // pinned value the other party stamped on us, but at least proves identity
-  // to the same level the contacts/detail screen does today).
+  // present, else the remote account's pubkey (best-effort).
   let fingerprintHex = "";
   if (isOwn) {
     try {
@@ -130,16 +105,16 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     }
   }
 
-  async function handleAvatarPick() {
-    fileInputRef.current?.click();
-  }
+  // ── handlers ─────────────────────────────────────────────────────────────
 
   async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setAvatarError(`${file.name} is ${(file.size / 1_000_000).toFixed(1)} MB. Max 5 MB.`);
+      setAvatarError(
+        `${file.name} is ${(file.size / 1_000_000).toFixed(1)} MB. Max 5 MB.`,
+      );
       return;
     }
     setBusy(true);
@@ -190,9 +165,6 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     if (isOwn) return;
     setBusy(true);
     try {
-      // Contact entry may be missing if this is a profile of a non-contact
-      // (e.g. a co-member of a shared group). findOrCreate1to1Conversation
-      // only needs `contactAccountID` from its argument.
       const stub = contact ?? { contactAccountID: accountID };
       const conv = await findOrCreate1to1Conversation(me as any, stub);
       navigate(`/conversations/${(conv as any).$jazz.id}`);
@@ -203,146 +175,23 @@ export function ProfileView({ accountID }: ProfileViewProps) {
 
   const idShort = `${accountID.slice(0, 6)}…${accountID.slice(-3)}`;
 
-  return (
-    <AuthSurface forceDark w={420} tall>
-      <div
-        data-testid="profile-view"
-        data-profile-mode={isOwn ? "own" : "other"}
-        className="flex flex-col items-center gap-4"
-      >
-        {/* Back affordance — sits left-aligned at the top of the column */}
-        <div className="w-full">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="text-sm text-dim hover:text-text"
-            data-testid="profile-back"
-          >
-            ← back
-          </button>
-        </div>
-
-      {/* Avatar + camera overlay (own only) */}
-      <div className="relative">
-        <Avatar
-          src={avatarSrc}
-          initials={displayName?.[0] ?? "?"}
-          size="lg"
-          loadAs={me}
-          data-testid="profile-avatar"
-        />
-        {isOwn && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-              data-testid="profile-avatar-input"
-            />
-            <button
-              type="button"
-              onClick={() => void handleAvatarPick()}
-              disabled={busy}
-              data-testid="profile-avatar-change"
-              aria-label="Change avatar"
-              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-pill bg-arcan-accent text-on-accent flex items-center justify-center text-sm"
-            >
-              ✎
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Display name + edit affordance */}
-      <div className="flex items-center gap-2">
-        {editingName && isOwn ? (
-          <>
-            <input
-              autoFocus
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              onBlur={() => void saveName()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void saveName();
-                if (e.key === "Escape") setEditingName(false);
-              }}
-              maxLength={64}
-              data-testid="profile-name-input"
-              className="text-xl font-semibold text-text bg-panel border border-hairline rounded-r-2 px-2 py-1 outline-none focus:border-arcan-accent"
-            />
-          </>
-        ) : (
-          <>
-            <h1
-              data-testid="profile-display-name"
-              className="text-xl font-semibold text-text"
-            >
-              {displayName}
-            </h1>
-            {isOwn && (
-              <button
-                type="button"
-                onClick={beginEditName}
-                aria-label="Edit name"
-                data-testid="profile-edit-name"
-                className="text-dim hover:text-text"
-              >
-                ✎
-              </button>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Truncated account ID — present on both branches as an identity hint */}
-      <p
-        data-testid="profile-account-id"
-        className="text-xs text-dim font-mono"
-      >
-        {idShort}
-      </p>
-
+  // ── own-branch extra sections (Rung-4 app-only) ──────────────────────────
+  const ownExtraSections = (
+    <>
       {avatarError && (
         <p className="text-xs text-red" data-testid="profile-avatar-error">
           {avatarError}
         </p>
       )}
 
-      {/* Primary action */}
-      {isOwn ? (
-        <Link to="/contacts/add" className="w-full">
-          <Button
-            variant="primary"
-            className="w-full"
-            data-testid="profile-add-contact"
-          >
-            add a contact
-          </Button>
-        </Link>
-      ) : (
-        <Button
-          variant="primary"
-          className="w-full"
-          onClick={() => void handleMessage()}
-          disabled={busy}
-          data-testid="profile-message"
-        >
-          message
-        </Button>
-      )}
-
-      {/* Shared conversations section */}
+      {/* Your conversations */}
       <section className="w-full" data-testid="profile-shared-section">
-        <h3 className="text-[10px] uppercase tracking-widest text-dim font-semibold mb-2">
-          {isOwn ? "your conversations" : "shared conversations"}
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-dim">
+          your conversations
         </h3>
         {sharedGroups.length === 0 ? (
           <p className="text-sm text-text-2" data-testid="profile-shared-empty">
-            {isOwn
-              ? "Conversations you start with contacts appear here."
-              : "No shared conversations yet."}
+            Conversations you start with contacts appear here.
           </p>
         ) : (
           <ul className="space-y-1" data-testid="profile-shared-list">
@@ -350,7 +199,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
               <li key={g.id}>
                 <Link
                   to={`/conversations/${g.id}`}
-                  className="block p-2 rounded-r-2 hover:bg-panel-2 text-sm text-text"
+                  className="block rounded-r-2 p-2 text-sm text-text hover:bg-panel-2"
                 >
                   {g.title}
                 </Link>
@@ -360,11 +209,11 @@ export function ProfileView({ accountID }: ProfileViewProps) {
         )}
       </section>
 
-      {/* Safety number section */}
+      {/* Safety number */}
       <section className="w-full" data-testid="profile-safety-section">
         <button
           type="button"
-          className="w-full flex items-center justify-between p-3 rounded-r-3 border border-hairline bg-panel"
+          className="flex w-full items-center justify-between rounded-r-3 border border-hairline bg-panel p-3"
           onClick={() => setShowSafety((s) => !s)}
           data-testid="profile-safety-toggle"
         >
@@ -372,47 +221,122 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           <span className="text-dim">{showSafety ? "▾" : "▸"}</span>
         </button>
         {showSafety && (
-          <div className="mt-2 p-3 rounded-r-3 border border-hairline bg-panel">
+          <div className="mt-2 rounded-r-3 border border-hairline bg-panel p-3">
             {fingerprintHex && fingerprintHex.length === 64 ? (
               <SafetyNumber fingerprintHex={fingerprintHex} />
             ) : (
-              <p className="text-xs text-dim" data-testid="profile-safety-unavailable">
-                Security code not available.
-              </p>
+              <p className="text-xs text-dim">Security code not available.</p>
             )}
-            <p className="text-[11px] text-dim text-center mt-3">
-              {isOwn
-                ? "Share this in person so others can verify it's really you."
-                : "Compare in person to confirm it's really them."}
+            <p className="mt-3 text-center text-[11px] text-dim">
+              Share this in person so others can verify it&apos;s really you.
             </p>
           </div>
         )}
       </section>
 
-      {/* Own-only: avatar remove + account & settings link */}
-      {isOwn && (
-        <>
-          {ownAvatar && (
-            <button
-              type="button"
-              onClick={() => void handleAvatarRemove()}
-              disabled={busy}
-              data-testid="profile-avatar-remove"
-              className="text-xs text-red hover:underline"
-            >
-              remove profile picture
-            </button>
-          )}
-          <Link
-            to="/settings"
-            data-testid="profile-settings-link"
-            className="w-full mt-2 p-3 rounded-r-3 border border-hairline bg-panel text-sm text-text text-center"
-          >
-            account & settings
-          </Link>
-        </>
+      {/* Remove avatar */}
+      {ownAvatar && (
+        <button
+          type="button"
+          onClick={() => void handleAvatarRemove()}
+          disabled={busy}
+          data-testid="profile-avatar-remove"
+          className="text-xs text-red hover:underline"
+        >
+          remove profile picture
+        </button>
       )}
-      </div>
-    </AuthSurface>
+    </>
+  );
+
+  // ── root wrapper (carries profile-view + data-profile-mode) ──────────────
+  return (
+    <div
+      data-testid="profile-view"
+      data-profile-mode={isOwn ? "own" : "other"}
+      className="flex flex-col flex-1 min-h-0"
+    >
+      {isOwn ? (
+        <OwnProfileScreen
+          vm={{
+            name: displayName,
+            initials: displayName[0]?.toUpperCase() ?? "?",
+            avatarSrc: avatarSrc ?? undefined,
+            idShort,
+          }}
+          onBack={() => navigate(-1)}
+          onEditName={beginEditName}
+          onEditAvatar={() => fileInputRef.current?.click()}
+          onAddContact={() => navigate("/contacts/add")}
+          onSettings={() => navigate("/settings")}
+          nameEditSlot={
+            editingName ? (
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => void saveName()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void saveName();
+                  if (e.key === "Escape") setEditingName(false);
+                }}
+                maxLength={64}
+                data-testid="profile-name-input"
+                className="rounded-r-2 border border-hairline bg-panel px-2 py-1 text-xl font-semibold text-text outline-none focus:border-arcan-accent"
+              />
+            ) : undefined
+          }
+          extraSections={ownExtraSections}
+          avatarInput={
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+              data-testid="profile-avatar-input"
+            />
+          }
+          // testid carries
+          backTestId="profile-back"
+          avatarTestId="profile-avatar"
+          avatarChangeTestId="profile-avatar-change"
+          nameTestId="profile-display-name"
+          editNameTestId="profile-edit-name"
+          idTestId="profile-account-id"
+          addContactTestId="profile-add-contact"
+          settingsTestId="profile-settings-link"
+        />
+      ) : (
+        <ProfileScreen
+          vm={{
+            name: displayName,
+            initials: displayName[0]?.toUpperCase() ?? "?",
+            avatarSrc: avatarSrc ?? undefined,
+            idShort,
+            sharedConversations: sharedGroups,
+          }}
+          onBack={() => navigate(-1)}
+          onMessage={() => void handleMessage()}
+          onOpenConversation={(id) => navigate(`/conversations/${id}`)}
+          safetyOpen={showSafety}
+          onToggleSafety={() => setShowSafety((s) => !s)}
+          safetySlot={
+            fingerprintHex && fingerprintHex.length === 64 ? (
+              <SafetyNumber fingerprintHex={fingerprintHex} />
+            ) : (
+              <p className="text-xs text-dim">Security code not available.</p>
+            )
+          }
+          // testid carries
+          backTestId="profile-back"
+          avatarTestId="profile-avatar"
+          nameTestId="profile-display-name"
+          idTestId="profile-account-id"
+          messageTestId="profile-message"
+          safetyToggleTestId="profile-safety-toggle"
+        />
+      )}
+    </div>
   );
 }

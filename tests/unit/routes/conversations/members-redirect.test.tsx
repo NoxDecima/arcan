@@ -106,8 +106,10 @@ describe("MembersRoute group sections + member links", () => {
 
   test("a member's name links to their profile", () => {
     const { getByTestId } = renderAt();
-    const link = getByTestId("member-profile-link-co_zBob");
-    expect(link.getAttribute("href")).toBe("/profile/co_zBob");
+    // Wave C: ConvoSettingsScreen uses a <button onClick> for the profile link,
+    // not a <Link> — check click-navigation rather than href attribute.
+    fireEvent.click(getByTestId("member-profile-link-co_zBob"));
+    expect(getByTestId("profile-stub")).toBeTruthy();
   });
 
   test("a member row exposes a kebab that toggles an actions menu", () => {

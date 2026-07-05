@@ -141,6 +141,35 @@ resolve (snapshot; no live remote update).
   never covered — Rung 4); same ingestion path as the attach button.
   Real-UI attach-button regression probe added (attachment-button-probe.spec).
 
+### Wave C coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Settings | `/settings` | 1 + 4 | proto SettingsScreen (261–318) | PASS ≤0.198% (tokyo+rose) | real theme/accent setters; app notification labels + permission flow, devices soft-revoke, TTL 1h/24h/7d = data-driven props; safety-number expandable moved to profile per proto (deliberate drop from settings) |
+| Feedback | `/settings/feedback` | 1 + 4 | proto FeedbackScreen (479–536) | PASS 0.086% | app categories (bug/idea/question/note); Linear submit flow untouched |
+| Link device | (presenter only) | 1 | proto LinkDeviceScreen (459–478) | PASS 0.000% | UNWIRED — live pairing surface is Wave D; waiting pulse kept (loading affordance, not typing) |
+| Contact profile | `/profile/:id`, `/contacts/:id` | 1 + 4 | proto ProfileScreen (205–237) | PASS (0.004 override, AA on 19px bold mono name) | AuthSurface/forceDark dropped — now pane-filling + theme-reactive (visible IA change, walkthrough item); dangerZone slot (remove-contact) Rung 4 |
+| Own profile | `/profile/:me` | 1 + 4 | proto OwnProfileScreen (238–260) | PASS ≤0.145% | name edit + avatar upload flows preserved via slots |
+| Conversation settings / members | `/conversations/:id/members` | 1 + 4 | proto ConvoSettingsScreen (319–356) | PASS ≤0.135% | kebab menus/kick/leave/title-edit/icon-upload preserved; ContactPicker overlay kept (9-6 decision); bespoke 70px group avatar literal-metric (sanctioned HAv bypass) |
+| New conversation | `/conversations/new` | 1 + 4 | proto NewConvoScreen (357–397) | PASS ≤0.008% | contact-picker avatars initials-only (remote-avatar followup) |
+| Add people | (presenter only) | 1 | proto AddPeopleScreen (433–458) | PASS ≤0.142% | UNWIRED — ContactPicker overlay kept per 9-6 decision |
+| Add contact | `/contacts/add` | 1 + 4 | proto AddContactScreen (398–432) | PASS 0.000% | proto's two buttons patched to the app's single adaptive share/copy (9-7 §2-J recorded decision); QR marker + TTL flows untouched |
+
+### Wave C parity threshold overrides
+
+- `profile-screen` 0.004 — diffuse AA on the 19px bold JetBrains Mono display
+  name ("ada · keyring", incl. U+00B7); no structural offset (characterized
+  2026-07-05; own-profile passes at 0.145% with a shorter name).
+
+### Wave C notes
+
+- settings-kit.tsx (Unit 9-5a Icon/Toggle/Card/SRow) retired from render;
+  file + isolated tests remain until Phase 4.
+- use-shared-groups now derives 1:1 conversation titles from the contactBook
+  counterpart (fixes "Untitled" on profile pages — followup closed).
+- PToggle role="switch"/aria-checked + PHeader back aria-label live (a11y
+  followup items 1-2 closed).
+
 ### Wave B e2e drift
 
 - First run 39/44: three attachment specs + messaging-1to1 failed on the moved

@@ -1,52 +1,252 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { AccountSection } from "./account-section";
-import { SignOutCard } from "./sign-out-card";
-import { AppearanceSection } from "./appearance-section";
-import { NotificationsSection } from "./notifications-section";
-import { FeedbackRow } from "./feedback-section";
-import { DevicesSection } from "./devices-section";
+import { useState } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useAccount, useLogOut } from "jazz-tools/react";
+import type { Account } from "jazz-tools";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { useTheme } from "@/styles/use-theme";
+import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
+import { useIsDesktop } from "@/components/use-is-desktop";
+import { Button } from "@/components/ui/button";
+import { getCurrentSessionFingerprint } from "@/auth/session";
+import { authClient } from "@/auth/client";
 import { ChangePasswordRoute } from "./change-password-route";
 import { RecoveryCodeRoute } from "./recovery-code-route";
 import { FeedbackRoute } from "./feedback-route";
+import { SettingsScreen } from "@/ui/screens/settings-screen";
+import type {
+  SettingsDeviceRow,
+  SettingsToggleRow,
+} from "@/ui/screens/settings-types";
+
+// Accent hex values (verbatim from design/proto.jsx). Defined here so the
+// presenter receives them as a plain prop (pure — no imports from appearance-section).
+const ACCENT_SWATCH: Record<Accent, string> = {
+  tokyo:  "#7aa2f7",
+  violet: "#bb9af7",
+  teal:   "#73daca",
+  lime:   "#9ece6a",
+  amber:  "#e0af68",
+  rose:   "#f7768e",
+};
 
 /**
- * SettingsBody (Unit 9-5a): the settings landing page, rebuilt against the
- * prototype (design/proto.jsx:261 SettingsScreen). Section order:
- * account → feedback → appearance → notifications → devices → sign-out.
+ * SettingsBody: container for the settings landing page.
  *
- * 9-5a owns SettingsBody, the account card, and the sign-out card. The block
- * between the account section and SignOutCard is the 9-5b insertion zone —
- * 9-5b replaces the placeholder children (feedback → appearance →
- * notifications → devices) with prototype-matched cards and the feedback
- * row→route, without editing the account or sign-out code.
- *
- * The desktop sidebar persists via AppShell (this page renders inside the
- * shell outlet), so no header/back chrome is added here.
+ * Wave C (Unit 10): folds AccountSection / AppearanceSection /
+ * NotificationsSection / DevicesSection / FeedbackRow / SignOutCard into a
+ * single container that renders <SettingsScreen>. All section files stay on
+ * disk for isolated unit tests (Phase 4 deletes them). settings-kit is no
+ * longer imported anywhere in src/ after this change.
  */
 function SettingsBody() {
+  const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
+  const { theme, setTheme } = useTheme();
+  const { accent, setAccent } = useAccent();
+  const logOut = useLogOut();
+
+  const me = useAccount(ArcanAccount, {
+    resolve: {
+      profile: true,
+      root: {
+        devices: { $each: true },
+        settings: { appearance: true, notifications: true },
+      },
+    },
+  });
+
+  // ── notifications local state ────────────────────────────────────────────
+  const [permissionState, setPermissionState] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "denied",
+  );
+  const [notifError, setNotifError] = useState<string | null>(null);
+
+  if (!me.$isLoaded) return null;
+
+  const myID = (me as any).$jazz?.id as string | undefined;
+  const displayName = me.profile?.displayName ?? "";
+  const initials = displayName[0]?.toUpperCase() ?? "?";
+
+  // ── appearance ───────────────────────────────────────────────────────────
+  function handleTheme(t: "light" | "dark") {
+    setTheme(t);
+    ((me as any).root.settings?.appearance as any)?.$jazz?.set("theme", t);
+  }
+  function handleAccent(a: string) {
+    const acc = a as Accent;
+    setAccent(acc);
+    ((me as any).root.settings?.appearance as any)?.$jazz?.set("accent", acc);
+  }
+
+  // ── notifications ────────────────────────────────────────────────────────
+  const prefs = (me.root as any)?.settings?.notifications;
+  const apiSupported = typeof Notification !== "undefined";
+  const browserEffective = prefs?.browser && permissionState === "granted";
+
+  function handleSoundToggle() {
+    prefs?.$jazz?.set("sound", !prefs.sound);
+  }
+  async function handleBrowserToggle() {
+    if (browserEffective) {
+      prefs?.$jazz?.set("browser", false);
+      return;
+    }
+    setNotifError(null);
+    if (!apiSupported) {
+      setNotifError("Browser notifications are not available in this environment.");
+      return;
+    }
+    try {
+      const result = await Notification.requestPermission();
+      setPermissionState(result);
+      if (result === "granted") {
+        prefs?.$jazz?.set("browser", true);
+      } else if (result === "denied") {
+        setNotifError(
+          "Notifications were declined. Re-enable in your browser settings to try again.",
+        );
+      }
+    } catch (err) {
+      setNotifError(
+        err instanceof Error ? err.message : "Failed to request permission.",
+      );
+    }
+  }
+  const notifications: SettingsToggleRow[] = [
+    {
+      key: "sound",
+      icon: "bell",
+      label: "sound on new messages",
+      on: !!prefs?.sound,
+      onToggle: handleSoundToggle,
+      ariaLabel: "sound on new messages",
+    },
+    {
+      key: "browser",
+      icon: "bell",
+      label: "browser notifications",
+      sub: !apiSupported
+        ? "not available in this environment"
+        : "system alerts when a tab is hidden",
+      on: !!browserEffective,
+      onToggle: () => void handleBrowserToggle(),
+      ariaLabel: "browser notifications",
+    },
+  ];
+
+  // ── devices ──────────────────────────────────────────────────────────────
+  let currentFingerprint: string | null = null;
+  try {
+    currentFingerprint = getCurrentSessionFingerprint(me as unknown as Account);
+  } catch {
+    // Non-local account (test fixtures).
+  }
+  const activeDevices = (me.root.devices ?? []).filter((d) => d && !d.revoked);
+
+  function handleRevoke(idx: number) {
+    const device = activeDevices[idx];
+    if (!device) return;
+    const confirmed = confirm(
+      "Forget this device? It stays hidden from your list, but anything already synced to it remains readable. Full cryptographic revocation lands in a later release.",
+    );
+    if (confirmed) (device as any).$jazz.set("revoked", true);
+  }
+
+  const devices: SettingsDeviceRow[] = activeDevices.map((device, idx) => {
+    const isCurrentDevice =
+      currentFingerprint !== null &&
+      (device as any).sessionFingerprint === currentFingerprint;
+    const added =
+      device.addedAt instanceof Date
+        ? device.addedAt.toLocaleDateString()
+        : new Date(device.addedAt).toLocaleDateString();
+    return {
+      key: String(idx),
+      label: device.label + (isCurrentDevice ? " · this device" : ""),
+      sub: `added ${added}`,
+      forgetSlot: (
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid={`revoke-device-btn-${idx}`}
+          onClick={() => handleRevoke(idx)}
+          disabled={isCurrentDevice}
+          title={
+            isCurrentDevice
+              ? "This is your current device — use Sign out instead."
+              : undefined
+          }
+        >
+          forget
+        </Button>
+      ),
+      testId: `device-row-${idx}`,
+    };
+  });
+
+  // ── sign out ─────────────────────────────────────────────────────────────
+  async function handleSignOut() {
+    if (
+      !confirm(
+        "Sign out? You'll need your password to sign back in. Local data will be cleared.",
+      )
+    )
+      return;
+    try {
+      await authClient.signOut();
+    } catch {
+      // Network failure shouldn't block local logOut.
+    }
+    logOut();
+  }
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-bg" data-testid="settings-body">
-      <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 p-4">
-        {/* account — owned by 9-5a */}
-        <AccountSection />
-
-        {/* === 9-5b INSERTION ZONE START ===
-            9-5b replaces these placeholder sections (feedback → appearance →
-            notifications → devices), in this order, with prototype-matched
-            cards (feedback collapses to a single row → /settings/feedback).
-            Do NOT touch AccountSection or SignOutCard. */}
-        <div data-testid="settings-9-5b-zone" className="flex flex-col gap-4">
-          <FeedbackRow />
-          <AppearanceSection />
-          <NotificationsSection />
-          <DevicesSection />
-        </div>
-        {/* === 9-5b INSERTION ZONE END === */}
-
-        {/* sign-out — owned by 9-5a, always last */}
-        <SignOutCard />
-      </div>
-    </div>
+    <SettingsScreen
+      account={{ name: displayName, initials }}
+      onOpenProfile={() => myID && navigate(`/profile/${myID}`)}
+      onChangePassword={() => navigate("/settings/change-password")}
+      onRecoveryCode={() => navigate("/settings/recovery-code")}
+      onFeedback={() => navigate("/settings/feedback")}
+      theme={theme}
+      onTheme={handleTheme}
+      accent={accent}
+      accentKeys={[...ACCENT_KEYS]}
+      onAccent={handleAccent}
+      accentSolid={ACCENT_SWATCH}
+      notifications={notifications}
+      notifErrorSlot={
+        notifError ? (
+          <p data-testid="browser-error" className="px-3.5 pb-2 text-sm text-red">
+            {notifError}
+          </p>
+        ) : undefined
+      }
+      devices={devices}
+      onLinkDevice={() => navigate("/pair?role=initiator")}
+      devicesNote={
+        <p className="mt-3 max-w-xl text-xs leading-relaxed text-dim">
+          forgetting a device hides it here, but it can still read everything it
+          has already synced. full cryptographic revocation lands in the upcoming
+          overhaul — see NOX-10.
+        </p>
+      }
+      onSignOut={() => void handleSignOut()}
+      onBack={!isDesktop ? () => navigate(-1) : undefined}
+      // testid carries (E2E + unit)
+      rootTestId="settings-body"
+      meRowTestId="settings-me-row"
+      meAvatarTestId="settings-me-avatar"
+      changePasswordTestId="change-password-btn"
+      recoveryCodeTestId="view-recovery-code-btn"
+      feedbackRowTestId="feedback-row"
+      themeToggleTestId="appearance-theme-toggle"
+      themeLightTestId="theme-light"
+      themeDarkTestId="theme-dark"
+      accentPickerTestId="appearance-accent-picker"
+      devicesCardTestId="devices-card"
+      linkDeviceRowTestId="link-device-row"
+      signOutTestId="sign-out-btn"
+    />
   );
 }
 

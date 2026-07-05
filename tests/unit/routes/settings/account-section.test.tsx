@@ -64,7 +64,8 @@ describe("AccountSection", () => {
 
   test("section label reads 'account'", () => {
     renderSection();
-    expect(screen.getByText("account")).toBeTruthy();
+    // PSectionLabel renders "// account"; use regex to find the caption element.
+    expect(screen.getByText(/account/)).toBeTruthy();
   });
 
   test("safety-number row is collapsed by default and expands on click", () => {
