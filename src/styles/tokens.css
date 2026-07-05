@@ -32,6 +32,12 @@
   --shadow-bubble: none;                           /* soft-skin bubble shadow: light only */
   --color-avatar-group-fg: #bb9af7;               /* HAv group initials (hf-kit:106) */
   --color-cosmic-dot: #bb9af7;                    /* violet accent dot (proto:575/666) */
+  --color-cosmic-dot-2: #7dcfff;                  /* 3rd scattered star (hf-flows:24) */
+  /* Warn callout — dark theme (hf-flows:108-110) */
+  --color-warn-bg: rgba(224,175,104,.12);
+  --color-warn-border: rgba(224,175,104,.4);
+  --color-warn-text: #e0af68;
+  --color-warn-icon: #e0af68;
   --color-green-wash: rgba(158, 206, 106, 0.2);   /* toast success wash: alpha(green,.2) */
   --color-red-wash: rgba(247, 118, 142, 0.2);     /* toast error wash: alpha(red,.2) */
   --color-neutral-wash: rgba(138, 147, 178, 0.2); /* toast neutral wash: alpha(text2,.2) */
@@ -74,6 +80,8 @@
   /* (appended Wave C — settings cluster) */
   --fs-ui-name: 19px;       /* profile display name 700 19px/1.2 (proto:216,249) */
   --fs-ui-heading: 18px;    /* add-contact heading / group name 700 18px/1.2 (proto:339,406) */
+  /* (appended Wave D — auth + flows) */
+  --fs-ui-req: 17px;        /* ContactRequest name 700 17px/1.2 (hf-flows:238) */
 
   --lh-tight: 1.05;
   --lh-snug: 1.15;
@@ -174,6 +182,12 @@
   --shadow-bubble: 0 1px 2px rgba(20, 20, 40, 0.05);
   --color-avatar-group-fg: #7a55c9; /* HAv group fg, light variant (hf-kit:106) */
   --color-cosmic-dot: #bb9af7;
+  --color-cosmic-dot-2: #7dcfff;                  /* same in both themes */
+  /* Warn callout — light theme (hf-flows:109-110) */
+  --color-warn-bg: #fcf3e0;
+  --color-warn-border: #eccf94;
+  --color-warn-text: #8a5a0a;
+  --color-warn-icon: #c2871a;
   --color-green-wash: rgba(79, 138, 54, 0.14);   /* alpha(#4f8a36,.14) */
   --color-red-wash: rgba(214, 69, 93, 0.14);     /* alpha(#d6455d,.14) */
   --color-neutral-wash: rgba(60, 66, 90, 0.14);  /* alpha(#3c425a,.14) */

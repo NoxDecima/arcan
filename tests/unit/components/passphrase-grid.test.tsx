@@ -25,9 +25,10 @@ describe("PassphraseGrid", () => {
     expect(screen.getByTestId("passphrase-grid")).toBeInTheDocument();
   });
 
-  test("compact variant uses a 3-column grid; default is 4-column", () => {
+  test("grid uses 3-column layout (compact prop is now an alias for the same 3-col)", () => {
+    // Both default and compact use 3-col to match hf-flows.jsx#ScRecovery metrics.
     const { rerender, container } = render(<PassphraseGrid phrase={PHRASE} />);
-    expect(container.querySelector("[data-testid='passphrase-grid']")?.className).toMatch(/grid-cols-4/);
+    expect(container.querySelector("[data-testid='passphrase-grid']")?.className).toMatch(/grid-cols-3/);
     rerender(<PassphraseGrid phrase={PHRASE} compact />);
     expect(container.querySelector("[data-testid='passphrase-grid']")?.className).toMatch(/grid-cols-3/);
   });

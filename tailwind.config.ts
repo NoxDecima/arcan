@@ -71,6 +71,7 @@ export default {
         'media-veil': 'var(--color-media-veil)',
         'avatar-group-fg': 'var(--color-avatar-group-fg)',
         'cosmic-dot': 'var(--color-cosmic-dot)',
+        'cosmic-dot-2': 'var(--color-cosmic-dot-2)',
         'green-wash': 'var(--color-green-wash)',
         'red-wash': 'var(--color-red-wash)',
         'neutral-wash': 'var(--color-neutral-wash)',
@@ -80,6 +81,19 @@ export default {
         body: ['var(--font-body)'],
         mono: ['var(--font-mono)'],
         display: ['var(--font-display)'],
+      },
+      backgroundColor: {
+        // Wave D — warn callout (hf-flows:108-110)
+        'warn': 'var(--color-warn-bg)',
+      },
+      borderColor: {
+        // Wave D — warn callout
+        'warn': 'var(--color-warn-border)',
+      },
+      textColor: {
+        // Wave D — warn callout
+        'warn': 'var(--color-warn-text)',
+        'warn-icon': 'var(--color-warn-icon)',
       },
       fontSize: {
         'ui-title': ['var(--fs-ui-title)', { lineHeight: 'var(--lh-ui)' }],
@@ -103,6 +117,8 @@ export default {
         // Wave C — settings cluster
         'ui-name': ['var(--fs-ui-name)', { lineHeight: 'var(--lh-ui)' }],       // profile display name 19px/1.2
         'ui-heading': ['var(--fs-ui-heading)', { lineHeight: 'var(--lh-ui)' }], // add-contact heading / group name 18px/1.2
+        // Wave D — auth + flows
+        'ui-req': ['var(--fs-ui-req)', { lineHeight: 'var(--lh-ui)' }],         // ContactRequest name 17px/1.2 (hf-flows:238)
       },
       letterSpacing: {
         caps: 'var(--tracking-caps)',
