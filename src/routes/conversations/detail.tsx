@@ -67,6 +67,7 @@ import {
 } from "@/jazz/attachments";
 import { formatSystemEventMessage } from "@/components/system-event";
 import { useToast } from "@/components/toast";
+import { useAccountAvatars } from "@/components/use-account-avatars";
 import {
   ChatScreen,
   ChatComposer,
@@ -197,6 +198,56 @@ export function ConversationDetailRoute() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iconStreamId]);
+
+  // ---------------------------------------------------------------------------
+  // Detail avatar resolution — 1:1 counterpart + incoming message authors.
+  // Both derivations are guarded (me.$isLoaded && conversation) so they
+  // return empty/null while loading; useAccountAvatars is a no-op until ready.
+  // ---------------------------------------------------------------------------
+
+  // Counterpart account ID: only set for exactly-2-member (1:1) conversations.
+  const counterpartAccountID: string | null =
+    me.$isLoaded && id && conversation
+      ? (() => {
+          const conv = conversation as any;
+          const group = conv.$jazz?.owner;
+          if (!group) return null;
+          const myID = (me as any).$jazz?.id;
+          let members: any[] = [];
+          try {
+            members = group.getDirectMembers();
+          } catch {
+            return null;
+          }
+          const participants = members.filter(
+            (m: any) => m.role === "admin" || m.role === "writer",
+          );
+          if (participants.length !== 2) return null;
+          const other = participants.find(
+            (m: any) => m.account?.$jazz?.id !== myID,
+          );
+          return (other?.account?.$jazz?.id as string | null) ?? null;
+        })()
+      : null;
+
+  // Incoming author IDs: distinct non-self signers across the current message list.
+  const incomingAuthorIds: string[] = (() => {
+    if (!me.$isLoaded || !conversation) return [];
+    const myID = (me as any).$jazz?.id as string | undefined;
+    const ids = new Set<string>();
+    for (const m of Array.from((conversation as any).messages ?? []) as any[]) {
+      const authorID = getAuthorAccountIDFromMessage(m);
+      if (authorID && authorID !== myID) ids.add(authorID);
+    }
+    return [...ids];
+  })();
+
+  // Merge IDs: counterpart (for header) + authors (for message rows).
+  const detailAvatarIds: string[] = [
+    ...(counterpartAccountID ? [counterpartAccountID] : []),
+    ...incomingAuthorIds,
+  ];
+  const detailAvatarMap = useAccountAvatars(me, detailAvatarIds);
 
   // Divider anchor state — declared before the positioning effect that
   // gates on it; captured by the effect further down.
@@ -819,6 +870,11 @@ export function ConversationDetailRoute() {
         time: formattedTime,
         authorName,
         authorInitials,
+        // Live avatar URL for incoming messages — resolved via detailAvatarMap.
+        authorAvatarSrc:
+          !isMine && authorAccountID
+            ? (detailAvatarMap.get(authorAccountID) ?? undefined)
+            : undefined,
         att: hasAttachments,
         attSlot,
         edited: !isDeleted && Boolean(message?.edited),
@@ -854,11 +910,18 @@ export function ConversationDetailRoute() {
   const headerSub =
     !contact && memberCount !== null ? `${memberCount} members` : undefined;
 
+  // For 1:1s: conversation icon wins; falls back to counterpart's live avatar.
+  // Groups keep icon-only (counterpartAccountID is null for groups).
   const headerVM: ChatHeaderVM = {
     title: headerTitle,
     sub: headerSub,
     initials: initialsFromTitle(conversationTitle),
-    avatarSrc: headerAvatarUrl ?? undefined,
+    avatarSrc:
+      headerAvatarUrl ??
+      (counterpartAccountID
+        ? detailAvatarMap.get(counterpartAccountID)
+        : undefined) ??
+      undefined,
     group: !contact,
   };
 

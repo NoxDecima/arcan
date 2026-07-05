@@ -66,6 +66,11 @@ vi.mock("@/jazz/conversation", () => ({
   ensureMyWriteGroup: vi.fn(),
 }));
 vi.mock("@/jazz/displayName", () => ({ resolveDisplayName: () => "bob" }));
+// ArcanAccount.subscribe is called by useAccountAvatars (message-row author avatars).
+// Stub with a no-op in unit tests — no Jazz sync context available here.
+vi.mock("@/jazz/schema/ArcanAccount", () => ({
+  ArcanAccount: { subscribe: () => () => {} },
+}));
 
 import { ConversationDetailRoute } from "@/routes/conversations/detail";
 

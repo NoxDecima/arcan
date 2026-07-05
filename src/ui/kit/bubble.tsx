@@ -13,6 +13,8 @@ export interface BubbleMsg {
   text?: string;
   name?: string;
   ini?: string;
+  /** Avatar image URL for the "them" bubble — optional; falls back to initials. */
+  src?: string;
   time?: string;
   att?: boolean;
   /** Rung 4: message was edited — renders "(edited)" indicator below the body row. */
@@ -164,7 +166,7 @@ export function MessageRow({
       className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
       {...(testId ? { "data-testid": testId } : {})}
     >
-      {!mine && <HAv txt={m.ini ?? ""} size={28} />}
+      {!mine && <HAv txt={m.ini ?? ""} src={m.src} size={28} />}
       <div
         className={`flex flex-col gap-[3px] max-w-[80%] ${
           mine ? "items-end" : "items-start"

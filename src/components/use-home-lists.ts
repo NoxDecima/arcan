@@ -6,6 +6,7 @@ import { isArchived } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { getUnreadCount, getLastMessagePreview } from "@/jazz/notifications";
 import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
+import { useAccountAvatars } from "@/components/use-account-avatars";
 import type { ConvoItem, ContactItem, HomeProfile } from "@/ui/screens/home-types";
 
 // ---------------------------------------------------------------------------
@@ -280,19 +281,15 @@ export function useHomeLists(): HomeListsResult {
 
   // ---------------------------------------------------------------------------
   // Remote avatar subscriptions — contacts + 1:1 conversation counterparts.
-  // One ArcanAccount.subscribe() per account ID; fires live on remote-profile
-  // changes. Mirrors useRemoteAvatar but imperatively for N accounts in one
-  // effect. Guard: ≤50-account trust-circle scope — subscription count safe.
+  // Delegates to useAccountAvatars (extracted from the original per-account
+  // ArcanAccount.subscribe machinery — see src/components/use-account-avatars.ts).
   // ---------------------------------------------------------------------------
-  const [remoteAvatarMap, setRemoteAvatarMap] = useState<Map<string, string>>(
-    () => new Map(),
-  );
 
-  // Stable dep: sorted, comma-joined list of account IDs needing remote
-  // resolution. Includes every contact's contactAccountID and each 1:1
-  // conversation counterpart's accountID.
-  const remoteAccountIdsDep = (() => {
-    if (!me.$isLoaded) return "";
+  // Collect the account IDs needing live remote resolution:
+  //   • every contact's contactAccountID
+  //   • each 1:1 conversation counterpart's accountID
+  const remoteAccountIds: string[] = (() => {
+    if (!me.$isLoaded) return [];
     const myID = (me as any).$jazz?.id ?? "";
     const ids = new Set<string>();
     // Contacts
@@ -319,97 +316,10 @@ export function useHomeLists(): HomeListsResult {
         // ignored — inaccessible after kick, etc.
       }
     }
-    return [...ids].sort().join(",");
+    return [...ids];
   })();
 
-  useEffect(() => {
-    if (!me.$isLoaded || !remoteAccountIdsDep) return;
-    const accountIds = remoteAccountIdsDep.split(",").filter(Boolean);
-    if (!accountIds.length) return;
-
-    let cancelled = false;
-    // Per-account state for URL revocation on avatar change.
-    const perAccount = new Map<
-      string,
-      { streamId: string | null; url: string | null }
-    >();
-    const createdUrls: string[] = [];
-    const unsubscribers: (() => void)[] = [];
-
-    for (const accountId of accountIds) {
-      const state: { streamId: string | null; url: string | null } = {
-        streamId: null,
-        url: null,
-      };
-      perAccount.set(accountId, state);
-
-      // ArcanAccount.subscribe is an instance method on AccountSchema.
-      // The resolve spec mirrors useRemoteAvatar: profile.avatar (FileBlob)
-      // is loaded one level deep; avatar.data (FileStream) stays a ref that
-      // we loadAsBlob below. Returns an unsubscribe cleanup function.
-      const unsub = (ArcanAccount as any).subscribe(
-        accountId,
-        {
-          resolve: { profile: { avatar: true } },
-          loadAs: me as any,
-        } as any,
-        (account: any) => {
-          if (cancelled) return;
-          const newStreamId: string | null =
-            (account as any)?.profile?.avatar?.data?.$jazz?.id ?? null;
-          if (newStreamId === state.streamId) return; // no change — skip
-
-          state.streamId = newStreamId;
-
-          // Revoke the previous URL and remove from map
-          if (state.url) {
-            const old = state.url;
-            state.url = null;
-            URL.revokeObjectURL(old);
-            setRemoteAvatarMap((prev) => {
-              const next = new Map(prev);
-              next.delete(accountId);
-              return next;
-            });
-          }
-
-          if (!newStreamId) return;
-
-          // Async: load the stream blob → objectURL → update map
-          void (async () => {
-            try {
-              const blob = await co
-                .fileStream()
-                .loadAsBlob(newStreamId, { loadAs: me as any });
-              if (cancelled || !blob || state.streamId !== newStreamId) return;
-              const url = URL.createObjectURL(blob);
-              state.url = url;
-              createdUrls.push(url);
-              setRemoteAvatarMap((prev) => {
-                const next = new Map(prev);
-                next.set(accountId, url);
-                return next;
-              });
-            } catch {
-              // Silent — initials fallback.
-            }
-          })();
-        },
-      );
-
-      unsubscribers.push(unsub);
-    }
-
-    return () => {
-      cancelled = true;
-      for (const u of unsubscribers) u();
-      for (const u of createdUrls) URL.revokeObjectURL(u);
-      setRemoteAvatarMap(new Map());
-    };
-    // `me` intentionally omitted: remoteAccountIdsDep captures identity changes.
-    // Adding `me` would re-trigger on every Jazz subscription tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remoteAccountIdsDep, me.$isLoaded]);
+  const remoteAvatarMap = useAccountAvatars(me, remoteAccountIds);
 
   // ---------------------------------------------------------------------------
   // Early loading gate — all hooks above this line are unconditional.

@@ -36,6 +36,11 @@ vi.mock("@/components/safety-number", () => ({
 vi.mock("@/components/use-is-desktop", () => ({
   useIsDesktop: () => true,
 }));
+// ArcanAccount.subscribe is called by useAccountAvatars (own-avatar resolution).
+// Stub with a no-op in unit tests — no Jazz sync context available here.
+vi.mock("@/jazz/schema/ArcanAccount", () => ({
+  ArcanAccount: { subscribe: () => () => {} },
+}));
 
 function renderIndex() {
   return render(

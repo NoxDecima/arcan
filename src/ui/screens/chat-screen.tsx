@@ -178,6 +178,7 @@ export function ChatScreen({
                         text: item.text,
                         name: item.authorName,
                         ini: item.authorInitials,
+                        src: item.authorAvatarSrc,
                         time: item.time,
                         att: item.att,
                         edited: item.edited,

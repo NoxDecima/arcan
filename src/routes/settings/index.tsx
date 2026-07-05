@@ -6,6 +6,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTheme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
 import { useIsDesktop } from "@/components/use-is-desktop";
+import { useAccountAvatars } from "@/components/use-account-avatars";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { authClient } from "@/auth/client";
@@ -61,9 +62,16 @@ function SettingsBody() {
   );
   const [notifError, setNotifError] = useState<string | null>(null);
 
+  // Own avatar — resolved via the shared useAccountAvatars hook (live; same
+  // subscription pattern as home lists). Must be called before any early return.
+  const myIDPreLoad = me.$isLoaded
+    ? ((me as any).$jazz?.id as string | undefined)
+    : undefined;
+  const ownAvatarMap = useAccountAvatars(me, myIDPreLoad ? [myIDPreLoad] : []);
+
   if (!me.$isLoaded) return null;
 
-  const myID = (me as any).$jazz?.id as string | undefined;
+  const myID = myIDPreLoad;
   const displayName = me.profile?.displayName ?? "";
   const initials = displayName[0]?.toUpperCase() ?? "?";
 
@@ -202,7 +210,11 @@ function SettingsBody() {
 
   return (
     <SettingsScreen
-      account={{ name: displayName, initials }}
+      account={{
+        name: displayName,
+        initials,
+        avatarSrc: myID ? (ownAvatarMap.get(myID) ?? undefined) : undefined,
+      }}
       onOpenProfile={() => myID && navigate(`/profile/${myID}`)}
       onChangePassword={() => navigate("/settings/change-password")}
       onRecoveryCode={() => navigate("/settings/recovery-code")}
