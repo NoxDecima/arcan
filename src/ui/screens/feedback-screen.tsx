@@ -161,6 +161,7 @@ export function FeedbackScreen({
               primary
               full
               icon="send"
+              disabled={!canSubmit}
               label={submitting ? "sending…" : "submit feedback"}
               onClick={onSubmit}
               data-testid={submitTestId}

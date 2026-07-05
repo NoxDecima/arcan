@@ -97,6 +97,7 @@ export function ConvoSettingsScreen({
 
       {/* Role badge — 600 9px/1 mono .08em caps pill (cluster) */}
       <span
+        data-testid={`role-pill-${m.role}`}
         className={[
           "font-mono font-semibold text-ui-caps tracking-caps-08 uppercase",
           "px-2 py-1 rounded-pill",
@@ -200,18 +201,20 @@ export function ConvoSettingsScreen({
               {"// admins"}
             </span>
 
-            {/* "add people" pill — proto:345 */}
-            <button
-              className={`${tapClass} gap-[6px] px-[11px] py-[5px] rounded-pill bg-arcan-accent-fill`}
-              onClick={onAddPeople}
-              {...(addMemberTestId ? { "data-testid": addMemberTestId } : {})}
-            >
-              <Icon d="plus" size={13} sw={2.4} className="text-on-accent" />
-              {/* 600 11px/1 headMono → font-mono font-semibold text-ui-value */}
-              <span className="font-mono font-semibold text-ui-value leading-none text-on-accent">
-                add people
-              </span>
-            </button>
+            {/* "add people" pill — proto:345; admin-only (matches old MembersRoute) */}
+            {iAmAdmin && (
+              <button
+                className={`${tapClass} gap-[6px] px-[11px] py-[5px] rounded-pill bg-arcan-accent-fill`}
+                onClick={onAddPeople}
+                {...(addMemberTestId ? { "data-testid": addMemberTestId } : {})}
+              >
+                <Icon d="plus" size={13} sw={2.4} className="text-on-accent" />
+                {/* 600 11px/1 headMono → font-mono font-semibold text-ui-value */}
+                <span className="font-mono font-semibold text-ui-value leading-none text-on-accent">
+                  add people
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Admin rows — proto:347 */}

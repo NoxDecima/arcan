@@ -59,9 +59,9 @@ describe("FeedbackRoute", () => {
   });
 
   test("submit is a no-op until message is non-empty", async () => {
-    // Wave C: FeedbackScreen uses opacity (not HTML disabled) for the submit
-    // button. We verify behaviorally: clicking with empty message must NOT call
-    // fetch; clicking after filling the message MUST call fetch.
+    // Submit button carries HTML disabled when message is empty (restored in
+    // Wave C drift fix). We verify behaviorally: clicking with empty message
+    // must NOT call fetch; clicking after filling the message MUST call fetch.
     const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
       new Response("{}", { status: 200 }),
     );
