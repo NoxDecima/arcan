@@ -72,28 +72,24 @@ happen so nothing waits for phase exit.
 
 ## Screens (Phase 2)
 
-### Avatar image resolution — home lists (Wave A Task 5 review fix)
+### Avatar image resolution — home lists
 
-Container `useHomeLists` resolves avatar images via one-shot container effects
-(snapshot, not reactive):
+Container `useHomeLists` resolves avatar images via two mechanisms:
 
 - **Own profile header**: `useState` + `useEffect` on `me.profile.avatar.data.$jazz.id`
   → `co.fileStream().loadAsBlob` → objectURL; revoked on cleanup.
-- **Conversation icons**: combined effect iterates `knownConversations`; each
-  entry with `icon.data.$jazz.id` is blob-loaded into the `id → objectURL` map.
-  `icon: true` added to the `$each` resolve spec to make the FileBlob available.
-- **Contact photos**: EFFECTIVELY INITIALS-ONLY in Wave A. The combined effect
-  calls `resolveAvatarFileBlob({ accountID, me })`, but its contactBook branch
-  is a documented no-op (Contact stores a plain accountID string — no
-  `$jazz.refs.account` to walk; see `src/jazz/avatarResolver.ts`). The old
-  Sidebar carried contact photos via the per-row `useRemoteAvatar`
-  subscription, which Wave A dropped. Only the group-members path can
-  occasionally yield a blob.
-
-Deliberate, tracked deferral: reinstating the `useRemoteAvatar` mechanism (not
-merely adding reactivity) is the followup; `profile-avatar.spec.ts` is
-`test.fixme`'d on exactly this. Own-profile avatar + conversation icons DO
-resolve (snapshot; no live remote update).
+- **Conversation icons**: one-shot combined effect iterates `knownConversations`;
+  each entry with `icon.data.$jazz.id` is blob-loaded into the `id → objectURL`
+  map (snapshot on icon change). `icon: true` in the `$each` resolve spec.
+- **Contact photos + 1:1 conversation counterpart avatars**: imperative
+  per-account subscriptions via `ArcanAccount.subscribe(id, { resolve: { profile:
+  { avatar: true } }, loadAs: me }, cb)`. One subscription per account ID
+  (contacts ≤50 per trust-circle scope). Each subscription fires live on remote
+  profile changes: callback extracts `profile.avatar.data.$jazz.id`, async-loads
+  blob → objectURL, updates `remoteAvatarMap`. Cleanup: unsubscribe all + revoke
+  URLs. 1:1 conversation rows fall back to the counterpart's `remoteAvatarMap`
+  entry when no explicit icon is set. Followup closed 2026-07-05;
+  `profile-avatar.spec.ts` un-fixme'd and passing.
 
 ### Wave A coverage rows
 
@@ -127,9 +123,9 @@ resolve (snapshot; no live remote update).
 
 - Chat header avatar: conversation icon resolves via the Wave A one-shot
   pattern (`icon: true` resolve + blob effect in detail.tsx).
-- Per-message author photos: initials-only — same per-row `useRemoteAvatar`
-  mechanism as the home-list contact photos; folded into that followup task.
-  The presenter fields (`authorAvatarSrc`) are wired and waiting.
+- Per-message author photos: initials-only — the per-row `useRemoteAvatar`
+  mechanism is not yet wired into the message renderer. The presenter fields
+  (`authorAvatarSrc`) are wired and waiting; separate followup task.
 
 ### Wave B walkthrough decisions (2026-07-05)
 
@@ -178,15 +174,16 @@ resolve (snapshot; no live remote update).
   handler entirely missing** (feature regression — restored); **"(edited)"
   indicator missing** (feature regression — restored via BubbleMsg.edited);
   deleted copy assertion updated to design-language "message deleted".
-- Final: 43 green + 1 fixme (profile-avatar, pre-existing).
+- Final: 43 green + 1 fixme (profile-avatar, pre-existing). Remote-avatar
+  followup closed 2026-07-05: profile-avatar un-fixme'd → 44 green.
 
 ### Wave A e2e drift (vs 44/44 baseline)
 
 - 42/44 on first run after integration. `unread-badges` updated to the
   prototype's weight convention (unread = bold, read = semibold) — now green.
-- `profile-avatar` marked `test.fixme` — contact photos don't resolve on home
-  lists (see avatar section above; followup task tracks it). 43 runnable,
-  43 green.
+- `profile-avatar` marked `test.fixme` — contact photos didn't resolve on home
+  lists. Followup closed 2026-07-05: per-account subscriptions landed, spec
+  un-fixme'd. 44 runnable, 44 green.
 - Merge-review fix: five route roots (`/settings` + 3 sub-routes,
   `/conversations/new`) used `min-h-screen`/`h-screen`, which clips inside the
   fixed-height `DesktopWindow` (and `MobileShell`) with no scroll ancestor —

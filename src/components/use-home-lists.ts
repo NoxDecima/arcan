@@ -122,22 +122,17 @@ export interface HomeListsResult {
  * verbatim — same useAccount resolve spec, isArchived filter, sort, helpers.
  * Sidebar.tsx retains its own copies until Phase 4.
  *
- * Avatar resolution (review fix applied after d8e7506):
+ * Avatar resolution:
  *   - Own profile: unconditional useState/useEffect; resolves
  *     me.profile.avatar.data.$jazz.id → objectURL.
- *   - Convos + contacts: one combined effect builds an id → objectURL map;
- *     conversation icons via icon.data.$jazz.id, contact photos via
- *     resolveAvatarFileBlob → loadAsBlob.
- *
- * Deliberate degradation — Wave A: CONTACT PHOTOS EFFECTIVELY DON'T RESOLVE.
- * resolveAvatarFileBlob's contactBook branch is a documented no-op (Contact
- * stores contactAccountID as a plain string — no $jazz.refs.account to walk;
- * see src/jazz/avatarResolver.ts header). The old Sidebar carried contact
- * photos via the per-row useRemoteAvatar subscription, which Wave A dropped.
- * Net: contact rows render initials until the followup restores the
- * useRemoteAvatar mechanism. Own-profile avatar + conversation icons DO
- * resolve here (their FileBlobs are locally reachable) but as snapshots —
- * no reactive update on remote profile change. Tracked as a followup.
+ *   - Convos icons: one combined effect builds a convID → objectURL map via
+ *     icon.data.$jazz.id → loadAsBlob (snapshot on icon change).
+ *   - Contact photos + 1:1 counterpart avatars: a second effect creates one
+ *     live ArcanAccount.subscribe() per account ID (imperative, non-hook,
+ *     mirroring useRemoteAvatar). Each subscription callback extracts the
+ *     avatar stream ID, async-loads blob → objectURL, and updates
+ *     remoteAvatarMap. Live: re-fires when the remote profile changes.
+ *     Cleanup: unsubscribe all + revoke all URLs.
  *
  * Called unconditionally in AppShell (hook rules); desktop NavColumn consumes
  * it there. Mobile ConversationsRoute calls its own instance for screen
@@ -249,9 +244,9 @@ export function useHomeLists(): HomeListsResult {
         }
       }
 
-      // Contacts: resolveAvatarFileBlob for sync lookup, loadAsBlob for URL.
-      // Note: useRemoteAvatar is NOT called here — snapshot resolution only
-      // (live remote-profile updates are a followup, not Wave A scope).
+      // Contacts: resolveAvatarFileBlob is a documented no-op for contacts
+      // (Contact stores contactAccountID as a plain string; no ref to walk).
+      // Live contact photos are now handled by the remoteAvatarMap effect below.
       for (const c of Array.from(me.root?.contactBook ?? []) as any[]) {
         if (!c?.contactAccountID) continue;
         const accountID = c.contactAccountID as string;
@@ -279,9 +274,142 @@ export function useHomeLists(): HomeListsResult {
     };
     // `me` intentionally omitted: listsDep is derived from it; adding `me`
     // would re-run on every Jazz subscription tick (too frequent for blob
-    // loading). Wave A snapshot behavior is correct here.
+    // loading). Snapshot behavior is correct for conversation icons.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listsDep, me.$isLoaded]);
+
+  // ---------------------------------------------------------------------------
+  // Remote avatar subscriptions — contacts + 1:1 conversation counterparts.
+  // One ArcanAccount.subscribe() per account ID; fires live on remote-profile
+  // changes. Mirrors useRemoteAvatar but imperatively for N accounts in one
+  // effect. Guard: ≤50-account trust-circle scope — subscription count safe.
+  // ---------------------------------------------------------------------------
+  const [remoteAvatarMap, setRemoteAvatarMap] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+
+  // Stable dep: sorted, comma-joined list of account IDs needing remote
+  // resolution. Includes every contact's contactAccountID and each 1:1
+  // conversation counterpart's accountID.
+  const remoteAccountIdsDep = (() => {
+    if (!me.$isLoaded) return "";
+    const myID = (me as any).$jazz?.id ?? "";
+    const ids = new Set<string>();
+    // Contacts
+    for (const c of Array.from(me.root?.contactBook ?? []) as any[]) {
+      if (c?.contactAccountID) ids.add(c.contactAccountID as string);
+    }
+    // 1:1 conversation counterparts (exactly one other non-self member)
+    for (const conv of Array.from(me.root?.knownConversations ?? []) as any[]) {
+      if (!conv || !myID) continue;
+      const jazzGroup = conv?.$jazz?.owner;
+      if (!jazzGroup) continue;
+      try {
+        const members = jazzGroup.getDirectMembers() as any[];
+        const others = members.filter(
+          (m: any) =>
+            (m.role === "admin" || m.role === "writer") &&
+            m.account?.$jazz?.id !== myID,
+        );
+        if (others.length === 1) {
+          const id = others[0].account?.$jazz?.id as string | undefined;
+          if (id) ids.add(id);
+        }
+      } catch {
+        // ignored — inaccessible after kick, etc.
+      }
+    }
+    return [...ids].sort().join(",");
+  })();
+
+  useEffect(() => {
+    if (!me.$isLoaded || !remoteAccountIdsDep) return;
+    const accountIds = remoteAccountIdsDep.split(",").filter(Boolean);
+    if (!accountIds.length) return;
+
+    let cancelled = false;
+    // Per-account state for URL revocation on avatar change.
+    const perAccount = new Map<
+      string,
+      { streamId: string | null; url: string | null }
+    >();
+    const createdUrls: string[] = [];
+    const unsubscribers: (() => void)[] = [];
+
+    for (const accountId of accountIds) {
+      const state: { streamId: string | null; url: string | null } = {
+        streamId: null,
+        url: null,
+      };
+      perAccount.set(accountId, state);
+
+      // ArcanAccount.subscribe is an instance method on AccountSchema.
+      // The resolve spec mirrors useRemoteAvatar: profile.avatar (FileBlob)
+      // is loaded one level deep; avatar.data (FileStream) stays a ref that
+      // we loadAsBlob below. Returns an unsubscribe cleanup function.
+      const unsub = (ArcanAccount as any).subscribe(
+        accountId,
+        {
+          resolve: { profile: { avatar: true } },
+          loadAs: me as any,
+        } as any,
+        (account: any) => {
+          if (cancelled) return;
+          const newStreamId: string | null =
+            (account as any)?.profile?.avatar?.data?.$jazz?.id ?? null;
+          if (newStreamId === state.streamId) return; // no change — skip
+
+          state.streamId = newStreamId;
+
+          // Revoke the previous URL and remove from map
+          if (state.url) {
+            const old = state.url;
+            state.url = null;
+            URL.revokeObjectURL(old);
+            setRemoteAvatarMap((prev) => {
+              const next = new Map(prev);
+              next.delete(accountId);
+              return next;
+            });
+          }
+
+          if (!newStreamId) return;
+
+          // Async: load the stream blob → objectURL → update map
+          void (async () => {
+            try {
+              const blob = await co
+                .fileStream()
+                .loadAsBlob(newStreamId, { loadAs: me as any });
+              if (cancelled || !blob || state.streamId !== newStreamId) return;
+              const url = URL.createObjectURL(blob);
+              state.url = url;
+              createdUrls.push(url);
+              setRemoteAvatarMap((prev) => {
+                const next = new Map(prev);
+                next.set(accountId, url);
+                return next;
+              });
+            } catch {
+              // Silent — initials fallback.
+            }
+          })();
+        },
+      );
+
+      unsubscribers.push(unsub);
+    }
+
+    return () => {
+      cancelled = true;
+      for (const u of unsubscribers) u();
+      for (const u of createdUrls) URL.revokeObjectURL(u);
+      setRemoteAvatarMap(new Map());
+    };
+    // `me` intentionally omitted: remoteAccountIdsDep captures identity changes.
+    // Adding `me` would re-trigger on every Jazz subscription tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteAccountIdsDep, me.$isLoaded]);
 
   // ---------------------------------------------------------------------------
   // Early loading gate — all hooks above this line are unconditional.
@@ -297,6 +425,30 @@ export function useHomeLists(): HomeListsResult {
   }
 
   const myID = (me as any).$jazz?.id as string | undefined;
+
+  // Derive convID → counterpart accountID for 1:1 conversations.
+  // Used below to feed remoteAvatarMap lookup into each 1:1 ConvoItem.
+  const convCounterpartMap = new Map<string, string>();
+  for (const conv of Array.from(me.root?.knownConversations ?? []) as any[]) {
+    if (!conv || !myID) continue;
+    const jazzGroup = conv?.$jazz?.owner;
+    if (!jazzGroup) continue;
+    try {
+      const members = jazzGroup.getDirectMembers() as any[];
+      const others = members.filter(
+        (m: any) =>
+          (m.role === "admin" || m.role === "writer") &&
+          m.account?.$jazz?.id !== myID,
+      );
+      if (others.length === 1) {
+        const counterpartId = others[0].account?.$jazz?.id as string | undefined;
+        const convID = conv.$jazz?.id as string | undefined;
+        if (counterpartId && convID) convCounterpartMap.set(convID, counterpartId);
+      }
+    } catch {
+      // ignored
+    }
+  }
 
   // --- own profile ---
   const displayName = me.profile.displayName ?? "";
@@ -353,8 +505,13 @@ export function useHomeLists(): HomeListsResult {
       id: convID,
       name: label,
       initials: label[0] ?? "?",
-      // avatarMap[convID] is set asynchronously; undefined until blob resolves.
-      avatarSrc: avatarMap[convID],
+      // avatarMap[convID]: conversation icon (snapshot). Falls back to the
+      // counterpart's live remote avatar for 1:1 conversations.
+      avatarSrc:
+        avatarMap[convID] ??
+        (convCounterpartMap.has(convID)
+          ? remoteAvatarMap.get(convCounterpartMap.get(convID)!)
+          : undefined),
       group,
       preview,
       time,
@@ -374,8 +531,8 @@ export function useHomeLists(): HomeListsResult {
         id: c.contactAccountID as string,
         name,
         initials: name[0] ?? "?",
-        // avatarMap[accountID] is set asynchronously; undefined until blob resolves.
-        avatarSrc: avatarMap[c.contactAccountID as string],
+        // remoteAvatarMap[accountID] resolves live via per-account subscription.
+        avatarSrc: remoteAvatarMap.get(c.contactAccountID as string),
       };
     });
 
