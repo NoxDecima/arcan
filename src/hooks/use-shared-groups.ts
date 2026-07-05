@@ -52,20 +52,25 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
       // name from the contactBook entry for the other member — conv.title is
       // null/undefined for DMs and would show "Untitled" otherwise.
       if (activeMembers.length === 2) {
-        const other = activeMembers.find((m: any) => {
-          const id = m?.account?.$jazz?.id as string | undefined;
-          return id && id !== myID;
-        });
-        if (other) {
-          const otherID = other?.account?.$jazz?.id as string | undefined;
-          if (otherID) {
-            const contactEntry = contactBook.find(
-              (c: any) => c?.contactAccountID === otherID,
-            );
-            const derivedName = (contactEntry as any)?.displayNameLocal as
-              | string
-              | undefined;
-            if (derivedName) title = derivedName;
+        if (!myID) {
+          // Can't identify counterpart without our own ID — keep fallback title.
+          title = (conv as any).title ?? "Untitled";
+        } else {
+          const other = activeMembers.find((m: any) => {
+            const id = m?.account?.$jazz?.id as string | undefined;
+            return id && id !== myID;
+          });
+          if (other) {
+            const otherID = other?.account?.$jazz?.id as string | undefined;
+            if (otherID) {
+              const contactEntry = contactBook.find(
+                (c: any) => c?.contactAccountID === otherID,
+              );
+              const derivedName = (contactEntry as any)?.displayNameLocal as
+                | string
+                | undefined;
+              if (derivedName) title = derivedName;
+            }
           }
         }
       }

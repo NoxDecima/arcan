@@ -8,6 +8,7 @@
  * Route: /contacts/:contactID/detail
  */
 
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -79,6 +80,8 @@ export function ContactDetailRoute() {
     ? `${accountID.slice(0, 6)}…${accountID.slice(-3)}`
     : "";
 
+  const [safetyOpen, setSafetyOpen] = useState(false);
+
   async function handleStartChat() {
     if (!contact) return;
     const conversation = await findOrCreate1to1Conversation(me as any, contact);
@@ -103,8 +106,8 @@ export function ContactDetailRoute() {
       }}
       onBack={() => navigate(-1)}
       onMessage={() => void handleStartChat()}
-      safetyOpen={false}
-      onToggleSafety={() => {}} // safety shown inline; not via presenter toggle
+      safetyOpen={safetyOpen}
+      onToggleSafety={() => setSafetyOpen((o) => !o)}
       safetySlot={
         fingerprintHex && fingerprintHex.length === 64 ? (
           <SafetyNumber fingerprintHex={fingerprintHex} />

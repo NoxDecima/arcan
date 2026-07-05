@@ -1,15 +1,19 @@
-import { describe, test, expect } from "vitest";
+/**
+ * settings-kit.test.tsx
+ *
+ * Tests the live @/ui/kit primitives that supersede the retired settings-kit
+ * exports (Phase 4 of Wave C deletes src/routes/settings/settings-kit.tsx).
+ *
+ * Coverage: Icon, PCard, PSectionLabel, PToggle, PRow — render behavior and
+ * token-compliance assertions mirrored from the original settings-kit tests.
+ */
+import { describe, test, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import {
-  Icon,
-  Chev,
-  Toggle,
-  Card,
-  SectionLabel,
-  SRow,
-} from "@/routes/settings/settings-kit";
+import { Icon, PCard, PSectionLabel, PToggle, PRow } from "@/ui/kit";
 
-describe("settings-kit Icon", () => {
+// ── Icon ─────────────────────────────────────────────────────────────────────
+
+describe("kit Icon", () => {
   test("renders an svg with the named path and size", () => {
     const { container } = render(<Icon d="key" size={17} />);
     const svg = container.querySelector("svg")!;
@@ -30,33 +34,11 @@ describe("settings-kit Icon", () => {
   });
 });
 
-describe("settings-kit Chev", () => {
-  test("renders a dim 15px chevron", () => {
-    const { container } = render(<Chev />);
-    const svg = container.querySelector("svg")!;
-    expect(svg.getAttribute("width")).toBe("15");
-    expect(svg.getAttribute("class")).toContain("text-dim");
-  });
-});
+// ── PCard ────────────────────────────────────────────────────────────────────
 
-describe("settings-kit Toggle", () => {
-  test("on=true exposes aria-checked and switch role", () => {
-    render(<Toggle on={true} aria-label="t" />);
-    const sw = screen.getByRole("switch", { name: "t" });
-    expect(sw.getAttribute("aria-checked")).toBe("true");
-  });
-
-  test("on=false renders aria-checked=false", () => {
-    render(<Toggle on={false} aria-label="t" />);
-    expect(
-      screen.getByRole("switch", { name: "t" }).getAttribute("aria-checked"),
-    ).toBe("false");
-  });
-});
-
-describe("settings-kit Card", () => {
+describe("kit PCard", () => {
   test("renders panel bg + hairline border + 14px radius", () => {
-    const { container } = render(<Card>x</Card>);
+    const { container } = render(<PCard>x</PCard>);
     const div = container.firstChild as HTMLElement;
     expect(div.className).toContain("bg-panel");
     expect(div.className).toContain("border-hairline");
@@ -64,19 +46,40 @@ describe("settings-kit Card", () => {
   });
 });
 
-describe("settings-kit SectionLabel", () => {
+// ── PSectionLabel ─────────────────────────────────────────────────────────────
+
+describe("kit PSectionLabel", () => {
   test("renders an uppercase tracked label", () => {
-    render(<SectionLabel>account</SectionLabel>);
-    const el = screen.getByText("account");
-    expect(el.className).toContain("uppercase");
-    expect(el.className).toContain("text-dim");
+    const { container } = render(<PSectionLabel>account</PSectionLabel>);
+    const span = container.querySelector("span")!;
+    expect(span.className).toContain("uppercase");
+    expect(span.className).toContain("text-dim");
   });
 });
 
-describe("settings-kit SRow", () => {
+// ── PToggle ──────────────────────────────────────────────────────────────────
+
+describe("kit PToggle", () => {
+  test("on=true exposes aria-checked and switch role", () => {
+    render(<PToggle on={true} aria-label="t" />);
+    const sw = screen.getByRole("switch", { name: "t" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+  });
+
+  test("on=false renders aria-checked=false", () => {
+    render(<PToggle on={false} aria-label="t" />);
+    expect(
+      screen.getByRole("switch", { name: "t" }).getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+});
+
+// ── PRow ─────────────────────────────────────────────────────────────────────
+
+describe("kit PRow", () => {
   test("renders leading icon, label, sub, value", () => {
     const { container } = render(
-      <SRow icon="key" label="change password" sub="hi" value="now" />,
+      <PRow icon="key" label="change password" sub="hi" value="now" />,
     );
     expect(screen.getByText("change password")).toBeTruthy();
     expect(screen.getByText("hi")).toBeTruthy();
@@ -86,31 +89,41 @@ describe("settings-kit SRow", () => {
 
   test("danger renders label + icon in red", () => {
     const { container } = render(
-      <SRow icon="logout" label="sign out" danger last />,
+      <PRow icon="logout" label="sign out" danger last />,
     );
     const label = screen.getByText("sign out");
     expect(label.className).toContain("text-red");
-    // leading icon wrapper carries the red text colour
-    const iconWrap = container.querySelector("[data-icon-wrap]")!;
-    expect(iconWrap.className).toContain("text-red");
+    // Leading icon svg carries the red text colour via className
+    const iconSvg = container.querySelector("svg")!;
+    expect(iconSvg.getAttribute("class")).toContain("text-red");
   });
 
   test("last=true omits the bottom divider", () => {
-    const { container } = render(<SRow label="x" last />);
+    const { container } = render(<PRow label="x" last />);
     expect((container.firstChild as HTMLElement).className).not.toContain(
       "border-b",
     );
   });
 
   test("non-last renders the bottom divider", () => {
-    const { container } = render(<SRow label="x" />);
+    const { container } = render(<PRow label="x" />);
     expect((container.firstChild as HTMLElement).className).toContain(
       "border-b",
     );
   });
 
-  test("clickable row renders as a button when onClick is given", () => {
-    render(<SRow label="go" onClick={() => {}} />);
+  test("renders as a button element", () => {
+    render(<PRow label="go" onClick={() => {}} />);
     expect(screen.getByRole("button", { name: /go/ })).toBeTruthy();
+  });
+
+  test("renders trailing chevron when clickable and no right/value slot", () => {
+    const { container } = render(<PRow label="link" onClick={vi.fn()} />);
+    const svgs = container.querySelectorAll("svg");
+    // Trailing chev is 15px wide; leading icon (if any) is 17px.
+    // With no icon prop, the only svg is the trailing chev.
+    const chevSvg = svgs[svgs.length - 1];
+    expect(chevSvg.getAttribute("width")).toBe("15");
+    expect(chevSvg.getAttribute("class")).toContain("text-dim");
   });
 });
