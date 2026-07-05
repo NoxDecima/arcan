@@ -581,7 +581,7 @@ function PConvoSettingsScreen({ s }) {
             </button>
           </div>
           {admins.map(memRow)}
-          <div style={{ padding: '14px 8px 8px', display: 'flex' }}><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// members'}</span></div>
+          <div style={{ padding: '14px 8px 8px' }}><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// members'}</span></div>
           {writers.map(memRow)}
           <div style={{ marginTop: 18 }}><PButton s={s} danger full label="leave conversation" onClick={() => {}} /></div>
         </div>

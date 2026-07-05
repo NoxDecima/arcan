@@ -218,11 +218,14 @@ export function ConvoSettingsScreen({
           {admins.map(memberRow)}
 
           {/* "// members" header — proto:348 */}
+          {/* Strut pin: block div; inline-style pins the proto's ambient context (16px/1.125)
+              so the implicit line-box matches. Same convention as PSectionLabel — see
+              src/ui/kit/psection-label.tsx header comment (Task 7 Phase 1). */}
           <div
-            className="flex pt-[14px] px-2 pb-2"
+            className="pt-[14px] px-2 pb-2"
+            style={{ fontSize: 16, lineHeight: "1.125" }}
             {...(writersSectionTestId ? { "data-testid": writersSectionTestId } : {})}
           >
-            {/* flex: eliminates body-strut height difference between proto page (16px/normal) and app (15px/1.6) */}
             <span className="font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim">
               {"// members"}
             </span>
