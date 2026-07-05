@@ -43,6 +43,10 @@
     { "id": "own-profile-screen", "width": 300, "height": 560, "pad": 0 },
     { "id": "settings-screen", "width": 300, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "feedback-screen", "width": 300, "height": 640, "pad": 0 },
-    { "id": "link-device-screen", "width": 300, "height": 560, "pad": 0 }
+    { "id": "link-device-screen", "width": 300, "height": 560, "pad": 0 },
+    { "id": "convo-settings-screen", "width": 300, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "new-convo-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "add-people-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "add-contact-screen", "width": 300, "height": 640, "pad": 0 }
   ]
 }

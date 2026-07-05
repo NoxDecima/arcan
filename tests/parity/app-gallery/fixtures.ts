@@ -7,6 +7,8 @@ import type {
   SettingsAccountVM,
   SettingsToggleRow,
   SettingsDeviceRow,
+  PickItem,
+  ConvoMemberVM,
 } from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
@@ -108,3 +110,35 @@ export const SETTINGS_NOTIF_FIXTURE: SettingsToggleRow[] = [
 export const SETTINGS_DEVICES_FIXTURE: SettingsDeviceRow[] = [
   { key: "dev0", label: "this device · macbook", value: "active now" },
 ];
+
+// ── Picker cluster fixtures (Task 4) ────────────────────────────────────────
+
+/**
+ * ConvoSettings MEMBERS fixture — mirrors design/proto.jsx:12–14 (MEMBERS).
+ * proto-local (not exposed on window); re-defined in both proto-cells.jsx and here.
+ * admins: DC (decima, you), RA (rana)
+ * writers: JM (jun mori), AK (ada), TZ (theo z.)
+ */
+export const CONVO_MEMBERS_ADMINS: ConvoMemberVM[] = [
+  { accountID: "DC", name: "decima", initials: "DC", role: "admin", you: true },
+  { accountID: "RA", name: "rana",   initials: "RA", role: "admin" },
+];
+export const CONVO_MEMBERS_WRITERS: ConvoMemberVM[] = [
+  { accountID: "JM", name: "jun mori", initials: "JM", role: "writer" },
+  { accountID: "AK", name: "ada",      initials: "AK", role: "writer" },
+  { accountID: "TZ", name: "theo z.",  initials: "TZ", role: "writer" },
+];
+
+/**
+ * AddPeople pool fixture — mirrors design/proto.jsx:435 (pool).
+ * proto-local; same values re-defined here.
+ */
+export const ADD_PEOPLE_POOL: PickItem[] = [
+  { id: "ap0", name: "eli · device-2", initials: "EL" },
+  { id: "ap1", name: "nox / ops",      initials: "NX" },
+  { id: "ap2", name: "ko shin",        initials: "KS" },
+  { id: "ap3", name: "mara p.",        initials: "MP" },
+];
+
+/** AddContact TTL presets (app values — 1h/24h/7d; proto uses 1d/7d/30d/∞; deviation noted in manifest). */
+export const ADD_CONTACT_TTL_OPTIONS = ["1h", "24h", "7d"] as const;
