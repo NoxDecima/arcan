@@ -28,6 +28,7 @@ export function ConvoSettingsScreen({
   renderMemberEnd,
   onOpenMember,
   onLeave,
+  leaveInProgress,
   // testid carries
   backTestId,
   avatarTestId,
@@ -55,6 +56,7 @@ export function ConvoSettingsScreen({
   renderMemberEnd?: (m: ConvoMemberVM) => ReactNode; // Rung-4: kebab menu
   onOpenMember?: (accountID: string) => void;  // avatar/name → profile
   onLeave: () => void;                          // danger "leave conversation" — "leave-conversation-btn"
+  leaveInProgress?: boolean;                    // disables + swaps label to "working…" (base parity)
   // testid carries
   backTestId?: string;           // "back-btn"
   avatarTestId?: string;         // "members-header-avatar"
@@ -242,7 +244,8 @@ export function ConvoSettingsScreen({
             <PButton
               danger
               full
-              label="leave conversation"
+              label={leaveInProgress ? "working…" : "leave conversation"}
+              disabled={leaveInProgress}
               onClick={onLeave}
               data-testid={leaveTestId}
             />

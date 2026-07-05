@@ -78,7 +78,7 @@ export function AddContactRoute() {
       idShort={idShort}
       qrSlot={
         inviteUrl ? (
-          <QRDisplay url={withQrChannelMarker(inviteUrl)} size={140} />
+          <QRDisplay url={withQrChannelMarker(inviteUrl)} size={128} />
         ) : undefined
       }
       hiddenUrlSlot={

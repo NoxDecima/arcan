@@ -64,6 +64,7 @@ export function NewConversationRoute() {
   }
 
   async function submit() {
+    if (creating) return; // reentrancy guard — double-click could create duplicates
     if (selectedCount === 0) return;
     setCreating(true);
     setError(null);

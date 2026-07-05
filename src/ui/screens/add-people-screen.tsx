@@ -99,6 +99,7 @@ export function AddPeopleScreen({
           label={addLabel}
           onClick={onAdd}
           className={addDisabled ? "opacity-50" : undefined}
+          disabled={addDisabled}
         />
       </div>
     </div>

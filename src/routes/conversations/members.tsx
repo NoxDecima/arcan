@@ -185,7 +185,7 @@ export function MembersRoute() {
   if (!me.$isLoaded) {
     return (
       <main
-        className="flex-1 flex flex-col min-w-0"
+        className="flex-1 min-h-0 flex flex-col min-w-0"
         data-testid="members-route-loading"
       >
         <ChatHeaderSkeleton />
@@ -205,7 +205,7 @@ export function MembersRoute() {
   if (!conversation) {
     return (
       <main
-        className="flex-1 flex flex-col min-w-0"
+        className="flex-1 min-h-0 flex flex-col min-w-0"
         data-testid="members-route-loading-late"
       >
         <ChatHeaderSkeleton />
@@ -438,7 +438,7 @@ export function MembersRoute() {
   // ── render ───────────────────────────────────────────────────────────────
 
   return (
-    <main className="flex-1 flex flex-col min-w-0" data-testid="members-route">
+    <main className="flex-1 min-h-0 flex flex-col min-w-0" data-testid="members-route">
       {/* Hidden file input for group icon (outside presenter) */}
       <input
         ref={iconInputRef}
@@ -535,6 +535,7 @@ export function MembersRoute() {
         }}
         onOpenMember={(accountID) => navigate(`/profile/${accountID}`)}
         onLeave={() => void handleLeave()}
+        leaveInProgress={actionInProgress}
         // testid carries (E2E)
         backTestId="back-btn"
         avatarTestId="members-header-avatar"
