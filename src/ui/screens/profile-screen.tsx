@@ -18,6 +18,7 @@ export function ProfileScreen({
   safetyOpen,
   onToggleSafety,
   safetySlot,
+  dangerZone,
   rootTestId,
   backTestId,
   avatarTestId,
@@ -34,6 +35,8 @@ export function ProfileScreen({
   safetyOpen: boolean;                  // expandable "verify safety number"
   onToggleSafety: () => void;
   safetySlot?: ReactNode;               // Rung-4: container's <SafetyNumber> (expanded body)
+  /** Rung-4: app-only danger zone below the card (e.g. "remove contact" button). */
+  dangerZone?: ReactNode;
   // testid carries
   rootTestId?: string;                  // "profile-view"
   backTestId?: string;                  // "profile-back"
@@ -162,6 +165,8 @@ export function ProfileScreen({
               </div>
             )}
           </PCard>
+          {/* Rung-4: danger zone below the card (e.g. remove contact) */}
+          {dangerZone && <div className="w-full max-w-[320px] mt-2">{dangerZone}</div>}
         </div>
       </Body>
     </div>

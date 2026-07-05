@@ -5,14 +5,12 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { Skel } from "@/components/skeleton";
-import { Card, SectionLabel, SRow } from "./settings-kit";
+import { PCard, PSectionLabel, PRow } from "@/ui/kit";
 
 /**
- * DevicesSection (Unit 9-5b, 4-H): device rows in a Card, with the
- * "link a device" row at the BOTTOM (proto.jsx SettingsScreen line 309).
- *
- * Soft revoke: flips device.revoked = true and hides the device. Full
- * cryptographic revocation (secret rotation) is deferred — see NOX-10.
+ * devices-section.tsx — Wave C: settings-kit imports replaced with @/ui/kit.
+ * DevicesSection is no longer rendered by SettingsBody (logic folded into the
+ * container). Stays functional for isolated unit tests; Phase 4 deletes.
  */
 export function DevicesSection() {
   const navigate = useNavigate();
@@ -23,8 +21,8 @@ export function DevicesSection() {
   if (!me.$isLoaded) {
     return (
       <div data-testid="devices-section-loading">
-        <SectionLabel>devices</SectionLabel>
-        <Card>
+        <PSectionLabel>devices</PSectionLabel>
+        <PCard>
           {[0, 1].map((i) => (
             <div
               key={i}
@@ -37,7 +35,7 @@ export function DevicesSection() {
               <Skel w={72} h={28} r={6} />
             </div>
           ))}
-        </Card>
+        </PCard>
       </div>
     );
   }
@@ -64,10 +62,10 @@ export function DevicesSection() {
 
   return (
     <div>
-      <SectionLabel>devices</SectionLabel>
-      <Card data-testid="devices-card">
+      <PSectionLabel>devices</PSectionLabel>
+      <PCard data-testid="devices-card">
         {devices.length === 0 ? (
-          <SRow icon="device" label="no devices found" />
+          <PRow icon="device" label="no devices found" last />
         ) : (
           devices.map((device, idx) => {
             const isCurrentDevice =
@@ -78,13 +76,13 @@ export function DevicesSection() {
                 ? device.addedAt.toLocaleDateString()
                 : new Date(device.addedAt).toLocaleDateString();
             return (
-              <SRow
+              <PRow
                 key={idx}
                 data-testid={`device-row-${idx}`}
                 icon="device"
                 label={device.label + (isCurrentDevice ? " · this device" : "")}
                 sub={`added ${added}`}
-                control={
+                right={
                   <Button
                     variant="outline"
                     size="sm"
@@ -104,15 +102,15 @@ export function DevicesSection() {
             );
           })
         )}
-        {/* link row LAST (proto.jsx line 309) */}
-        <SRow
+        {/* link row LAST */}
+        <PRow
           data-testid="link-device-row"
           icon="plus"
           label="link a device"
           onClick={() => navigate("/pair?role=initiator")}
           last
         />
-      </Card>
+      </PCard>
       <p className="mt-3 max-w-xl text-xs leading-relaxed text-dim">
         forgetting a device hides it here, but it can still read everything it
         has already synced. full cryptographic revocation lands in the upcoming

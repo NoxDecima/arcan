@@ -68,6 +68,7 @@ export function SettingsScreen({
   themeLightTestId,
   themeDarkTestId,
   accentPickerTestId,
+  devicesCardTestId,
   linkDeviceRowTestId,
   signOutTestId,
 }: {
@@ -105,6 +106,7 @@ export function SettingsScreen({
   themeLightTestId?: string;            // "theme-light"
   themeDarkTestId?: string;             // "theme-dark"
   accentPickerTestId?: string;          // "appearance-accent-picker"
+  devicesCardTestId?: string;           // "devices-card"
   linkDeviceRowTestId?: string;         // "link-device-row"
   signOutTestId?: string;               // "sign-out-btn"
 }): JSX.Element {
@@ -300,7 +302,7 @@ export function SettingsScreen({
           {/* ── devices ───────────────────────────────────────────────────── */}
           <div>
             <PSectionLabel>devices</PSectionLabel>
-            <PCard>
+            <PCard data-testid={devicesCardTestId}>
               {devices.map((row) => (
                 <PRow
                   key={row.key}
@@ -309,6 +311,7 @@ export function SettingsScreen({
                   sub={row.sub}
                   value={row.value}
                   right={row.forgetSlot}
+                  data-testid={row.testId}
                 />
               ))}
               <PRow

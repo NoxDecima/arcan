@@ -58,15 +58,29 @@ describe("FeedbackRoute", () => {
     expect(formData.get("category")).toBe("Bug");
   });
 
-  test("submit disabled until message is non-empty", () => {
+  test("submit is a no-op until message is non-empty", async () => {
+    // Wave C: FeedbackScreen uses opacity (not HTML disabled) for the submit
+    // button. We verify behaviorally: clicking with empty message must NOT call
+    // fetch; clicking after filling the message MUST call fetch.
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      new Response("{}", { status: 200 }),
+    );
     const { getByTestId } = render(
       <Wrap>
         <FeedbackRoute />
-      </Wrap>
+      </Wrap>,
     );
-    const btn = getByTestId("feedback-submit") as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
-    fireEvent.change(getByTestId("feedback-message"), { target: { value: "x" } });
-    expect(btn.disabled).toBe(false);
+    // Click with empty message → no fetch call
+    fireEvent.click(getByTestId("feedback-submit"));
+    // Small pause to let any async propagation settle
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Fill message → click → fetch is called
+    fireEvent.change(getByTestId("feedback-message"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(getByTestId("feedback-submit"));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 });

@@ -28,6 +28,8 @@ export interface SettingsDeviceRow {
   value?: string;
   /** Rung-4 app-only "forget" button (disabled for current device). */
   forgetSlot?: ReactNode;
+  /** Optional testid for the PRow wrapper — carries `device-row-<idx>`. */
+  testId?: string;
 }
 
 export type ThemeName = "light" | "dark";
