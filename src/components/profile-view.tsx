@@ -106,7 +106,41 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     isOwn || otherLocalAvatar ? null : accountID,
   );
   const otherAvatar = !isOwn ? (otherLocalAvatar ?? otherRemoteAvatar) : undefined;
-  const avatarSrc = isOwn ? (ownAvatarUrl ?? undefined) : otherAvatar;
+
+  // Other-branch avatar blob→URL effect — mirrors own-avatar effect above.
+  // FileBlob objects cannot be used as <img src>; extract stream ID → loadAsBlob
+  // → objectURL. Keyed on stream ID so a new upload (new stream ID) re-runs.
+  // useRemoteAvatar keeps the remote subscription live, so a new stream ID
+  // arriving from an updated remote avatar also re-triggers. (walkthrough fix)
+  const otherStreamId: string | null = otherAvatar?.data?.$jazz?.id ?? null;
+  const [otherAvatarUrl, setOtherAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!otherStreamId) {
+      setOtherAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    void (async () => {
+      try {
+        const blob = await co.fileStream().loadAsBlob(otherStreamId, { loadAs: me as any });
+        if (cancelled || !blob) return;
+        createdUrl = URL.createObjectURL(blob);
+        setOtherAvatarUrl(createdUrl);
+      } catch {
+        // Silent — falls back to initials.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+    // otherStreamId changes when the contact uploads a new avatar → effect re-runs.
+    // `me` omitted: same pattern as own-avatar effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otherStreamId]);
+
+  const avatarSrc = isOwn ? (ownAvatarUrl ?? undefined) : (otherAvatarUrl ?? undefined);
 
   if (!me.$isLoaded) return null;
 
@@ -228,9 +262,8 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   const idShort = `${accountID.slice(0, 6)}…${accountID.slice(-3)}`;
 
   // ── own-branch extra sections (Rung-4 app-only) ──────────────────────────
-  // Section order (user decision, 2026-07-05 walkthrough, item 8):
-  // "view security code" moves directly below the action-buttons block;
-  // "your conversations" list moves below it.
+  // Safety expander moved in-card to OwnProfileScreen (user decision 2026-07-05).
+  // extraSections now carries: avatar-error, your-conversations, remove-avatar.
   const ownExtraSections = (
     <>
       {avatarError && (
@@ -239,32 +272,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
         </p>
       )}
 
-      {/* Safety number — directly below action-buttons block (reordered per item 8) */}
-      <section className="w-full" data-testid="profile-safety-section">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-r-3 border border-hairline bg-panel p-3"
-          onClick={() => setShowSafety((s) => !s)}
-          data-testid="profile-safety-toggle"
-        >
-          <span className="text-sm font-semibold text-text">view security code</span>
-          <span className="text-dim">{showSafety ? "▾" : "▸"}</span>
-        </button>
-        {showSafety && (
-          <div className="mt-2 rounded-r-3 border border-hairline bg-panel p-3">
-            {fingerprintHex && fingerprintHex.length === 64 ? (
-              <SafetyNumber fingerprintHex={fingerprintHex} />
-            ) : (
-              <p className="text-xs text-dim">Security code not available.</p>
-            )}
-            <p className="mt-3 text-center text-[11px] text-dim">
-              Share this in person so others can verify it&apos;s really you.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Your conversations — below safety number (reordered per item 8) */}
+      {/* Your conversations — safety expander moved in-card (user decision 2026-07-05) */}
       <section className="w-full" data-testid="profile-shared-section">
         <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-dim">
           your conversations
@@ -324,6 +332,21 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           onEditAvatar={() => fileInputRef.current?.click()}
           onAddContact={() => navigate("/contacts/add")}
           onSettings={() => navigate("/settings")}
+          safetyOpen={showSafety}
+          onToggleSafety={() => setShowSafety((s) => !s)}
+          safetySlot={
+            <>
+              {fingerprintHex && fingerprintHex.length === 64 ? (
+                <SafetyNumber fingerprintHex={fingerprintHex} />
+              ) : (
+                <p className="text-xs text-dim">Security code not available.</p>
+              )}
+              <p className="mt-3 text-center text-[11px] text-dim">
+                Share this in person so others can verify it&apos;s really you.
+              </p>
+            </>
+          }
+          safetyToggleTestId="profile-safety-toggle"
           nameEditSlot={
             editingName ? (
               <input

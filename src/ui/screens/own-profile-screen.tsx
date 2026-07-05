@@ -21,6 +21,9 @@ export function OwnProfileScreen({
   onEditAvatar,
   onAddContact,
   onSettings,
+  safetyOpen,
+  onToggleSafety,
+  safetySlot,
   nameEditSlot,
   extraSections,
   avatarInput,
@@ -32,6 +35,7 @@ export function OwnProfileScreen({
   editNameTestId,
   addContactTestId,
   settingsTestId,
+  safetyToggleTestId,
 }: {
   vm: OwnProfileScreenVM;
   onBack: () => void;
@@ -39,8 +43,12 @@ export function OwnProfileScreen({
   onEditAvatar: () => void;             // camera badge
   onAddContact: () => void;             // primary "add a contact"
   onSettings: () => void;               // "account & settings" row
+  /** In-card "view security code" expander — user decision 2026-07-05; absent in parity cells. */
+  safetyOpen?: boolean;
+  onToggleSafety?: () => void;
+  safetySlot?: ReactNode;               // SafetyNumber + hint (supplied by container)
   nameEditSlot?: ReactNode;             // Rung-4: inline name <input> when editing
-  extraSections?: ReactNode;            // Rung-4: your-conversations list + safety + remove-avatar (app-only)
+  extraSections?: ReactNode;            // Rung-4: your-conversations list + remove-avatar (app-only)
   avatarInput?: ReactNode;              // Rung-4: hidden <input type=file> (container owns)
   // testid carries
   rootTestId?: string;                  // "profile-view"
@@ -52,6 +60,7 @@ export function OwnProfileScreen({
   // idTestId removed — account-id line dropped (user decision 2026-07-05 walkthrough)
   addContactTestId?: string;            // "profile-add-contact"
   settingsTestId?: string;              // "profile-settings-link"
+  safetyToggleTestId?: string;          // "profile-safety-toggle"
 }): JSX.Element {
   return (
     <div
@@ -123,14 +132,41 @@ export function OwnProfileScreen({
           </div>
 
           {/* Settings row card — proto:252–254 */}
+          {/* In-card safety expander added when safetyOpen/onToggleSafety are supplied
+              (user decision 2026-07-05); absent when props are omitted (parity cells). */}
           <PCard className="w-full max-w-[320px]">
             <PRow
               icon="gear"
               label="account & settings"
               onClick={onSettings}
-              last
+              last={!onToggleSafety}
               data-testid={settingsTestId}
             />
+            {onToggleSafety && (
+              <div data-testid="profile-safety-section">
+                <button
+                  className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px]`}
+                  onClick={onToggleSafety}
+                  {...(safetyToggleTestId ? { "data-testid": safetyToggleTestId } : {})}
+                >
+                  <Icon d="check" size={16} className="text-arcan-accent" />
+                  <span className="flex-1 font-body font-medium text-ui-toast leading-none text-text">
+                    view security code
+                  </span>
+                  <span className="font-mono font-semibold text-ui-btn text-dim">
+                    {safetyOpen ? "▾" : "▸"}
+                  </span>
+                </button>
+                {safetyOpen && (
+                  <div
+                    className="border-t border-hairline"
+                    style={{ padding: "0 14px 14px" }}
+                  >
+                    {safetySlot}
+                  </div>
+                )}
+              </div>
+            )}
           </PCard>
 
           {/* Rung-4: app-only sections (safety, your-conversations, remove-avatar)
