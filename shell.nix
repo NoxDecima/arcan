@@ -70,7 +70,7 @@ pkgs.mkShell {
     echo "  npm run dev:all"
     echo
     echo "Tests:"
-    echo "  npm test              # Vitest (38 unit tests)"
+    echo "  npm test              # Vitest (tests/unit)"
     echo "  npm run test:e2e      # Playwright (chromium + firefox)"
     echo
   '';

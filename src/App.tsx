@@ -217,10 +217,8 @@ function App() {
                 channels land silently on the Pending Connections list. */}
             {isAuthenticated && <IncomingConnectionPrompt />}
             {routeTable}
-            {/* Unit 10 Wave A: MobileTabBar removed — AppShell's MobileShell
-                now provides the kit PTabBar in its tabBar slot. The
-                src/components/mobile-tab-bar.tsx file stays on disk until
-                Phase 4 cleanup. */}
+            {/* Unit 10: the kit PTabBar lives in AppShell's MobileShell
+                tabBar slot (legacy MobileTabBar deleted in Phase 4). */}
           </SidebarTabProvider>
         </ToastProvider>
       </AccentProvider>
