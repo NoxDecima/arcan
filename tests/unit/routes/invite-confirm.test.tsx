@@ -8,8 +8,8 @@ vi.mock("jazz-tools/react", () => ({
   useIsAuthenticated: () => true,
 }));
 
-vi.mock("@/jazz/avatarResolver", () => ({
-  useRemoteAvatar: () => undefined, // exercises the initials fallback
+vi.mock("@/components/use-account-avatars", () => ({
+  useAccountAvatars: () => new Map(), // exercises the initials fallback
 }));
 
 vi.mock("@/hooks/use-shared-groups", () => ({

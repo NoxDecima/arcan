@@ -33,7 +33,7 @@ import { NavListSkeleton } from "@/components/skeleton";
  *
  * MobileTabBar (src/components/mobile-tab-bar.tsx) is no longer mounted in
  * App.tsx — PTabBar from the kit replaces it on this mobile shell.
- * The file stays on disk until Phase 4.
+ *
  */
 export function AppShell() {
   const isDesktop = useIsDesktop();

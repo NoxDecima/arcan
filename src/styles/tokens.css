@@ -17,8 +17,6 @@
   --color-text: #c8d1f0;
   --color-text-2: #8a93b2;
   --color-dim: #5a6380;
-  --color-faint: #3a4060;
-
   /* Semantic */
   --color-green: #9ece6a;
   --color-amber: #e0af68;
@@ -50,11 +48,6 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-display: 'JetBrains Mono', ui-monospace, monospace;
 
-  --fs-hero: clamp(48px, 7vw, 96px);
-  --fs-display: clamp(36px, 5vw, 64px);
-  --fs-h1: 40px;
-  --fs-h2: 28px;
-  --fs-h3: 20px;
   --fs-body: 15px;
   --fs-body-lg: 17px;
   --fs-small: 13px;
@@ -96,7 +89,6 @@
   --tracking-caps-sm: 0.14em;   /* prototype PField label */
   --tracking-tab: 0.04em;       /* prototype PTabBar label (mono) */
   --tracking-avatar: -0.02em; /* HAv initials (hf-kit:110) */
-  --tracking-caps-lg: 0.24em;
   /* (appended Wave C — settings cluster caps tracking) */
   --tracking-caps-12: .12em;    /* add-contact "add someone" divider (proto:424) */
   --tracking-caps-10: .1em;     /* profile "soon" badge (proto:221) */
@@ -132,7 +124,6 @@
   /* Shadows */
   --shadow-1: 0 1px 0 rgba(255,255,255,0.02) inset, 0 1px 2px rgba(0,0,0,0.4);
   --shadow-2: 0 4px 16px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.02) inset;
-  --shadow-glow-accent: 0 0 10px rgba(122,162,247,0.55);
 
   /* Motion */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -170,7 +161,6 @@
   --color-text: #0d1018;
   --color-text-2: #3c425a;
   --color-dim: #727892;
-  --color-faint: #b9bdcc;
 
   --color-green: #4f8a36;
   --color-amber: #b5832b;

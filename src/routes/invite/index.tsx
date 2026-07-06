@@ -25,8 +25,8 @@ import { useAccount, useIsAuthenticated } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import { SafetyNumber } from "@/components/safety-number";
-import { Avatar } from "@/components/avatar";
-import { useRemoteAvatar } from "@/jazz/avatarResolver";
+import { HAv } from "@/ui/kit/hav";
+import { useAccountAvatars } from "@/components/use-account-avatars";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import {
   parseInvitationURL,
@@ -114,7 +114,10 @@ export function InviteRoute() {
   const [securityOpen, setSecurityOpen] = useState(false);
 
   const shared = useSharedGroups(invitation?.inviterAccountID ?? "");
-  const inviterAvatar = useRemoteAvatar(invitation?.inviterAccountID ?? null);
+  const inviterAvatarMap = useAccountAvatars(
+    me,
+    invitation?.inviterAccountID ? [invitation.inviterAccountID] : [],
+  );
 
   // --- Load invitation on mount (works unauthenticated too) ---
   useEffect(() => {
@@ -340,11 +343,10 @@ export function InviteRoute() {
     };
 
     const avatarSlot = (
-      <Avatar
-        src={inviterAvatar}
-        initials={vm.initials}
-        size="lg"
-        loadAs={me}
+      <HAv
+        txt={vm.initials}
+        src={inviterAvatarMap.get(inv?.inviterAccountID ?? "")}
+        size={96}
       />
     );
 
