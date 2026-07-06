@@ -17,6 +17,7 @@ export function LinkDeviceScreen({
   qrSlot,
   hiddenUrlSlot,
   waitingLabel = "waiting for your other device…",
+  copyTestId,
 }: {
   onBack: () => void;
   linkUrl: string;                      // e.g. "arcan.app/link#k2f…a81"
@@ -27,6 +28,8 @@ export function LinkDeviceScreen({
   hiddenUrlSlot?: ReactNode;
   /** Default: "waiting for your other device…" */
   waitingLabel?: string;
+  /** data-testid for the copy button (e.g. "pair-copy-url-btn"). */
+  copyTestId?: string;
 }): JSX.Element {
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -58,6 +61,7 @@ export function LinkDeviceScreen({
             {/* copy button — proto:470 */}
             <button
               onClick={onCopy}
+              data-testid={copyTestId}
               className={`${tapClass} px-[13px] py-[10px] border-l border-hairline bg-panel gap-[6px]`}
             >
               <Icon d="copy" size={13} className="text-arcan-accent" />

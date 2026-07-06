@@ -1,14 +1,17 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { recoverWithCode, setPasswordAfterRecovery } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
 import { decodeRecoveryCode } from "@/auth/recovery-code";
 import {
   AuthSurface,
-  Wordmark,
   AuthTitle,
   AuthSub,
-} from "@/components/auth-surface";
+  AuthField,
+  PButton,
+  MuteLink,
+  ArcanMark,
+} from "@/ui/kit";
 
 type Stage =
   | { kind: "enter-code" }
@@ -26,6 +29,12 @@ type Stage =
  * On success the user has both Jazz access AND a usable password for next
  * time. Skipping stage 2 leaves the account usable on this device only
  * (no password = no future email/password sign-in).
+ *
+ * NOTE: App.tsx mounts this route with special remount-hazard handling;
+ * do NOT restructure the App.tsx routing or this route's export structure.
+ *
+ * Rung-4: no hf proto twin. Built inline from the auth kit.
+ * Decision B: forceDark dropped — auth surfaces are theme-reactive.
  */
 export function RecoveryRoute() {
   const [stage, setStage] = useState<Stage>({ kind: "enter-code" });
@@ -70,7 +79,7 @@ export function RecoveryRoute() {
   }
 
   return (
-    <>
+    <div className="h-screen w-screen flex flex-col">
       {stage.kind === "enter-code" ? (
         <StageCode error={error} onSubmit={handleEnterCode} />
       ) : (
@@ -81,7 +90,7 @@ export function RecoveryRoute() {
           onSkip={() => navigate("/", { replace: true })}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -93,6 +102,7 @@ interface StageCodeProps {
 function StageCode({ error, onSubmit }: StageCodeProps) {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -107,45 +117,49 @@ function StageCode({ error, onSubmit }: StageCodeProps) {
   }
 
   return (
-    <AuthSurface forceDark w={368} tall>
-      <Wordmark size={20} />
+    <AuthSurface tall w={376}>
+      <div className="flex justify-center">
+        <ArcanMark stacked size={42} />
+      </div>
       <AuthTitle>recover account</AuthTitle>
       <AuthSub>enter your 24-word recovery code</AuthSub>
       <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
-        <textarea
-          data-testid="recovery-code-input"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
+        <AuthField
+          as="textarea"
           rows={4}
+          label="recovery code"
+          mono
+          value={code}
+          onChange={setCode}
+          placeholder="word1 word2 word3 … word24"
           autoFocus
           spellCheck={false}
-          autoComplete="off"
-          placeholder="word1 word2 word3 … word24"
-          className="w-full rounded-r-3 border border-hairline bg-panel px-3 py-2 font-mono text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          inputTestId="recovery-code-input"
         />
         {error && (
           <p
             data-testid="recovery-error"
-            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
+            className="rounded-r-4 bg-red/10 px-3 py-2 text-ui-toast text-red"
           >
             {error}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={isLoading}
+        <PButton
+          primary
+          full
+          label={isLoading ? "recovering…" : "recover →"}
           data-testid="recovery-submit"
-          className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
-        >
-          {isLoading ? "recovering…" : "recover"}
-        </button>
-        <Link
-          to="/auth/login"
-          className="block text-center text-[10.5px] text-dim hover:text-text"
-        >
-          back to sign in
-        </Link>
+        />
       </form>
+      <div className="text-center">
+        <button
+          type="button"
+          className="p-0 m-0 cursor-pointer [-webkit-tap-highlight-color:transparent]"
+          onClick={() => navigate("/auth/login")}
+        >
+          <MuteLink>back to sign in</MuteLink>
+        </button>
+      </div>
     </AuthSurface>
   );
 }
@@ -188,50 +202,48 @@ function StageNewPassword({
   }
 
   return (
-    <AuthSurface forceDark>
-      <Wordmark size={20} />
+    <AuthSurface>
+      <div className="flex justify-center">
+        <ArcanMark stacked size={42} />
+      </div>
       <AuthTitle>set a new password</AuthTitle>
       <AuthSub>you're signed in. choose a password for next time.</AuthSub>
       <form className="flex flex-col gap-[15px]" onSubmit={handleSubmit}>
-        <input
+        <AuthField
+          label="new password"
           type="password"
-          data-testid="recovery-new-password"
-          placeholder="new password (≥12 chars)"
           value={pw}
-          onChange={(e) => setPw(e.target.value)}
+          onChange={setPw}
+          placeholder="new password (≥12 chars)"
           autoComplete="new-password"
-          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          inputTestId="recovery-new-password"
         />
-        <input
+        <AuthField
+          label="confirm password"
           type="password"
-          data-testid="recovery-new-password-confirm"
-          placeholder="confirm new password"
           value={pw2}
-          onChange={(e) => setPw2(e.target.value)}
+          onChange={setPw2}
+          placeholder="confirm new password"
           autoComplete="new-password"
-          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
+          inputTestId="recovery-new-password-confirm"
         />
         {error && (
-          <p className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red">
+          <p className="rounded-r-4 bg-red/10 px-3 py-2 text-ui-toast text-red">
             {error}
           </p>
         )}
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent font-mono text-[12.5px] font-semibold text-text"
-          >
-            skip for now
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            data-testid="recovery-set-password"
-            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
-          >
-            {isLoading ? "saving…" : "save password"}
-          </button>
+          <div className="flex-1">
+            <PButton full label="skip for now" onClick={onSkip} type="button" />
+          </div>
+          <div className="flex-1">
+            <PButton
+              primary
+              full
+              label={isLoading ? "saving…" : "save password"}
+              data-testid="recovery-set-password"
+            />
+          </div>
         </div>
       </form>
     </AuthSurface>

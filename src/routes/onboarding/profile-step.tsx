@@ -7,7 +7,7 @@ import {
 } from "@/jazz/createAccountFromSeed";
 import { setProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
-import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
+import { ProfileSetupScreen } from "@/ui/screens";
 import type { Credentials } from "./credentials-step";
 
 interface ProfileStepProps {
@@ -17,7 +17,8 @@ interface ProfileStepProps {
 }
 
 /**
- * ProfileStep: collects a display name and runs the full sign-up flow.
+ * ProfileStep: container for the profile-setup onboarding step.
+ * Delegates rendering to ProfileSetupScreen (Rung 2 presenter).
  *
  * Sequence (all driven by `flows.signUp`):
  *   1. Decode the user's 24-word recovery code back into its 32-byte seed.
@@ -136,96 +137,44 @@ export function ProfileStep({
     }
   }
 
+  const errorSlot = error ? (
+    <p
+      data-testid="profile-error"
+      className="rounded-r-4 bg-red/10 px-3 py-2 text-ui-toast text-red"
+    >
+      {error}
+    </p>
+  ) : undefined;
+
+  const avatarInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/*"
+      className="hidden"
+      onChange={handleAvatarChange}
+      data-testid="onboarding-avatar-input"
+    />
+  );
+
   return (
-    <AuthSurface forceDark>
-      <Steps n={4} />
-      <AuthTitle>set up your profile</AuthTitle>
-
-      {/* Avatar tile + camera overlay — picks a file now, uploaded after the
-          account is created in handleFinish (the Jazz account does not exist
-          yet on this step). Design: hf-flows.jsx ScProfile lines 147-152. */}
-      <div className="flex justify-center mt-[2px]">
-        <div className="relative">
-          <div className="flex h-[78px] w-[78px] items-center justify-center overflow-hidden rounded-avatar-lg border border-hairline bg-accent-soft font-mono text-[26px] font-semibold text-arcan-accent">
-            {avatarPreview ? (
-              <img
-                src={avatarPreview}
-                alt=""
-                data-testid="onboarding-avatar-preview"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              "?"
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-            data-testid="onboarding-avatar-input"
-          />
-          <button
-            type="button"
-            onClick={handleAvatarPick}
-            aria-label="Add a profile picture"
-            data-testid="onboarding-avatar-change"
-            className="absolute -bottom-[2px] -right-[2px] flex h-7 w-7 items-center justify-center rounded-pill border-2 border-bg bg-arcan-accent text-on-accent text-[13px]"
-          >
-            ⌖
-          </button>
-        </div>
-      </div>
-
-      <label className="flex flex-col gap-[6px]">
-        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
-          display name
-        </span>
-        <input
-          id="display-name-input"
-          data-testid="display-name-input"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void handleFinish();
-          }}
-          placeholder="how others see you"
-          autoFocus
-          className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
-        />
-      </label>
-
-      {error && (
-        <p
-          data-testid="profile-error"
-          className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
-        >
-          {error}
-        </p>
-      )}
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isSubmitting}
-          className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold disabled:opacity-50"
-        >
-          back
-        </button>
-        <button
-          type="button"
-          data-testid="finish-onboarding-btn"
-          disabled={!canSubmit}
-          onClick={() => void handleFinish()}
-          className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
-        >
-          {isSubmitting ? "creating account…" : "enter arcan →"}
-        </button>
-      </div>
-      <div className="text-center text-[10.5px] text-dim">step 4 of 4</div>
-    </AuthSurface>
+    <div className="h-screen w-screen flex flex-col">
+      <ProfileSetupScreen
+        avatarPreview={avatarPreview}
+        onPickAvatar={handleAvatarPick}
+        avatarInput={avatarInput}
+        displayName={displayName}
+        onDisplayName={setDisplayName}
+        onFinish={() => void handleFinish()}
+        onBack={onBack}
+        submitting={isSubmitting}
+        finishDisabled={!canSubmit}
+        errorSlot={errorSlot}
+        nameTestId="display-name-input"
+        finishTestId="finish-onboarding-btn"
+        avatarChangeTestId="onboarding-avatar-change"
+        avatarPreviewTestId="onboarding-avatar-preview"
+      />
+    </div>
   );
 }

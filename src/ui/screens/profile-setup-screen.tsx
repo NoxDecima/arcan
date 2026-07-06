@@ -19,6 +19,7 @@ export function ProfileSetupScreen({
   finishTestId,
   avatarChangeTestId,
   avatarPreviewTestId,
+  finishDisabled,
 }: {
   avatarPreview?: string | null;
   onPickAvatar: () => void;
@@ -28,6 +29,8 @@ export function ProfileSetupScreen({
   onFinish: () => void;
   onBack?: () => void;
   submitting: boolean;
+  /** When true, the finish button is disabled (e.g. display name is empty). */
+  finishDisabled?: boolean;
   errorSlot?: ReactNode;
   nameTestId?: string;
   finishTestId?: string;
@@ -100,6 +103,7 @@ export function ProfileSetupScreen({
               full
               label={submitting ? "creating account…" : "enter arcan →"}
               onClick={onFinish}
+              disabled={finishDisabled}
               data-testid={finishTestId}
             />
           </div>
@@ -110,6 +114,7 @@ export function ProfileSetupScreen({
           full
           label={submitting ? "creating account…" : "enter arcan →"}
           onClick={onFinish}
+          disabled={finishDisabled}
           data-testid={finishTestId}
         />
       )}

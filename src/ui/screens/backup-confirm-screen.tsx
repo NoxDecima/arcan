@@ -13,12 +13,15 @@ export function BackupConfirmScreen({
   fields,
   onContinue,
   onBack,
+  continueDisabled,
   continueTestId,
 }: {
   sub: string;
   fields: WordChallengeField[];
   onContinue: () => void;
   onBack?: () => void;
+  /** When true, the continue button is disabled (e.g. not all words correct). */
+  continueDisabled?: boolean;
   continueTestId?: string;
 }): JSX.Element {
   return (
@@ -52,11 +55,11 @@ export function BackupConfirmScreen({
             <PButton full label="back" onClick={onBack} type="button" />
           </div>
           <div className="flex-1">
-            <PButton primary full label="continue →" onClick={onContinue} data-testid={continueTestId} />
+            <PButton primary full label="continue →" onClick={onContinue} disabled={continueDisabled} data-testid={continueTestId} />
           </div>
         </div>
       ) : (
-        <PButton primary full label="continue →" onClick={onContinue} data-testid={continueTestId} />
+        <PButton primary full label="continue →" onClick={onContinue} disabled={continueDisabled} data-testid={continueTestId} />
       )}
       {/* hf:137 — "step 3 of 4" */}
       <div className="text-center">

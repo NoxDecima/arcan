@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("InviteRoute confirm phase", () => {
-  test("shows inviter name + avatar on an AuthSurface", async () => {
+  test("shows inviter name + avatar on the ContactRequestScreen", async () => {
     render(
       <MemoryRouter>
         <InviteRoute />
@@ -51,9 +51,14 @@ describe("InviteRoute confirm phase", () => {
     expect(screen.getByTestId("invite-inviter-name").textContent).toContain(
       "Carol Inviter"
     );
-    // Avatar fallback renders the inviter's initial.
+    // Avatar wrapper present (ContactRequestScreen renders avatarTestId on the wrapper div).
     expect(screen.getByTestId("invite-inviter-avatar")).toBeTruthy();
-    // AuthSurface backdrop wrapper present.
-    expect(document.querySelector("[data-auth-surface]")).toBeTruthy();
+    // Accept + decline buttons present with expected labels.
+    expect(screen.getByTestId("invite-accept-btn").textContent).toContain(
+      "accept & add contact",
+    );
+    expect(screen.getByTestId("invite-decline-btn").textContent).toContain(
+      "decline",
+    );
   });
 });

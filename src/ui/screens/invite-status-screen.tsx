@@ -16,6 +16,8 @@ export function InviteStatusScreen({
   primary,
   outline,
   rootTestId,
+  primaryTestId,
+  outlineTestId,
 }: {
   /** ArcanMark stacked size (default 48). */
   markSize?: number;
@@ -33,6 +35,10 @@ export function InviteStatusScreen({
    * Rendered as an sr-only marker (position:absolute → layout-neutral).
    */
   rootTestId?: string;
+  /** data-testid for the primary button (e.g. "pair-init-home-btn"). */
+  primaryTestId?: string;
+  /** data-testid for the outline button. */
+  outlineTestId?: string;
 }): JSX.Element {
   return (
     <AuthSurface w={360}>
@@ -48,10 +54,10 @@ export function InviteStatusScreen({
       {sub && <AuthSub>{sub}</AuthSub>}
       {bodySlot}
       {primary && (
-        <PButton primary full label={primary.label} onClick={primary.onClick} />
+        <PButton primary full label={primary.label} onClick={primary.onClick} data-testid={primaryTestId} />
       )}
       {outline && (
-        <PButton full label={outline.label} onClick={outline.onClick} />
+        <PButton full label={outline.label} onClick={outline.onClick} data-testid={outlineTestId} />
       )}
     </AuthSurface>
   );

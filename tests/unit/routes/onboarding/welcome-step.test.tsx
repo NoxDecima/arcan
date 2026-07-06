@@ -2,8 +2,11 @@ import { describe, test, expect, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { WelcomeStep } from "@/routes/onboarding/welcome-step";
 
+// WelcomeStep is now a thin container rendering WelcomeScreen (Rung-1 presenter).
+// Behavioral assertions are preserved; import path is unchanged.
+
 describe("WelcomeStep", () => {
-  test("renders the short tagline subtitle", () => {
+  test("renders the short tagline subtitle (with // sysComment prefix per proto:542)", () => {
     render(
       <WelcomeStep
         onCreateAccount={vi.fn()}
@@ -11,7 +14,10 @@ describe("WelcomeStep", () => {
         onSignInWithPassword={vi.fn()}
       />
     );
-    expect(screen.getByText("local-first · end-to-end encrypted")).toBeTruthy();
+    // WelcomeScreen renders '// local-first · end-to-end encrypted' (sysComment=true per proto).
+    expect(
+      screen.getByText(/local-first · end-to-end encrypted/),
+    ).toBeTruthy();
     expect(
       screen.queryByText(/recovery code is your escape hatch/i),
     ).toBeNull();
@@ -35,9 +41,7 @@ describe("WelcomeStep", () => {
     );
     expect(onRestore).toHaveBeenCalled();
     // The "already on a device?" prefix is rendered as adjacent text;
-    // the button itself only contains "sign in" (see welcome-step.tsx
-    // — Unit 8a's AuthSurface layout uses a span + small accent button
-    // pair rather than a single full-width Button).
+    // the button itself only contains "sign in".
     expect(screen.getByText(/already on a device\?/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "sign in" }));
     expect(onSignIn).toHaveBeenCalled();
@@ -51,11 +55,8 @@ describe("WelcomeStep", () => {
         onSignInWithPassword={vi.fn()}
       />,
     );
-    // The Wordmark renders <Lattice> as an svg[role="img"] paired with the
-    // "arcan" text span inside the same wrapper. NOTE: AuthSurface also draws
-    // a decorative size=360 watermark Lattice, so we must target the Wordmark's
-    // mark specifically — the svg sibling of the "arcan" span — rather than the
-    // first svg[role="img"] in the tree (which would be the watermark).
+    // WelcomeScreen renders ArcanMark stacked size={64}.
+    // ArcanMark stacked: an svg[role='img'] sibling of the "arcan" span inside a flex-col div.
     const wordmarkLabel = Array.from(container.querySelectorAll("span")).find(
       (s) => s.textContent === "arcan",
     );

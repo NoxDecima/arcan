@@ -11,8 +11,12 @@
  * with the current URL as the `next` param. After sign-in, the route re-renders
  * with isAuthenticated === true and advances to confirm automatically.
  *
- * TOFU pinning: the inviter's safety number is shown in a collapsible details
- * element for out-of-band verification.
+ * TOFU pinning: the inviter's safety number is shown in a collapsible section
+ * for out-of-band verification.
+ *
+ * ALL phase logic + the pending-invite-fragment sessionStorage stash +
+ * openedChannel capture + the approval poll + writeInviterAsContact are
+ * kept verbatim. Only the render tree swaps to kit presenters.
  */
 
 import { useState, useEffect } from "react";
@@ -21,9 +25,6 @@ import { useAccount, useIsAuthenticated } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import { SafetyNumber } from "@/components/safety-number";
-import { Button } from "@/components/ui/button";
-import { Lattice } from "@/components/lattice";
-import { AuthSurface, AuthSub } from "@/components/auth-surface";
 import { Avatar } from "@/components/avatar";
 import { useRemoteAvatar } from "@/jazz/avatarResolver";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
@@ -33,6 +34,11 @@ import {
   createConnectionRequest,
   readInviteChannel,
 } from "@/jazz/invitations";
+import {
+  ContactRequestScreen,
+  InviteStatusScreen,
+} from "@/ui/screens";
+import type { ContactRequestVM } from "@/ui/screens/auth-types";
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -102,6 +108,10 @@ export function InviteRoute() {
       ? readInviteChannel(window.location.search)
       : "link",
   );
+
+  // Security code expansion state (new in T6 — replaces <details> with
+  // the ContactRequestScreen's controlled expandable cluster).
+  const [securityOpen, setSecurityOpen] = useState(false);
 
   const shared = useSharedGroups(invitation?.inviterAccountID ?? "");
   const inviterAvatar = useRemoteAvatar(invitation?.inviterAccountID ?? null);
@@ -220,170 +230,153 @@ export function InviteRoute() {
 
   // --- Render ---
 
-  if (phase === "loading") {
-    return (
-      <div className="p-6 text-text-2" data-testid="invite-loading">
-        loading invite…
-      </div>
-    );
-  }
-
-  if (phase === "signin-required") {
-    return (
-      <div
-        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
-        data-testid="invite-signin-required"
-      >
-        <Lattice size={48} />
-        <p className="text-text">Sign in to connect.</p>
-        <Button
-          variant="primary"
-          onClick={() =>
-            navigate(
-              `/auth/login?next=${encodeURIComponent(
-                window.location.pathname + window.location.hash,
-              )}`,
-            )
-          }
-        >
-          sign in
-        </Button>
-      </div>
-    );
-  }
-
-  if (phase === "expired") {
-    return (
-      <div
-        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
-        data-testid="invite-expired"
-      >
-        <Lattice size={48} mono />
-        <p className="text-text">this invite has expired</p>
-        {err && <p className="text-xs text-dim">{err}</p>}
-        <Button variant="outline" onClick={() => navigate("/")}>
-          go home
-        </Button>
-      </div>
-    );
-  }
-
-  if (phase === "error") {
-    return (
-      <div
-        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
-        data-testid="invite-error"
-      >
-        <Lattice size={48} mono />
-        <p className="text-text">couldn't load invite</p>
-        {err && <p className="text-xs text-dim">{err}</p>}
-        <Button variant="outline" onClick={() => navigate("/")}>
-          go home
-        </Button>
-      </div>
-    );
-  }
-
-  if (phase === "sending") {
-    return (
-      <div className="p-6 text-text-2" data-testid="invite-sending">
-        sending request…
-      </div>
-    );
-  }
-
-  if (phase === "sent") {
-    return (
-      <div
-        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
-        data-testid="invite-sent"
-      >
-        <Lattice size={48} />
-        <p className="text-text">request sent — waiting for approval…</p>
-        <p className="text-xs text-dim">
-          You can close this tab; you'll be notified when they accept.
-        </p>
-      </div>
-    );
-  }
-
-  if (phase === "approved") {
-    return (
-      <div
-        className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3 text-center"
-        data-testid="invite-approved"
-      >
-        <Lattice size={48} />
-        <p className="text-text">contact added</p>
-        <Button variant="primary" onClick={() => navigate("/")}>
-          open Arcan
-        </Button>
-      </div>
-    );
-  }
-
-  // phase === "confirm"
-  const inv = invitation as any;
   return (
-    <AuthSurface w={360}>
-      <div
-        className="flex flex-col items-center gap-4"
-        data-testid="invite-confirm"
-      >
-        <Avatar
-          src={inviterAvatar}
-          initials={inv.inviterDisplayName?.[0] ?? "?"}
-          size="lg"
-          loadAs={me}
-          data-testid="invite-inviter-avatar"
-        />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span
-            className="text-lg font-semibold text-text"
-            data-testid="invite-inviter-name"
-          >
-            {inv.inviterDisplayName}
-          </span>
-          <AuthSub>wants to connect with you on arcan</AuthSub>
-        </div>
-
-        {shared.length > 0 && (
-          <p className="text-center text-xs text-arcan-accent">
-            you're both in: {shared.map((s: any) => s.title).join(" · ")}
-          </p>
-        )}
-
-        <details className="w-full rounded-r-3 border border-hairline bg-panel p-3">
-          <summary className="cursor-pointer text-sm text-text">
-            view security code
-          </summary>
-          <div className="mt-3">
-            <SafetyNumber fingerprintHex={inv.inviterFingerprint} />
-          </div>
-          <p className="mt-3 text-center text-[11px] text-dim">
-            compare in person to confirm it's really them.
-          </p>
-        </details>
-
-        <div className="flex w-full gap-2">
-          <Button
-            variant="primary"
-            onClick={onConnect}
-            className="flex-1"
-            data-testid="invite-accept-btn"
-          >
-            connect
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => window.history.back()}
-            className="flex-1"
-            data-testid="invite-decline-btn"
-          >
-            cancel
-          </Button>
-        </div>
-      </div>
-    </AuthSurface>
+    <div className="h-screen w-screen flex flex-col">
+      {renderPhase()}
+    </div>
   );
+
+  function renderPhase() {
+    if (phase === "loading") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="loading invite…"
+          rootTestId="invite-loading"
+        />
+      );
+    }
+
+    if (phase === "signin-required") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="sign in to connect"
+          rootTestId="invite-signin-required"
+          primary={{
+            label: "sign in",
+            onClick: () =>
+              navigate(
+                `/auth/login?next=${encodeURIComponent(
+                  window.location.pathname + window.location.hash,
+                )}`,
+              ),
+          }}
+        />
+      );
+    }
+
+    if (phase === "expired") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="this invite has expired"
+          sub={err ?? undefined}
+          rootTestId="invite-expired"
+          outline={{
+            label: "go home",
+            onClick: () => navigate("/"),
+          }}
+        />
+      );
+    }
+
+    if (phase === "error") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="couldn't load invite"
+          sub={err ?? undefined}
+          rootTestId="invite-error"
+          outline={{
+            label: "go home",
+            onClick: () => navigate("/"),
+          }}
+        />
+      );
+    }
+
+    if (phase === "sending") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="sending request…"
+          rootTestId="invite-sending"
+        />
+      );
+    }
+
+    if (phase === "sent") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="request sent — waiting for approval…"
+          sub="You can close this tab; you'll be notified when they accept."
+          rootTestId="invite-sent"
+        />
+      );
+    }
+
+    if (phase === "approved") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="contact added"
+          rootTestId="invite-approved"
+          primary={{
+            label: "open Arcan",
+            onClick: () => navigate("/"),
+          }}
+        />
+      );
+    }
+
+    // phase === "confirm"
+    const inv = invitation as any;
+    const vm: ContactRequestVM = {
+      name: inv?.inviterDisplayName ?? "",
+      initials: (inv?.inviterDisplayName ?? "?")?.[0] ?? "?",
+      idShort: "",
+    };
+
+    const avatarSlot = (
+      <Avatar
+        src={inviterAvatar}
+        initials={vm.initials}
+        size="lg"
+        loadAs={me}
+      />
+    );
+
+    const sharedSlot =
+      shared.length > 0 ? (
+        <p className="text-center text-xs text-arcan-accent">
+          you're both in: {shared.map((s: any) => s.title).join(" · ")}
+        </p>
+      ) : undefined;
+
+    const safetySlot = inv?.inviterFingerprint ? (
+      <SafetyNumber fingerprintHex={inv.inviterFingerprint} />
+    ) : undefined;
+
+    return (
+      <ContactRequestScreen
+        vm={vm}
+        avatarSlot={avatarSlot}
+        sharedSlot={sharedSlot}
+        securityOpen={securityOpen}
+        onToggleSecurity={() => setSecurityOpen((o) => !o)}
+        safetySlot={safetySlot}
+        onAccept={onConnect}
+        onDecline={() => window.history.back()}
+        acceptLabel="accept & add contact"
+        declineLabel="decline"
+        rootTestId="invite-confirm"
+        nameTestId="invite-inviter-name"
+        avatarTestId="invite-inviter-avatar"
+        acceptTestId="invite-accept-btn"
+        declineTestId="invite-decline-btn"
+      />
+    );
+  }
 }
