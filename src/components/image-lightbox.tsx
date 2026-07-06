@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { createPortal } from "react-dom";
 import { useModalA11y } from "@/components/modal-shell";
+import { Icon, tapClass } from "@/ui/kit";
 
 interface ImageLightboxProps {
   src: string;
@@ -34,9 +35,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
         onClick={onClose}
         aria-label="Close image"
         data-testid="image-lightbox-close"
-        className="absolute top-4 right-4 text-text-2 text-2xl bg-black/40 rounded-r-3 w-10 h-10 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft"
+        className={`${tapClass} absolute top-4 right-4 text-text-2 bg-black/40 rounded-r-3 w-10 h-10 justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft`}
       >
-        ×
+        <Icon d="close" size={18} />
       </button>
       <img
         src={src}

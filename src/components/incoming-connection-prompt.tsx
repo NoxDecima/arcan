@@ -1,12 +1,12 @@
 import { useIncomingConnectionRequests } from "@/jazz/use-incoming-connection-requests";
 import { approveConnectionRequest, dismissConnectionRequest } from "@/jazz/invitations";
-import { Button } from "@/components/ui/button";
 import { ModalShell, ModalFooter } from "@/components/modal-shell";
 import { SafetyNumber } from "@/components/safety-number";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useToast } from "@/components/toast";
+import { HAv, AuthTitle, PButton } from "@/ui/kit";
 
 /**
  * For ConnectionRequests with channel="qr", surface an immediate modal — both
@@ -41,28 +41,45 @@ function Body({ me, request }: { me: any; request: any }) {
     <ModalShell
       open
       onClose={onDismiss}
-      title={`${r.requesterDisplayName} wants to connect`}
+      title=""
       dataTestId="incoming-connection-prompt"
       footer={
         <ModalFooter>
-          <Button variant="outline" className="flex-1" onClick={onDismiss} data-testid="dismiss">
-            dismiss
-          </Button>
-          <Button variant="primary" className="flex-1" onClick={onApprove} data-testid="approve">
-            approve
-          </Button>
+          <PButton
+            label="dismiss"
+            className="flex-1"
+            onClick={onDismiss}
+            data-testid="dismiss"
+          />
+          <PButton
+            primary
+            label="approve"
+            className="flex-1"
+            onClick={onApprove}
+            data-testid="approve"
+          />
         </ModalFooter>
       }
     >
-      <p className="text-sm text-text-2">Scanned your code in person.</p>
-      {shared.length > 0 && (
-        <p className="text-xs text-arcan-accent">
-          You're both in: {shared.map((s: any) => s.title).join(" · ")}
+      <div className="flex flex-col items-center gap-3">
+        <HAv txt={r.requesterDisplayName?.[0] ?? "?"} size={48} />
+        <AuthTitle>{r.requesterDisplayName} wants to connect</AuthTitle>
+        <p className="font-body text-ui-sub text-dim text-center">
+          Scanned your code in person.
         </p>
-      )}
+        {shared.length > 0 && (
+          <p className="font-body text-ui-sub text-arcan-accent text-center">
+            both in: {shared.map((s: any) => s.title).join(" · ")}
+          </p>
+        )}
+      </div>
       <details className="rounded-r-3 border border-hairline bg-bg p-3">
-        <summary className="cursor-pointer text-sm text-text">view security code</summary>
-        <div className="mt-3"><SafetyNumber fingerprintHex={r.requesterFingerprint} /></div>
+        <summary className="cursor-pointer font-body text-ui-sub text-dim">
+          view security code
+        </summary>
+        <div className="mt-3">
+          <SafetyNumber fingerprintHex={r.requesterFingerprint} />
+        </div>
       </details>
     </ModalShell>
   );

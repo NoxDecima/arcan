@@ -1,10 +1,9 @@
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { revokeInvitation } from "@/jazz/invitations";
-import { Button } from "@/components/ui/button";
+import { PCard, PButton, PSectionLabel } from "@/ui/kit";
 import { useToast } from "@/components/toast";
 import { Link } from "react-router-dom";
-import { EmptyPane } from "@/components/empty-pane";
 
 export function LiveInvitesRoute() {
   const me = useAccount(ArcanAccount, {
@@ -18,49 +17,53 @@ export function LiveInvitesRoute() {
     (i: any) => !i.revokedAt && (!i.expiresAt || new Date(i.expiresAt).getTime() > now)
   );
   return (
-    <div className="p-6 max-w-md mx-auto flex flex-col gap-3">
-      <h1 className="text-lg font-semibold text-text">live invites</h1>
-      {active.length === 0 ? (
-        <EmptyPane
-          variant="compact"
-          title="no active invites"
-          description="create a QR code or share link to invite someone to connect."
-          cta={
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="w-full max-w-[600px] mx-auto px-4 py-4 flex flex-col gap-4">
+        <PSectionLabel>live invites</PSectionLabel>
+        {active.length === 0 ? (
+          <div
+            className="px-4 py-8 text-center flex flex-col gap-3 items-center"
+            data-testid="live-invites-empty"
+          >
+            <span className="font-body text-ui-sub text-dim">
+              no active invites — create a QR code or share link to invite someone to connect.
+            </span>
             <Link to="/contacts/add">
-              <Button data-testid="create-invite-empty-cta">create invitation</Button>
+              <PButton label="create invitation" data-testid="create-invite-empty-cta" />
             </Link>
-          }
-          data-testid="live-invites-empty"
-        />
-      ) : (
-        active.map((inv: any) => {
-          const remainingMs = new Date(inv.expiresAt).getTime() - now;
-          const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
-          const remainingLabel = remainingMin >= 60
-            ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
-            : `${remainingMin}m`;
-          return (
-            <div
-              key={inv.$jazz.id}
-              className="rounded-r-3 border border-hairline bg-panel p-3 flex items-center gap-3"
-              data-testid={`invite-${inv.$jazz.id}`}
-            >
-              <div className="flex-1 text-sm text-text">
-                <p className="font-mono text-xs text-dim">{inv.channel}</p>
-                <p>expires in {remainingLabel}</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  await revokeInvitation(inv);
-                  toast({ icon: "check", text: "invite revoked", tone: "neutral" });
-                }}
-                data-testid="revoke"
-              >revoke</Button>
-            </div>
-          );
-        })
-      )}
+          </div>
+        ) : (
+          active.map((inv: any) => {
+            const remainingMs = new Date(inv.expiresAt).getTime() - now;
+            const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
+            const remainingLabel =
+              remainingMin >= 60
+                ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
+                : `${remainingMin}m`;
+            return (
+              <PCard key={inv.$jazz.id} data-testid={`invite-${inv.$jazz.id}`}>
+                <div className="px-3.5 py-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-ui-value text-dim">{inv.channel}</div>
+                    <div className="font-body text-ui-sub text-dim">
+                      expires in {remainingLabel}
+                    </div>
+                  </div>
+                  <PButton
+                    danger
+                    label="revoke"
+                    onClick={async () => {
+                      await revokeInvitation(inv);
+                      toast({ icon: "check", text: "invite revoked", tone: "neutral" });
+                    }}
+                    data-testid="revoke"
+                  />
+                </div>
+              </PCard>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
