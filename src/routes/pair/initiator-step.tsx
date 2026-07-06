@@ -271,7 +271,6 @@ export function InitiatorStep() {
     // phase === "waiting"
     return (
       <LinkDeviceScreen
-        onBack={() => window.history.back()}
         linkUrl={invitation?.url ?? ""}
         onCopy={handleCopyUrl}
         copyTestId="pair-copy-url-btn"

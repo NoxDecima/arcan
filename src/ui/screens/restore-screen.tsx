@@ -34,7 +34,11 @@ export function RestoreScreen({
   restoreTestId?: string;
 }): JSX.Element {
   return (
-    <AuthSurface tall w={376}>
+    // USER DECISION 2026-07-06 (walkthrough): `tall` removed — restore content
+    // (ArcanMark + title + sub + textarea + buttons + footer) fits within a
+    // standard viewport; `tall` caused top-pinning + unwanted scroll. Only
+    // the 24-word backup-display screen (genuinely tall) keeps `tall`.
+    <AuthSurface w={376}>
       {/* hf:164 — Wordmark size=20; Wordmark=ArcanMark×2.1 → stacked size=42 */}
       <div className="flex justify-center">
         <ArcanMark stacked size={42} />

@@ -117,7 +117,10 @@ function StageCode({ error, onSubmit }: StageCodeProps) {
   }
 
   return (
-    <AuthSurface tall w={376}>
+    // Audit finding 2026-07-06 (walkthrough): `tall` removed — StageCode content
+    // fits within a standard viewport; same fix as RestoreScreen. `tall` caused
+    // top-pinning + scroll on this screen too.
+    <AuthSurface w={376}>
       <div className="flex justify-center">
         <ArcanMark stacked size={42} />
       </div>

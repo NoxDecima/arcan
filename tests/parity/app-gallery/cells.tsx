@@ -477,10 +477,11 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
 
   // proto.jsx:462–475 (LinkDeviceScreen) — qrSlot=<PQR size={150}> (real QR is Rung-4).
   // Waiting-pulse animation is frozen by gallery's animation:none!important.
+  // USER DECISION 2026-07-06 (walkthrough): onBack omitted — no top back arrow in auth flow.
+  // Proto copy patched to match (PHeader back arrow removed in proto-cells.jsx).
   "link-device-screen": () => (
     <div className="flex flex-col h-full">
       <LinkDeviceScreen
-        onBack={() => {}}
         linkUrl="arcan.app/link#k2f…a81"
         onCopy={() => {}}
         qrSlot={<PQR size={150} />}
@@ -585,12 +586,12 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
   ),
 
   // proto.jsx:550–565 (SignInScreen) — Rung 1 presenter.
-  // onBack present → renders PHeader back arrow (matches proto:554).
+  // USER DECISION 2026-07-06 (walkthrough): onBack omitted — no top back arrow in auth flow.
+  // Proto copy patched to match (PHeader back arrow removed in proto-cells.jsx).
   // empty email/password, submitting=false, errorSlot omitted.
   "sign-in-screen": () => (
     <div className="flex flex-col h-full">
       <SignInScreen
-        onBack={() => {}}
         email=""
         onEmail={() => {}}
         password=""

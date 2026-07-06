@@ -19,7 +19,11 @@ export function LinkDeviceScreen({
   waitingLabel = "waiting for your other device…",
   copyTestId,
 }: {
-  onBack: () => void;
+  // USER DECISION 2026-07-06 (walkthrough): onBack made optional — auth-flow
+  // screens have no top back arrows. PHeader back arrow is suppressed when
+  // onBack is absent. The header title "link a device" is retained.
+  // Pre-Wave-D original had no back nav on this screen either.
+  onBack?: () => void;
   linkUrl: string;                      // e.g. "arcan.app/link#k2f…a81"
   onCopy: () => void;
   /** Rung-4: real <QRDisplay>; parity uses <PQR size={150}>. */

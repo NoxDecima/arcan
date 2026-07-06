@@ -6,7 +6,6 @@ import type { ReactNode, JSX } from "react";
 import {
   AuthShell,
   ArcanMark,
-  PHeader,
   PButton,
   AuthTitle,
   AuthField,
@@ -15,7 +14,6 @@ import {
 } from "@/ui/kit";
 
 export function SignInScreen({
-  onBack,
   email,
   onEmail,
   password,
@@ -29,7 +27,10 @@ export function SignInScreen({
   passwordTestId,
   submitTestId,
 }: {
-  onBack?: () => void;
+  // onBack intentionally removed — USER DECISION 2026-07-06 (walkthrough):
+  // auth-flow screens have no top back arrows; original pre-Wave-D LoginRoute
+  // also had no back nav. Navigation back to /onboarding is available via
+  // the "create account" MuteLink at the bottom of this screen.
   email: string;
   onEmail: (v: string) => void;
   password: string;
@@ -45,9 +46,6 @@ export function SignInScreen({
 }): JSX.Element {
   return (
     <>
-      {/* proto:554 — optional PHeader with back arrow; title="" (no text per rule 4) */}
-      {onBack && <PHeader title="" onBack={onBack} />}
-
       <AuthShell>
         {/* proto:556 — ArcanMark stacked, 56px */}
         <ArcanMark size={56} stacked />

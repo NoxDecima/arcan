@@ -511,12 +511,14 @@ function PFeedbackScreen({ s }) {
 
 /* patched copy: design/proto.jsx:462–475 (LinkDeviceScreen) —
    toast/nav stubbed; linkUrl from prop; QR = PQR size=150;
-   hf-typing-dot class retained (animation frozen by gallery: animation:none!important). */
+   hf-typing-dot class retained (animation frozen by gallery: animation:none!important).
+   USER DECISION 2026-07-06 (walkthrough): PHeader back arrow removed (onBack omitted)
+   to match app cell (no top back arrows in auth flow). Title "link a device" retained. */
 function PLinkDeviceScreen({ s }) {
   const c = s.c;
   return (
     <React.Fragment>
-      <PHeader s={s} title="link a device" onBack={() => {}} />
+      <PHeader s={s} title="link a device" />
       <Body s={s} pad={'24px 20px'}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'center', font: `400 11.5px/1.5 ${s.body}`, color: c.text2 }}>open this link on your other device, or scan it</div>
@@ -1254,7 +1256,8 @@ const PROTO_CELLS = {
 
   /* patched copy: design/proto.jsx:550–565 (SignInScreen) — buttons via PButton (decision A);
      AuthField=display div matching app AuthField empty input (38px/12px/placeholder in c.dim).
-     Empty PHeader back arrow rendered (onBack present in app cell). */
+     USER DECISION 2026-07-06 (walkthrough): PHeader back arrow removed from proto copy to match
+     app cell (no top back arrows in auth flow; pre-Wave-D original had no back nav here). */
   "sign-in-screen": (s) => {
     const c = s.c;
     /* local helper: display-only field matching app AuthField with empty value (placeholder-only).
@@ -1277,8 +1280,7 @@ const PROTO_CELLS = {
     }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* proto:554 — PHeader with back arrow; title="" */}
-        <PHeader s={s} title="" onBack={() => {}} />
+        {/* proto:554 — PHeader back arrow removed (USER DECISION 2026-07-06); no back nav in auth flow */}
         <AuthShell s={s}>
           {/* proto:556 */}
           <ArcanMark s={s} size={56} stacked />

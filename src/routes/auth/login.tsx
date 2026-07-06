@@ -66,7 +66,6 @@ export function LoginRoute() {
         onSubmit={handleSubmit}
         submitting={isLoading}
         errorSlot={errorSlot}
-        onBack={() => navigate("/onboarding")}
         onForgot={() => navigate("/auth/recovery")}
         onCreate={() => navigate("/onboarding")}
         emailTestId="login-email"
