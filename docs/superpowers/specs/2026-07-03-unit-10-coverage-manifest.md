@@ -58,6 +58,17 @@ happen so nothing waits for phase exit.
    practice: the prototype has no hover/pressed CSS states, so parity gates
    prop states only (plan Ground Rule 3).
 
+### Phase 4 cleanup notes
+
+- Legacy layer deleted (10 components + 7 settings sections + 16 stale test
+  files); `ConversationAvatar` KEPT deliberately: its hue-seeded per-
+  conversation monogram background is a designed, unit-tested behavior HAv's
+  token background doesn't replicate (accounts = photos on neutral bg;
+  conversations = color-coded monograms). Phase 5 may bless it as the
+  canonical conversation-icon primitive — do not re-litigate silently.
+- Feedback FormData contract test restored (the one unique assertion lost
+  with the legacy test deletion).
+
 ### Deliberate kit deviations (sanctioned by spec §8)
 
 - `TypingRow` (proto.jsx:72–82) NOT ported — typing indicators dropped
