@@ -29,3 +29,8 @@ export type { PickItem, ConvoMemberVM } from "./picker-types";
 export type { ContactRequestVM, ApproveDeviceVM } from "./auth-types";
 export { WelcomeScreen } from "./welcome-screen";
 export { SignInScreen } from "./sign-in-screen";
+export { CredentialsScreen } from "./credentials-screen";
+export { BackupDisplayScreen } from "./backup-display-screen";
+export { BackupConfirmScreen } from "./backup-confirm-screen";
+export { ProfileSetupScreen } from "./profile-setup-screen";
+export type { WordChallengeField } from "./onboarding-types";

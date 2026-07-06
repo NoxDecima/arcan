@@ -37,15 +37,19 @@ export function AuthSurface({
         className="absolute w-[4px] h-[4px] rounded-pill bg-arcan-accent-fill shadow-dot"
         style={{ left: "22%", top: "20%" }}
       />
-      {/* star 2 — violet cosmic-dot 3px glow, left 72% top 26% (hf-flows:23) */}
+      {/* star 2 — violet cosmic-dot 3px glow, left 72% top 26% (hf-flows:23)
+          intent-fix: glow uses the star's own color (#bb9af7), not the accent-dot token
+          (which changes per accent); proto uses alpha('#bb9af7', .6) = fixed violet glow. */}
       <div
-        className="absolute w-[3px] h-[3px] rounded-pill bg-cosmic-dot shadow-dot"
-        style={{ left: "72%", top: "26%" }}
+        className="absolute w-[3px] h-[3px] rounded-pill bg-cosmic-dot"
+        style={{ left: "72%", top: "26%", boxShadow: "0 0 10px rgba(187,154,247,0.6)" }}
       />
-      {/* star 3 — #7dcfff cosmic-dot-2 3px glow, left 30% top 74% (hf-flows:24) */}
+      {/* star 3 — #7dcfff cosmic-dot-2 3px glow, left 30% top 74% (hf-flows:24)
+          intent-fix: glow uses the star's own color (#7dcfff), not the accent-dot token;
+          proto uses alpha('#7dcfff', .6) = fixed cyan glow. */}
       <div
-        className="absolute w-[3px] h-[3px] rounded-pill bg-cosmic-dot-2 shadow-dot"
-        style={{ left: "30%", top: "74%" }}
+        className="absolute w-[3px] h-[3px] rounded-pill bg-cosmic-dot-2"
+        style={{ left: "30%", top: "74%", boxShadow: "0 0 10px rgba(125,207,255,0.6)" }}
       />
       {/* star 4 — accent fill 2px no-glow, left 80% top 66% (hf-flows:25) */}
       <div

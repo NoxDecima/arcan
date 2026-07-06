@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
+import { PassphraseGrid } from "@/components/passphrase-grid";
 import {
   ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer,
   ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem,
   SettingsScreen, FeedbackScreen, LinkDeviceScreen, type ThemeName,
   ConvoSettingsScreen, NewConvoScreen, AddPeopleScreen, AddContactScreen,
   WelcomeScreen, SignInScreen,
+  CredentialsScreen, BackupDisplayScreen, BackupConfirmScreen, ProfileSetupScreen,
 } from "@/ui/screens";
 import {
   HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
@@ -22,6 +24,8 @@ const ICON_NAMES: IconName[] = [
   "check", "dots", "bell", "at", "device", "key", "shield", "logout",
   "sun", "moon", "sparkle", "alert", "refresh", "close", "message",
 ];
+
+const R_WORDS = ['amber', 'cobalt', 'drift', 'ember', 'fjord', 'glyph', 'harbor', 'ionize', 'jasper', 'kelvin', 'lumen', 'mosaic', 'nimbus', 'onyx', 'prism', 'quartz', 'ripple', 'summit', 'tundra', 'umbra', 'vellum', 'willow', 'xenon', 'zephyr'] as const;
 
 export const APP_CELLS: Record<string, () => ReactNode> = {
   "probe-swatch": () => (
@@ -594,6 +598,78 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         emailTestId="login-email"
         passwordTestId="login-password"
         submitTestId="login-submit"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:92–105 (ScCredentials) — Rung 2 presenter; no onBack (parity single-button).
+  // accents exercise accent star + primary button fill.
+  "credentials-screen": () => (
+    <div className="flex flex-col h-full">
+      <CredentialsScreen
+        email=""
+        onEmail={() => {}}
+        password=""
+        onPassword={() => {}}
+        confirm=""
+        onConfirm={() => {}}
+        onContinue={() => {}}
+        formTestId="credentials-form"
+        emailTestId="credentials-email"
+        passwordTestId="credentials-password"
+        confirmTestId="credentials-confirm"
+        continueTestId="credentials-continue"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:106–126 (ScRecovery = backup-display) — Rung 2 presenter.
+  // gridSlot = real PassphraseGrid with R_WORDS; no ackSlot/onBack (hf-faithful parity).
+  "backup-display-screen": () => (
+    <div className="flex flex-col h-full">
+      <BackupDisplayScreen
+        gridSlot={
+          <PassphraseGrid phrase={R_WORDS.join(" ")} compact withCopyButton />
+        }
+        onContinue={() => {}}
+        continueDisabled={false}
+        continueTestId="passphrase-display-continue"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:127–140 (ScConfirm = backup-confirm) — Rung 2 presenter.
+  // 2 WordChallengeFields (hf fixture: word #07 + #19); sub = hf sub string.
+  // Deviation: live app uses 3 fields; parity uses 2 (hf-faithful).
+  "backup-confirm-screen": () => (
+    <div className="flex flex-col h-full">
+      <BackupConfirmScreen
+        sub="enter two words to prove you saved it"
+        fields={[
+          { label: "word #07", value: "", onChange: () => {}, placeholder: "type word 7", testId: "confirm-word-0" },
+          { label: "word #19", value: "", onChange: () => {}, placeholder: "type word 19", testId: "confirm-word-1" },
+        ]}
+        onContinue={() => {}}
+        continueTestId="confirm-passphrase-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:141–159 (ScProfile = profile-setup) — Rung 2 presenter.
+  // avatarPreview=null → "?" placeholder. accents exercise accent avatar tint + primary.
+  "profile-setup-screen": () => (
+    <div className="flex flex-col h-full">
+      <ProfileSetupScreen
+        avatarPreview={null}
+        onPickAvatar={() => {}}
+        displayName=""
+        onDisplayName={() => {}}
+        onFinish={() => {}}
+        submitting={false}
+        nameTestId="display-name-input"
+        finishTestId="finish-onboarding-btn"
+        avatarChangeTestId="onboarding-avatar-change"
+        avatarPreviewTestId="onboarding-avatar-preview"
       />
     </div>
   ),
