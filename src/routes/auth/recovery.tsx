@@ -134,6 +134,7 @@ function StageCode({ error, onSubmit }: StageCodeProps) {
           placeholder="word1 word2 word3 … word24"
           autoFocus
           spellCheck={false}
+          autoComplete="off"
           inputTestId="recovery-code-input"
         />
         {error && (
@@ -147,6 +148,7 @@ function StageCode({ error, onSubmit }: StageCodeProps) {
         <PButton
           primary
           full
+          disabled={isLoading}
           label={isLoading ? "recovering…" : "recover →"}
           data-testid="recovery-submit"
         />
@@ -240,6 +242,7 @@ function StageNewPassword({
             <PButton
               primary
               full
+              disabled={isLoading}
               label={isLoading ? "saving…" : "save password"}
               data-testid="recovery-set-password"
             />

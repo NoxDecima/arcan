@@ -36,6 +36,8 @@ export function BackupConfirmScreen({
       <div className="flex flex-col gap-[15px]">
         {fields.map((f) => (
           <AuthField
+            spellCheck={false}
+            autoComplete="off"
             key={f.testId}
             label={f.label}
             value={f.value}

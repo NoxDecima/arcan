@@ -54,6 +54,7 @@ export function RestoreScreen({
         placeholder="word1 word2 … word24"
         autoFocus
         spellCheck={false}
+        autoComplete="off"
         inputTestId={codeTestId}
       />
       {errorSlot}

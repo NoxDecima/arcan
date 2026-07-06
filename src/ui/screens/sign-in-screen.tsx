@@ -85,6 +85,7 @@ export function SignInScreen({
           {/* proto:560 — h:4 spacer */}
           <div className="h-1" />
           <PButton
+            disabled={submitting}
             primary
             full
             label={submitting ? "signing in…" : "sign in"}
