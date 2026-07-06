@@ -230,7 +230,9 @@ Container `useHomeLists` resolves avatar images via two mechanisms:
   conversations couldn't scroll and hid the composer (+ fresh attachment
   chips, masquerading as a broken attach button). Remaining content-height
   roots (pending, live-invites, contacts/add+detail, profile-view, members)
-  carry the same latent clip — fix as their waves restyle them.
+  carried the same latent clip and were fixed as their waves restyled them.
+  All route roots are now corrected: contacts/add+detail, profile-view, and
+  members in Wave C; pending and live-invites in Phase 3 (Rung 4, 2026-07-06).
 
 ### Parity threshold overrides
 
@@ -255,3 +257,24 @@ here as sanctioned deviations from the prototype or from earlier defaults.
 | 8 | Profile section order | **"view security code" moves below action-buttons** — both profile screens now order: action-button(s) → verify-safety-number → shared-conversations. Proto had shared-convos first. ProfileScreen reordered within its PCard; profile-view.tsx ownExtraSections reordered. Proto-cells.jsx PProfileScreen patched. | Proto-cells patched (visible change) |
 | 9 | Contact profile | **Remove-contact button on /profile/:id** — when the viewed account has a contactBook entry, a `dangerZone` PButton (danger variant, testid `contact-remove-btn`) is rendered below the card, using the same removal flow as `/contacts/:id/detail`. | No parity impact (Rung-4 app-only) |
 | 10 | PRow kit primitive | **Nested-button fix (structural a11y deviation)** — PRow wrapper changed from `<button>` to `<div role="button">` + `tabIndex=0` + Enter/Space keydown so that PToggle buttons nested in the `right` slot don't produce a React 19 "button cannot be a descendant of button" hydration error. Full keyboard semantics retained. Plain div when onClick is absent. | No parity impact (visually identical) |
+
+## Phase 3 — Rung-4 surfaces (2026-07-06)
+
+No prototype reference exists for any of these surfaces. Visual acceptance = user review of screenshots / live app. All handlers, flows, and testids preserved verbatim from the pre-restyle state.
+
+### Phase 3 coverage rows
+
+| Surface | Route / Location | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Pending connections | `/connections/pending` | 4 | — | — | kit-idiom inference, no reference — user review pending. Route root `flex-1 min-h-0 overflow-y-auto`; content cap `max-w-[600px] mx-auto`. PSectionLabel title. PCard per request: HAv initials + name `text-ui-contact` + meta `text-ui-sub text-dim` + security-code `<details>`. PButton primary approve / outline dismiss. Empty state: centered `text-ui-sub text-dim` (NOT EmptyPane). All `pending-*` testids + approve/dismiss flows preserved. |
+| Live invites | `/connections/live-invites` | 4 | — | — | kit-idiom inference, no reference — user review pending. Same root/cap/empty rules as pending. PSectionLabel "live invites". PCard per invite: channel `font-mono text-ui-value text-dim` + TTL `text-ui-sub text-dim`. PButton danger revoke. Empty state: `text-ui-sub text-dim` centered + `create-invite-empty-cta` PButton link preserved. All `live-invite-*` testids + revokeInvitation flow preserved. |
+| Pending requests section | contacts tab / nav column | 4 | — | — | kit-idiom inference, no reference — user review pending. Compact slot rendered in ContactsScreen / NavColumn `pendingSlot`. PSectionLabel "pending" header + "see all" accent link. Per-row: HAv 32px + name `text-ui-contact` + meta `text-ui-sub text-dim` + PButton primary approve + MuteLink-style dismiss button. All `pending-section-*` testids preserved. `Avatar` → `HAv`; `Button` → `PButton` + `tapClass`+`MuteLink`. |
+| Incoming connection prompt | overlay (app root) | 4 | — | — | kit-idiom inference, no reference — user review pending. ModalShell mount/behavior unchanged (Unit 9 sanctioned overlay). Innards: HAv 48px + AuthTitle name + `text-ui-sub` fingerprint-hint text + `text-ui-sub` shared-groups. PButton primary approve / outline dismiss in ModalFooter. All `incoming-*` testids preserved. |
+| Image lightbox | overlay (chat) | 4 | — | — | Token verification: bg-black/85 scrim and bg-black/40 close button — both allowed per spec §8 / check-tokens (opacity-suffixed overlays explicitly sanctioned). Ad-hoc `text-2xl` + `×` character replaced with `Icon d="close" size={18}` + `tapClass`. All other classes were already token-compliant. `image-lightbox` and `image-lightbox-close` testids preserved. |
+
+### Phase 3 inference notes
+
+- **No EmptyPane on route-level empty states**: following the `contacts-screen.tsx` / `chats-screen.tsx` / `nav-column.tsx` established idiom — plain `font-body text-ui-sub text-dim` centered text instead of the EmptyPane component (which is reserved for the home empty-pane desktop slot and compact-variant sidebar, per Wave A).
+- **PendingRequestsSection MuteLink dismiss**: dismiss action uses `button[tapClass] > MuteLink` rather than PButton outline to maintain the compact visual weight appropriate for a sidebar slot (PButton's h-11 height is proportionate for the full-page pending route but heavy for the sidebar card).
+- **IncomingConnectionPrompt title=""**: ModalShell header renders with empty string (matching TrustedDevicePrompt pattern); the requester name is surfaced as AuthTitle inside the body for visual hierarchy.
+- **Content cap `max-w-[600px]`**: applied to both connection routes per the Wave C walkthrough decision #1 (all content-bearing routes get a 600px desktop cap).
