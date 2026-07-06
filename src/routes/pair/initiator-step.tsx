@@ -9,30 +9,42 @@
  *   approved       → initiator approved; wrapping account secret
  *   complete       → secret transferred; pairing done
  *   error          → any fatal error
+ *
+ * Container: wraps kit presenters per the T5 phase→presenter map.
+ * All state machines, createPairingInvite/approvePairing/rejectPairing/
+ * tombstonePairing, the creationStartedRef StrictMode guard, both poll
+ * effects, and getAuthContext are UNTOUCHED.
+ *
+ * Chrome note: `waiting` uses proto LinkDeviceScreen (PHeader+Body surface)
+ * while the status phases use the cosmic AuthSurface. Faithful to the two
+ * design refs (proto vs hf-flows); flagged in manifest.
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAccount } from "jazz-tools/react";
 import { useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
-import { Link } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
-import { DeviceApprovalCard } from "@/components/device-approval-card";
-import {
-  AuthSurface,
-  Wordmark,
-  AuthTitle,
-  AuthSub,
-} from "@/components/auth-surface";
 import {
   createPairingInvite,
   approvePairing,
   rejectPairing,
   tombstonePairing,
 } from "@/jazz/pairing";
+import {
+  deriveDeviceLabel,
+  deriveDeviceOS,
+  relativeTime,
+} from "@/lib/device-info";
 import type { PairingInitiation } from "@/jazz/pairing";
 import type { AgentSecret } from "cojson";
 import type { Account, ID } from "jazz-tools";
+import {
+  LinkDeviceScreen,
+  ApproveDeviceScreen,
+  InviteStatusScreen,
+} from "@/ui/screens";
+import type { ApproveDeviceVM } from "@/ui/screens/auth-types";
 
 type Phase =
   | "loading"
@@ -166,118 +178,127 @@ export function InitiatorStep() {
     setTimeout(() => setCopyFeedback(false), 2000);
   }
 
-  // --- Render ---
-
-  if (phase === "loading") {
-    return (
-      <AuthSurface forceDark w={330}>
-        <Wordmark size={48} />
-        <AuthTitle>preparing link</AuthTitle>
-        <AuthSub>creating pairing session…</AuthSub>
-      </AuthSurface>
-    );
-  }
-
-  if (phase === "error") {
-    return (
-      <AuthSurface forceDark w={330}>
-        <Wordmark size={48} />
-        <AuthTitle>something went wrong</AuthTitle>
-        <AuthSub>{errorMsg ?? "unknown error"}</AuthSub>
-        <div data-testid="pair-init-error" />
-        <button
-          type="button"
-          onClick={() => {
-            setPhase("loading");
-            setInvitation(null);
-            setErrorMsg(null);
-          }}
-          className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
-        >
-          retry
-        </button>
-      </AuthSurface>
-    );
-  }
-
-  if (phase === "complete") {
-    return (
-      <AuthSurface forceDark w={330}>
-        <Wordmark size={48} />
-        <AuthTitle>new device linked</AuthTitle>
-        <div data-testid="pair-init-complete" />
-        <Link to="/">
-          <button
-            type="button"
-            data-testid="pair-init-home-btn"
-            className="h-10 w-full rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
-          >
-            back to home
-          </button>
-        </Link>
-      </AuthSurface>
-    );
-  }
-
-  if (phase === "approved") {
-    return (
-      <AuthSurface forceDark w={330}>
-        <Wordmark size={48} />
-        <AuthTitle>linking device</AuthTitle>
-        <AuthSub>transferring account secret…</AuthSub>
-        <div data-testid="pair-approved" />
-      </AuthSurface>
-    );
-  }
-
-  if (phase === "awaiting-approval") {
+  // Build approve-device VM from responder metadata
+  function buildApproveVM(): ApproveDeviceVM {
     const p = invitation?.pairing as any;
+    const ua: string = p?.responderUserAgent ?? "";
+    const label = ua ? `${deriveDeviceLabel(ua)} · ${deriveDeviceOS(ua)}` : "—";
+    const firstSeen = relativeTime(p?.responderFirstSeenAt);
+    const fp: string = p?.responderFingerprint ?? "—";
+    return {
+      rows: [
+        { label: "device", value: label },
+        { label: "first-seen", value: firstSeen },
+        { label: "fingerprint", value: fp },
+      ],
+    };
+  }
+
+  // --- Render (all phases wrapped in the h-screen scaffold) ---
+
+  function renderPhase() {
+    if (phase === "loading") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="preparing link"
+          sub="creating pairing session…"
+        />
+      );
+    }
+
+    if (phase === "error") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="something went wrong"
+          sub={errorMsg ?? "unknown error"}
+          rootTestId="pair-init-error"
+          outline={{
+            label: "retry",
+            onClick: () => {
+              setPhase("loading");
+              setInvitation(null);
+              setErrorMsg(null);
+              creationStartedRef.current = false;
+            },
+          }}
+        />
+      );
+    }
+
+    if (phase === "complete") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="new device linked"
+          rootTestId="pair-init-complete"
+          primary={{
+            label: "back to home",
+            onClick: () => { window.location.href = "/"; },
+          }}
+          primaryTestId="pair-init-home-btn"
+        />
+      );
+    }
+
+    if (phase === "approved") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="linking device"
+          sub="transferring account secret…"
+          rootTestId="pair-approved"
+        />
+      );
+    }
+
+    if (phase === "awaiting-approval") {
+      return (
+        <ApproveDeviceScreen
+          vm={buildApproveVM()}
+          onApprove={handleApprove}
+          onDeny={handleReject}
+          approving={false}
+          promptTestId="pair-approval-prompt"
+          cardTestId="device-approval-card"
+          approveTestId="approve-device"
+          denyTestId="deny-device"
+        />
+      );
+    }
+
+    // phase === "waiting"
     return (
-      <AuthSurface forceDark w={330}>
-        <Wordmark size={48} />
-        <div data-testid="pair-approval-prompt">
-          <DeviceApprovalCard
-            userAgent={p?.responderUserAgent}
-            firstSeenAt={p?.responderFirstSeenAt}
-            fingerprint={p?.responderFingerprint}
-            onApprove={handleApprove}
-            onDeny={handleReject}
-            pending={false}
-          />
-        </div>
-      </AuthSurface>
+      <LinkDeviceScreen
+        onBack={() => window.history.back()}
+        linkUrl={invitation?.url ?? ""}
+        onCopy={handleCopyUrl}
+        copyTestId="pair-copy-url-btn"
+        qrSlot={
+          invitation ? (
+            <div data-testid="pair-waiting">
+              <QRDisplay url={invitation.url} size={150} showText={false} />
+            </div>
+          ) : undefined
+        }
+        hiddenUrlSlot={
+          invitation ? (
+            <span data-testid="qr-url-text" className="sr-only">
+              {invitation.url}
+            </span>
+          ) : undefined
+        }
+        waitingLabel={
+          copyFeedback ? "copied!" : "waiting for your other device…"
+        }
+      />
     );
   }
 
-  // phase === "waiting"
   return (
-    <AuthSurface forceDark w={330}>
-      <Wordmark size={48} />
-      <AuthTitle>link a new device</AuthTitle>
-      <AuthSub>open this link on your other device, or scan it</AuthSub>
-      <div className="flex justify-center" data-testid="pair-waiting">
-        {invitation && <QRDisplay url={invitation.url} size={132} showText={false} />}
-      </div>
-      {/* Invisible e2e hook: the QR renders without visible text, so expose the
-          pairing URL as an sr-only string for Playwright extraction (mirrors the
-          qr-url-text hook on /contacts/add). */}
-      {invitation && (
-        <span data-testid="qr-url-text" className="sr-only">
-          {invitation.url}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={handleCopyUrl}
-        data-testid="pair-copy-url-btn"
-        className="h-10 w-full rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
-      >
-        {copyFeedback ? "copied!" : "copy link"}
-      </button>
-      <div className="flex items-center justify-center gap-2 mt-[2px]">
-        <span className="h-[7px] w-[7px] rounded-pill bg-arcan-accent" />
-        <span className="text-[10.5px] text-dim">waiting for your other device…</span>
-      </div>
-    </AuthSurface>
+    <div className="h-screen w-screen flex flex-col">
+      {renderPhase()}
+    </div>
   );
 }

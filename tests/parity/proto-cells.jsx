@@ -5,6 +5,8 @@
 const { skin, alpha } = window;
 const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
 const { HF_CONVOS, HF_CONTACTS, HF_MSGS } = window;
+// hf-flows.jsx window exports (available after hf-flows.js loads)
+const { AuthSurface, AuthTitle: HfTitle, AuthSub: HfSub, AuthField: HfField, Wordmark } = window;
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
@@ -713,6 +715,194 @@ function PAddContactScreen({ s }) {
 }
 /* end patched copy */
 
+/* verbatim copies: design/hf-flows.jsx file-local helpers — Steps (31–34), MuteLink (61–63) */
+const R_WORDS = ['amber', 'cobalt', 'drift', 'ember', 'fjord', 'glyph', 'harbor', 'ionize', 'jasper', 'kelvin', 'lumen', 'mosaic', 'nimbus', 'onyx', 'prism', 'quartz', 'ripple', 'summit', 'tundra', 'umbra', 'vellum', 'willow', 'xenon', 'zephyr'];
+function Steps({ s, n, of: total = 4 }) {
+  const c = s.c;
+  return <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 2 }}>{Array.from({ length: total }).map((_, i) => <div key={i} style={{ width: 22, height: 4, borderRadius: 2, background: i < n ? c.accentFill : c.panel2 }} />)}</div>;
+}
+function MuteLinkHf({ s, children, accent }) {
+  return <span style={{ font: `400 10.5px/1 ${s.body}`, color: accent ? s.c.accent : s.c.dim }}>{children}</span>;
+}
+/* end verbatim copies */
+
+/* patched copy: design/hf-flows.jsx:92–105 (ScCredentials) — Btn→PButton (decision A);
+   Field→HfField (display-only, from window); single-button footer (parity omits onBack). */
+function PScCredentials({ s }) {
+  return (
+    <AuthSurface s={s} w={320}>
+      <Steps s={s} n={1} />
+      <HfTitle s={s}>create your account</HfTitle>
+      <HfField s={s} label="email" ph="you@domain.dev" />
+      <HfField s={s} label="password" ph="choose a strong password" />
+      <HfField s={s} label="confirm password" ph="••••••••" />
+      <div style={{ height: 2 }} />
+      <PButton s={s} primary full label="continue →" onClick={() => {}} />
+      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>step 1 of 4</MuteLinkHf></div>
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/hf-flows.jsx:106–126 (ScRecovery = backup-display) — Btn→PButton
+   (decision A); no ackSlot/onBack (parity fixture = hf single-button faithful). */
+function PScRecovery({ s }) {
+  const c = s.c;
+  const warn = s.theme === 'dark'
+    ? { bg: 'rgba(224,175,104,.12)', bd: 'rgba(224,175,104,.4)', tx: '#e0af68', ic: '#e0af68' }
+    : { bg: '#fcf3e0', bd: '#eccf94', tx: '#8a5a0a', ic: '#c2871a' };
+  return (
+    <AuthSurface s={s} w={368} tall>
+      <Steps s={s} n={2} />
+      <HfTitle s={s}>save your recovery code</HfTitle>
+      <div style={{ padding: '9px 12px', borderRadius: s.radius, background: warn.bg, border: `1px solid ${warn.bd}`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <span style={{ color: warn.ic, font: `600 12px/1.3 ${s.font}` }}>⚠</span>
+        <span style={{ font: `500 10.5px/1.4 ${s.body}`, color: warn.tx }}>this 24-word code is the only way to recover your account. nox cannot reset it.</span>
+      </div>
+      <div style={{ padding: 13, borderRadius: s.radius + 2, border: `1px solid ${c.border}`, background: c.panel, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px 10px' }}>
+        {R_WORDS.map((w, i) => <div key={i} style={{ display: 'flex', gap: 6 }}><span style={{ font: `500 9px/1.3 ${s.font}`, color: c.dim, width: 13 }}>{String(i + 1).padStart(2, '0')}</span><span style={{ font: `500 10.5px/1.3 ${s.font}`, color: c.text }}>{w}</span></div>)}
+      </div>
+      <PButton s={s} full icon="copy" label="copy code" onClick={() => {}} />
+      <PButton s={s} primary full label="i've saved it →" onClick={() => {}} />
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/hf-flows.jsx:127–140 (ScConfirm = backup-confirm) — Btn→PButton
+   (decision A); Field→HfField (display-only); 2-field parity fixture (hf has 2; live app 3). */
+function PScConfirm({ s }) {
+  return (
+    <AuthSurface s={s} w={320}>
+      <Steps s={s} n={3} />
+      <HfTitle s={s}>confirm your code</HfTitle>
+      <HfSub s={s}>enter two words to prove you saved it</HfSub>
+      <HfField s={s} label="word #07" ph="type word 7" mono />
+      <HfField s={s} label="word #19" ph="type word 19" mono />
+      <div style={{ height: 2 }} />
+      <PButton s={s} primary full label="continue →" onClick={() => {}} />
+      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>step 3 of 4</MuteLinkHf></div>
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/hf-flows.jsx:141–159 (ScProfile = profile-setup) — Btn→PButton
+   (decision A); Field→HfField (display-only); no back button (parity fixture). */
+function PScProfile({ s }) {
+  const c = s.c;
+  return (
+    <AuthSurface s={s} w={320}>
+      <Steps s={s} n={4} />
+      <HfTitle s={s}>set up your profile</HfTitle>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}>
+        <div style={{ position: 'relative' }}>
+          <div style={{ width: 78, height: 78, borderRadius: s.avatarRadius === 999 ? 999 : s.radius + 6, background: c.accentSoft, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', font: `600 26px/1 ${s.font}`, color: c.accent }}>?</div>
+          <div style={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 999, background: c.accentFill, border: `2px solid ${c.bg}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d="camera" c={c.onAccent} size={14} /></div>
+        </div>
+      </div>
+      <HfField s={s} label="display name" ph="how others see you" />
+      <div style={{ height: 2 }} />
+      <PButton s={s} primary full label="enter arcan →" onClick={() => {}} />
+      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>step 4 of 4</MuteLinkHf></div>
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
+/* advisory: design/hf-flows.jsx:160–180 (ScRestore) — structural divergence.
+   Proto shows 24-slot per-word input grid + "paste code" primary button.
+   App uses a single textarea (restore logic depends on it; 24-slot rearchitects the flow).
+   Btn→PButton (decision A). Renders proto reference for visual review; never fails parity. */
+function PScRestore({ s }) {
+  const c = s.c;
+  return (
+    <AuthSurface s={s} w={376} tall>
+      <Wordmark s={s} size={20} />
+      <HfTitle s={s}>restore your account</HfTitle>
+      <HfSub s={s}>paste your 24-word code, or type each word</HfSub>
+      <PButton s={s} primary full icon="copy" label="paste code" onClick={() => {}} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        {Array.from({ length: 24 }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 25, padding: '0 6px', borderRadius: s.radius - 2, border: `1px solid ${c.border}`, background: c.panel }}>
+            <span style={{ font: `500 8.5px/1 ${s.font}`, color: c.dim }}>{String(i + 1).padStart(2, '0')}</span>
+            <span style={{ flex: 1, height: 1, background: c.border }} />
+          </div>
+        ))}
+      </div>
+      <PButton s={s} full label="restore →" onClick={() => {}} />
+      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>keys live on your device — no server reset</MuteLinkHf></div>
+    </AuthSurface>
+  );
+}
+/* end advisory */
+
+/* patched copy: design/hf-flows.jsx:229–257 (ScContactRequest) — Btn→PButton (decision A);
+   id line DROPPED (user decision 2026-07-06: no raw ids in UI — Wave-C pattern; hf proto
+   shows "co_9f2…b41"; proto copy patched to match app); security code collapsed for parity
+   (SN body is Rung-4; body omitted same as Wave-C profile-screen safety number). */
+function PScContactRequest({ s }) {
+  const c = s.c;
+  return (
+    <AuthSurface s={s} w={320}>
+      <Wordmark s={s} size={20} />
+      <div style={{ padding: 22, borderRadius: s.radius + 2, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 13 }}>
+        <div style={{ width: 64, height: 64, borderRadius: s.avatarRadius === 999 ? 999 : s.radius + 4, background: c.accentSoft, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', font: `600 22px/1 ${s.font}`, color: c.accent }}>RA</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ font: `700 17px/1.2 ${s.font}`, color: c.text, letterSpacing: '-.01em' }}>rana</div>
+          <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>wants to connect with you</div>
+          {/* id line dropped — user decision (no raw ids in UI); hf shows "co_9f2…b41" */}
+        </div>
+        {/* expandable security code — collapsed for parity (SN body Rung-4) */}
+        <div style={{ width: '100%', borderRadius: s.radius, border: `1px solid ${c.border}`, background: c.bg, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px' }}>
+            <Icon d="shield" c={c.accent} size={15} />
+            <span style={{ flex: 1, font: `500 11.5px/1 ${s.body}`, color: c.text }}>view security code</span>
+            <span style={{ font: `600 13px/1 ${s.font}`, color: c.dim }}>▾</span>
+          </div>
+        </div>
+      </div>
+      <PButton s={s} primary full label="accept & add contact" onClick={() => {}} />
+      <PButton s={s} danger full label="decline" onClick={() => {}} />
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
+/* patched copy: design/hf-flows.jsx:209-228 (ScApproveDevice) — Btn→PButton (decision A);
+   hf fixture rows device/location/time (live app uses device/first-seen/fingerprint — no geo;
+   parity uses hf rows to match pixels). Wordmark size=20 → ArcanMark×2.1 = stacked size 42
+   (Wordmark helper wraps ArcanMark and is exported from hf-flows on window). */
+function PScApproveDevice({ s }) {
+  const c = s.c;
+  return (
+    <AuthSurface s={s} w={320}>
+      <Wordmark s={s} size={20} />
+      <div style={{ padding: 20, borderRadius: s.radius + 2, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 52, height: 52, borderRadius: s.radius + 2, background: c.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon d="device" c={c.accent} size={24} />
+        </div>
+        {/* AuthTitle: 700 19px/1.25 mono -.01em */}
+        <div style={{ textAlign: 'center', font: `700 19px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text, letterSpacing: s.headMono ? '-.01em' : 0 }}>approve new device?</div>
+        {/* Sub with marginTop:0 override (card gap owns spacing) */}
+        <div style={{ textAlign: 'center', font: `400 11.5px/1.5 ${s.body}`, color: c.text2, marginTop: 0 }}>a device wants to link to your account</div>
+        {/* info rows: px=12 py=10 gap=6 */}
+        <div style={{ width: '100%', borderRadius: s.radius, background: c.bg, border: `1px solid ${c.border}`, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[['device', 'firefox · macos'], ['location', 'prague · cz'], ['time', '23:42 CET']].map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.12em', textTransform: 'uppercase', color: c.dim }}>{k}</span>
+              <span style={{ font: `400 10.5px/1 ${s.font}`, color: c.text2 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <PButton s={s} primary full label="approve device" onClick={() => {}} />
+      <PButton s={s} danger full label="deny" onClick={() => {}} />
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1030,6 +1220,134 @@ const PROTO_CELLS = {
   "add-contact-screen": (s) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PAddContactScreen s={s} />
+    </div>
+  ),
+
+  /* patched copy: design/proto.jsx:537–548 (WelcomeScreen) — buttons via PButton (decision A);
+     MuteLink row: proto renders one big button; app splits into static text + accent button —
+     visually identical (same colors/font; only the tap target differs). */
+  "welcome-screen": (s) => {
+    const c = s.c;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <AuthShell s={s}>
+          <ArcanMark s={s} size={64} stacked />
+          <div style={{ font: `400 11.5px/1.5 ${s.body}`, color: c.text2, textAlign: 'center', marginTop: -4 }}>
+            {'// local-first · end-to-end encrypted'}
+          </div>
+          <div style={{ height: 8 }} />
+          <PButton s={s} primary full label="create account" onClick={() => {}} />
+          <PButton s={s} full label="restore from recovery code" onClick={() => {}} />
+          {/* intent-fix: explicit font on button element — UA strut normalization (Chrome UA
+              line-height:1.5 inflates the unstyled button strut vs proto's 10.5px×1 via
+              text-ui-sub leading-none; matches the composer UA-input precedent) */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 2 }}>
+            <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>already on a device? </span>
+            <button style={{ font: `400 10.5px/1 ${s.body}`, padding: 0, margin: 0, cursor: 'pointer', border: 'none', background: 'transparent' }} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>sign in</span>
+            </button>
+          </div>
+        </AuthShell>
+      </div>
+    );
+  },
+
+  /* patched copy: design/proto.jsx:550–565 (SignInScreen) — buttons via PButton (decision A);
+     AuthField=display div matching app AuthField empty input (38px/12px/placeholder in c.dim).
+     Empty PHeader back arrow rendered (onBack present in app cell). */
+  "sign-in-screen": (s) => {
+    const c = s.c;
+    /* local helper: display-only field matching app AuthField with empty value (placeholder-only).
+       38px height + 12px body font + label at caps-9px matches AuthField's visual.
+       Parity note: placeholder rendered as a span in c.dim; real input placeholder may diverge
+       by ≤0.2% — characterize maxDiffRatio override per-cell only if threshold is breached. */
+    function PAField({ label, ph }) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {label && (
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>
+              {label}
+            </span>
+          )}
+          <div style={{ height: 38, borderRadius: 12, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+            <span style={{ font: `400 12px/1 ${s.body}`, color: c.dim }}>{ph}</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* proto:554 — PHeader with back arrow; title="" */}
+        <PHeader s={s} title="" onBack={() => {}} />
+        <AuthShell s={s}>
+          {/* proto:556 */}
+          <ArcanMark s={s} size={56} stacked />
+          {/* proto:557 — "sign in" title (700 19px/1.2 headMono → mono) */}
+          <div style={{ font: `700 19px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text, textAlign: 'center', letterSpacing: '-0.01em' }}>sign in</div>
+          {/* proto:558–559 — email + password fields */}
+          <PAField label="email" ph="you@domain.dev" />
+          <PAField label="password" ph="••••••••" />
+          {/* proto:560 — h:4 spacer */}
+          <div style={{ height: 4 }} />
+          {/* proto:561 — primary submit button */}
+          <PButton s={s} primary full label="sign in" onClick={() => {}} />
+          {/* proto:562 — footer: forgot + create account */}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button style={tapBtn} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>forgot password?</span>
+            </button>
+            <button style={tapBtn} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>create account</span>
+            </button>
+          </div>
+        </AuthShell>
+      </div>
+    );
+  },
+
+  // hf-flows.jsx:92–105 (ScCredentials), 106–126 (ScRecovery), 127–140 (ScConfirm), 141–159 (ScProfile)
+  "credentials-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScCredentials s={s} />
+    </div>
+  ),
+
+  "backup-display-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScRecovery s={s} />
+    </div>
+  ),
+
+  "backup-confirm-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScConfirm s={s} />
+    </div>
+  ),
+
+  "profile-setup-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScProfile s={s} />
+    </div>
+  ),
+
+  // hf-flows.jsx:160–180 (ScRestore) — advisory; structural divergence (proto grid vs app textarea).
+  "restore-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScRestore s={s} />
+    </div>
+  ),
+
+  // hf-flows.jsx:229–257 (ScContactRequest) — id line patched out (user decision); security collapsed.
+  "contact-request-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScContactRequest s={s} />
+    </div>
+  ),
+
+  // hf-flows.jsx:209-228 (ScApproveDevice) — Btn→PButton (decision A); hf fixture rows.
+  "approve-device-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScApproveDevice s={s} />
     </div>
   ),
 };

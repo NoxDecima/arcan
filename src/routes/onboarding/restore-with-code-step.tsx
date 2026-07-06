@@ -3,20 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { validatePassphrase } from "@/auth/passphrase";
 import { recoverWithCode } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
-import {
-  AuthSurface,
-  Wordmark,
-  AuthTitle,
-  AuthSub,
-} from "@/components/auth-surface";
+import { RestoreScreen } from "@/ui/screens";
 
 interface RestoreWithCodeStepProps {
   onBack: () => void;
 }
 
 /**
- * RestoreWithCodeStep: signs into an existing account using a 24-word
- * recovery code (the BIP-39 encoding of the user's account seed).
+ * RestoreWithCodeStep: container for the restore-with-code onboarding step.
+ * Delegates rendering to RestoreScreen (Rung 2 presenter, advisory parity).
+ *
+ * Signs into an existing account using a 24-word recovery code (the BIP-39
+ * encoding of the user's account seed).
  *
  * Validation sequence:
  *   1. Local structural validation via validatePassphrase() — returns a
@@ -93,63 +91,27 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
     }
   }
 
+  const errorSlot = error ? (
+    <p
+      data-testid="restore-error"
+      className="rounded-r-4 bg-red/10 px-3 py-2 text-ui-toast text-red"
+    >
+      {error}
+    </p>
+  ) : undefined;
+
   return (
-    <AuthSurface forceDark w={376} tall>
-      <Wordmark size={20} />
-      <AuthTitle>restore your account</AuthTitle>
-      <AuthSub>paste your 24-word code, or type each word</AuthSub>
-
-      <div className="flex flex-col gap-[15px]">
-        <label className="flex flex-col gap-[6px]">
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
-            recovery code
-          </span>
-          <textarea
-            id="restore-passphrase-input"
-            data-testid="restore-passphrase-input"
-            value={phrase}
-            onChange={(e) => setPhrase(e.target.value)}
-            rows={4}
-            placeholder="word1 word2 word3 … word24"
-            autoFocus
-            spellCheck={false}
-            autoComplete="off"
-            className="w-full rounded-r-3 border border-hairline bg-panel px-3 py-2 font-mono text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
-          />
-        </label>
-
-        {error && (
-          <p
-            data-testid="restore-error"
-            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
-          >
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={isRestoring}
-            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold disabled:opacity-50"
-          >
-            back
-          </button>
-          <button
-            type="button"
-            data-testid="restore-btn"
-            disabled={!canSubmit}
-            onClick={() => void handleRestore()}
-            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold disabled:opacity-50"
-          >
-            {isRestoring ? "restoring…" : "restore →"}
-          </button>
-        </div>
-        <div className="text-center text-[10.5px] text-dim">
-          keys live on your device — no server reset
-        </div>
-      </div>
-    </AuthSurface>
+    <div className="h-screen w-screen flex flex-col">
+      <RestoreScreen
+        code={phrase}
+        onCode={setPhrase}
+        onRestore={() => void handleRestore()}
+        onBack={onBack}
+        restoring={isRestoring}
+        errorSlot={errorSlot}
+        codeTestId="restore-passphrase-input"
+        restoreTestId="restore-btn"
+      />
+    </div>
   );
 }

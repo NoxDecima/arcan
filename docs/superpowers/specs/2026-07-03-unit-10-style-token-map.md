@@ -103,6 +103,21 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | `400 10px/1` body (add-people sub, new-convo hint) | `font-body text-ui-chatsub` |
 | `400 9.5px/1.4` body (profile compare-in-person hint) | `font-body text-ui-tab leading-[1.4]` |
 | `600 9px/1` mono `.12em`\|`.1em`\|`.08em` caps | `font-mono font-semibold text-ui-caps tracking-caps-{12,10,08} uppercase` |
+| `700 19px/1.25` mono `-.01em` (AuthTitle) | `font-mono font-bold text-ui-name leading-tight tracking-[-0.01em]` |
+| `700 17px/1.2` mono `-.01em` (ContactRequest name) | `font-mono font-bold text-ui-req tracking-[-0.01em]` |
+| `600 9px/1` mono `.14em` (AuthField label) | `font-mono font-semibold text-ui-caps tracking-caps-sm uppercase text-dim` |
+| `400 12px/1` mono\|body (AuthField placeholder/value) | `font-mono\|font-body text-ui-toast leading-none` (placeholder `text-dim`, value `text-text`) |
+| `400 10.5px/1` body (MuteLink) | `font-body text-ui-sub leading-none` (dim\|accent) |
+| `500 10.5px/1.4` body (warn text) | `font-body font-medium text-ui-sub leading-[1.4] text-warn` |
+| `600 12px/1.3` mono (warn ⚠ icon) | `font-mono font-semibold text-ui-toast leading-snug text-warn-icon` |
+| `500 10.5px/1.3` mono (passphrase word) | `font-mono font-medium text-ui-sub leading-[1.3] text-text` |
+| `500 9px/1.3` mono (passphrase index) | `font-mono font-medium text-ui-caps leading-[1.3] text-dim` |
+| `400 11.5px/1.4` body (ContactRequest "wants to connect") | `font-body text-ui-empty-sub leading-[1.4] text-text-2` |
+| `400 10px/1` mono (ContactRequest id) | `font-mono text-ui-chatsub leading-none text-dim` |
+| `500 11.5px/1` body (security-code toggle row) | `font-body font-medium text-ui-empty-sub leading-none text-text` |
+| `500 12px/1` mono (safety-number digits) | `font-mono font-medium text-ui-toast leading-none text-text` |
+| `400 9.5px/1.4` body (compare-in-person hint) | `font-body text-ui-tab leading-[1.4] text-dim` |
+| `400 10.5px/1` mono (ApproveDevice info value) | `font-mono text-ui-sub leading-none text-text-2` |
 
 ## Recurring clusters (copy these verbatim in kit/screen ports)
 
@@ -144,6 +159,13 @@ Prototype context: v5 skin — `fam: noir`, `headMono: true`, `radius: 12`,
 | Feedback textarea | `min-h-[110px] resize-none rounded-r-4 border border-hairline bg-panel text-text p-[11px_12px] font-body text-ui-row leading-normal outline-none` + inline `caretColor: var(--color-accent-fill)` |
 | Feedback category chip | tap + `px-[13px] py-[7px] rounded-pill font-mono font-semibold text-ui-value border`; on `border-accent-border bg-accent-soft text-arcan-accent`, off `border-hairline bg-transparent text-text-2` |
 | Feedback dropzone (empty) | tap + `justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent` |
+| Cosmic auth surface (4-star) | kit `AuthSurface` — `flex-1 min-h-0 relative flex justify-center bg-bg` (+ `items-start overflow-y-auto` tall / `items-center overflow-hidden`); watermark `latticePaths.full` 360² @ right:-84 bottom:-96 `opacity:var(--opacity-watermark)`; 4 stars accent-fill/cosmic-dot/cosmic-dot-2/accent-fill; column `w={w} max-w-[88%] gap-{15\|11} p-{18\|'20px 18px'}` |
+| Steps indicator | `flex justify-center gap-[5px] mb-0.5`; dash `h-1 w-[22px] rounded-r-1`, filled `bg-arcan-accent` else `bg-panel-2` |
+| Warn callout | `flex items-start gap-2 rounded-r-4 border border-warn bg-warn px-3 py-[9px]`; ⚠ `text-warn-icon`; body `text-warn` (see ramp) |
+| Auth card (ContactRequest/ApproveDevice) | `flex flex-col items-center rounded-r-4 border border-hairline bg-panel` + inline `gap`/`padding` per screen (20/22, gap 12/13) |
+| Device icon tile (ApproveDevice) | `w-[52px] h-[52px] rounded-[14px] bg-accent-soft flex items-center justify-center` + `Icon d="device" size={24} text-arcan-accent` |
+| Auth avatar tile w/ camera badge (profile-setup 78 / ContactRequest 64) | `rounded-avatar-lg`(78,radius+6=18) \| `rounded-[16px]`(64,radius+4) `bg-accent-soft border border-hairline flex items-center justify-center` + inline size/fontSize (26/22); camera badge `absolute -right-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-arcan-accent-fill text-on-accent border-2 border-bg justify-center` |
+| Expandable security code | outer `w-full rounded-r-4 border border-hairline bg-bg overflow-hidden`; header `flex items-center gap-[9px] px-3 py-2.5` (shield accent + label + caret); body `px-3 pb-3 border-t border-hairline` (SN 3-col grid + compare hint) |
 
 ## Component metrics stay literal
 

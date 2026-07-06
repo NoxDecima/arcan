@@ -14,7 +14,7 @@
   @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
   @font-face { font-family: 'JetBrains Mono'; font-weight: 600; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2') format('woff2'); }
   @font-face { font-family: 'JetBrains Mono'; font-weight: 700; src: url('/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2') format('woff2'); }
-  html, body { margin: 0; background: #333; }
+  html, body { margin: 0; background: #333; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   * { box-sizing: border-box; }
   button { font-family: inherit; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -26,6 +26,7 @@
 <script src="/design/lattice.js"></script>
 <script src="/tests/parity/out/hf-kit.js"></script>
 <script src="/tests/parity/out/proto-ui.js"></script>
+<script src="/tests/parity/out/hf-flows.js"></script>
 <script src="/tests/parity/out/proto-cells.js"></script>
 </body>
 </html>

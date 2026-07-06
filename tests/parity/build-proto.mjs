@@ -16,7 +16,7 @@ await build({
   logLevel: "silent",
 });
 
-for (const f of ["../../design/hf-kit.jsx", "../../design/proto-ui.jsx", "./proto-cells.jsx"]) {
+for (const f of ["../../design/hf-kit.jsx", "../../design/proto-ui.jsx", "../../design/hf-flows.jsx", "./proto-cells.jsx"]) {
   const src = readFileSync(here(f), "utf8");
   const out = await transform(src, {
     loader: "jsx",

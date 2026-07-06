@@ -2,17 +2,31 @@ import { useState } from "react";
 import { useAccount, useJazzContextValue, useAuthSecretStorage } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { usePendingPairings } from "@/jazz/use-pending-pairings";
-import { DeviceApprovalCard } from "@/components/device-approval-card";
+import { ApproveDeviceCard } from "@/ui/screens/approve-device-screen";
 import { ModalShell } from "@/components/modal-shell";
+import { PButton } from "@/ui/kit";
 import { approvePairing, rejectPairing } from "@/jazz/pairing";
 import { useToast } from "@/components/toast";
+import {
+  deriveDeviceLabel,
+  deriveDeviceOS,
+  relativeTime,
+} from "@/lib/device-info";
+import type { ApproveDeviceVM } from "@/ui/screens/auth-types";
 
 /**
  * Renders a modal whenever a pending pairing is detected. Mounted once at the App root.
  *
+ * Overlay stays an overlay (Unit-9 sanctioned decision). Restyled from
+ * the legacy DeviceApprovalCard to the kit ApproveDeviceCard (device tile
+ * + caps info rows), with PButton primary/danger outside the card body.
+ *
  * For v1: full approve only works on the device that started the pair (the eph private key
  * is in this device's sessionStorage). Other already-logged-in trusted devices on the same
  * account see the card with Approve disabled and Reject enabled.
+ *
+ * Testids kept verbatim: trusted-device-prompt, device-approval-card,
+ * approve-device, deny-device, approval-label, approval-fingerprint.
  */
 export function TrustedDevicePrompt() {
   const me = useAccount(ArcanAccount, { resolve: {} });
@@ -33,6 +47,19 @@ export function TrustedDevicePrompt() {
     ? sessionStorage.getItem(`arcan-pair-eph-${v.$jazz.id}`)
     : null;
   const canFullyApprove = !!ephHex;
+
+  // Build ApproveDeviceVM from responder metadata
+  const ua: string = v.responderUserAgent ?? "";
+  const deviceLabel = ua ? `${deriveDeviceLabel(ua)} · ${deriveDeviceOS(ua)}` : "—";
+  const firstSeen = relativeTime(v.responderFirstSeenAt);
+  const fp: string = v.responderFingerprint ?? "—";
+  const vm: ApproveDeviceVM = {
+    rows: [
+      { label: "device", value: deviceLabel },
+      { label: "first-seen", value: firstSeen },
+      { label: "fingerprint", value: fp },
+    ],
+  };
 
   const onApprove = async () => {
     if (!canFullyApprove) return;
@@ -73,22 +100,34 @@ export function TrustedDevicePrompt() {
     <ModalShell
       open
       onClose={() => setDismissed((s) => new Set(s).add(v.$jazz.id))}
-      title="approve new device?"
+      title=""
       dataTestId="trusted-device-prompt"
-      // No footer — approve / deny live on the embedded DeviceApprovalCard.
-      // The card body is self-contained; we don't add the shell's gap-3.
       className="max-w-[420px]"
     >
-      <DeviceApprovalCard
-        userAgent={v.responderUserAgent}
-        firstSeenAt={v.responderFirstSeenAt}
-        fingerprint={v.responderFingerprint}
-        onApprove={onApprove}
-        onDeny={onDeny}
-        pending={working || !canFullyApprove}
+      <ApproveDeviceCard
+        vm={vm}
+        rootTestId="device-approval-card"
+        labelTestId="approval-label"
+        fingerprintTestId="approval-fingerprint"
+      />
+      <PButton
+        primary
+        full
+        label={working ? "approving…" : "approve device"}
+        onClick={onApprove}
+        disabled={!canFullyApprove || working}
+        data-testid="approve-device"
+      />
+      <PButton
+        danger
+        full
+        label="deny"
+        onClick={onDeny}
+        disabled={working}
+        data-testid="deny-device"
       />
       {!canFullyApprove && (
-        <p className="text-[11px] text-dim text-center">
+        <p className="font-body text-ui-sub leading-none text-dim text-center">
           To approve, open this prompt on the device you started the pairing on.
           Reject works from any device.
         </p>

@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { AuthSurface, Steps, AuthTitle } from "@/components/auth-surface";
+import { useState } from "react";
+import { CredentialsScreen } from "@/ui/screens";
 
 export type Credentials = {
   email: string;
@@ -15,11 +15,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LEN = 12;
 
 /**
- * CredentialsStep: collects the email + password that drive the zero-knowledge
- * sign-up. Display name is collected later on profile-step.
- *
- * Local validation only — Better Auth enforces email uniqueness on /sign-up.
- * Network errors are surfaced one step later in profile-step.
+ * CredentialsStep: container for the credentials onboarding step.
+ * Delegates rendering to CredentialsScreen (Rung 2 presenter).
+ * Owns local validation: EMAIL_RE, MIN_PASSWORD_LEN.
  */
 export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
   const [email, setEmail] = useState("");
@@ -35,8 +33,7 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
     return null;
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleContinue() {
     const err = validate();
     if (err) {
       setError(err);
@@ -46,89 +43,33 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
     onContinue({ email: email.trim(), password });
   }
 
+  const errorSlot = error ? (
+    <p
+      data-testid="credentials-error"
+      className="rounded-r-4 bg-red/10 px-3 py-2 text-ui-toast text-red"
+    >
+      {error}
+    </p>
+  ) : undefined;
+
   return (
-    <AuthSurface forceDark>
-      <Steps n={1} />
-      <AuthTitle>create your account</AuthTitle>
-      <form
-        className="flex flex-col gap-[15px]"
-        onSubmit={handleSubmit}
-        data-testid="credentials-form"
-      >
-        <label className="flex flex-col gap-[6px]">
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
-            email
-          </span>
-          <input
-            type="email"
-            data-testid="credentials-email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            placeholder="you@domain.dev"
-            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-[6px]">
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
-            password
-          </span>
-          <input
-            type="password"
-            data-testid="credentials-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LEN}
-            placeholder="choose a strong password"
-            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-[6px]">
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-dim">
-            confirm password
-          </span>
-          <input
-            type="password"
-            data-testid="credentials-confirm"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
-            required
-            placeholder="••••••••"
-            className="h-[38px] rounded-r-3 border border-hairline bg-panel px-3 text-[12px] text-text placeholder:text-dim focus:outline-none focus:border-arcan-accent"
-          />
-        </label>
-
-        {error && (
-          <p
-            data-testid="credentials-error"
-            className="rounded-r-3 bg-red/10 px-3 py-2 text-[12px] text-red"
-          >
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="h-10 flex-1 rounded-r-3 border border-hairline bg-transparent text-text font-mono text-[12.5px] font-semibold"
-          >
-            back
-          </button>
-          <button
-            type="submit"
-            data-testid="credentials-continue"
-            className="h-10 flex-1 rounded-r-3 bg-arcan-accent text-on-accent font-mono text-[12.5px] font-semibold"
-          >
-            continue →
-          </button>
-        </div>
-        <div className="text-center text-[10.5px] text-dim">step 1 of 4</div>
-      </form>
-    </AuthSurface>
+    <div className="h-screen w-screen flex flex-col">
+      <CredentialsScreen
+        email={email}
+        onEmail={setEmail}
+        password={password}
+        onPassword={setPassword}
+        confirm={confirm}
+        onConfirm={setConfirm}
+        onContinue={handleContinue}
+        onBack={onBack}
+        errorSlot={errorSlot}
+        formTestId="credentials-form"
+        emailTestId="credentials-email"
+        passwordTestId="credentials-password"
+        confirmTestId="credentials-confirm"
+        continueTestId="credentials-continue"
+      />
+    </div>
   );
 }

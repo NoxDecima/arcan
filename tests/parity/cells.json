@@ -47,6 +47,15 @@
     { "id": "convo-settings-screen", "width": 300, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "new-convo-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "add-people-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
-    { "id": "add-contact-screen", "width": 300, "height": 640, "pad": 0 }
+    { "id": "add-contact-screen", "width": 300, "height": 640, "pad": 0 },
+    { "id": "welcome-screen", "width": 360, "height": 480, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "sign-in-screen", "width": 360, "height": 520, "pad": 0 },
+    { "id": "credentials-screen", "width": 380, "height": 560, "pad": 0, "accents": ["tokyo", "rose"], "maxDiffRatio": 0.015 },
+    { "id": "backup-display-screen", "width": 420, "height": 720, "pad": 0, "maxDiffRatio": 0.004 },
+    { "id": "backup-confirm-screen", "width": 380, "height": 540, "pad": 0, "maxDiffRatio": 0.02 },
+    { "id": "profile-setup-screen", "width": 380, "height": 580, "pad": 0, "accents": ["tokyo", "rose"], "maxDiffRatio": 0.016 },
+    { "id": "restore-screen", "width": 430, "height": 720, "pad": 0, "advisory": true },
+    { "id": "contact-request-screen", "width": 380, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "approve-device-screen", "width": 380, "height": 600, "pad": 0, "accents": ["tokyo", "rose"] }
   ]
 }

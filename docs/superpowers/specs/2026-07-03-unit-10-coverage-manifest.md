@@ -137,6 +137,34 @@ Container `useHomeLists` resolves avatar images via two mechanisms:
   never covered — Rung 4); same ingestion path as the attach button.
   Real-UI attach-button regression probe added (attachment-button-probe.spec).
 
+### Wave D coverage rows
+
+| Surface | Route | Rung | Reference | Parity | Notes |
+|---|---|---|---|---|---|
+| Welcome | `/onboarding` step 0 | 1 | proto WelcomeScreen (537–549) | PASS 0.000% | kit AuthShell (proto 2-dot backdrop) |
+| Sign in | `/auth/login` | 1 | proto SignInScreen (550–566) | PASS ≤0.100% | better-auth flow + next-param + invite replay preserved |
+| Onboarding credentials | `/onboarding` | 2 | hf-flows ScCredentials | PASS (1.5% override) | content-identical, uniform ≤3px centering offset (Rung-2 strut variance) |
+| Backup display | `/onboarding` | 2 | hf-flows (pattern) | PASS (0.4% override) | real 24-word grid + passphrase-word-N testids kept |
+| Backup confirm | `/onboarding` | 2 | hf-flows ScConfirm | PASS (2.0% override) | same centering characterization; app challenges 3 words (fixture: hf's 2) |
+| Profile setup | `/onboarding` | 2 | hf-flows ScProfile | PASS (1.6% override) | same characterization |
+| Recovery | `/auth/recovery` | 4 (kit) | — | — | two-stage flow untouched; kit AuthSurface scaffold |
+| Restore with code | `/onboarding` restore | 2 | hf-flows ScRestore | ADVISORY 9.2% | app keeps paste-textarea vs hf 24-slot grid (recorded divergence) |
+| Invite confirm | `/invite` | 2 | hf-flows ScContactRequest | PASS ≤0.001% | account-id line DROPPED (user-decision extension: no raw ids in UI) |
+| Invite status phases | `/invite` | 4 | — | — | all phases + stash + polling preserved |
+| Pairing initiator | `/pair` | 1+2 | proto LinkDeviceScreen + hf ScApproveDevice | PASS 0.000% | LinkDeviceScreen (Wave C) wired; ApproveDeviceScreen for awaiting-approval |
+| Pairing responder | `/pair?role=responder` | 4 | — | — | per-phase kit AuthSurface restyle |
+| Trusted-device prompt | overlay | 2 (card) | hf ScApproveDevice card | (in-screen cell) | STAYS an overlay (Unit 9 decision); innards = ApproveDeviceCard + kit buttons |
+| Auth backdrops | — | 1/2 | — | — | two coexist by rung: proto 2-dot AuthShell (Welcome/SignIn) vs hf 4-star AuthSurface (flows) — design-ref divergence, recorded not reconciled |
+
+### Wave D notes
+
+- All auth surfaces theme-reactive (forceDark dropped — Decision B).
+- Auth buttons unified on kit PButton h-44 (Decision A; hf's one-off 40px Btn
+  patched in proto copies).
+- legacy src/components/auth-surface.tsx retired from render (0 src importers).
+- e2e drift: ZERO structural failures — full suite 45/45 green at exit (first
+  wave with no fixme/skip).
+
 ### Wave C coverage rows
 
 | Surface | Route | Rung | Reference | Parity | Notes |

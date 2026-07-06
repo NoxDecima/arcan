@@ -9,6 +9,8 @@ import type {
   SettingsDeviceRow,
   PickItem,
   ConvoMemberVM,
+  ContactRequestVM,
+  ApproveDeviceVM,
 } from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
@@ -142,3 +144,29 @@ export const ADD_PEOPLE_POOL: PickItem[] = [
 
 /** AddContact TTL presets (app values — 1h/24h/7d; proto uses 1d/7d/30d/∞; deviation noted in manifest). */
 export const ADD_CONTACT_TTL_OPTIONS = ["1h", "24h", "7d"] as const;
+
+// ── Auth / invite cluster fixtures (Task 4) ─────────────────────────────────
+
+/**
+ * ContactRequest fixture — mirrors hf-flows.jsx ScContactRequest placeholder values.
+ * "rana" / "RA" / id "co_9f2…b41" (id field retained on VM; not rendered in UI —
+ * user decision 2026-07-06: no raw ids in UI, Wave-C pattern).
+ */
+export const CONTACT_REQUEST_FIXTURE: ContactRequestVM = {
+  name: "rana",
+  initials: "RA",
+  idShort: "co_9f2…b41",
+};
+
+/**
+ * ApproveDevice fixture — mirrors hf-flows.jsx ScApproveDevice fixture rows.
+ * Parity uses device/location/time (hf-faithful); live app substitutes
+ * device/first-seen/fingerprint (app has no geo-location — documented divergence).
+ */
+export const APPROVE_DEVICE_FIXTURE: ApproveDeviceVM = {
+  rows: [
+    { label: "device",   value: "firefox · macos" },
+    { label: "location", value: "prague · cz" },
+    { label: "time",     value: "23:42 CET" },
+  ],
+};

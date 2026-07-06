@@ -17,6 +17,7 @@ export function PButton({
   onClick,
   className,
   disabled,
+  type,
   "data-testid": testId,
 }: {
   label: string;
@@ -28,6 +29,7 @@ export function PButton({
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
+  type?: "button" | "submit" | "reset";
   "data-testid"?: string;
 }): JSX.Element {
   let variantClass: string;
@@ -48,6 +50,7 @@ export function PButton({
     <button
       onClick={onClick}
       disabled={disabled}
+      type={type}
       data-testid={testId}
       className={[
         tapClass,

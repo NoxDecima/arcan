@@ -1,11 +1,16 @@
 import type { ReactNode } from "react";
 import { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PField, PToggle, PQR, PHeader, PTabBar, tapClass, Bubble, MessageRow, Fab, KitToast, ArcanMark, AuthShell, DesktopEmpty, DesktopWindow, MobileShell, Body, type IconName } from "@/ui/kit";
 import { Lattice } from "@/components/lattice";
+import { PassphraseGrid } from "@/components/passphrase-grid";
 import {
   ChatsScreen, ContactsScreen, NavColumn, ChatScreen, ChatComposer,
   ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem,
   SettingsScreen, FeedbackScreen, LinkDeviceScreen, type ThemeName,
   ConvoSettingsScreen, NewConvoScreen, AddPeopleScreen, AddContactScreen,
+  WelcomeScreen, SignInScreen,
+  CredentialsScreen, BackupDisplayScreen, BackupConfirmScreen, ProfileSetupScreen,
+  RestoreScreen, ContactRequestScreen,
+  ApproveDeviceScreen,
 } from "@/ui/screens";
 import {
   HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
@@ -13,6 +18,8 @@ import {
   SETTINGS_NOTIF_FIXTURE, SETTINGS_DEVICES_FIXTURE,
   CONVO_MEMBERS_ADMINS, CONVO_MEMBERS_WRITERS,
   ADD_PEOPLE_POOL, ADD_CONTACT_TTL_OPTIONS,
+  CONTACT_REQUEST_FIXTURE,
+  APPROVE_DEVICE_FIXTURE,
 } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
@@ -21,6 +28,8 @@ const ICON_NAMES: IconName[] = [
   "check", "dots", "bell", "at", "device", "key", "shield", "logout",
   "sun", "moon", "sparkle", "alert", "refresh", "close", "message",
 ];
+
+const R_WORDS = ['amber', 'cobalt', 'drift', 'ember', 'fjord', 'glyph', 'harbor', 'ionize', 'jasper', 'kelvin', 'lumen', 'mosaic', 'nimbus', 'onyx', 'prism', 'quartz', 'ripple', 'summit', 'tundra', 'umbra', 'vellum', 'willow', 'xenon', 'zephyr'] as const;
 
 export const APP_CELLS: Record<string, () => ReactNode> = {
   "probe-swatch": () => (
@@ -556,6 +565,171 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onPrimary={() => {}}
         onScan={() => {}}
         onPaste={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:537–548 (WelcomeScreen) — Rung 1 presenter; no-op handlers.
+  // accents exercise the accent star + primary button fill.
+  "welcome-screen": () => (
+    <div className="flex flex-col h-full">
+      <WelcomeScreen
+        onCreateAccount={() => {}}
+        onRestore={() => {}}
+        onSignIn={() => {}}
+        createTestId="create-account-btn"
+        restoreTestId="restore-account-btn"
+        signInTestId="signin-existing-btn"
+      />
+    </div>
+  ),
+
+  // proto.jsx:550–565 (SignInScreen) — Rung 1 presenter.
+  // onBack present → renders PHeader back arrow (matches proto:554).
+  // empty email/password, submitting=false, errorSlot omitted.
+  "sign-in-screen": () => (
+    <div className="flex flex-col h-full">
+      <SignInScreen
+        onBack={() => {}}
+        email=""
+        onEmail={() => {}}
+        password=""
+        onPassword={() => {}}
+        onSubmit={() => {}}
+        submitting={false}
+        onForgot={() => {}}
+        onCreate={() => {}}
+        emailTestId="login-email"
+        passwordTestId="login-password"
+        submitTestId="login-submit"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:92–105 (ScCredentials) — Rung 2 presenter; no onBack (parity single-button).
+  // accents exercise accent star + primary button fill.
+  "credentials-screen": () => (
+    <div className="flex flex-col h-full">
+      <CredentialsScreen
+        email=""
+        onEmail={() => {}}
+        password=""
+        onPassword={() => {}}
+        confirm=""
+        onConfirm={() => {}}
+        onContinue={() => {}}
+        formTestId="credentials-form"
+        emailTestId="credentials-email"
+        passwordTestId="credentials-password"
+        confirmTestId="credentials-confirm"
+        continueTestId="credentials-continue"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:106–126 (ScRecovery = backup-display) — Rung 2 presenter.
+  // gridSlot = real PassphraseGrid with R_WORDS; no ackSlot/onBack (hf-faithful parity).
+  "backup-display-screen": () => (
+    <div className="flex flex-col h-full">
+      <BackupDisplayScreen
+        gridSlot={
+          <PassphraseGrid phrase={R_WORDS.join(" ")} compact withCopyButton />
+        }
+        onContinue={() => {}}
+        continueDisabled={false}
+        continueTestId="passphrase-display-continue"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:127–140 (ScConfirm = backup-confirm) — Rung 2 presenter.
+  // 2 WordChallengeFields (hf fixture: word #07 + #19); sub = hf sub string.
+  // Deviation: live app uses 3 fields; parity uses 2 (hf-faithful).
+  "backup-confirm-screen": () => (
+    <div className="flex flex-col h-full">
+      <BackupConfirmScreen
+        sub="enter two words to prove you saved it"
+        fields={[
+          { label: "word #07", value: "", onChange: () => {}, placeholder: "type word 7", testId: "confirm-word-0" },
+          { label: "word #19", value: "", onChange: () => {}, placeholder: "type word 19", testId: "confirm-word-1" },
+        ]}
+        onContinue={() => {}}
+        continueTestId="confirm-passphrase-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:141–159 (ScProfile = profile-setup) — Rung 2 presenter.
+  // avatarPreview=null → "?" placeholder. accents exercise accent avatar tint + primary.
+  "profile-setup-screen": () => (
+    <div className="flex flex-col h-full">
+      <ProfileSetupScreen
+        avatarPreview={null}
+        onPickAvatar={() => {}}
+        displayName=""
+        onDisplayName={() => {}}
+        onFinish={() => {}}
+        submitting={false}
+        nameTestId="display-name-input"
+        finishTestId="finish-onboarding-btn"
+        avatarChangeTestId="onboarding-avatar-change"
+        avatarPreviewTestId="onboarding-avatar-preview"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:160–180 (ScRestore) — Rung 2 advisory: app keeps textarea IA.
+  // Structural divergence: proto shows 24-slot per-word grid; app uses a single textarea.
+  // Advisory cell — renders side-by-side for visual review; never fails the run.
+  "restore-screen": () => (
+    <div className="flex flex-col h-full">
+      <RestoreScreen
+        code=""
+        onCode={() => {}}
+        onRestore={() => {}}
+        restoring={false}
+        codeTestId="restore-passphrase-input"
+        restoreTestId="restore-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:229–257 (ScContactRequest) — Rung 2 presenter; /invite confirm phase.
+  // securityOpen=false (collapsed); avatarSlot/sharedSlot/safetySlot omitted (Rung-4).
+  // accents exercise accent avatar tint + primary button fill.
+  // USER DECISION: id line dropped (no raw ids in UI; Wave-C pattern); proto copy patched.
+  "contact-request-screen": () => (
+    <div className="flex flex-col h-full">
+      <ContactRequestScreen
+        vm={CONTACT_REQUEST_FIXTURE}
+        securityOpen={false}
+        onToggleSecurity={() => {}}
+        onAccept={() => {}}
+        onDecline={() => {}}
+        rootTestId="invite-confirm"
+        nameTestId="invite-inviter-name"
+        avatarTestId="invite-inviter-avatar"
+        acceptTestId="invite-accept-btn"
+        declineTestId="invite-decline-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:209–228 (ScApproveDevice) — Rung 2 presenter; initiator awaiting-approval phase.
+  // vm feeds hf fixture rows (device/location/time) to match proto; live app uses
+  // device/first-seen/fingerprint (no geo — documented divergence). approving=false (idle state).
+  // accents exercise accent-soft device tile + primary button.
+  "approve-device-screen": () => (
+    <div className="flex flex-col h-full">
+      <ApproveDeviceScreen
+        vm={APPROVE_DEVICE_FIXTURE}
+        onApprove={() => {}}
+        onDeny={() => {}}
+        approving={false}
+        promptTestId="pair-approval-prompt"
+        cardTestId="device-approval-card"
+        approveTestId="approve-device"
+        denyTestId="deny-device"
       />
     </div>
   ),
