@@ -162,6 +162,13 @@ Container `useHomeLists` resolves avatar images via two mechanisms:
 - Auth buttons unified on kit PButton h-44 (Decision A; hf's one-off 40px Btn
   patched in proto copies).
 - legacy src/components/auth-surface.tsx retired from render (0 src importers).
+- Walkthrough decisions (2026-07-06): NO top back arrows anywhere in the
+  auth flow (SignIn/LinkDevice onBack removed — hf design navigates via
+  Steps + bottom mute-links); non-tall auth surfaces CENTER (restore +
+  recovery StageCode un-talled); tall surfaces (backup-display) center
+  when content fits and scroll only on overflow (my-auto mechanism;
+  backup-display parity override 0.4→1.2% — uniform centering-position
+  shift between class and inline auto-margins, content-identical).
 - e2e drift: ZERO structural failures — full suite 45/45 green at exit (first
   wave with no fixme/skip).
 
