@@ -9,6 +9,7 @@ import {
   ConvoSettingsScreen, NewConvoScreen, AddPeopleScreen, AddContactScreen,
   WelcomeScreen, SignInScreen,
   CredentialsScreen, BackupDisplayScreen, BackupConfirmScreen, ProfileSetupScreen,
+  RestoreScreen, ContactRequestScreen,
 } from "@/ui/screens";
 import {
   HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
@@ -16,6 +17,7 @@ import {
   SETTINGS_NOTIF_FIXTURE, SETTINGS_DEVICES_FIXTURE,
   CONVO_MEMBERS_ADMINS, CONVO_MEMBERS_WRITERS,
   ADD_PEOPLE_POOL, ADD_CONTACT_TTL_OPTIONS,
+  CONTACT_REQUEST_FIXTURE,
 } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
@@ -670,6 +672,43 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         finishTestId="finish-onboarding-btn"
         avatarChangeTestId="onboarding-avatar-change"
         avatarPreviewTestId="onboarding-avatar-preview"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:160–180 (ScRestore) — Rung 2 advisory: app keeps textarea IA.
+  // Structural divergence: proto shows 24-slot per-word grid; app uses a single textarea.
+  // Advisory cell — renders side-by-side for visual review; never fails the run.
+  "restore-screen": () => (
+    <div className="flex flex-col h-full">
+      <RestoreScreen
+        code=""
+        onCode={() => {}}
+        onRestore={() => {}}
+        restoring={false}
+        codeTestId="restore-passphrase-input"
+        restoreTestId="restore-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:229–257 (ScContactRequest) — Rung 2 presenter; /invite confirm phase.
+  // securityOpen=false (collapsed); avatarSlot/sharedSlot/safetySlot omitted (Rung-4).
+  // accents exercise accent avatar tint + primary button fill.
+  // USER DECISION: id line dropped (no raw ids in UI; Wave-C pattern); proto copy patched.
+  "contact-request-screen": () => (
+    <div className="flex flex-col h-full">
+      <ContactRequestScreen
+        vm={CONTACT_REQUEST_FIXTURE}
+        securityOpen={false}
+        onToggleSecurity={() => {}}
+        onAccept={() => {}}
+        onDecline={() => {}}
+        rootTestId="invite-confirm"
+        nameTestId="invite-inviter-name"
+        avatarTestId="invite-inviter-avatar"
+        acceptTestId="invite-accept-btn"
+        declineTestId="invite-decline-btn"
       />
     </div>
   ),
