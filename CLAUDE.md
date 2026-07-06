@@ -36,6 +36,7 @@ original feature slices above, a separate track).
 - Unit 4 (conversation display) — merged.
 - Unit 8 (final UI alignment sweep: AuthSurface, EmptyPane, ModalShell, mobile chrome, toast/skeleton/typography) — merged + 2 polish passes. Audit method (screenshot diffing) missed IA/interaction/feel issues — see Unit 9.
 - Unit 9 (IA & interaction-fidelity pass) — DESIGNED, not started. Spec: `docs/superpowers/specs/2026-06-23-unit-9-ia-interaction-design.md`. Reference is the prototype `design/proto.jsx`. Includes a connection-request delivery bug fix (9-0).
+- Unit 10 (kit architecture + phase 4 cleanup) — merged through Phase 4. Full kit+screens presenter layer in `src/ui/`; legacy components deleted; tokens pruned; purity guard passing.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
@@ -63,6 +64,13 @@ Linear: team=Nox project=Arcan
 - For success/error/copy confirmations, prefer `useToast({ tone })` over inline status messages.
 - For loading states, use the skeleton primitives from `@/components/skeleton` — not `"Loading…"` text.
 - The pre-commit guard `scripts/check-tokens.sh` (alias: `npm run check-tokens`) rejects ad-hoc Tailwind color/typography classes. `bg-black/N` overlays for modal scrims are intentionally allowed. Run locally before committing UI work.
+
+## Architecture
+
+- `src/ui/kit/` holds pure presentational primitives (HAv, Icon, PCard, etc.); `src/ui/screens/` holds composed screen presenters. Neither layer may import from `@/components`, Jazz, or the router — enforced by `npm run check-ui-purity`.
+- Mapping-table law: every kit primitive maps 1:1 to the proto design reference; deviations are recorded as "intent-fix" comments.
+- Type gate: `npm run typecheck` is the authoritative type check (not IDE). Run before every commit.
+- Parity harness: `npm run parity` validates the kit against design parity tests.
 
 ## Process
 
