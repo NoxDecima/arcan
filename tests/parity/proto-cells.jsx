@@ -1032,6 +1032,87 @@ const PROTO_CELLS = {
       <PAddContactScreen s={s} />
     </div>
   ),
+
+  /* patched copy: design/proto.jsx:537–548 (WelcomeScreen) — buttons via PButton (decision A);
+     MuteLink row: proto renders one big button; app splits into static text + accent button —
+     visually identical (same colors/font; only the tap target differs). */
+  "welcome-screen": (s) => {
+    const c = s.c;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <AuthShell s={s}>
+          <ArcanMark s={s} size={64} stacked />
+          <div style={{ font: `400 11.5px/1.5 ${s.body}`, color: c.text2, textAlign: 'center', marginTop: -4 }}>
+            {'// local-first · end-to-end encrypted'}
+          </div>
+          <div style={{ height: 8 }} />
+          <PButton s={s} primary full label="create account" onClick={() => {}} />
+          <PButton s={s} full label="restore from recovery code" onClick={() => {}} />
+          {/* proto:546 — flex row + explicit font on button locks button strut to 10.5px×1
+              matching the app's text-ui-sub leading-none button (avoids strut mismatch) */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 2 }}>
+            <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>already on a device? </span>
+            <button style={{ font: `400 10.5px/1 ${s.body}`, padding: 0, margin: 0, cursor: 'pointer', border: 'none', background: 'transparent' }} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>sign in</span>
+            </button>
+          </div>
+        </AuthShell>
+      </div>
+    );
+  },
+
+  /* patched copy: design/proto.jsx:550–565 (SignInScreen) — buttons via PButton (decision A);
+     AuthField=display div matching app AuthField empty input (38px/12px/placeholder in c.dim).
+     Empty PHeader back arrow rendered (onBack present in app cell). */
+  "sign-in-screen": (s) => {
+    const c = s.c;
+    /* local helper: display-only field matching app AuthField with empty value (placeholder-only).
+       38px height + 12px body font + label at caps-9px matches AuthField's visual.
+       Parity note: placeholder rendered as a span in c.dim; real input placeholder may diverge
+       by ≤0.2% — characterize maxDiffRatio override per-cell only if threshold is breached. */
+    function PAField({ label, ph }) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {label && (
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.14em', textTransform: 'uppercase', color: c.dim }}>
+              {label}
+            </span>
+          )}
+          <div style={{ height: 38, borderRadius: 12, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+            <span style={{ font: `400 12px/1 ${s.body}`, color: c.dim }}>{ph}</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* proto:554 — PHeader with back arrow; title="" */}
+        <PHeader s={s} title="" onBack={() => {}} />
+        <AuthShell s={s}>
+          {/* proto:556 */}
+          <ArcanMark s={s} size={56} stacked />
+          {/* proto:557 — "sign in" title (700 19px/1.2 headMono → mono) */}
+          <div style={{ font: `700 19px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text, textAlign: 'center', letterSpacing: '-0.01em' }}>sign in</div>
+          {/* proto:558–559 — email + password fields */}
+          <PAField label="email" ph="you@domain.dev" />
+          <PAField label="password" ph="••••••••" />
+          {/* proto:560 — h:4 spacer */}
+          <div style={{ height: 4 }} />
+          {/* proto:561 — primary submit button */}
+          <PButton s={s} primary full label="sign in" onClick={() => {}} />
+          {/* proto:562 — footer: forgot + create account */}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button style={tapBtn} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>forgot password?</span>
+            </button>
+            <button style={tapBtn} onClick={() => {}}>
+              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>create account</span>
+            </button>
+          </div>
+        </AuthShell>
+      </div>
+    );
+  },
 };
 
 (async () => {

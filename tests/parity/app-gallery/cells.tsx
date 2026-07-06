@@ -6,6 +6,7 @@ import {
   ProfileScreen, OwnProfileScreen, type ConvoItem, type ContactItem,
   SettingsScreen, FeedbackScreen, LinkDeviceScreen, type ThemeName,
   ConvoSettingsScreen, NewConvoScreen, AddPeopleScreen, AddContactScreen,
+  WelcomeScreen, SignInScreen,
 } from "@/ui/screens";
 import {
   HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
@@ -556,6 +557,43 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onPrimary={() => {}}
         onScan={() => {}}
         onPaste={() => {}}
+      />
+    </div>
+  ),
+
+  // proto.jsx:537–548 (WelcomeScreen) — Rung 1 presenter; no-op handlers.
+  // accents exercise the accent star + primary button fill.
+  "welcome-screen": () => (
+    <div className="flex flex-col h-full">
+      <WelcomeScreen
+        onCreateAccount={() => {}}
+        onRestore={() => {}}
+        onSignIn={() => {}}
+        createTestId="create-account-btn"
+        restoreTestId="restore-account-btn"
+        signInTestId="signin-existing-btn"
+      />
+    </div>
+  ),
+
+  // proto.jsx:550–565 (SignInScreen) — Rung 1 presenter.
+  // onBack present → renders PHeader back arrow (matches proto:554).
+  // empty email/password, submitting=false, errorSlot omitted.
+  "sign-in-screen": () => (
+    <div className="flex flex-col h-full">
+      <SignInScreen
+        onBack={() => {}}
+        email=""
+        onEmail={() => {}}
+        password=""
+        onPassword={() => {}}
+        onSubmit={() => {}}
+        submitting={false}
+        onForgot={() => {}}
+        onCreate={() => {}}
+        emailTestId="login-email"
+        passwordTestId="login-password"
+        submitTestId="login-submit"
       />
     </div>
   ),

@@ -26,3 +26,6 @@ export { NewConvoScreen } from "./new-convo-screen";
 export { AddPeopleScreen } from "./add-people-screen";
 export { AddContactScreen } from "./add-contact-screen";
 export type { PickItem, ConvoMemberVM } from "./picker-types";
+export type { ContactRequestVM, ApproveDeviceVM } from "./auth-types";
+export { WelcomeScreen } from "./welcome-screen";
+export { SignInScreen } from "./sign-in-screen";

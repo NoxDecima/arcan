@@ -47,6 +47,8 @@
     { "id": "convo-settings-screen", "width": 300, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "new-convo-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
     { "id": "add-people-screen", "width": 300, "height": 560, "pad": 0, "accents": ["tokyo", "rose"] },
-    { "id": "add-contact-screen", "width": 300, "height": 640, "pad": 0 }
+    { "id": "add-contact-screen", "width": 300, "height": 640, "pad": 0 },
+    { "id": "welcome-screen", "width": 360, "height": 480, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "sign-in-screen", "width": 360, "height": 520, "pad": 0 }
   ]
 }
