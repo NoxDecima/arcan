@@ -23,7 +23,7 @@ export function AuthSurface({
       data-testid={testId}
       className={[
         "flex-1 min-h-0 relative flex justify-center bg-bg",
-        tall ? "items-start overflow-y-auto" : "items-center overflow-hidden",
+        tall ? "overflow-y-auto" : "items-center overflow-hidden",
       ].join(" ")}
     >
       {/* cosmic watermark — hf 360×360 at right:-84 bottom:-96 (hf-flows:18-20) */}
@@ -61,8 +61,11 @@ export function AuthSurface({
         style={{ left: "80%", top: "66%" }}
       />
       {/* content column — width/maxWidth/gap/padding are structural literals (hf-flows:26) */}
+      {/* user-decision patch (2026-07-06): center-when-fits — my-auto on tall column gives flex
+          auto-margin centering when there is free space; collapses to 0 when content overflows
+          so the container scrolls from the top (unlike justify-center which clips the top). */}
       <div
-        className="relative flex flex-col"
+        className={tall ? "relative flex flex-col my-auto" : "relative flex flex-col"}
         style={{
           width: w,
           maxWidth: "88%",

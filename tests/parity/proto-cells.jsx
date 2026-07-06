@@ -6,7 +6,30 @@ const { skin, alpha } = window;
 const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
 const { HF_CONVOS, HF_CONTACTS, HF_MSGS } = window;
 // hf-flows.jsx window exports (available after hf-flows.js loads)
-const { AuthSurface, AuthTitle: HfTitle, AuthSub: HfSub, AuthField: HfField, Wordmark } = window;
+const { AuthTitle: HfTitle, AuthSub: HfSub, AuthField: HfField, Wordmark } = window;
+// AuthSurface intentionally omitted from window — overridden below with centering patch
+
+/* user-decision patch (2026-07-06): center-when-fits — tall AuthSurface centers when
+   content fits, scrolls only on overflow. Container drops alignItems:'flex-start';
+   content column gets marginTop/marginBottom:'auto' (my-auto equivalent). Auto margins
+   absorb free space when the column is shorter than the container, and collapse to 0 on
+   overflow so the container scrolls from the top. Mirrors src/ui/kit/auth-surface.tsx. */
+function AuthSurface({ s, w = 320, tall, children }) {
+  const c = s.c;
+  const star = (x, y, col, sz, glow) => ({ position: 'absolute', left: x, top: y, width: sz, height: sz, borderRadius: sz, background: col, boxShadow: glow ? `0 0 10px ${alpha(col, .6)}` : 'none' });
+  return (
+    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: tall ? undefined : 'center', justifyContent: 'center', background: c.bg, overflow: tall ? 'auto' : 'hidden' }}>
+      <svg width="360" height="360" viewBox="0 0 100 100" aria-hidden="true"
+        style={{ position: 'absolute', right: -84, bottom: -96, color: c.text, opacity: s.theme === 'dark' ? 0.05 : 0.06, userSelect: 'none', pointerEvents: 'none' }}
+        dangerouslySetInnerHTML={{ __html: (window.LATTICE ? window.LATTICE.full('currentColor') : '') }} />
+      <div style={star('22%', '20%', c.accentFill, 4, true)} />
+      <div style={star('72%', '26%', '#bb9af7', 3, true)} />
+      <div style={star('30%', '74%', '#7dcfff', 3, true)} />
+      <div style={star('80%', '66%', c.accentFill, 2, false)} />
+      <div style={{ width: w, maxWidth: '88%', display: 'flex', flexDirection: 'column', gap: tall ? 11 : 15, position: 'relative', padding: tall ? '20px 18px' : 18, ...(tall ? { marginTop: 'auto', marginBottom: 'auto' } : {}) }}>{children}</div>
+    </div>
+  );
+}
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
