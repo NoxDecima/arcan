@@ -37,3 +37,4 @@ export type { WordChallengeField } from "./onboarding-types";
 export { RestoreScreen } from "./restore-screen";
 export { ContactRequestScreen } from "./contact-request-screen";
 export { InviteStatusScreen } from "./invite-status-screen";
+export { ApproveDeviceCard, ApproveDeviceScreen } from "./approve-device-screen";

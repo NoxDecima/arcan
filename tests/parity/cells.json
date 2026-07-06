@@ -55,6 +55,7 @@
     { "id": "backup-confirm-screen", "width": 380, "height": 540, "pad": 0, "maxDiffRatio": 0.02 },
     { "id": "profile-setup-screen", "width": 380, "height": 580, "pad": 0, "accents": ["tokyo", "rose"], "maxDiffRatio": 0.016 },
     { "id": "restore-screen", "width": 430, "height": 720, "pad": 0, "advisory": true },
-    { "id": "contact-request-screen", "width": 380, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] }
+    { "id": "contact-request-screen", "width": 380, "height": 640, "pad": 0, "accents": ["tokyo", "rose"] },
+    { "id": "approve-device-screen", "width": 380, "height": 600, "pad": 0, "accents": ["tokyo", "rose"] }
   ]
 }

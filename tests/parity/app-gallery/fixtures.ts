@@ -10,6 +10,7 @@ import type {
   PickItem,
   ConvoMemberVM,
   ContactRequestVM,
+  ApproveDeviceVM,
 } from "@/ui/screens";
 
 // Fixtures mirroring HF_CONVOS / HF_CONTACTS from design/hf-kit.jsx.
@@ -155,4 +156,17 @@ export const CONTACT_REQUEST_FIXTURE: ContactRequestVM = {
   name: "rana",
   initials: "RA",
   idShort: "co_9f2…b41",
+};
+
+/**
+ * ApproveDevice fixture — mirrors hf-flows.jsx ScApproveDevice fixture rows.
+ * Parity uses device/location/time (hf-faithful); live app substitutes
+ * device/first-seen/fingerprint (app has no geo-location — documented divergence).
+ */
+export const APPROVE_DEVICE_FIXTURE: ApproveDeviceVM = {
+  rows: [
+    { label: "device",   value: "firefox · macos" },
+    { label: "location", value: "prague · cz" },
+    { label: "time",     value: "23:42 CET" },
+  ],
 };

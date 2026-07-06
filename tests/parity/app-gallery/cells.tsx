@@ -10,6 +10,7 @@ import {
   WelcomeScreen, SignInScreen,
   CredentialsScreen, BackupDisplayScreen, BackupConfirmScreen, ProfileSetupScreen,
   RestoreScreen, ContactRequestScreen,
+  ApproveDeviceScreen,
 } from "@/ui/screens";
 import {
   HF_CONVOS, HF_CONTACTS, HF_CHAT_ITEMS, PROFILE_FIXTURE, OWN_PROFILE_FIXTURE,
@@ -18,6 +19,7 @@ import {
   CONVO_MEMBERS_ADMINS, CONVO_MEMBERS_WRITERS,
   ADD_PEOPLE_POOL, ADD_CONTACT_TTL_OPTIONS,
   CONTACT_REQUEST_FIXTURE,
+  APPROVE_DEVICE_FIXTURE,
 } from "./fixtures";
 
 const ICON_NAMES: IconName[] = [
@@ -709,6 +711,25 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         avatarTestId="invite-inviter-avatar"
         acceptTestId="invite-accept-btn"
         declineTestId="invite-decline-btn"
+      />
+    </div>
+  ),
+
+  // hf-flows.jsx:209–228 (ScApproveDevice) — Rung 2 presenter; initiator awaiting-approval phase.
+  // vm feeds hf fixture rows (device/location/time) to match proto; live app uses
+  // device/first-seen/fingerprint (no geo — documented divergence). approving=false (idle state).
+  // accents exercise accent-soft device tile + primary button.
+  "approve-device-screen": () => (
+    <div className="flex flex-col h-full">
+      <ApproveDeviceScreen
+        vm={APPROVE_DEVICE_FIXTURE}
+        onApprove={() => {}}
+        onDeny={() => {}}
+        approving={false}
+        promptTestId="pair-approval-prompt"
+        cardTestId="device-approval-card"
+        approveTestId="approve-device"
+        denyTestId="deny-device"
       />
     </div>
   ),

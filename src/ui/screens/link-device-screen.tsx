@@ -15,6 +15,7 @@ export function LinkDeviceScreen({
   linkUrl,
   onCopy,
   qrSlot,
+  hiddenUrlSlot,
   waitingLabel = "waiting for your other device…",
 }: {
   onBack: () => void;
@@ -22,6 +23,8 @@ export function LinkDeviceScreen({
   onCopy: () => void;
   /** Rung-4: real <QRDisplay>; parity uses <PQR size={150}>. */
   qrSlot?: ReactNode;
+  /** Rung-4: sr-only slot for e2e URL extraction (e.g. <span data-testid="qr-url-text" className="sr-only">…</span>). */
+  hiddenUrlSlot?: ReactNode;
   /** Default: "waiting for your other device…" */
   waitingLabel?: string;
 }): JSX.Element {
@@ -64,6 +67,9 @@ export function LinkDeviceScreen({
               </span>
             </button>
           </div>
+
+          {/* hiddenUrlSlot — sr-only e2e URL hook; rendered after pill, invisible */}
+          {hiddenUrlSlot}
 
           {/* waiting row — proto:472; gap:8 → gap-2; marginTop:2 → mt-0.5 */}
           <div className="flex items-center gap-2 mt-0.5">

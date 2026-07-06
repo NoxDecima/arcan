@@ -9,14 +9,18 @@ import { latticePaths } from "./lattice-paths";
 export function AuthSurface({
   w = 320,
   tall = false,
+  testId,
   children,
 }: {
   w?: number;
   tall?: boolean;
+  /** Optional data-testid on the root div (e.g. "pair-approval-prompt" for ApproveDeviceScreen). */
+  testId?: string;
   children: ReactNode;
 }): JSX.Element {
   return (
     <div
+      data-testid={testId}
       className={[
         "flex-1 min-h-0 relative flex justify-center bg-bg",
         tall ? "items-start overflow-y-auto" : "items-center overflow-hidden",

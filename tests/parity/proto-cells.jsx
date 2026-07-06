@@ -869,6 +869,40 @@ function PScContactRequest({ s }) {
 }
 /* end patched copy */
 
+/* patched copy: design/hf-flows.jsx:209-228 (ScApproveDevice) — Btn→PButton (decision A);
+   hf fixture rows device/location/time (live app uses device/first-seen/fingerprint — no geo;
+   parity uses hf rows to match pixels). Wordmark size=20 → ArcanMark×2.1 = stacked size 42
+   (Wordmark helper wraps ArcanMark and is exported from hf-flows on window). */
+function PScApproveDevice({ s }) {
+  const c = s.c;
+  return (
+    <AuthSurface s={s} w={320}>
+      <Wordmark s={s} size={20} />
+      <div style={{ padding: 20, borderRadius: s.radius + 2, border: `1px solid ${c.border}`, background: c.panel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 52, height: 52, borderRadius: s.radius + 2, background: c.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon d="device" c={c.accent} size={24} />
+        </div>
+        {/* AuthTitle: 700 19px/1.25 mono -.01em */}
+        <div style={{ textAlign: 'center', font: `700 19px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text, letterSpacing: s.headMono ? '-.01em' : 0 }}>approve new device?</div>
+        {/* Sub with marginTop:0 override (card gap owns spacing) */}
+        <div style={{ textAlign: 'center', font: `400 11.5px/1.5 ${s.body}`, color: c.text2, marginTop: 0 }}>a device wants to link to your account</div>
+        {/* info rows: px=12 py=10 gap=6 */}
+        <div style={{ width: '100%', borderRadius: s.radius, background: c.bg, border: `1px solid ${c.border}`, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[['device', 'firefox · macos'], ['location', 'prague · cz'], ['time', '23:42 CET']].map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.12em', textTransform: 'uppercase', color: c.dim }}>{k}</span>
+              <span style={{ font: `400 10.5px/1 ${s.font}`, color: c.text2 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <PButton s={s} primary full label="approve device" onClick={() => {}} />
+      <PButton s={s} danger full label="deny" onClick={() => {}} />
+    </AuthSurface>
+  );
+}
+/* end patched copy */
+
 const PROTO_CELLS = {
   "probe-swatch": (s) => (
     <div style={{ width: 200, height: 64, borderRadius: s.radius, border: `1px solid ${s.c.border}`, background: s.c.panel, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1307,6 +1341,13 @@ const PROTO_CELLS = {
   "contact-request-screen": (s) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PScContactRequest s={s} />
+    </div>
+  ),
+
+  // hf-flows.jsx:209-228 (ScApproveDevice) — Btn→PButton (decision A); hf fixture rows.
+  "approve-device-screen": (s) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <PScApproveDevice s={s} />
     </div>
   ),
 };
