@@ -55,7 +55,6 @@ export default {
         text: 'var(--color-text)',
         'text-2': 'var(--color-text-2)',
         dim: 'var(--color-dim)',
-        faint: 'var(--color-faint)',
         green: 'var(--color-green)',
         amber: 'var(--color-amber)',
         red: 'var(--color-red)',
@@ -123,7 +122,6 @@ export default {
       letterSpacing: {
         caps: 'var(--tracking-caps)',
         'caps-sm': 'var(--tracking-caps-sm)',
-        'caps-lg': 'var(--tracking-caps-lg)',
         tab: 'var(--tracking-tab)',
         avatar: 'var(--tracking-avatar)',
         title: 'var(--tracking-title)',
