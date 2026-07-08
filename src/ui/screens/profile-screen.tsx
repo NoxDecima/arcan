@@ -20,6 +20,7 @@ export function ProfileScreen({
   vm,
   onBack,
   onMenu,
+  onAvatar,
   onMessage,
   onOpenConversation,
   safetyOpen,
@@ -36,6 +37,9 @@ export function ProfileScreen({
   vm: ProfileScreenVM;
   onBack: () => void;
   onMenu?: () => void;                  // header-right dots (proto:211)
+  /** Intent-fix (non-visual, 2026-07-08 walkthrough): opens the avatar in a
+      lightbox. Optional — when absent the avatar renders exactly as proto. */
+  onAvatar?: () => void;
   onMessage: () => void;                // primary "message" PButton
   onOpenConversation?: (id: string) => void; // Rung-4 real shared list
   safetyOpen: boolean;                  // expandable "verify safety number"
@@ -73,12 +77,31 @@ export function ProfileScreen({
         {/* 600px content cap — full-viewport desktop (user decision 2026-07-05) */}
         <div className="w-full max-w-[600px] mx-auto">
         <div className="flex flex-col items-center gap-[13px]">
-          <HAv
-            txt={vm.initials}
-            src={vm.avatarSrc}
-            size={80}
-            testId={avatarTestId}
-          />
+          {/* Intent-fix (2026-07-08): tapClass wrapper is pixel-neutral
+              (preflight zeroes button padding/border); HAv unchanged. */}
+          {onAvatar ? (
+            <button
+              type="button"
+              className={tapClass}
+              onClick={onAvatar}
+              aria-label="view profile picture"
+              data-testid="profile-avatar-open"
+            >
+              <HAv
+                txt={vm.initials}
+                src={vm.avatarSrc}
+                size={80}
+                testId={avatarTestId}
+              />
+            </button>
+          ) : (
+            <HAv
+              txt={vm.initials}
+              src={vm.avatarSrc}
+              size={80}
+              testId={avatarTestId}
+            />
+          )}
           <div className="text-center">
             <div
               className="font-mono font-bold text-ui-name text-text"

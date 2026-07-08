@@ -10,6 +10,7 @@ import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { PButton } from "@/ui/kit";
 import { OwnProfileScreen } from "@/ui/screens/own-profile-screen";
 import { ProfileScreen } from "@/ui/screens/profile-screen";
@@ -33,6 +34,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   });
   const sharedGroups = useSharedGroups(accountID);
   const [showSafety, setShowSafety] = useState(false);
+  const [avatarLightbox, setAvatarLightbox] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -394,6 +396,9 @@ export function ProfileView({ accountID }: ProfileViewProps) {
             sharedConversations: sharedGroups,
           }}
           onBack={() => navigate(-1)}
+          // Avatar tap → lightbox, only when a real image resolved (user
+          // decision, 2026-07-08 walkthrough). Initials tiles stay inert.
+          onAvatar={avatarSrc ? () => setAvatarLightbox(true) : undefined}
           onMessage={() => void handleMessage()}
           onOpenConversation={(id) => navigate(`/conversations/${id}`)}
           safetyOpen={showSafety}
@@ -424,6 +429,13 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           nameTestId="profile-display-name"
           messageTestId="profile-message"
           safetyToggleTestId="profile-safety-toggle"
+        />
+      )}
+      {avatarLightbox && avatarSrc && (
+        <ImageLightbox
+          src={avatarSrc}
+          alt={`${displayName}'s profile picture`}
+          onClose={() => setAvatarLightbox(false)}
         />
       )}
     </div>

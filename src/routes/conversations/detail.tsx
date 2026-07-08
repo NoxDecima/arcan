@@ -875,6 +875,11 @@ export function ConversationDetailRoute() {
           !isMine && authorAccountID
             ? (detailAvatarMap.get(authorAccountID) ?? undefined)
             : undefined,
+        // Avatar tap → author profile (user decision, 2026-07-08 walkthrough).
+        onAvatar:
+          !isMine && authorAccountID
+            ? () => navigate(`/profile/${authorAccountID}`)
+            : undefined,
         att: hasAttachments,
         attSlot,
         edited: !isDeleted && Boolean(message?.edited),

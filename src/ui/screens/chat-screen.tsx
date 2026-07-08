@@ -185,6 +185,7 @@ export function ChatScreen({
                       }}
                       w={bubbleWidth}
                       attSlot={item.attSlot}
+                      onAvatar={item.onAvatar}
                       testId={item.mine ? "message-mine" : "message-other"}
                       bodyTestId="bubble-body"
                       timeTestId="bubble-time"

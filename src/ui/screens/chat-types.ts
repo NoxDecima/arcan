@@ -29,6 +29,9 @@ export type ChatTimelineItem =
       menuSlot?: ReactNode;
       /** Rung 4: replaces bubble body+time (e.g. inline edit input). Parity unaffected (default undefined). */
       bodyOverride?: ReactNode;
+      /** Intent-fix (2026-07-08 walkthrough): tap on the author avatar —
+          container navigates to the author's profile. Non-visual. */
+      onAvatar?: () => void;
     };
 
 export interface ChatHeaderVM {

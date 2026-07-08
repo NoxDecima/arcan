@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { HAv } from "./hav";
 import { Icon } from "./icon";
+import { tapClass } from "./tap";
 import type { JSX } from "react";
 
 export interface BubbleMsg {
@@ -116,6 +117,7 @@ export function MessageRow({
   timeTestId,
   bodyOverride,
   endSlot,
+  onAvatar,
 }: {
   m: BubbleMsg;
   w: number;
@@ -132,6 +134,11 @@ export function MessageRow({
    * row-reverse (own messages) it sits visually beside the bubble in the
    * empty gutter (e.g. the edit/delete ⋮ menu). Parity unaffected. */
   endSlot?: ReactNode;
+  /** Intent-fix (non-visual, 2026-07-08 walkthrough): tap on the "them"
+   * avatar. When set, the HAv is wrapped in a tapClass button — pixel-neutral
+   * (preflight zeroes button padding/border). Parity unaffected (default
+   * undefined). */
+  onAvatar?: () => void;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -166,7 +173,20 @@ export function MessageRow({
       className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
       {...(testId ? { "data-testid": testId } : {})}
     >
-      {!mine && <HAv txt={m.ini ?? ""} src={m.src} size={28} />}
+      {!mine &&
+        (onAvatar ? (
+          <button
+            type="button"
+            className={`${tapClass} shrink-0`}
+            onClick={onAvatar}
+            aria-label={`view ${m.name ?? "sender"}'s profile`}
+            data-testid="message-avatar-open"
+          >
+            <HAv txt={m.ini ?? ""} src={m.src} size={28} />
+          </button>
+        ) : (
+          <HAv txt={m.ini ?? ""} src={m.src} size={28} />
+        ))}
       <div
         className={`flex flex-col gap-[3px] max-w-[80%] ${
           mine ? "items-end" : "items-start"
