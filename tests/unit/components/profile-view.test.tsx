@@ -41,6 +41,8 @@ vi.mock("@/auth/pubkey", () => ({
 
 vi.mock("@/jazz/conversation", () => ({
   findOrCreate1to1Conversation: vi.fn(),
+  find1to1Conversation: () => null,
+  leaveConversation: vi.fn(),
 }));
 
 // Avatar.tsx's useEffect bails when streamID or loadAs is falsy, so with
@@ -48,9 +50,14 @@ vi.mock("@/jazz/conversation", () => ({
 // loadAsBlob path. No need to mock jazz-tools.
 
 import { ProfileView } from "@/components/profile-view";
+import { ToastProvider } from "@/components/toast";
 
 function Wrap({ children }: { children: ReactNode }) {
-  return <MemoryRouter>{children}</MemoryRouter>;
+  return (
+    <MemoryRouter>
+      <ToastProvider>{children}</ToastProvider>
+    </MemoryRouter>
+  );
 }
 
 describe("ProfileView", () => {

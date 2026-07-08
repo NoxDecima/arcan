@@ -9,8 +9,14 @@ import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
-import { findOrCreate1to1Conversation } from "@/jazz/conversation";
+import {
+  findOrCreate1to1Conversation,
+  find1to1Conversation,
+  leaveConversation,
+} from "@/jazz/conversation";
 import { ImageLightbox } from "@/components/image-lightbox";
+import { RemoveContactDialog } from "@/components/remove-contact-dialog";
+import { useToast } from "@/components/toast";
 import { PButton } from "@/ui/kit";
 import { OwnProfileScreen } from "@/ui/screens/own-profile-screen";
 import { ProfileScreen } from "@/ui/screens/profile-screen";
@@ -30,17 +36,27 @@ interface ProfileViewProps {
 
 export function ProfileView({ accountID }: ProfileViewProps) {
   const me = useAccount(ArcanAccount, {
-    resolve: { profile: true, root: { contactBook: { $each: true } } },
+    resolve: {
+      profile: true,
+      root: {
+        contactBook: { $each: true },
+        // Needed by find1to1Conversation (danger-zone "delete conversation",
+        // user decision 2026-07-09). $onError catches revoked/broken entries.
+        knownConversations: { $each: { $onError: "catch" } },
+      },
+    },
   });
   const sharedGroups = useSharedGroups(accountID);
   const [showSafety, setShowSafety] = useState(false);
   const [avatarLightbox, setAvatarLightbox] = useState(false);
+  const [removeDialog, setRemoveDialog] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const toast = useToast();
 
   const myID = (me as any)?.$jazz?.id as string | undefined;
   const isOwn = !!myID && accountID === myID;
@@ -248,17 +264,48 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     }
   }
 
-  // Remove-contact handler (item 9): mirrors detail.tsx's handleRemove.
-  // Removes the contactBook entry by its $jazz.id, then navigates home.
-  function handleRemoveContact() {
+  // Live 1:1 with this account, if any — drives the danger-zone "delete
+  // conversation" action and the remove-contact dialog's checkbox (user
+  // decision, 2026-07-09).
+  const convo1to1 =
+    !isOwn && me.$isLoaded ? find1to1Conversation(me as any, accountID) : null;
+
+  // Remove-contact handler (item 9, reworked 2026-07-09): confirmation moved
+  // from native confirm() to RemoveContactDialog, which can also delete the
+  // 1:1 conversation when the user opts in.
+  async function handleRemoveContact(deleteConversation: boolean) {
     if (!contact) return;
     const contactJazzId = (contact as any)?.$jazz?.id;
     if (!contactJazzId) return;
-    if (!confirm("remove this contact?")) return;
-    (me as any).root.contactBook.$jazz.remove(
-      (c: any) => c?.$jazz?.id === contactJazzId,
-    );
+    setRemoveDialog(false);
+    setBusy(true);
+    try {
+      if (deleteConversation && convo1to1) {
+        await leaveConversation(me as any, convo1to1);
+      }
+      (me as any).root.contactBook.$jazz.remove(
+        (c: any) => c?.$jazz?.id === contactJazzId,
+      );
+    } finally {
+      setBusy(false);
+    }
     navigate("/");
+  }
+
+  // Delete the 1:1 conversation, keep the contact (user decision 2026-07-09).
+  // "Delete" = leave the group + forget it locally; the counterpart keeps
+  // their copy and sees a "left" system event. Messaging them again starts a
+  // fresh thread.
+  async function handleDeleteConversation() {
+    if (!convo1to1) return;
+    if (!confirm("delete this conversation? your copy is removed for good — messaging them again starts fresh.")) return;
+    setBusy(true);
+    try {
+      await leaveConversation(me as any, convo1to1);
+      toast({ icon: "check", text: "conversation deleted", tone: "neutral" });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const idShort = `${accountID.slice(0, 6)}…${accountID.slice(-3)}`;
@@ -410,17 +457,35 @@ export function ProfileView({ accountID }: ProfileViewProps) {
               <p className="text-xs text-dim">Security code not available.</p>
             )
           }
-          // item 9: remove-contact danger zone when a contactBook entry exists.
-          // Uses same removal flow as src/routes/contacts/detail.tsx handleRemove.
+          // Danger zone (user decision 2026-07-09): the profile page is the
+          // 1:1's settings surface (members.tsx redirects here), so both
+          // destructive actions live in this slot — "delete conversation"
+          // when a live 1:1 exists, "remove contact" when a contactBook
+          // entry exists.
           dangerZone={
-            contact ? (
-              <PButton
-                danger
-                full
-                label="remove contact"
-                onClick={handleRemoveContact}
-                data-testid="contact-remove-btn"
-              />
+            contact || convo1to1 ? (
+              <div className="flex flex-col gap-2">
+                {convo1to1 && (
+                  <PButton
+                    danger
+                    full
+                    label="delete conversation"
+                    onClick={() => void handleDeleteConversation()}
+                    disabled={busy}
+                    data-testid="convo-delete-btn"
+                  />
+                )}
+                {contact && (
+                  <PButton
+                    danger
+                    full
+                    label="remove contact"
+                    onClick={() => setRemoveDialog(true)}
+                    disabled={busy}
+                    data-testid="contact-remove-btn"
+                  />
+                )}
+              </div>
             ) : undefined
           }
           // testid carries
@@ -436,6 +501,16 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           src={avatarSrc}
           alt={`${displayName}'s profile picture`}
           onClose={() => setAvatarLightbox(false)}
+        />
+      )}
+      {removeDialog && contact && (
+        <RemoveContactDialog
+          contactName={displayName}
+          hasConversation={!!convo1to1}
+          onCancel={() => setRemoveDialog(false)}
+          onConfirm={(deleteConversation) =>
+            void handleRemoveContact(deleteConversation)
+          }
         />
       )}
     </div>

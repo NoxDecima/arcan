@@ -61,70 +61,89 @@ function writeSystemEvent(
   events.$jazz.push(event);
 }
 
+/**
+ * Safely iterate knownConversations. The list may be a NotLoaded CoValue
+ * proxy (truthy but not iterable) if the calling component's resolve query
+ * doesn't include knownConversations. Guard with both existence and
+ * iterability checks.
+ */
+function iterateKnown(list: any): any[] {
+  if (!list || typeof list[Symbol.iterator] !== "function") return [];
+  try {
+    return Array.from(list);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A conversation matches "the 1:1 with this contact" iff its direct admin-
+ * or-writer members form exactly the set {me, otherAccountID}. This replaces
+ * the prior `kind === "dm"` filter — see Slice 3c §2 (drop-the-kind-field).
+ * A former 3-member group that decayed to 2 members WILL match; that's
+ * intentional: a conversation between exactly me and Bob IS my conversation
+ * with Bob, regardless of how it started.
+ */
+function isOneToOneWith(
+  myAccountID: string,
+  conversation: any,
+  otherID: string,
+): boolean {
+  const group = conversation?.$jazz?.owner;
+  if (!group) return false;
+  let members: any[] = [];
+  try {
+    members = group.getDirectMembers();
+  } catch {
+    return false;
+  }
+  const participantIDs = members
+    .filter((m: any) => m.role === "admin" || m.role === "writer")
+    .map((m: any) => m.account?.$jazz?.id)
+    .filter((id: any) => typeof id === "string");
+  if (participantIDs.length !== 2) return false;
+  return (
+    participantIDs.includes(myAccountID) &&
+    participantIDs.includes(otherID)
+  );
+}
+
+/**
+ * Find the live 1:1 conversation with `otherAccountID` in
+ * me.root.knownConversations, or null. Synchronous find-only variant of
+ * findOrCreate1to1Conversation — extracted (2026-07-09) so the profile
+ * danger zone can decide whether to offer "delete conversation" without
+ * creating one as a side effect.
+ */
+export function find1to1Conversation(
+  me: Account,
+  otherAccountID: string,
+): any | null {
+  const myAccountID = (me as any).$jazz?.id as string;
+  if (!myAccountID) return null;
+  const known = (me as any).root?.knownConversations;
+  for (const c of iterateKnown(known)) {
+    if (c && isOneToOneWith(myAccountID, c, otherAccountID)) return c;
+  }
+  return null;
+}
+
 export async function findOrCreate1to1Conversation(
   me: Account,
   contact: any,
 ): Promise<any> {
   const otherAccountID = contact.contactAccountID as string;
-  const myAccountID = (me as any).$jazz?.id as string;
-
-  /**
-   * Safely iterate knownConversations. The list may be a NotLoaded CoValue
-   * proxy (truthy but not iterable) if the calling component's resolve query
-   * doesn't include knownConversations. Guard with both existence and
-   * iterability checks.
-   */
-  function iterateKnown(list: any): any[] {
-    if (!list || typeof list[Symbol.iterator] !== "function") return [];
-    try {
-      return Array.from(list);
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * A conversation matches "the 1:1 with this contact" iff its direct admin-
-   * or-writer members form exactly the set {me, otherAccountID}. This replaces
-   * the prior `kind === "dm"` filter — see Slice 3c §2 (drop-the-kind-field).
-   * A former 3-member group that decayed to 2 members WILL match; that's
-   * intentional: a conversation between exactly me and Bob IS my conversation
-   * with Bob, regardless of how it started.
-   */
-  function isOneToOneWith(conversation: any, otherID: string): boolean {
-    const group = conversation?.$jazz?.owner;
-    if (!group) return false;
-    let members: any[] = [];
-    try {
-      members = group.getDirectMembers();
-    } catch {
-      return false;
-    }
-    const participantIDs = members
-      .filter((m: any) => m.role === "admin" || m.role === "writer")
-      .map((m: any) => m.account?.$jazz?.id)
-      .filter((id: any) => typeof id === "string");
-    if (participantIDs.length !== 2) return false;
-    return (
-      participantIDs.includes(myAccountID) &&
-      participantIDs.includes(otherID)
-    );
-  }
 
   // Search knownConversations for an existing 1:1 with this contact
-  const known = (me as any).root?.knownConversations;
-  for (const c of iterateKnown(known)) {
-    if (c && isOneToOneWith(c, otherAccountID)) return c;
-  }
+  const existing = find1to1Conversation(me, otherAccountID);
+  if (existing) return existing;
 
   // Defensive wait against the duplicate-creation race: if the other party
   // just created the conversation, our Inbox subscription may still be
   // processing the notification. Brief wait + recheck.
   await new Promise((r) => setTimeout(r, 300));
-  const knownAfterWait = (me as any).root?.knownConversations;
-  for (const c of iterateKnown(knownAfterWait)) {
-    if (c && isOneToOneWith(c, otherAccountID)) return c;
-  }
+  const afterWait = find1to1Conversation(me, otherAccountID);
+  if (afterWait) return afterWait;
 
   // Load the other account so we can add them as a member
   const otherAccount = await loadAccountByID(me, otherAccountID);
