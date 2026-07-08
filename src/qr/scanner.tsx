@@ -15,6 +15,11 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
   const [cameraState, setCameraState] = useState<CameraState>("loading");
   const [pasteValue, setPasteValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // A code WAS detected but didn't match expectedPathPrefix — e.g. an /invite
+  // QR held up to the /pair scanner. Surfaced as a hint below the camera so a
+  // wrong-kind scan doesn't read as "nothing happens" (walkthrough fix,
+  // 2026-07-08).
+  const [mismatch, setMismatch] = useState(false);
   const accepted = useRef(false);
 
   useEffect(() => {
@@ -25,8 +30,12 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
       videoRef.current,
       (result) => {
         if (accepted.current) return;
-        if (!result.data.includes(expectedPathPrefix)) return;
+        if (!result.data.includes(expectedPathPrefix)) {
+          setMismatch(true);
+          return;
+        }
         accepted.current = true;
+        setMismatch(false);
         onUrl(result.data);
       },
       { returnDetailedScanResult: true }
@@ -83,6 +92,14 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
             </div>
           )}
         </div>
+        {mismatch && (
+          <p className="text-sm text-dim" data-testid="qr-mismatch">
+            that QR code was read, but it isn&apos;t the kind this screen
+            expects (looking for a{" "}
+            <span className="font-mono">{expectedPathPrefix}</span> link). if
+            this keeps happening, paste the link instead.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

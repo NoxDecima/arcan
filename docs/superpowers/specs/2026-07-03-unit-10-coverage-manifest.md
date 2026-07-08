@@ -289,3 +289,20 @@ No prototype reference exists for any of these surfaces. Visual acceptance = use
 - **PendingRequestsSection MuteLink dismiss**: dismiss action uses `button[tapClass] > MuteLink` rather than PButton outline to maintain the compact visual weight appropriate for a sidebar slot (PButton's h-11 height is proportionate for the full-page pending route but heavy for the sidebar card).
 - **IncomingConnectionPrompt title=""**: ModalShell header renders with empty string (matching TrustedDevicePrompt pattern); the requester name is surfaced as AuthTitle inside the body for visual hierarchy.
 - **Content cap `max-w-[600px]`**: applied to both connection routes per the Wave C walkthrough decision #1 (all content-bearing routes get a 600px desktop cap).
+
+## Post-walkthrough amendments (2026-07-08)
+
+User walkthrough of the Phase-3 surfaces produced three bug fixes and two
+design changes. These amend the Phase-3 rows above.
+
+### User decisions
+
+| # | Surface | Decision |
+|---|---|---|
+| 1 | Pending connections + pending section | **Compact rows** — the row body (HAv + name) is a button navigating to `/profile/:requesterAccountID`; inline ✓ (approve, `text-arcan-accent`) and ✗ (deny, `text-red`) icon buttons on the same line. The security-code `<details>` expander and the full-width PButton row are dropped as too verbose — safety-number verification lives on the profile page. Requester avatars resolve live via `useAccountAvatars`. |
+| 2 | Dismiss semantics | **Dismissal ≠ decision** — dismissing the incoming-connection modal (button/scrim/Escape) only mutes the modal (`dismissedRequestIDs`); the request stays on the pending surfaces. The explicit ✗ calls the new `denyConnectionRequest` (removes from `incomingRequests`). `useIncomingConnectionRequests` now returns dismissed entries flagged `dismissedLocally` instead of filtering them. |
+| 3 | Incoming connection prompt | **Requester avatar** — HAv 48 now gets `src` via `useAccountAvatars` (was initials-only). |
+| 4 | Add-contact scan flow | **New route `/contacts/scan`** (kit-idiom inference, no reference): PHeader + QRScanner with `expectedPathPrefix="/invite"`. The former wiring sent "scan their code" to `/pair?role=responder`, whose scanner only accepts `/pair` URLs and silently ignored invite QRs. Scanned URL's origin is dropped — navigation is local (`pathname+search+hash`), preserving `?via=qr`. QRScanner also gained a mismatch hint (`qr-mismatch` testid) when a detected code doesn't match the expected prefix. |
+| 5 | Profile picture lightbox | **ProfileScreen `onAvatar` prop** (intent-fix, non-visual): avatar tap opens ImageLightbox when a real image resolved; initials tiles stay inert. Wired in profile-view.tsx (other-profile branch only — own profile keeps tap = change photo). |
+| 6 | Message avatars → profile | **MessageRow `onAvatar` prop** (intent-fix, non-visual): "them" avatar wrapped in a tapClass button when set; container (detail.tsx) navigates to `/profile/:authorAccountID`. Pixel-neutral: preflight zeroes button padding/border; parity default undefined. |
+| 7 | ConnectionRequest schema | **`requesterAvatar` field dropped** — was never populated; avatars resolve live from the requester's profile (decision #1/#3). Old persisted requests carrying the key are unaffected. |

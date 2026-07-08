@@ -5,6 +5,7 @@ import { OnboardingRoute } from "./routes/onboarding";
 import { SettingsRoute } from "./routes/settings";
 import { PairRoute } from "./routes/pair";
 import { AddContactRoute as ContactAddRoute } from "./routes/contacts/add";
+import { ScanInviteRoute } from "./routes/contacts/scan";
 import { ContactDetailRoute } from "./routes/contacts/detail";
 import { InviteRoute } from "./routes/invite";
 import { ConversationsRoute } from "./routes/conversations";
@@ -172,6 +173,7 @@ function App() {
           */}
           <Route path="/contacts" element={<Navigate to="/?tab=contacts" replace />} />
           <Route path="/contacts/add" element={<ContactAddRoute />} />
+          <Route path="/contacts/scan" element={<ScanInviteRoute />} />
           <Route path="/contacts/:contactID" element={<ContactDetailRoute />} />
           <Route path="/profile/:accountID" element={<ProfileRoute />} />
           <Route path="/connections/pending" element={<PendingConnectionsRoute />} />

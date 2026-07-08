@@ -320,6 +320,11 @@ export async function approveConnectionRequest(
  * Dismiss a ConnectionRequest: add its CoValue ID to
  * me.root.dismissedRequestIDs. No shared CoValue is mutated.
  *
+ * Dismissal is NOT a decision (user decision, 2026-07-08 walkthrough): it only
+ * mutes the incoming-connection modal. The request stays on the pending
+ * surfaces until the user explicitly approves (approveConnectionRequest) or
+ * denies (denyConnectionRequest).
+ *
  * Deduplicated: a second call with the same request is a no-op.
  *
  * @param recipient - the dismissing account (me from useAccount)
@@ -339,5 +344,39 @@ export async function dismissConnectionRequest(
   const existing: string[] = Array.from(list as Iterable<string>);
   if (!existing.includes(id)) {
     list.$jazz.push(id);
+  }
+}
+
+/**
+ * Deny a ConnectionRequest: the explicit "no" decision. Removes the request
+ * from me.root.incomingRequests, so it leaves every pending surface for good.
+ *
+ * Also records the ID in dismissedRequestIDs — if the same request ever
+ * reappears (e.g. a delivery race re-drains it), the modal stays muted.
+ *
+ * No shared CoValue is mutated: the requester is not notified, same as
+ * dismissal always behaved.
+ *
+ * @param recipient - the denying account (me from useAccount)
+ * @param request   - the ConnectionRequest CoValue to deny
+ */
+export async function denyConnectionRequest(
+  recipient: Account,
+  request: ReturnType<typeof ConnectionRequest.create>,
+): Promise<void> {
+  const root = (recipient as any).root;
+  const id = (request as any).$jazz.id as string;
+
+  const incoming = root?.incomingRequests;
+  if (incoming && typeof incoming.$jazz?.remove === "function") {
+    incoming.$jazz.remove((r: any) => r?.$jazz?.id === id);
+  }
+
+  const dismissed = root?.dismissedRequestIDs;
+  if (dismissed) {
+    const existing: string[] = Array.from(dismissed as Iterable<string>);
+    if (!existing.includes(id)) {
+      dismissed.$jazz.push(id);
+    }
   }
 }

@@ -3,6 +3,7 @@ import { approveConnectionRequest, dismissConnectionRequest } from "@/jazz/invit
 import { ModalShell, ModalFooter } from "@/components/modal-shell";
 import { SafetyNumber } from "@/components/safety-number";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
+import { useAccountAvatars } from "@/components/use-account-avatars";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useToast } from "@/components/toast";
@@ -14,12 +15,19 @@ import { HAv, AuthTitle, PButton } from "@/ui/kit";
  *
  * For channel="link" or "group", the request lands on the Pending Connections
  * list silently (no modal).
+ *
+ * Dismissing (button, scrim, or Escape) only mutes this modal — the request
+ * stays on the pending surfaces until explicitly approved/denied (user
+ * decision, 2026-07-08 walkthrough).
  */
 export function IncomingConnectionPrompt() {
   const me = useAccount(ArcanAccount, { resolve: { profile: true } });
   const pending = useIncomingConnectionRequests();
   if (!me.$isLoaded) return null;
-  const top = pending.find(({ request }) => (request as any).channel === "qr");
+  const top = pending.find(
+    ({ request, dismissedLocally }) =>
+      (request as any).channel === "qr" && !dismissedLocally,
+  );
   if (!top) return null;
   return <Body me={me as any} request={top.request} />;
 }
@@ -27,6 +35,9 @@ export function IncomingConnectionPrompt() {
 function Body({ me, request }: { me: any; request: any }) {
   const r = request as any;
   const shared = useSharedGroups(r.requesterAccountID);
+  // Live requester avatar — same resolver as message rows / home lists.
+  // Falls back to initials while unresolved (walkthrough fix, 2026-07-08).
+  const avatars = useAccountAvatars(me, r.requesterAccountID ? [r.requesterAccountID] : []);
   const toast = useToast();
 
   const onApprove = async () => {
@@ -62,7 +73,11 @@ function Body({ me, request }: { me: any; request: any }) {
       }
     >
       <div className="flex flex-col items-center gap-3">
-        <HAv txt={r.requesterDisplayName?.[0] ?? "?"} size={48} />
+        <HAv
+          txt={r.requesterDisplayName?.[0] ?? "?"}
+          src={avatars.get(r.requesterAccountID)}
+          size={48}
+        />
         <AuthTitle>{r.requesterDisplayName} wants to connect</AuthTitle>
         <p className="font-body text-ui-sub text-dim text-center">
           Scanned your code in person.

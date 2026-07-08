@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from "vitest";
 import { render, fireEvent, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
 import { PendingRequestsSection } from "@/components/pending-requests-section";
 
@@ -9,25 +9,35 @@ vi.mock("@/jazz/use-incoming-connection-requests", () => ({
   useIncomingConnectionRequests: () => pendingMock(),
 }));
 
-vi.mock("@/hooks/use-shared-groups", () => ({
-  useSharedGroups: () => [],
+vi.mock("@/components/use-account-avatars", () => ({
+  useAccountAvatars: () => new Map([["bob-account", "blob:bob-avatar"]]),
 }));
 
 const approveSpy = vi.fn(async () => undefined);
-const dismissSpy = vi.fn(async () => undefined);
+const denySpy = vi.fn(async () => undefined);
 vi.mock("@/jazz/invitations", () => ({
   approveConnectionRequest: (...a: any[]) => approveSpy(...a),
-  dismissConnectionRequest: (...a: any[]) => dismissSpy(...a),
+  denyConnectionRequest: (...a: any[]) => denySpy(...a),
 }));
 
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => ({ $isLoaded: true, profile: { displayName: "Alice" } }),
 }));
 
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-probe">{location.pathname}</div>;
+}
+
 function Wrap({ children }: { children: React.ReactNode }) {
   return (
-    <MemoryRouter>
-      <ToastProvider>{children}</ToastProvider>
+    <MemoryRouter initialEntries={["/"]}>
+      <ToastProvider>
+        <Routes>
+          <Route path="/" element={<>{children}</>} />
+          <Route path="/profile/:accountID" element={<LocationProbe />} />
+        </Routes>
+      </ToastProvider>
     </MemoryRouter>
   );
 }
@@ -68,7 +78,7 @@ describe("PendingRequestsSection", () => {
     expect(screen.getByText("Bob Tester")).toBeTruthy();
   });
 
-  test("approve fires approveConnectionRequest + a success toast", async () => {
+  test("approve (✓) fires approveConnectionRequest + a success toast", async () => {
     pendingMock.mockReturnValue(oneRequest);
     render(
       <Wrap>
@@ -80,7 +90,7 @@ describe("PendingRequestsSection", () => {
     await waitFor(() => expect(screen.getByText("contact added")).toBeTruthy());
   });
 
-  test("decline fires dismissConnectionRequest", async () => {
+  test("deny (✗) fires denyConnectionRequest", async () => {
     pendingMock.mockReturnValue(oneRequest);
     render(
       <Wrap>
@@ -88,6 +98,34 @@ describe("PendingRequestsSection", () => {
       </Wrap>
     );
     fireEvent.click(screen.getByTestId("pending-section-decline"));
-    await waitFor(() => expect(dismissSpy).toHaveBeenCalled());
+    await waitFor(() => expect(denySpy).toHaveBeenCalled());
+  });
+
+  test("row body opens the requester's profile", async () => {
+    pendingMock.mockReturnValue(oneRequest);
+    render(
+      <Wrap>
+        <PendingRequestsSection />
+      </Wrap>
+    );
+    fireEvent.click(screen.getByTestId("pending-section-open-profile"));
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe").textContent).toBe(
+        "/profile/bob-account",
+      ),
+    );
+  });
+
+  test("requester avatar image is rendered when resolvable", () => {
+    pendingMock.mockReturnValue(oneRequest);
+    render(
+      <Wrap>
+        <PendingRequestsSection />
+      </Wrap>
+    );
+    const img = screen
+      .getByTestId("pending-section-open-profile")
+      .querySelector("img");
+    expect(img?.getAttribute("src")).toBe("blob:bob-avatar");
   });
 });

@@ -1,0 +1,66 @@
+import { describe, test, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { ToastProvider } from "@/components/toast";
+import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
+
+const pendingMock = vi.fn();
+vi.mock("@/jazz/use-incoming-connection-requests", () => ({
+  useIncomingConnectionRequests: () => pendingMock(),
+}));
+
+vi.mock("@/hooks/use-shared-groups", () => ({
+  useSharedGroups: () => [],
+}));
+
+vi.mock("@/components/use-account-avatars", () => ({
+  useAccountAvatars: () => new Map([["bob-account", "blob:bob-avatar"]]),
+}));
+
+vi.mock("@/jazz/invitations", () => ({
+  approveConnectionRequest: vi.fn(async () => undefined),
+  dismissConnectionRequest: vi.fn(async () => undefined),
+}));
+
+vi.mock("jazz-tools/react", () => ({
+  useAccount: () => ({ $isLoaded: true, profile: { displayName: "Alice" } }),
+}));
+
+function makeEntry(dismissedLocally: boolean) {
+  return {
+    request: {
+      $jazz: { id: "req-1" },
+      requesterDisplayName: "Bob Tester",
+      requesterAccountID: "bob-account",
+      requesterFingerprint: "deadbeef".repeat(8),
+      channel: "qr",
+    },
+    dismissedLocally,
+  };
+}
+
+describe("IncomingConnectionPrompt", () => {
+  test("renders the modal for an undismissed qr request, with avatar image", () => {
+    pendingMock.mockReturnValue([makeEntry(false)]);
+    render(
+      <ToastProvider>
+        <IncomingConnectionPrompt />
+      </ToastProvider>
+    );
+    const modal = screen.getByTestId("incoming-connection-prompt");
+    expect(modal).toBeTruthy();
+    const img = modal.querySelector("img");
+    expect(img?.getAttribute("src")).toBe("blob:bob-avatar");
+  });
+
+  test("stays closed for a locally-dismissed qr request", () => {
+    // Dismissal mutes the modal only — the request remains on the pending
+    // surfaces (user decision, 2026-07-08 walkthrough).
+    pendingMock.mockReturnValue([makeEntry(true)]);
+    render(
+      <ToastProvider>
+        <IncomingConnectionPrompt />
+      </ToastProvider>
+    );
+    expect(screen.queryByTestId("incoming-connection-prompt")).toBeNull();
+  });
+});

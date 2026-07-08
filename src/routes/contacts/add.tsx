@@ -101,7 +101,9 @@ export function AddContactRoute() {
       }}
       primaryLabel={canShare ? "share invite" : "copy link"}
       onPrimary={() => void handlePrimary()}
-      onScan={() => navigate("/pair?role=responder")}
+      // Scan a contact-invite QR (/invite URLs) — NOT the device-pairing
+      // responder, which only accepts /pair URLs (walkthrough fix, 2026-07-08).
+      onScan={() => navigate("/contacts/scan")}
       onPaste={() => {
         const url = prompt("paste invite link");
         if (url) {

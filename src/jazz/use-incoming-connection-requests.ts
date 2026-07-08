@@ -82,7 +82,13 @@ export function useIncomingConnectionRequestInbox(me: any): void {
 
 /**
  * Read-only hook: resolves the durable `me.root.incomingRequests` list, applies
- * the dismissed/approved/expired filter, and returns the pending set.
+ * the approved/expired filter, and returns the pending set.
+ *
+ * Locally-dismissed requests are NOT filtered out (user decision, 2026-07-08
+ * walkthrough): dismissing the modal is "not now", not a decision. They are
+ * returned with `dismissedLocally: true` — the IncomingConnectionPrompt skips
+ * them (stays closed), the pending surfaces keep showing them until an
+ * explicit approve/deny.
  *
  * Does NOT create an inbox subscription — that lives solely in
  * useIncomingConnectionRequestInbox (mounted once in App.tsx). Both the
@@ -119,6 +125,5 @@ export function useIncomingConnectionRequests(): PendingRequest[] {
     .map((r: any) => ({
       request: r,
       dismissedLocally: dismissed.has(r.$jazz.id),
-    }))
-    .filter((p) => !p.dismissedLocally);
+    }));
 }
