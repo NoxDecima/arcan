@@ -61,9 +61,12 @@ fi
 TS_SERVE_URL=""
 TS_IP="${TS_IP:-}"
 if [ -z "${SKIP_TAILSCALE:-}" ] && command -v tailscale >/dev/null 2>&1; then
-  # Look for "https://..." line whose proxy target is localhost:5173.
+  # Look for "https://..." line whose proxy target is port 5173. Match both
+  # localhost and 127.0.0.1: hand-written `tailscale serve localhost:5173`
+  # configs say "localhost", but serve/funnel invoked with a bare port
+  # normalize the target to "127.0.0.1".
   TS_SERVE_URL="$(tailscale serve status 2>/dev/null \
-    | awk '/^https:\/\// {url=$1} /proxy http:\/\/localhost:5173/ {print url; exit}')"
+    | awk '/^https:\/\// {url=$1} /proxy http:\/\/(localhost|127\.0\.0\.1):5173/ {print url; exit}')"
   if [ -z "$TS_IP" ]; then
     TS_IP="$(tailscale ip -4 2>/dev/null | head -1 || true)"
   fi
@@ -81,18 +84,20 @@ if [ -n "$FUNNEL" ]; then
     exit 1
   fi
 
-  # Snapshot the pre-demo state, then revert on ANY exit: re-declaring the
-  # listener with plain `serve` flips it back to tailnet-only; if nothing
-  # was configured before, clear it entirely. Trap installed BEFORE the
-  # funnel command so no exit path can leave the URL public.
+  # Snapshot the pre-demo state, then revert on ANY exit: remove the public
+  # proxy first (`serve --bg 5173` alone does NOT displace an active funnel
+  # on :443 — it fails, which once left a machine with no config at all),
+  # then re-declare tailnet-only Serve if one existed before. Errors stay
+  # visible; `|| true` only keeps the trap itself from dying mid-revert.
+  # Trap installed BEFORE the funnel command so no exit path can leave the
+  # URL public.
   HAD_SERVE_5173="$TS_SERVE_URL"
   revert_funnel() {
     echo ""
     echo "Reverting public Funnel → tailnet-only…"
+    tailscale funnel --https=443 off || true
     if [ -n "$HAD_SERVE_5173" ]; then
-      tailscale serve --bg 5173 >/dev/null 2>&1 || true
-    else
-      tailscale serve reset >/dev/null 2>&1 || true
+      tailscale serve --bg 5173 || true
     fi
   }
   trap revert_funnel EXIT
@@ -107,7 +112,7 @@ if [ -n "$FUNNEL" ]; then
   FUNNEL_ACTIVE=1
 
   TS_SERVE_URL="$(tailscale serve status 2>/dev/null \
-    | awk '/^https:\/\// {url=$1} /proxy http:\/\/localhost:5173/ {print url; exit}')"
+    | awk '/^https:\/\// {url=$1} /proxy http:\/\/(localhost|127\.0\.0\.1):5173/ {print url; exit}')"
   if [ -z "$TS_SERVE_URL" ]; then
     echo "✗ Funnel reported success but no URL for :5173 in 'tailscale serve status'." >&2
     exit 1
