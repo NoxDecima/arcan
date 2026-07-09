@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "./scripts/dev-all.sh",
+    "dev:funnel": "./scripts/dev-all.sh --funnel",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
