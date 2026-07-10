@@ -1021,18 +1021,26 @@ export function DiagRoute() {
     async function run() {
       const results: Check[] = [];
 
-      results.push({
+      // Push a completed check live so results appear incrementally rather
+      // than all-at-once after the slowest check (WS 5 s timeout) resolves.
+      // A wedged check therefore cannot blank the screen for earlier results.
+      function report(check: Check) {
+        results.push(check);
+        if (alive) setChecks([...results]);
+      }
+
+      report({
         label: "environment",
         state: "pass",
         detail: `origin=${window.location.origin} tauri=${isTauri()} android=${isTauriAndroid()}`,
       });
 
-      results.push({
+      report({
         label: "secure context",
         state: window.isSecureContext ? "pass" : "fail",
       });
 
-      results.push({
+      report({
         label: "WebCrypto (crypto.subtle)",
         state: typeof crypto?.subtle?.digest === "function" ? "pass" : "fail",
       });
@@ -1049,30 +1057,42 @@ export function DiagRoute() {
           hashLength: 16,
           outputType: "hex",
         });
-        results.push({ label: "WASM (hash-wasm argon2id)", state: hash.length === 32 ? "pass" : "fail" });
+        report({ label: "WASM (hash-wasm argon2id)", state: hash.length === 32 ? "pass" : "fail" });
       } catch (e) {
-        results.push({ label: "WASM (hash-wasm argon2id)", state: "fail", detail: String(e) });
+        report({ label: "WASM (hash-wasm argon2id)", state: "fail", detail: String(e) });
       }
 
       try {
-        await new Promise<void>((resolve, reject) => {
-          const req = indexedDB.open("arcan-diag", 1);
-          req.onupgradeneeded = () => req.result.createObjectStore("kv");
-          req.onsuccess = () => {
-            const db = req.result;
-            const tx = db.transaction("kv", "readwrite");
-            tx.objectStore("kv").put(Date.now(), "probe");
-            tx.oncomplete = () => {
-              db.close();
-              resolve();
+        // 5 s timeout so a wedged IDB reports FAIL instead of hanging forever.
+        await Promise.race([
+          new Promise<void>((resolve, reject) => {
+            const req = indexedDB.open("arcan-diag", 1);
+            req.onupgradeneeded = () => req.result.createObjectStore("kv");
+            req.onsuccess = () => {
+              try {
+                const db = req.result;
+                const tx = db.transaction("kv", "readwrite");
+                tx.objectStore("kv").put(Date.now(), "probe");
+                tx.oncomplete = () => {
+                  db.close();
+                  // Fire-and-forget: clean up the probe DB so it doesn't linger.
+                  indexedDB.deleteDatabase("arcan-diag");
+                  resolve();
+                };
+                tx.onerror = () => reject(tx.error);
+              } catch (e) {
+                reject(e);
+              }
             };
-            tx.onerror = () => reject(tx.error);
-          };
-          req.onerror = () => reject(req.error);
-        });
-        results.push({ label: "IndexedDB write", state: "pass" });
+            req.onerror = () => reject(req.error);
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("IndexedDB open timed out after 5 s")), 5000)
+          ),
+        ]);
+        report({ label: "IndexedDB write", state: "pass" });
       } catch (e) {
-        results.push({ label: "IndexedDB write", state: "fail", detail: String(e) });
+        report({ label: "IndexedDB write", state: "fail", detail: String(e) });
       }
 
       const syncUrl = deriveSyncUrl();
@@ -1096,11 +1116,9 @@ export function DiagRoute() {
           resolve({ label: "sync WebSocket", state: "fail", detail: String(e) });
         }
       });
-      results.push(wsResult);
+      report(wsResult);
 
-      results.push({ label: "server origin", state: "pass", detail: getServerOrigin() });
-
-      if (alive) setChecks(results);
+      report({ label: "server origin", state: "pass", detail: getServerOrigin() });
     }
     void run();
     return () => {
@@ -1128,25 +1146,51 @@ export function DiagRoute() {
 }
 ```
 
-- [ ] **Step 3: Register the route**
+- [ ] **Step 3: Hoist the route above the Jazz provider in `src/main.tsx`**
 
-In `src/App.tsx`, add to imports and the route table (find the `<Routes>` block / `routeTable`):
+`/diag` must render **above** `MessangerProvider` (JazzReactProvider). The provider has a blocking `Loading…` fallback while Jazz initialises — but Jazz itself requires IndexedDB and WASM. On the broken platforms `/diag` exists to diagnose (no IndexedDB, broken WASM, etc.) Jazz never initialises, so `/diag` would never render if it were inside the provider. The fix is to short-circuit at the entry point before any provider mounts:
 
 ```tsx
-import { DiagRoute } from "@/routes/diag";
-// inside the route table, alongside other public routes:
-<Route path="/diag" element={<DiagRoute />} />
+// src/main.tsx — add import alongside App import
+import { DiagRoute } from './routes/diag.tsx'
+
+// Replace the single createRoot call with a conditional:
+// /diag is intentionally mounted ABOVE MessangerProvider (JazzReactProvider).
+// MessangerProvider has a blocking "Loading…" fallback that prevents rendering
+// until Jazz initialises — which itself requires IndexedDB and WASM. On the
+// broken platforms /diag exists to diagnose (no IndexedDB, broken WASM, etc.)
+// Jazz never initialises, so /diag would never render if it were inside the
+// provider. Theme/accent providers are also omitted here; dark-mode loss on
+// this single diagnostics page is acceptable. Token variables are available
+// because tokens.css and index.css are imported above.
+if (window.location.pathname === "/diag") {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <DiagRoute />
+    </StrictMode>,
+  );
+} else {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <MessangerProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </MessangerProvider>
+    </StrictMode>,
+  );
+}
 ```
 
-Check how existing public routes (e.g. `/auth/login`) are declared and mirror that exactly — the route must be reachable without authentication.
+Do **not** add a `/diag` route inside `src/App.tsx` — the registration in `main.tsx` is the single and only one. There is no need for an import of `DiagRoute` in `App.tsx`.
 
 - [ ] **Step 4: Verify + commit**
 
 Run: `npm run typecheck && npm run check-tokens && npx vitest run`
-Expected: PASS. Then open `http://localhost:5173/diag` in a browser (with `npm run sync` running): all checks green.
+Expected: PASS. Then open `http://localhost:5173/diag` in a browser (with `npm run sync` running): checks appear incrementally and all turn green.
 
 ```bash
-git add gen/android src/routes/diag.tsx src/App.tsx
+git add gen/android src/routes/diag.tsx src/main.tsx
 git commit -m "feat(android): gen/android project + /diag phase-0 diagnostics screen"
 ```
 

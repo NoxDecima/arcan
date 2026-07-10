@@ -14,7 +14,6 @@ import { MembersRoute } from "./routes/conversations/members";
 import { NewConversationRoute } from "./routes/conversations/new";
 import { LoginRoute } from "./routes/auth/login";
 import { RecoveryRoute } from "./routes/auth/recovery";
-import { DiagRoute } from "@/routes/diag";
 import { PendingConnectionsRoute } from "@/routes/connections/pending";
 import { LiveInvitesRoute } from "@/routes/connections/live-invites";
 import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
@@ -126,19 +125,6 @@ function App() {
             </Routes>
           </ToastProvider>
         </AccentProvider>
-      </ThemeProvider>
-    );
-  }
-
-  // Allow /diag regardless of auth state — Phase-0 device diagnostics screen;
-  // must be reachable without a signed-in account (the whole point is to verify
-  // that the platform prerequisites are met before auth even runs).
-  if (location.pathname === "/diag") {
-    return (
-      <ThemeProvider>
-        <Routes>
-          <Route path="/diag" element={<DiagRoute />} />
-        </Routes>
       </ThemeProvider>
     );
   }

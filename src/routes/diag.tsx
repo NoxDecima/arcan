@@ -23,18 +23,26 @@ export function DiagRoute() {
     async function run() {
       const results: Check[] = [];
 
-      results.push({
+      // Push a completed check live so results appear incrementally rather
+      // than all-at-once after the slowest check (WS 5 s timeout) resolves.
+      // A wedged check therefore cannot blank the screen for earlier results.
+      function report(check: Check) {
+        results.push(check);
+        if (alive) setChecks([...results]);
+      }
+
+      report({
         label: "environment",
         state: "pass",
         detail: `origin=${window.location.origin} tauri=${isTauri()} android=${isTauriAndroid()}`,
       });
 
-      results.push({
+      report({
         label: "secure context",
         state: window.isSecureContext ? "pass" : "fail",
       });
 
-      results.push({
+      report({
         label: "WebCrypto (crypto.subtle)",
         state: typeof crypto?.subtle?.digest === "function" ? "pass" : "fail",
       });
@@ -51,30 +59,42 @@ export function DiagRoute() {
           hashLength: 16,
           outputType: "hex",
         });
-        results.push({ label: "WASM (hash-wasm argon2id)", state: hash.length === 32 ? "pass" : "fail" });
+        report({ label: "WASM (hash-wasm argon2id)", state: hash.length === 32 ? "pass" : "fail" });
       } catch (e) {
-        results.push({ label: "WASM (hash-wasm argon2id)", state: "fail", detail: String(e) });
+        report({ label: "WASM (hash-wasm argon2id)", state: "fail", detail: String(e) });
       }
 
       try {
-        await new Promise<void>((resolve, reject) => {
-          const req = indexedDB.open("arcan-diag", 1);
-          req.onupgradeneeded = () => req.result.createObjectStore("kv");
-          req.onsuccess = () => {
-            const db = req.result;
-            const tx = db.transaction("kv", "readwrite");
-            tx.objectStore("kv").put(Date.now(), "probe");
-            tx.oncomplete = () => {
-              db.close();
-              resolve();
+        // 5 s timeout so a wedged IDB reports FAIL instead of hanging forever.
+        await Promise.race([
+          new Promise<void>((resolve, reject) => {
+            const req = indexedDB.open("arcan-diag", 1);
+            req.onupgradeneeded = () => req.result.createObjectStore("kv");
+            req.onsuccess = () => {
+              try {
+                const db = req.result;
+                const tx = db.transaction("kv", "readwrite");
+                tx.objectStore("kv").put(Date.now(), "probe");
+                tx.oncomplete = () => {
+                  db.close();
+                  // Fire-and-forget: clean up the probe DB so it doesn't linger.
+                  indexedDB.deleteDatabase("arcan-diag");
+                  resolve();
+                };
+                tx.onerror = () => reject(tx.error);
+              } catch (e) {
+                reject(e);
+              }
             };
-            tx.onerror = () => reject(tx.error);
-          };
-          req.onerror = () => reject(req.error);
-        });
-        results.push({ label: "IndexedDB write", state: "pass" });
+            req.onerror = () => reject(req.error);
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("IndexedDB open timed out after 5 s")), 5000)
+          ),
+        ]);
+        report({ label: "IndexedDB write", state: "pass" });
       } catch (e) {
-        results.push({ label: "IndexedDB write", state: "fail", detail: String(e) });
+        report({ label: "IndexedDB write", state: "fail", detail: String(e) });
       }
 
       const syncUrl = deriveSyncUrl();
@@ -98,11 +118,9 @@ export function DiagRoute() {
           resolve({ label: "sync WebSocket", state: "fail", detail: String(e) });
         }
       });
-      results.push(wsResult);
+      report(wsResult);
 
-      results.push({ label: "server origin", state: "pass", detail: getServerOrigin() });
-
-      if (alive) setChecks(results);
+      report({ label: "server origin", state: "pass", detail: getServerOrigin() });
     }
     void run();
     return () => {
