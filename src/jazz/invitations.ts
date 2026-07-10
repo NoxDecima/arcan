@@ -22,6 +22,7 @@ import { Invitation } from "./schema/Invitation";
 import { ConnectionRequest } from "./schema/ConnectionRequest";
 import { Contact } from "./schema/Contact";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getServerOrigin } from "@/platform/server-config";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -112,8 +113,10 @@ export async function createInvitation(
   const fragment = toB64url(
     `${(invitation as any).$jazz.id}|${me.$jazz.id}`,
   );
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "https://arcan.app";
+  // getServerOrigin() returns window.location.origin on web (unchanged behavior)
+  // and the baked/overridden origin in the Tauri shell — so generated invite
+  // URLs point at the correct server rather than tauri.localhost.
+  const baseUrl = getServerOrigin();
   const url = `${baseUrl}/invite#${fragment}`;
 
   return { invitation, url };

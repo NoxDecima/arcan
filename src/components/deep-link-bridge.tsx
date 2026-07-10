@@ -58,7 +58,7 @@ export function DeepLinkBridge() {
         const host = new URL(incoming.origin).host;
         const ok = await confirmRef.current({
           title: "Switch server?",
-          body: `You'll be signing in through ${host} — everything you send will go through that server. Only switch if you trust its operator. You'll be signed out here first.`,
+          body: `You'll be signing in through ${host} — everything you send will go through that server. Only switch if you trust its operator. You'll be signed out of your account session here first.`,
           confirmLabel: "switch server",
           danger: true,
         });
@@ -83,18 +83,12 @@ export function DeepLinkBridge() {
           return;
         }
 
-        // Stash the pending invite AFTER persist succeeds (M1: the new
-        // context needs it available when it loads the invite route).
-        if (incoming.isInvite && incoming.hash) {
-          try {
-            sessionStorage.setItem("pending-invite-fragment", incoming.hash);
-          } catch {
-            /* degrade gracefully — invite replay skipped */
-          }
-        }
-
         clearAuthToken();
-        window.location.assign(incoming.isInvite ? "/" : incoming.to);
+        // Navigate directly to the invite URL. The /invite route itself stashes
+        // the pending-invite-fragment for unauthenticated arrivals, so we do NOT
+        // stash here — that was redundant and caused authenticated users landing
+        // on /invite after a server switch to be bounced to / instead.
+        window.location.assign(incoming.to);
       })();
     }).then((fn) => {
       // If the component unmounted before init resolved, invoke unlisten

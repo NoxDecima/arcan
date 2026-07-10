@@ -99,12 +99,19 @@ export function getServerOrigin(): string {
 
 /**
  * The WebSocket sync URL. Priority:
- * 1. VITE_SYNC_URL (explicit dev/build override — unchanged behavior)
+ * 1. VITE_SYNC_URL — respected on web (which may legitimately pin it in
+ *    deploys) and in Tauri dev builds (android dev via devUrl still needs it).
+ *    In Tauri production builds it is intentionally ignored: a pinned dev URL
+ *    would silently defeat the baked origin + runtime override.
  * 2. derived from getServerOrigin(): wss for https, ws for http
  */
 export function deriveSyncUrl(): `ws://${string}` | `wss://${string}` {
   const envUrl = import.meta.env.VITE_SYNC_URL || undefined;
-  if (envUrl) return envUrl as `ws://${string}` | `wss://${string}`;
+  // Allow VITE_SYNC_URL on web or in Tauri dev; skip it in Tauri production
+  // builds so the baked origin governs.
+  if (envUrl && (!isTauri() || import.meta.env.MODE !== "production")) {
+    return envUrl as `ws://${string}` | `wss://${string}`;
+  }
   const origin = new URL(getServerOrigin());
   const proto = origin.protocol === "https:" ? "wss" : "ws";
   return `${proto}://${origin.host}/sync/`;

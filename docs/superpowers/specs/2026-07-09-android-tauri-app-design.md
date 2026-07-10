@@ -143,8 +143,12 @@ client. The sync WebSocket is unaffected (it does not use cookie auth).
   `sessionStorage` mechanism), reloads, continues the flow.
 - **Limitations, documented**: verified App Links exist only for the baked domain (Android
   design constraint — runtime domains cannot be added). Foreign-instance links tapped in a chat
-  open the browser; in-app QR scanning works for any instance. A custom `arcan://` scheme is a
-  deferred follow-up if multi-instance usage materializes.
+  open the browser. In-app QR scanning intentionally drops foreign-origin results (the contacts
+  scan screen classifies scanned URLs and rejects origins that don't match the current server);
+  foreign-instance QRs currently require the switch-server flow via a tapped link or manual
+  server override. Routing scan results through `classifyIncomingUrl` to trigger the switch-server
+  prompt is a follow-up. A custom `arcan://` scheme is a deferred follow-up if multi-instance
+  usage materializes.
 
 ## Notifications (foreground-only v1)
 

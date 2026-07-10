@@ -105,6 +105,15 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Check ARCAN_ORIGIN is set for release tags
+        # Refuse to bake the placeholder origin into a release APK — the app
+        # would ship pointing at https://arcan.example.
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          [ -n "$VITE_ARCAN_ORIGIN" ] || { echo "::error::ARCAN_ORIGIN repo variable is not set — refusing to bake the placeholder into a release"; exit 1; }
+        env:
+          VITE_ARCAN_ORIGIN: ${{ vars.ARCAN_ORIGIN }}
+
       - name: Build APK
         # NOTE: The exact APK output path can differ by Tauri CLI version.
         # After the first CI run, check the build log and correct the path:

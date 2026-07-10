@@ -119,7 +119,7 @@ describe("deriveSyncUrl", () => {
     vi.stubEnv("VITE_SYNC_URL", "");
   });
 
-  it("uses VITE_SYNC_URL verbatim when set", () => {
+  it("uses VITE_SYNC_URL verbatim on web when set", () => {
     vi.stubEnv("VITE_SYNC_URL", "ws://192.168.1.42:4200");
     expect(deriveSyncUrl()).toBe("ws://192.168.1.42:4200");
   });
@@ -132,5 +132,29 @@ describe("deriveSyncUrl", () => {
 
   it("derives from window.location on web (existing behavior)", () => {
     expect(deriveSyncUrl()).toBe(`ws://${window.location.host}/sync/`);
+  });
+
+  it("ignores VITE_SYNC_URL in a Tauri production build (MODE=production)", async () => {
+    // import.meta.env.DEV is transformed to a boolean literal by Vite and
+    // cannot be overridden via vi.stubEnv at runtime. The source uses
+    // import.meta.env.MODE !== "production" instead — that IS patchable via
+    // vi.stubEnv("MODE", "production") + resetModules re-import.
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    vi.stubEnv("VITE_SYNC_URL", "ws://192.168.1.42:4200");
+    vi.stubEnv("MODE", "production");
+    vi.resetModules();
+    const { deriveSyncUrl: deriveSyncUrlFresh } = await import("@/platform/server-config");
+    expect(deriveSyncUrlFresh()).toBe("wss://chat.meteory.eu/sync/");
+  });
+
+  it("uses VITE_SYNC_URL in a Tauri dev build (MODE=development)", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    vi.stubEnv("VITE_SYNC_URL", "ws://192.168.1.42:4200");
+    vi.stubEnv("MODE", "development");
+    vi.resetModules();
+    const { deriveSyncUrl: deriveSyncUrlFresh } = await import("@/platform/server-config");
+    expect(deriveSyncUrlFresh()).toBe("ws://192.168.1.42:4200");
   });
 });
