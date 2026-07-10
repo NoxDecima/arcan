@@ -58,7 +58,7 @@ Session research (2026-07-08) established the platform facts this design relies 
 
 ```
 src-tauri/            Tauri crate: tauri.conf.json, capabilities/, icons/, lib.rs
-gen/android/          generated Gradle/Kotlin project (committed)
+src-tauri/gen/android/  generated Gradle/Kotlin project (committed)
 src/platform/         platform abstraction layer (the ONLY module that may import @tauri-apps/*)
 ```
 
