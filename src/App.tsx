@@ -26,6 +26,7 @@ import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
@@ -202,6 +203,7 @@ function App() {
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
+          <ConfirmProvider>
           <SidebarTabProvider>
             {/* Unit 7: sync persisted appearance settings (theme + accent) into
                 ThemeProvider + AccentProvider on sign-in. Authenticated only —
@@ -222,6 +224,7 @@ function App() {
             {/* Unit 10: the kit PTabBar lives in AppShell's MobileShell
                 tabBar slot (legacy MobileTabBar deleted in Phase 4). */}
           </SidebarTabProvider>
+          </ConfirmProvider>
         </ToastProvider>
       </AccentProvider>
     </ThemeProvider>
