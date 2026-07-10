@@ -28,6 +28,10 @@ export function NavColumn(props: {
   pendingSlot?: ReactNode;
   chatsEmptyText?: string;
   contactsEmptyText?: string;
+  /** intent-fix (feedback round 2): pending-connection-requests count pill
+   * on the contacts tab. Default (undefined/0) renders nothing — parity
+   * cells omit it. */
+  contactsBadge?: number;
 }): JSX.Element {
   const {
     profile,
@@ -44,6 +48,7 @@ export function NavColumn(props: {
     pendingSlot,
     chatsEmptyText = DEFAULT_CHATS_EMPTY,
     contactsEmptyText = DEFAULT_CONTACTS_EMPTY,
+    contactsBadge,
   } = props;
 
   return (
@@ -99,6 +104,15 @@ export function NavColumn(props: {
               >
                 {key}
               </span>
+              {key === "contacts" && !!contactsBadge && (
+                <span
+                  data-testid="nav-pending-badge"
+                  className="min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+                  style={{ lineHeight: "17px" }}
+                >
+                  {contactsBadge > 99 ? "99+" : contactsBadge}
+                </span>
+              )}
             </button>
           );
         })}
