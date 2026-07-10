@@ -724,9 +724,22 @@ export function useConversationInboxSubscription(me: any) {
               // load). Check typeof before calling to avoid runtime errors.
               const known = me?.root?.knownConversations;
               if (!known || typeof (known as any).$jazz?.push !== "function") return;
-              const alreadyKnown = Array.from(known as Iterable<any>).some(
-                (c: any) => c?.$jazz?.id === conversationID,
-              );
+
+              // Dedup by raw CoValue ID — reads cojson list entries directly,
+              // bypassing the Jazz proxy/subscription-scope machinery. This
+              // avoids any edge-case where proxy resolution in a non-reactive
+              // context (inbox callback is outside React) could yield an
+              // unexpected result. The raw list stores CoValue ID strings
+              // directly; `raw.get(i)` returns the ID or undefined for each
+              // index, which is safe to compare against conversationID.
+              const rawLen = (known as any).$jazz.raw.length() as number;
+              let alreadyKnown = false;
+              for (let i = 0; i < rawLen; i++) {
+                if ((known as any).$jazz.raw.get(i) === conversationID) {
+                  alreadyKnown = true;
+                  break;
+                }
+              }
               if (alreadyKnown) return;
 
               (known as any).$jazz.push(conversation);
