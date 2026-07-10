@@ -86,6 +86,7 @@ export function ContactsScreen({
         onClick={onAddContact}
         aria-label="add contact"
         data-testid={tid("fab")}
+        variant="contacts"
       />
     </>
   );

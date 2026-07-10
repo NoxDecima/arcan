@@ -167,6 +167,7 @@ export function NavColumn(props: {
         onClick={onFab}
         aria-label={tab === "chats" ? "new conversation" : "add contact"}
         data-testid="fab"
+        variant={tab}
       />
     </div>
   );
