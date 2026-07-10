@@ -41,6 +41,15 @@ original feature slices above, a separate track).
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
+### Native shells
+
+- Android (Tauri 2 bundled shell) — IN PROGRESS on branch `worktree-android-tauri-spec`.
+  Spec: `docs/superpowers/specs/2026-07-09-android-tauri-app-design.md`.
+  Plan: `docs/superpowers/plans/2026-07-09-android-tauri-app.md`.
+  `src/platform/` is the only layer that may import `@tauri-apps/*`
+  (enforced by `npm run check-platform-purity`). Follow-ups: background
+  push notifier spec; Windows/Linux desktop shell spec.
+
 ## Issue tracking
 
 Linear: team=Nox project=Arcan

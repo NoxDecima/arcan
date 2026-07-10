@@ -76,6 +76,19 @@ add client-side routes under them, they'll be shadowed by Caddy's handlers.
 If we ever need either path back, the fix is renaming the prefix (e.g.
 `/jazz-sync/*`) or splitting the relevant service onto its own subdomain.
 
+## Android App Links
+
+The Android app opens https://$DOMAIN/invite and /pair links directly. For
+Android to verify that, serve `.well-known/assetlinks.json` from the SPA
+web root (the existing `handle` block's `file_server` serves it — just add
+the file):
+
+    cp assetlinks.json.example <caddy-webroot>/.well-known/assetlinks.json
+
+Fill in the release-key SHA256 fingerprint per docs/android-signing.md.
+Verify after deploy: https://$DOMAIN/.well-known/assetlinks.json returns
+JSON with content-type application/json.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
