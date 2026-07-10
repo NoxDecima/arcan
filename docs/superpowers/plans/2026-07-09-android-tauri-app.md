@@ -635,7 +635,8 @@ export const SHELL_ORIGINS = [
 const authConfig = {
   // … existing fields unchanged …
   trustedOrigins: SHELL_ORIGINS,
-  plugins: [jazzZkPlugin(), bearer()],
+  // Reject raw session tokens — only the signed token from set-auth-token authenticates.
+  plugins: [jazzZkPlugin(), bearer({ requireSignature: true })],
 };
 
 // After `const app = new Hono();` and BEFORE the /api/auth/* handler:

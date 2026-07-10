@@ -11,8 +11,6 @@ import { LinearClient } from "./linear-client.js";
 import { registerFeedbackRoute } from "./feedback-route.js";
 import { SHELL_ORIGINS } from "./shell-origins.js";
 
-export { SHELL_ORIGINS };
-
 const db = createDatabase();
 
 const authConfig = {
@@ -30,7 +28,8 @@ const authConfig = {
     window: env.AUTH_RATE_LIMIT_WINDOW,
     max: env.AUTH_RATE_LIMIT_MAX,
   },
-  plugins: [jazzZkPlugin(), bearer()],
+  // Reject raw session tokens — only the signed token from set-auth-token authenticates.
+  plugins: [jazzZkPlugin(), bearer({ requireSignature: true })],
 };
 
 export const auth = betterAuth(authConfig);

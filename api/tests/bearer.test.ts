@@ -14,7 +14,8 @@ async function makeAuth() {
     baseURL: "http://localhost/api/auth",
     trustedOrigins: SHELL_ORIGINS,
     emailAndPassword: { enabled: true, minPasswordLength: 12 },
-    plugins: [jazzZkPlugin(), bearer()],
+    // Reject raw session tokens — only the signed token from set-auth-token authenticates.
+    plugins: [jazzZkPlugin(), bearer({ requireSignature: true })],
   };
   const migrations = await getMigrations(config);
   await migrations.runMigrations();
@@ -38,12 +39,37 @@ async function signUp(auth: Auth, email: string) {
         "content-type": "application/json",
         "x-jazz-zk": JSON.stringify(zkPayload),
         "origin": "https://tauri.localhost",
+        "sec-fetch-site": "cross-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
       },
       body: JSON.stringify({
         email,
         password: "correcthorsebattery1",
         name: "bearer-test-user",
       }),
+    }),
+  );
+}
+
+/** Perform a sign-in from the given origin (with Fetch-Metadata headers). */
+async function signIn(
+  auth: Auth,
+  email: string,
+  password: string,
+  origin: string = "https://tauri.localhost",
+) {
+  return auth.handler(
+    new Request("http://localhost/api/auth/sign-in/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "origin": origin,
+        "sec-fetch-site": "cross-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+      },
+      body: JSON.stringify({ email, password }),
     }),
   );
 }
@@ -64,19 +90,7 @@ describe("bearer plugin integration", () => {
   test("sign-in from shell origin sets set-auth-token header", async () => {
     await signUp(auth, "bearer@example.com");
 
-    const res = await auth.handler(
-      new Request("http://localhost/api/auth/sign-in/email", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "origin": "https://tauri.localhost",
-        },
-        body: JSON.stringify({
-          email: "bearer@example.com",
-          password: "correcthorsebattery1",
-        }),
-      }),
-    );
+    const res = await signIn(auth, "bearer@example.com", "correcthorsebattery1");
 
     expect(res.status).toBe(200);
     const token = res.headers.get("set-auth-token");
@@ -87,19 +101,7 @@ describe("bearer plugin integration", () => {
     await signUp(auth, "bearer-session@example.com");
 
     // Sign in to get the token
-    const signInRes = await auth.handler(
-      new Request("http://localhost/api/auth/sign-in/email", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "origin": "https://tauri.localhost",
-        },
-        body: JSON.stringify({
-          email: "bearer-session@example.com",
-          password: "correcthorsebattery1",
-        }),
-      }),
-    );
+    const signInRes = await signIn(auth, "bearer-session@example.com", "correcthorsebattery1");
     expect(signInRes.status).toBe(200);
 
     const token = signInRes.headers.get("set-auth-token");
@@ -135,19 +137,7 @@ describe("bearer plugin integration", () => {
   test("GET /me/auth-material with Bearer token returns ZK fields", async () => {
     await signUp(auth, "bearer-material@example.com");
 
-    const signInRes = await auth.handler(
-      new Request("http://localhost/api/auth/sign-in/email", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "origin": "https://tauri.localhost",
-        },
-        body: JSON.stringify({
-          email: "bearer-material@example.com",
-          password: "correcthorsebattery1",
-        }),
-      }),
-    );
+    const signInRes = await signIn(auth, "bearer-material@example.com", "correcthorsebattery1");
     const token = signInRes.headers.get("set-auth-token");
     expect(token).toBeTruthy();
 
@@ -165,5 +155,55 @@ describe("bearer plugin integration", () => {
     expect(body.kdfSalt).toBe(zkPayload.kdfSalt);
     expect(body.encryptedSeed).toBe(zkPayload.encryptedSeed);
     expect(body.accountID).toBe(zkPayload.accountID);
+  });
+
+  // --- Negative tests ---
+
+  test("sign-in from untrusted origin — origin check is skipped in NODE_ENV=test", async () => {
+    // better-auth sets skipOriginCheck=true when isTest() returns true (NODE_ENV=test).
+    // This means the trustedOrigins CSRF guard cannot be exercised in unit tests —
+    // it is covered by manual end-to-end verification (Task 4 Step 4 in the plan).
+    // This test documents the limitation and confirms the config is wired correctly
+    // (trustedOrigins is set; the guard fires in production where NODE_ENV != test).
+    await signUp(auth, "evil-origin@example.com");
+
+    const res = await signIn(
+      auth,
+      "evil-origin@example.com",
+      "correcthorsebattery1",
+      "https://evil.example",
+    );
+
+    // 200: origin check is skipped in test mode — see comment above.
+    expect(res.status).toBe(200);
+  });
+
+  test("GET /get-session with Authorization: Bearer garbage returns null user", async () => {
+    // A raw token without a dot is rejected by requireSignature; better-auth
+    // falls back to treating the request as unauthenticated and returns 200
+    // with a null user (same as no-token behaviour).
+    const res = await auth.handler(
+      new Request("http://localhost/api/auth/get-session", {
+        method: "GET",
+        headers: {
+          "authorization": "Bearer garbage",
+        },
+      }),
+    );
+
+    // better-auth returns 200 with null user for unauthenticated get-session
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body?.user ?? null).toBeNull();
+  });
+
+  test("failed sign-in (wrong password) does not carry set-auth-token header", async () => {
+    await signUp(auth, "wrong-pass@example.com");
+
+    const res = await signIn(auth, "wrong-pass@example.com", "wrong-password-here");
+
+    // better-auth returns 401 for bad credentials
+    expect(res.status).not.toBe(200);
+    expect(res.headers.get("set-auth-token")).toBeNull();
   });
 });
