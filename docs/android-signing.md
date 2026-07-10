@@ -56,7 +56,7 @@ android {
             if (keystorePropertiesFile.exists()) {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                storeFile = file(keystoreProperties["storeFile"] as String)  // resolves relative paths against app/ — the CI writes an ABSOLUTE path so this just works; local builds should use an absolute path in their keystore.properties too
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }

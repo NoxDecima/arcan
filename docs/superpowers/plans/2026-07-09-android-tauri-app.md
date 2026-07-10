@@ -2267,9 +2267,10 @@ jobs:
       - name: Decode signing keystore
         if: startsWith(github.ref, 'refs/tags/android-v')
         run: |
-          echo "$ANDROID_KEYSTORE_B64" | base64 -d > gen/android/keystore.jks
+          [ -n "$ANDROID_KEYSTORE_B64" ] || { echo "::error::ANDROID_KEYSTORE_B64 secret is not set — cannot sign a release"; exit 1; }
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
           cat > gen/android/keystore.properties <<EOF
-          storeFile=keystore.jks
+          storeFile=$RUNNER_TEMP/keystore.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$ANDROID_KEY_PASSWORD
