@@ -20,6 +20,7 @@
     "check-tokens": "./scripts/check-tokens.sh",
     "typecheck": "tsc -b",
     "check-ui-purity": "./scripts/check-ui-purity.sh",
+    "check-platform-purity": "./scripts/check-platform-purity.sh",
     "parity": "node tests/parity/run-parity.mjs",
     "tauri": "tauri",
     "android:dev": "tauri android dev",
