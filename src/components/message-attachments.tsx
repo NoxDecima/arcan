@@ -14,14 +14,14 @@ interface MessageAttachmentsProps {
 }
 
 export function MessageAttachments({ message, isMine, me }: MessageAttachmentsProps) {
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; filename?: string } | null>(null);
 
   // Revoke the lightbox blob URL on unmount and whenever it changes.
   useEffect(() => {
     return () => {
-      if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
+      if (lightbox) URL.revokeObjectURL(lightbox.src);
     };
-  }, [lightboxSrc]);
+  }, [lightbox]);
 
   const attachments = Array.from((message as any).attachments ?? []);
   if (attachments.length === 0) return null;
@@ -32,11 +32,11 @@ export function MessageAttachments({ message, isMine, me }: MessageAttachmentsPr
     const blob = await co.fileStream().loadAsBlob(id, { loadAs: me });
     if (!blob) return;
     const url = URL.createObjectURL(blob);
-    setLightboxSrc(url);
+    setLightbox({ src: url, filename: att?.filename });
   }
 
   function closeLightbox() {
-    setLightboxSrc(null);
+    setLightbox(null);
   }
 
   return (
@@ -55,8 +55,8 @@ export function MessageAttachments({ message, isMine, me }: MessageAttachmentsPr
           />
         ))}
       </div>
-      {lightboxSrc && (
-        <ImageLightbox src={lightboxSrc} onClose={closeLightbox} />
+      {lightbox && (
+        <ImageLightbox src={lightbox.src} filename={lightbox.filename} onClose={closeLightbox} />
       )}
     </>
   );

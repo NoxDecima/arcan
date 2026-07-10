@@ -7,9 +7,12 @@ interface ImageLightboxProps {
   src: string;
   alt?: string;
   onClose: () => void;
+  /** intent-fix (feedback round 2): when provided, renders a download button
+   * top-left. Optional so the avatar lightbox call site is unaffected. */
+  filename?: string;
 }
 
-export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
+export function ImageLightbox({ src, alt, onClose, filename }: ImageLightboxProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
@@ -30,6 +33,18 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       onClick={onClose}
       className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 animate-arcan-fade-in"
     >
+      <a
+        href={src}
+        download={filename || "image"}
+        onClick={(e) => e.stopPropagation()}
+        aria-label="download image"
+        data-testid="image-lightbox-download"
+        className={`${tapClass} absolute top-4 left-4 text-text-2 bg-black/40 rounded-r-3 w-10 h-10 justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft`}
+      >
+        {/* intent-fix (feedback round 2): "share" is the closest available
+            glyph — a dedicated download icon is out of scope. */}
+        <Icon d="share" size={18} />
+      </a>
       <button
         type="button"
         onClick={onClose}

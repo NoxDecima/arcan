@@ -99,8 +99,8 @@ export function AttachmentTile({
           <img
             src={url}
             alt={filename}
-            className="rounded max-w-full max-h-48 object-contain border border-border"
-            style={{ maxWidth: 280, maxHeight: 200 }}
+            className="rounded max-w-full object-contain border border-border"
+            style={{ maxWidth: 280, maxHeight: 280 }}
           />
         ) : (
           <div className="w-48 h-32 flex items-center justify-center bg-muted text-xs text-muted-foreground rounded">
