@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/toast";
 import { FeedbackScreen } from "@/ui/screens/feedback-screen";
 import { authFetch } from "@/platform/auth-transport";
+import { pickFilesNative } from "@/platform/files";
 
 const CATEGORIES: [string, string][] = [
   ["bug", "Bug"],
@@ -29,16 +30,31 @@ export function FeedbackRoute() {
   const [files, setFiles] = useState<File[]>([]);
   // email state removed (user decision, 2026-07-05 walkthrough): inferred server-side
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
 
   const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
   const overCap = totalBytes > MAX_TOTAL_BYTES;
   const canSubmit = message.trim().length > 0 && !overCap && !submitting;
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFiles = Array.from(e.target.files ?? []);
+  function ingestFiles(newFiles: File[]) {
     setFiles((prev) => [...prev, ...newFiles]);
+  }
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    ingestFiles(Array.from(e.target.files ?? []));
     e.target.value = "";
   };
+
+  async function openPicker(inputRef: React.RefObject<HTMLInputElement | null>) {
+    const native = await pickFilesNative({ multiple: true });
+    if (native !== null) {
+      if (native.length > 0) ingestFiles(native);
+      return;
+    }
+    inputRef.current?.click();
+  }
+
   const removeFile = (idx: number) =>
     setFiles((prev) => prev.filter((_, i) => i !== idx));
 
@@ -71,16 +87,24 @@ export function FeedbackRoute() {
   // ── attachment slot ───────────────────────────────────────────────────────
   const attachmentSlot =
     files.length === 0 ? (
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-r-3 border border-dashed border-hairline p-3 text-sm text-text-2 hover:bg-panel-2">
+      <div className="flex cursor-pointer items-center justify-center gap-2 rounded-r-3 border border-dashed border-hairline p-3 text-sm text-text-2 hover:bg-panel-2">
+        {/* Hidden input keeps data-testid for Playwright setInputFiles */}
         <input
+          ref={fileInputRef}
           type="file"
           multiple
           onChange={onFileChange}
           className="hidden"
           data-testid="feedback-file-input"
         />
-        <span>add a screenshot (any type, ≤10 MB total)</span>
-      </label>
+        <button
+          type="button"
+          className="flex items-center gap-2"
+          onClick={() => void openPicker(fileInputRef)}
+        >
+          <span>add a screenshot (any type, ≤10 MB total)</span>
+        </button>
+      </div>
     ) : (
       <div className="flex flex-col gap-2">
         {files.map((f, i) => (
@@ -105,10 +129,21 @@ export function FeedbackRoute() {
             </button>
           </div>
         ))}
-        <label className="cursor-pointer self-start text-xs text-arcan-accent">
-          <input type="file" multiple onChange={onFileChange} className="hidden" />
+        {/* Hidden input for Playwright; native path goes through openPicker */}
+        <input
+          ref={addMoreInputRef}
+          type="file"
+          multiple
+          onChange={onFileChange}
+          className="hidden"
+        />
+        <button
+          type="button"
+          className="cursor-pointer self-start text-xs text-arcan-accent"
+          onClick={() => void openPicker(addMoreInputRef)}
+        >
           + add more
-        </label>
+        </button>
         <div className="text-xs text-dim">
           total: {Math.ceil(totalBytes / 1024)} KB /{" "}
           {Math.ceil(MAX_TOTAL_BYTES / 1024 / 1024)} MB

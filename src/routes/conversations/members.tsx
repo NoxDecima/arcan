@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -400,10 +401,7 @@ export function MembersRoute() {
 
   // ── icon upload ──────────────────────────────────────────────────────────
 
-  async function handleIconChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function ingestIcon(file: File) {
     if (!iAmAdmin) return;
     if (file.size > MAX_ATTACHMENT_BYTES) {
       toast({
@@ -426,6 +424,13 @@ export function MembersRoute() {
     } finally {
       setIconUploading(false);
     }
+  }
+
+  async function handleIconChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await ingestIcon(file);
   }
 
   // ── view-model ───────────────────────────────────────────────────────────
@@ -475,7 +480,14 @@ export function MembersRoute() {
         sub={`${memberCount} ${memberCount === 1 ? "member" : "members"}`}
         onEditAvatar={
           iAmAdmin
-            ? () => iconInputRef.current?.click()
+            ? () => void (async () => {
+                const native = await pickFilesNative({ imagesOnly: true, multiple: false });
+                if (native !== null) {
+                  if (native.length > 0) await ingestIcon(native[0]);
+                  return;
+                }
+                iconInputRef.current?.click();
+              })()
             : undefined
         }
         onEditTitle={iAmAdmin ? startTitleEdit : undefined}

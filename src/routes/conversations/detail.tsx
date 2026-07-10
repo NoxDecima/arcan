@@ -35,6 +35,7 @@
  */
 
 import { useRef, useEffect, useState, type ChangeEvent, type ClipboardEvent } from "react";
+import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -552,7 +553,12 @@ export function ConversationDetailRoute() {
     }
   }
 
-  function handlePickClick() {
+  async function handlePickClick() {
+    const native = await pickFilesNative({ multiple: true });
+    if (native !== null) {
+      if (native.length > 0) ingestFiles(native);
+      return;
+    }
     fileInputRef.current?.click();
   }
 
