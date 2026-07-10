@@ -32,6 +32,9 @@ export type ChatTimelineItem =
       /** Intent-fix (2026-07-08 walkthrough): tap on the author avatar —
           container navigates to the author's profile. Non-visual. */
       onAvatar?: () => void;
+      /** intent-fix (feedback round 2, non-visual): right-click / long-press
+       * opens the message context menu. Non-visual. */
+      onContext?: () => void;
     };
 
 export interface ChatHeaderVM {

@@ -942,6 +942,10 @@ export function ConversationDetailRoute() {
         deleted: isDeleted,
         malformed,
         menuSlot,
+        onContext:
+          isMine && !isDeleted && !malformed && !isEditing
+            ? () => setMenuOpenId(msgId)
+            : undefined,
         bodyOverride,
       });
     }
