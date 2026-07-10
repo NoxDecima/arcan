@@ -20,12 +20,21 @@
     "check-tokens": "./scripts/check-tokens.sh",
     "typecheck": "tsc -b",
     "check-ui-purity": "./scripts/check-ui-purity.sh",
-    "parity": "node tests/parity/run-parity.mjs"
+    "parity": "node tests/parity/run-parity.mjs",
+    "tauri": "tauri",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build -- --apk"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@radix-ui/react-slot": "^1.2.4",
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-barcode-scanner": "2.4.5",
+    "@tauri-apps/plugin-deep-link": "2.4.9",
+    "@tauri-apps/plugin-dialog": "2.7.1",
+    "@tauri-apps/plugin-fs": "2.5.1",
+    "@tauri-apps/plugin-notification": "2.3.3",
     "better-auth": "^1.6.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -43,6 +52,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.52.0",
+    "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
