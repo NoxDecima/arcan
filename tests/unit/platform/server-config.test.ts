@@ -50,6 +50,12 @@ describe("bakedOrigin", () => {
     vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu/");
     expect(bakedOrigin()).toBe("https://chat.meteory.eu");
   });
+
+  it("falls back to the placeholder when given a schemeless value", () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "localhost:3000");
+    expect(getServerOrigin()).toBe("https://arcan.example");
+  });
 });
 
 describe("setServerOverride", () => {

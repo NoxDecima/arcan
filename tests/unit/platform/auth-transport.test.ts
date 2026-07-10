@@ -62,9 +62,23 @@ describe("authFetch in the shell", () => {
   });
 
   it("clearAuthToken removes the stored token", () => {
-    localStorage.setItem(AUTH_TOKEN_KEY, "tok");
+    localStorage.setItem(
+      AUTH_TOKEN_KEY,
+      JSON.stringify({ origin: window.location.origin, token: "tok" }),
+    );
+    expect(getAuthToken(window.location.origin)).toBe("tok");
     clearAuthToken();
-    expect(getAuthToken()).toBeNull();
+    expect(getAuthToken(window.location.origin)).toBeNull();
+  });
+
+  it("does not capture a token from a foreign response", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    const foreign = new Response("{}", { headers: { "set-auth-token": "planted" } });
+    Object.defineProperty(foreign, "url", { value: "https://evil.example/redirected" });
+    vi.stubGlobal("fetch", vi.fn(async () => foreign));
+    await authFetch("/api/auth/sign-in/email", { method: "POST" });
+    expect(getAuthToken("https://chat.meteory.eu")).toBeNull();
   });
 
   it("attaches no header in the shell when no token is stored", async () => {

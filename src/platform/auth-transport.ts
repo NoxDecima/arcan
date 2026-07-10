@@ -76,17 +76,21 @@ export async function authFetch(
   if (!isTauri()) return fetch(input, init);
 
   const serverOrigin = getServerOrigin();
-  const url = new URL(input, serverOrigin).href;
-  const targetOrigin = new URL(input, serverOrigin).origin;
+  const target = new URL(input, serverOrigin);
 
   const headers = new Headers(init.headers);
   // Only attach the bearer token when the request targets the configured server origin.
-  if (targetOrigin === serverOrigin) {
+  if (target.origin === serverOrigin) {
     const token = getAuthToken(serverOrigin);
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(url, { ...init, headers });
-  captureToken(response, serverOrigin);
+  const response = await fetch(target.href, { ...init, headers });
+  // response.url is the post-redirect URL; capture only tokens the
+  // configured server itself issued. "" occurs for synthetic Responses
+  // (tests/mocks) — treat as same-origin.
+  if (response.url === "" || new URL(response.url).origin === serverOrigin) {
+    captureToken(response, serverOrigin);
+  }
   return response;
 }

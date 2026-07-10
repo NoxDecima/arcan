@@ -20,7 +20,9 @@ export function bakedOrigin(): string {
   const raw = import.meta.env.VITE_ARCAN_ORIGIN;
   if (!raw) return "https://arcan.example";
   try {
-    return new URL(raw).origin;
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "https://arcan.example";
+    return url.origin;
   } catch {
     return "https://arcan.example";
   }
