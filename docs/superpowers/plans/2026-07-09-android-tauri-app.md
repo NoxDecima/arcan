@@ -929,20 +929,19 @@ fn main() {
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
     "fs:default",
     "fs:allow-read-file",
     "fs:allow-write-file",
     "notification:default",
-    "deep-link:default",
-    {
-      "identifier": "fs:scope",
-      "allow": ["$DOWNLOAD/**", "$APPDATA/**"]
-    }
+    "deep-link:default"
   ],
   "platforms": ["linux", "macOS", "windows", "android", "iOS"]
 }
 ```
+
+Standing fs scopes are unnecessary — the dialog plugin auto-scopes user-picked paths; commands stay enabled via allow-read-file/allow-write-file.
 
 ```json
 // src-tauri/capabilities/mobile.json
