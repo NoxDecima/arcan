@@ -100,7 +100,7 @@ export function TrustedDevicePrompt() {
     <ModalShell
       open
       onClose={() => setDismissed((s) => new Set(s).add(v.$jazz.id))}
-      title=""
+      title="device approval"
       dataTestId="trusted-device-prompt"
       className="max-w-[420px]"
     >
