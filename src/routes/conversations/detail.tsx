@@ -578,8 +578,10 @@ export function ConversationDetailRoute() {
 
   async function handleComposerSend() {
     if (isSending || composerDisabled) return;
-    const trimmed = composerText.trim();
-    if (!trimmed && pending.length === 0) return;
+    // Feedback round 2: no whitespace stripping on send — only reject
+    // messages that are whitespace-only (and have no attachments).
+    const body = composerText;
+    if (!body.trim() && pending.length === 0) return;
 
     setIsSending(true);
     try {
@@ -600,7 +602,7 @@ export function ConversationDetailRoute() {
           }
         }
       }
-      await handleSend(trimmed, uploaded);
+      await handleSend(body, uploaded);
       setComposerText("");
       setPending([]);
       setComposerError(null);
@@ -614,9 +616,15 @@ export function ConversationDetailRoute() {
   // ---- edit/delete handlers ----
 
   async function handleSaveEdit(message: any) {
-    const trimmed = editText.trim();
-    if (!trimmed) return;
-    await editMessage(me as any, message, trimmed);
+    // Feedback round 2: no whitespace stripping — text is stored verbatim.
+    // An unchanged edit discards silently instead of stamping edited/editedAt.
+    const next = editText;
+    if (!next.trim()) return;
+    if (next === message.body) {
+      setEditingMessageId(null);
+      return;
+    }
+    await editMessage(me as any, message, next);
     setEditingMessageId(null);
   }
 
