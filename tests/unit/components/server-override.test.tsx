@@ -230,3 +230,69 @@ describe("ServerOverride — reset to default", () => {
     expect(mockedSetServerOverride).not.toHaveBeenCalled();
   });
 });
+
+describe("ServerOverride — unreachable server: error shown AND override rolled back", () => {
+  beforeEach(() => {
+    withTauri();
+    mockedSetServerOverride.mockImplementation(() => {
+      /* success — no throw */
+    });
+    mockFetchFail();
+  });
+
+  it("(a) no prior override → override is null after failure", async () => {
+    // No prior override seeded — getServerOverride returns null (default from beforeEach).
+    vi.mocked(getServerOverride).mockReturnValue(null);
+
+    const assignSpy = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign: assignSpy,
+    });
+
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+
+    const input = screen.getByTestId("server-override-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "https://unreachable.example" } });
+    fireEvent.click(screen.getByTestId("server-override-save"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
+    );
+    // Error must be shown
+    expect(screen.getByTestId("server-override-error")).toBeTruthy();
+    // Navigation must NOT have happened
+    expect(assignSpy).not.toHaveBeenCalled();
+    // Rollback: clearServerOverride called (prev was null)
+    expect(mockedClearServerOverride).toHaveBeenCalledOnce();
+  });
+
+  it("(b) prior override 'https://old.example' → still 'https://old.example' after failure", async () => {
+    // Seed a prior override.
+    vi.mocked(getServerOverride).mockReturnValue("https://old.example");
+
+    const assignSpy = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign: assignSpy,
+    });
+
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+
+    const input = screen.getByTestId("server-override-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "https://unreachable.example" } });
+    fireEvent.click(screen.getByTestId("server-override-save"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
+    );
+    // Error must be shown
+    expect(screen.getByTestId("server-override-error")).toBeTruthy();
+    // Navigation must NOT have happened
+    expect(assignSpy).not.toHaveBeenCalled();
+    // Rollback: setServerOverride called with the previous value (prev was "https://old.example")
+    expect(mockedSetServerOverride).toHaveBeenLastCalledWith("https://old.example");
+  });
+});

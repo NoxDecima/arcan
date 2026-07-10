@@ -31,6 +31,8 @@ export function ServerOverride() {
   async function apply(origin: string | null) {
     setError(null);
     setChecking(true);
+    // Capture current override before writing so we can roll back if the probe fails.
+    const prev = getServerOverride();
     try {
       // setServerOverride validates the URL and throws a user-facing message on
       // bad input (e.g. missing https). We call it first so validation errors
@@ -50,6 +52,11 @@ export function ServerOverride() {
       clearAuthToken();
       window.location.assign("/");
     } catch (e) {
+      // Probe failed — restore the previous override so a shown error never
+      // leaves a changed server behind.
+      if (origin !== null) {
+        prev === null ? clearServerOverride() : setServerOverride(prev);
+      }
       setError(
         e instanceof Error ? e.message : "Could not reach that server. Check the address and try again.",
       );

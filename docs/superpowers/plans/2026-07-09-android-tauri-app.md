@@ -1768,7 +1768,16 @@ export function ServerOverride() {
   async function apply(origin: string | null) {
     setError(null);
     setChecking(true);
+    // Capture current override before writing so we can roll back if the probe fails.
+    const prev = getServerOverride();
     try {
+      // setServerOverride validates the URL and throws a user-facing message on
+      // bad input (e.g. missing https). We call it first so validation errors
+      // surface before any network probe. On reset (origin === null) there's
+      // nothing to validate; the baked origin is always well-formed.
+      if (origin !== null) {
+        setServerOverride(origin);
+      }
       const target = origin ?? bakedOrigin();
       // Reachability probe — better-auth exposes /api/auth/ok on every
       // deployment; any HTTP response (even 404) proves the host resolves
@@ -1776,16 +1785,17 @@ export function ServerOverride() {
       await fetch(`${target}/api/auth/ok`, { method: "GET" });
       if (origin === null) {
         clearServerOverride();
-      } else {
-        setServerOverride(origin);
       }
       clearAuthToken();
       window.location.assign("/");
     } catch (e) {
+      // Probe failed — restore the previous override so a shown error never
+      // leaves a changed server behind.
+      if (origin !== null) {
+        prev === null ? clearServerOverride() : setServerOverride(prev);
+      }
       setError(
-        e instanceof Error && e.message.includes("https")
-          ? e.message
-          : "Could not reach that server. Check the address and try again.",
+        e instanceof Error ? e.message : "Could not reach that server. Check the address and try again.",
       );
       setChecking(false);
     }
