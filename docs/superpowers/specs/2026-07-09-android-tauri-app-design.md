@@ -167,8 +167,8 @@ client. The sync WebSocket is unaffected (it does not use cookie auth).
 - **Min SDK**: Tauri default (API 24 / Android 7); WebView is evergreen via Play.
 - **Build**: `tauri android build --apk` → signed universal APK.
 - **CI**: GitHub Actions ubuntu runner (Rust + Android SDK/NDK); build on push, publish APK on
-  version tags. Channel: GitHub Releases if repo visibility permits Obtainium, else an APK
-  directory served by the existing Caddy — plan-time decision, one config stanza either way.
+  version tags. Channel: **GitHub Releases** (decided post-review); Obtainium points at the
+  repo's releases feed.
 - **Updates**: Obtainium. No in-app updater in v1.
 - **Local toolchain**: separate `shell.android.nix` (Rust, Android SDK/NDK, JDK) so the base
   dev shell stays light.
@@ -203,8 +203,7 @@ client. The sync WebSocket is unaffected (it does not use cookie auth).
 
 ## Plan-time decisions (not blockers)
 
-1. Distribution channel: GitHub Releases vs Caddy-hosted APK directory (depends on repo
-   visibility).
+1. ~~Distribution channel~~ — resolved at spec review: **GitHub Releases**.
 2. Whether `navigator.clipboard` needs the clipboard-manager plugin (verify on device in
    Phase 0).
 3. Notification tap → conversation deep-routing (stretch; requires plugin action extras).
