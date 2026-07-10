@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { signIn } from "@/auth/flows";
 import { useSignInToJazzWithSeed } from "@/jazz/createAccountFromSeed";
 import { SignInScreen } from "@/ui/screens";
+import { ServerOverride } from "@/components/server-override";
 
 /**
  * LoginRoute: email + password sign-in.
@@ -72,6 +73,7 @@ export function LoginRoute() {
         passwordTestId="login-password"
         submitTestId="login-submit"
       />
+      <ServerOverride />
     </div>
   );
 }
