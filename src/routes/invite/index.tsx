@@ -316,6 +316,8 @@ export function InviteRoute() {
           title="request sent — waiting for approval…"
           sub="You can close this tab; you'll be notified when they accept."
           rootTestId="invite-sent"
+          outline={{ label: "back to app", onClick: () => navigate("/") }}
+          outlineTestId="invite-sent-home-btn"
         />
       );
     }

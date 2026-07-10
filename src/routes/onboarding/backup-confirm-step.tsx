@@ -12,10 +12,9 @@ interface BackupConfirmStepProps {
  * BackupConfirmStep: container for the backup-confirm onboarding step.
  * Delegates rendering to BackupConfirmScreen (Rung 2 presenter).
  *
- * Owns the challenge logic: three distinct indices (1-based display,
- * 0-based internally) are chosen once via useMemo and remain stable for
- * the component lifetime. Each input is validated case-insensitively and
- * trimmed. The "Continue" button is disabled until all three match.
+ * Owns the challenge logic: the first three words are verified (feedback round 2).
+ * Each input is validated case-insensitively and trimmed. The "Continue" button
+ * is disabled until all three match.
  *
  * Note: testids remain "confirm-word-N" and "confirm-passphrase-btn"
  * for Phase C e2e compatibility.
@@ -27,16 +26,10 @@ export function BackupConfirmStep({
 }: BackupConfirmStepProps) {
   const words = useMemo(() => phrase.trim().split(/\s+/), [phrase]);
 
-  // Pick three distinct indices, sorted ascending, generated once per mount.
-  const challengeIndices = useMemo<[number, number, number]>(() => {
-    const picked: number[] = [];
-    while (picked.length < 3) {
-      const idx = Math.floor(Math.random() * words.length);
-      if (!picked.includes(idx)) picked.push(idx);
-    }
-    picked.sort((a, b) => a - b);
-    return picked as [number, number, number];
-  }, [words.length]);
+  // Always verify the first three words (feedback round 2): retyping from
+  // the saved copy is much easier when the words are consecutive from the
+  // start, and BIP-39 entropy is uniform so the check is equally strong.
+  const challengeIndices = useMemo<[number, number, number]>(() => [0, 1, 2], []);
 
   const [inputs, setInputs] = useState(["", "", ""]);
 

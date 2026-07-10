@@ -151,7 +151,7 @@ export const ArcanAccount = co.account({
             .create({ theme: "dark", accent: "tokyo" }, { owner: me }),
           notifications: co
             .map({ sound: z.boolean(), browser: z.boolean() })
-            .create({ sound: false, browser: false }, { owner: me }),
+            .create({ sound: true, browser: false }, { owner: me }),
         },
         { owner: me },
       );
@@ -266,7 +266,7 @@ export const ArcanAccount = co.account({
             .create({ theme: "dark", accent: "tokyo" }, { owner: me }),
           notifications: co
             .map({ sound: z.boolean(), browser: z.boolean() })
-            .create({ sound: false, browser: false }, { owner: me }),
+            .create({ sound: true, browser: false }, { owner: me }),
         },
         { owner: me },
       );
