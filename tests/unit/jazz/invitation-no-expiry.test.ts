@@ -11,15 +11,19 @@
  *     falls back to GROUP_REQUEST_TTL_MS (30 days) so ConnectionRequest.expiresAt
  *     is always a Date.
  *
- * Follows the "plain mock" pattern used by connection-request-actions.test.ts
- * (no live Jazz peer required).
+ * Sections 1-4 use pure/mock patterns (no live Jazz peer required).
+ * Section 5 uses createJazzTestAccount (same pattern as conversation.test.ts)
+ * to exercise createInvitation end-to-end.
  */
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { createJazzTestAccount } from "jazz-tools/testing";
+import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import {
   LINK_TTL_OPTIONS,
   QR_TTL_MS,
   GROUP_REQUEST_TTL_MS,
   invitationUrl,
+  createInvitation,
 } from "@/jazz/invitations";
 import type { LinkTtl } from "@/jazz/invitations";
 
@@ -117,5 +121,57 @@ describe("LinkTtl type", () => {
   test("none is a valid LinkTtl value at runtime (no throw)", () => {
     const ttl: LinkTtl = "none" as LinkTtl;
     expect(["1h", "24h", "7d", "none"]).toContain(ttl);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. createInvitation integration — real Jazz test account
+// ---------------------------------------------------------------------------
+
+describe("createInvitation (integration)", () => {
+  test('channel="link", ttl="none" → expiresAt is undefined and url contains /invite#', async () => {
+    vi.stubGlobal("window", {
+      location: { origin: "https://arcan.app" },
+    });
+
+    const alice = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+
+    const { invitation, url } = await createInvitation(alice, "link", "none");
+
+    // Permanent invite must NOT set expiresAt
+    expect((invitation as any).expiresAt).toBeUndefined();
+
+    // URL must be a valid /invite# link
+    expect(url).toMatch(/^https:\/\/arcan\.app\/invite#.+/);
+  });
+
+  test('channel="link", ttl="24h" → expiresAt is a Date approximately 24 h from now', async () => {
+    vi.stubGlobal("window", {
+      location: { origin: "https://arcan.app" },
+    });
+
+    const alice = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+
+    const before = Date.now();
+    const { invitation } = await createInvitation(alice, "link", "24h");
+    const after = Date.now();
+
+    // expiresAt must be a Date
+    expect((invitation as any).expiresAt).toBeInstanceOf(Date);
+
+    const expiresMs = ((invitation as any).expiresAt as Date).getTime();
+    const expectedTtl = 24 * 60 * 60 * 1000;
+
+    // Allow a 5-second window for test execution jitter
+    expect(expiresMs).toBeGreaterThanOrEqual(before + expectedTtl - 5000);
+    expect(expiresMs).toBeLessThanOrEqual(after + expectedTtl + 5000);
   });
 });
