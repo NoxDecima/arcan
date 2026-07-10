@@ -1,5 +1,5 @@
 import { useIncomingConnectionRequests } from "@/jazz/use-incoming-connection-requests";
-import { approveConnectionRequest, dismissConnectionRequest } from "@/jazz/invitations";
+import { approveConnectionRequest, dismissConnectionRequest, denyConnectionRequest } from "@/jazz/invitations";
 import { ModalShell, ModalFooter } from "@/components/modal-shell";
 import { SafetyNumber } from "@/components/safety-number";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
@@ -17,8 +17,10 @@ import { HAv, AuthTitle, PButton } from "@/ui/kit";
  * list silently (no modal).
  *
  * Dismissing (button, scrim, or Escape) only mutes this modal — the request
- * stays on the pending surfaces until explicitly approved/denied (user
- * decision, 2026-07-08 walkthrough).
+ * stays on the pending surfaces until explicitly approved or declined (user
+ * decision, 2026-07-08 walkthrough). Declining is the explicit terminal "no":
+ * it calls denyConnectionRequest, which stamps deniedAt on the shared request
+ * CoValue so the requester's waiting screen transitions to "declined".
  */
 export function IncomingConnectionPrompt() {
   const me = useAccount(ArcanAccount, { resolve: { profile: true } });
@@ -47,6 +49,10 @@ function Body({ me, request }: { me: any; request: any }) {
   const onDismiss = async () => {
     await dismissConnectionRequest(me, request);
   };
+  const onDecline = async () => {
+    await denyConnectionRequest(me, request);
+    toast({ icon: "check", text: "request declined", tone: "neutral" });
+  };
 
   return (
     <ModalShell
@@ -61,6 +67,13 @@ function Body({ me, request }: { me: any; request: any }) {
             className="flex-1"
             onClick={onDismiss}
             data-testid="dismiss"
+          />
+          <PButton
+            danger
+            label="decline"
+            className="flex-1"
+            onClick={onDecline}
+            data-testid="decline"
           />
           <PButton
             primary
