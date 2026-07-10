@@ -1283,7 +1283,9 @@ const PROTO_CELLS = {
   /* patched copy: design/proto.jsx:550–565 (SignInScreen) — buttons via PButton (decision A);
      AuthField=display div matching app AuthField empty input (38px/12px/placeholder in c.dim).
      USER DECISION 2026-07-06 (walkthrough): PHeader back arrow removed from proto copy to match
-     app cell (no top back arrows in auth flow; pre-Wave-D original had no back nav here). */
+     app cell (no top back arrows in auth flow; pre-Wave-D original had no back nav here).
+     intent-fix (feedback round 2): create-account promoted from a footer MuteLink to a visible
+     secondary PButton; footer now contains only forgot-password, centered. */
   "sign-in-screen": (s) => {
     const c = s.c;
     /* local helper: display-only field matching app AuthField with empty value (placeholder-only).
@@ -1319,13 +1321,12 @@ const PROTO_CELLS = {
           <div style={{ height: 4 }} />
           {/* proto:561 — primary submit button */}
           <PButton s={s} primary full label="sign in" onClick={() => {}} />
-          {/* proto:562 — footer: forgot + create account */}
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          {/* intent-fix (feedback round 2): create-account promoted to a secondary outline button */}
+          <PButton s={s} full label="create account" onClick={() => {}} />
+          {/* proto:562 — footer: forgot-password only, centered (create account moved above) */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button style={tapBtn} onClick={() => {}}>
               <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>forgot password?</span>
-            </button>
-            <button style={tapBtn} onClick={() => {}}>
-              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>create account</span>
             </button>
           </div>
         </AuthShell>
