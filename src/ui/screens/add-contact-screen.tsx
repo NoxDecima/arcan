@@ -45,7 +45,7 @@ export function AddContactScreen({
   /** Adaptive: "share invite" | "copy link" per navigator.share availability. */
   primaryLabel: string;
   onPrimary: () => void;                 // share or copy — "add-contact-share-btn"
-  onScan: () => void;                    // "scan their code" — "scan-their-code"
+  onScan: () => void;                    // "scan their QR code" — "scan-their-code"
   onPaste: () => void;                   // "or paste a link" — "add-contact-cancel-btn"
   /** Rung-4: sr-only qr-url-text / copy-url-text spans (e2e hooks; no pixels). */
   hiddenUrlSlot?: ReactNode;
@@ -163,13 +163,13 @@ export function AddContactScreen({
             <div className="flex-1 h-px bg-hairline" />
           </div>
 
-          {/* "scan their code" primary button — proto:425 */}
+          {/* "scan their QR code" primary button — proto:425 (intent-fix, feedback round 2: spell out QR) */}
           <div className="w-full max-w-[300px]">
             <PButton
               primary
               full
               icon="search"
-              label="scan their code"
+              label="scan their QR code"
               onClick={onScan}
               data-testid={scanBtnTestId}
             />

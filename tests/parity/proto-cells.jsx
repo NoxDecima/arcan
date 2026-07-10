@@ -731,7 +731,8 @@ function PAddContactScreen({ s }) {
             </div>
           </PCard>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 300 }}><div style={{ flex: 1, height: 1, background: c.border }} /><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.12em', textTransform: 'uppercase', color: c.dim }}>add someone</span><div style={{ flex: 1, height: 1, background: c.border }} /></div>
-          <div style={{ width: '100%', maxWidth: 300 }}><PButton s={s} primary full label="scan their code" icon="search" onClick={() => {}} /></div>
+          {/* intent-fix (feedback round 2): "scan their code" → "scan their QR code" */}
+          <div style={{ width: '100%', maxWidth: 300 }}><PButton s={s} primary full label="scan their QR code" icon="search" onClick={() => {}} /></div>
           <button style={tapBtn} onClick={() => {}}><span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>or paste a link</span></button>
         </div>
       </Body>
