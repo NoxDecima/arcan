@@ -81,13 +81,23 @@ export function Bubble({
       {bodyOverride ?? (
         <>
           <div className="flex items-end gap-2">
+            {/* intent-fix (feedback round 2): own-message timestamp sits on
+                the LEFT of the body; theirs keeps time on the right. */}
+            {mine && m.time && (
+              <span
+                className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
+                {...(timeTestId ? { "data-testid": timeTestId } : {})}
+              >
+                {m.time}
+              </span>
+            )}
             <span
               className="flex-1 font-body text-ui-bubble"
               {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
             >
               {m.text}
             </span>
-            {m.time && (
+            {!mine && m.time && (
               <span
                 className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
                 {...(timeTestId ? { "data-testid": timeTestId } : {})}
