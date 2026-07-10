@@ -118,7 +118,7 @@ export function ContactRequestScreen({
           )}
         </div>
       </div>
-      {/* hf:255 — accept & add contact (primary) */}
+      {/* hf:255 — primary action button (updated copy: "request to become contacts" — feedback round 2) */}
       <PButton
         primary
         full
