@@ -380,9 +380,7 @@ function POwnProfileScreen({ s, params }) {
           <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}><span style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span><Icon d="pencil" c={c.dim} size={15} /></button>
           {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="plus" label="add a contact" onClick={() => {}} /></div>
-          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
-            <PRow s={s} icon="gear" label="account & settings" onClick={() => {}} last />
-          </PCard>
+          {/* intent-fix (feedback round 2): settings row dropped from own profile */}
         </div>
       </Body>
     </React.Fragment>

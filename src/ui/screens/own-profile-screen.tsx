@@ -11,7 +11,7 @@
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
 import type { ReactNode, JSX } from "react";
-import { PHeader, Body, HAv, PButton, PCard, PRow, Icon, tapClass } from "../kit";
+import { PHeader, Body, HAv, PButton, PCard, Icon, tapClass } from "../kit";
 import type { OwnProfileScreenVM } from "./profile-types";
 
 export function OwnProfileScreen({
@@ -20,7 +20,7 @@ export function OwnProfileScreen({
   onEditName,
   onEditAvatar,
   onAddContact,
-  onSettings,
+  onRemoveAvatar,
   safetyOpen,
   onToggleSafety,
   safetySlot,
@@ -34,7 +34,6 @@ export function OwnProfileScreen({
   nameTestId,
   editNameTestId,
   addContactTestId,
-  settingsTestId,
   safetyToggleTestId,
 }: {
   vm: OwnProfileScreenVM;
@@ -42,13 +41,15 @@ export function OwnProfileScreen({
   onEditName: () => void;               // pencil (proto: toast; app: inline edit)
   onEditAvatar: () => void;             // camera badge
   onAddContact: () => void;             // primary "add a contact"
-  onSettings: () => void;               // "account & settings" row
+  /** intent-fix (feedback round 2): remove-avatar icon button next to the
+   * avatar (confirmation handled by the container). Omitted in parity cells. */
+  onRemoveAvatar?: () => void;
   /** In-card "view security code" expander — user decision 2026-07-05; absent in parity cells. */
   safetyOpen?: boolean;
   onToggleSafety?: () => void;
   safetySlot?: ReactNode;               // SafetyNumber + hint (supplied by container)
   nameEditSlot?: ReactNode;             // Rung-4: inline name <input> when editing
-  extraSections?: ReactNode;            // Rung-4: your-conversations list + remove-avatar (app-only)
+  extraSections?: ReactNode;            // Rung-4: your-conversations list (app-only)
   avatarInput?: ReactNode;              // Rung-4: hidden <input type=file> (container owns)
   // testid carries
   rootTestId?: string;                  // "profile-view"
@@ -59,7 +60,6 @@ export function OwnProfileScreen({
   editNameTestId?: string;              // "profile-edit-name"
   // idTestId removed — account-id line dropped (user decision 2026-07-05 walkthrough)
   addContactTestId?: string;            // "profile-add-contact"
-  settingsTestId?: string;              // "profile-settings-link"
   safetyToggleTestId?: string;          // "profile-safety-toggle"
 }): JSX.Element {
   return (
@@ -95,6 +95,16 @@ export function OwnProfileScreen({
             >
               <Icon d="camera" size={14} className="text-on-accent" />
             </button>
+            {onRemoveAvatar && (
+              <button
+                className={`${tapClass} absolute -left-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-panel border-2 border-bg justify-center`}
+                onClick={onRemoveAvatar}
+                aria-label="remove profile picture"
+                data-testid="profile-avatar-remove"
+              >
+                <Icon d="close" size={13} className="text-red" />
+              </button>
+            )}
             {/* Rung-4: hidden file input owned by the container */}
             {avatarInput}
           </div>
@@ -131,18 +141,11 @@ export function OwnProfileScreen({
             />
           </div>
 
-          {/* Settings row card — proto:252–254 */}
-          {/* In-card safety expander added when safetyOpen/onToggleSafety are supplied
-              (user decision 2026-07-05); absent when props are omitted (parity cells). */}
-          <PCard className="w-full max-w-[320px]">
-            <PRow
-              icon="gear"
-              label="account & settings"
-              onClick={onSettings}
-              last={!onToggleSafety}
-              data-testid={settingsTestId}
-            />
-            {onToggleSafety && (
+          {/* Settings row dropped (feedback round 2): the home-header gear is
+              the settings entry; the profile card now holds only the
+              security-code expander. Proto cell patched to match. */}
+          {onToggleSafety && (
+            <PCard className="w-full max-w-[320px]">
               <div data-testid="profile-safety-section">
                 <button
                   className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px]`}
@@ -166,8 +169,8 @@ export function OwnProfileScreen({
                   </div>
                 )}
               </div>
-            )}
-          </PCard>
+            </PCard>
+          )}
 
           {/* Rung-4: app-only sections (safety, your-conversations, remove-avatar)
               Section order (user decision, 2026-07-05 walkthrough):
