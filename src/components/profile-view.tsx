@@ -384,7 +384,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           onEditName={beginEditName}
           onEditAvatar={() => fileInputRef.current?.click()}
           onAddContact={() => navigate("/contacts/add")}
-          onRemoveAvatar={ownAvatarUrl ? () => void handleAvatarRemove() : undefined}
+          onRemoveAvatar={ownStreamId ? () => void handleAvatarRemove() : undefined}
           safetyOpen={showSafety}
           onToggleSafety={() => setShowSafety((s) => !s)}
           safetySlot={
