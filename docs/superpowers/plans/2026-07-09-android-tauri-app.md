@@ -1727,6 +1727,14 @@ git commit -m "feat(platform): native file pick/save adapters; web DOM paths unc
 
 ### Task 11: Server override UI on the login screen
 
+> **Refactor note (2026-07-10):** The apply() flow was restructured to validate → probe → persist,
+> eliminating the rollback pattern. `validateServerOrigin(raw): string` is now a separate
+> exported pure function in `server-config.ts`; `setServerOverride` calls it internally.
+> The probe uses `AbortSignal.timeout(10_000)` and catches all fetch errors into a single
+> friendly string. Persist step (set/clear) runs only after probe success — if storage throws
+> the message passes through, nothing was persisted, nothing needs rollback. Tests use
+> `vi.importActual` for `validateServerOrigin`/`bakedOrigin` so real validation logic runs.
+
 **Files:**
 - Create: `src/components/server-override.tsx`
 - Modify: `src/routes/auth/login.tsx` (mount below `SignInScreen`)

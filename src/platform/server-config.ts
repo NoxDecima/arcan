@@ -36,8 +36,12 @@ export function getServerOverride(): string | null {
   }
 }
 
-/** Validates and normalizes to the https origin; throws user-facing errors on invalid input or storage failure. */
-export function setServerOverride(raw: string): void {
+/**
+ * Validates and normalizes a raw URL string to an https origin.
+ * Throws user-facing error messages on invalid input.
+ * Returns the normalized origin (e.g. "https://chat.example.com").
+ */
+export function validateServerOrigin(raw: string): string {
   let url: URL;
   try {
     url = new URL(raw.trim());
@@ -47,8 +51,14 @@ export function setServerOverride(raw: string): void {
   if (url.protocol !== "https:") {
     throw new Error("Server must be reachable over https://");
   }
+  return url.origin;
+}
+
+/** Validates and persists the https origin; throws user-facing errors on invalid input or storage failure. */
+export function setServerOverride(raw: string): void {
+  const origin = validateServerOrigin(raw);
   try {
-    localStorage.setItem(SERVER_OVERRIDE_KEY, url.origin);
+    localStorage.setItem(SERVER_OVERRIDE_KEY, origin);
   } catch {
     throw new Error("Couldn't save the server address — storage is unavailable.");
   }

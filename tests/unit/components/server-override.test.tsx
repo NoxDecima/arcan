@@ -3,21 +3,32 @@
  *
  * The component is shell-only: isTauri() gates the whole render.
  * We stub __TAURI_INTERNALS__ to exercise the Tauri branch.
+ *
+ * Module mocking strategy: use vi.importActual for validateServerOrigin and
+ * bakedOrigin so the real validation logic runs in tests (no stale mock
+ * approximation). Only the persistence functions (setServerOverride,
+ * clearServerOverride) and read helpers (getServerOrigin, getServerOverride)
+ * are mocked — these touch localStorage and have no meaningful unit value here.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // ----- module mocks -----
 
-// server-config: let setServerOverride validate (real impl) but spy on it;
-// provide controllable return values for getServerOrigin / getServerOverride / bakedOrigin.
-vi.mock("@/platform/server-config", () => ({
-  bakedOrigin: vi.fn(() => "https://arcan.example"),
-  getServerOrigin: vi.fn(() => "https://arcan.example"),
-  getServerOverride: vi.fn(() => null),
-  setServerOverride: vi.fn(),
-  clearServerOverride: vi.fn(),
-}));
+// server-config: use importActual for pure functions (validateServerOrigin,
+// bakedOrigin) so real validation runs; stub only persistence + read helpers.
+vi.mock("@/platform/server-config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/platform/server-config")>();
+  return {
+    ...actual,
+    // Keep real: validateServerOrigin, bakedOrigin (pure, no side effects)
+    // Stub: stateful / storage-touching functions
+    getServerOrigin: vi.fn(() => "https://arcan.example"),
+    getServerOverride: vi.fn(() => null),
+    setServerOverride: vi.fn(),
+    clearServerOverride: vi.fn(),
+  };
+});
 
 vi.mock("@/platform/auth-transport", () => ({
   clearAuthToken: vi.fn(),
@@ -26,7 +37,6 @@ vi.mock("@/platform/auth-transport", () => ({
 // We do NOT mock isTauri — we control __TAURI_INTERNALS__ directly on window.
 
 import {
-  bakedOrigin,
   getServerOrigin,
   getServerOverride,
   setServerOverride,
@@ -39,7 +49,6 @@ const mockedSetServerOverride = vi.mocked(setServerOverride);
 const mockedClearServerOverride = vi.mocked(clearServerOverride);
 const mockedClearAuthToken = vi.mocked(clearAuthToken);
 const mockedGetServerOrigin = vi.mocked(getServerOrigin);
-const mockedBakedOrigin = vi.mocked(bakedOrigin);
 
 // Silence fetch-not-implemented warnings in jsdom
 const originalFetch = globalThis.fetch;
@@ -47,7 +56,6 @@ const originalFetch = globalThis.fetch;
 beforeEach(() => {
   vi.clearAllMocks();
   mockedGetServerOrigin.mockReturnValue("https://arcan.example");
-  mockedBakedOrigin.mockReturnValue("https://arcan.example");
   vi.mocked(getServerOverride).mockReturnValue(null);
 });
 
@@ -106,20 +114,65 @@ describe("ServerOverride — with Tauri stubbed", () => {
     expect(screen.getByTestId("server-override-save")).toBeTruthy();
     expect(screen.getByTestId("server-override-reset")).toBeTruthy();
   });
+
+  it("input has aria-label 'Server URL'", () => {
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+    const input = screen.getByTestId("server-override-input");
+    expect(input.getAttribute("aria-label")).toBe("Server URL");
+  });
+
+  it("closing the dialog clears the error", async () => {
+    withTauri();
+    mockFetchFail();
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+
+    const input = screen.getByTestId("server-override-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "https://unreachable.example" } });
+    fireEvent.click(screen.getByTestId("server-override-save"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
+    );
+
+    // Close the dialog — error should clear on reopen
+    const modal = screen.getByRole("dialog");
+    // Simulate close by firing the onClose; ModalShell renders a close button
+    // or we can click outside. For simplicity, reopen and check error gone.
+    // Instead: close via the dialog close mechanism. The ModalShell uses onClose prop.
+    // We find the close button rendered by ModalShell or trigger re-open.
+    // Trigger: click the trigger button (which closes the modal via open=false → onClose).
+    // Actually the trigger button only opens. We must call onClose another way.
+    // The cleanest way: re-render with open=false isn't possible. Use the close button if it exists.
+    const closeBtn = modal.querySelector("[aria-label='Close']") ?? modal.querySelector("button[data-dismiss]");
+    if (closeBtn) {
+      fireEvent.click(closeBtn);
+    } else {
+      // Fallback: the ModalShell likely renders a close button — look for one not matching save/reset
+      const allButtons = Array.from(modal.querySelectorAll("button"));
+      const nonActionBtn = allButtons.find(
+        (b) =>
+          b.getAttribute("data-testid") !== "server-override-save" &&
+          b.getAttribute("data-testid") !== "server-override-reset",
+      );
+      if (nonActionBtn) fireEvent.click(nonActionBtn);
+    }
+
+    // Reopen and verify error is gone
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+    expect(screen.queryByTestId("server-override-error")).toBeNull();
+  });
 });
 
 describe("ServerOverride — invalid input (http://)", () => {
   beforeEach(() => {
     withTauri();
-    // setServerOverride throws a user-facing message for http://
-    mockedSetServerOverride.mockImplementation((raw) => {
-      if (!raw.startsWith("https://")) {
-        throw new Error("Server must be reachable over https://");
-      }
-    });
+    // fetch must NOT be called for validation errors (probe step never reached)
+    globalThis.fetch = vi.fn();
   });
 
-  it("shows setServerOverride's error message; does not reload", async () => {
+  it("shows validateServerOrigin's error message for http://; does not persist or reload", async () => {
     const assignSpy = vi.fn();
     vi.spyOn(window, "location", "get").mockReturnValue({
       ...window.location,
@@ -129,7 +182,7 @@ describe("ServerOverride — invalid input (http://)", () => {
     render(<ServerOverride />);
     fireEvent.click(screen.getByTestId("server-override-trigger"));
 
-    // type an http:// URL
+    // type an http:// URL — real validateServerOrigin throws "Server must be reachable over https://"
     const input = screen.getByTestId("server-override-input") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "http://insecure.example" } });
     fireEvent.click(screen.getByTestId("server-override-save"));
@@ -141,6 +194,36 @@ describe("ServerOverride — invalid input (http://)", () => {
     expect(errorEl.textContent).toContain("https://");
     expect(assignSpy).not.toHaveBeenCalled();
     expect(mockedClearAuthToken).not.toHaveBeenCalled();
+    // Nothing persisted: neither setter called
+    expect(mockedSetServerOverride).not.toHaveBeenCalled();
+    expect(mockedClearServerOverride).not.toHaveBeenCalled();
+    // Probe was never reached
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows the full-URL error message for a non-URL string", async () => {
+    const assignSpy = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign: assignSpy,
+    });
+
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+
+    const input = screen.getByTestId("server-override-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "not a url" } });
+    fireEvent.click(screen.getByTestId("server-override-save"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
+    );
+    const errorEl = screen.getByTestId("server-override-error");
+    expect(errorEl.textContent).toContain("full URL");
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(mockedSetServerOverride).not.toHaveBeenCalled();
+    expect(mockedClearServerOverride).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -231,17 +314,13 @@ describe("ServerOverride — reset to default", () => {
   });
 });
 
-describe("ServerOverride — unreachable server: error shown AND override rolled back", () => {
+describe("ServerOverride — unreachable server: friendly error, nothing persisted", () => {
   beforeEach(() => {
     withTauri();
-    mockedSetServerOverride.mockImplementation(() => {
-      /* success — no throw */
-    });
     mockFetchFail();
   });
 
-  it("(a) no prior override → override is null after failure", async () => {
-    // No prior override seeded — getServerOverride returns null (default from beforeEach).
+  it("shows the exact friendly copy text; location.assign not called; nothing persisted", async () => {
     vi.mocked(getServerOverride).mockReturnValue(null);
 
     const assignSpy = vi.fn();
@@ -260,17 +339,51 @@ describe("ServerOverride — unreachable server: error shown AND override rolled
     await waitFor(() =>
       expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
     );
-    // Error must be shown
-    expect(screen.getByTestId("server-override-error")).toBeTruthy();
+
+    // Exact friendly copy (not a raw fetch TypeError)
+    expect(screen.getByTestId("server-override-error").textContent).toBe(
+      "Could not reach that server. Check the address and try again.",
+    );
     // Navigation must NOT have happened
     expect(assignSpy).not.toHaveBeenCalled();
-    // Rollback: clearServerOverride called (prev was null)
-    expect(mockedClearServerOverride).toHaveBeenCalledOnce();
+    // Nothing persisted — neither setter was called
+    expect(mockedSetServerOverride).not.toHaveBeenCalled();
+    expect(mockedClearServerOverride).not.toHaveBeenCalled();
   });
 
-  it("(b) prior override 'https://old.example' → still 'https://old.example' after failure", async () => {
-    // Seed a prior override.
-    vi.mocked(getServerOverride).mockReturnValue("https://old.example");
+  it("probe fail on reset — friendly error shown; nothing persisted", async () => {
+    const assignSpy = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign: assignSpy,
+    });
+
+    render(<ServerOverride />);
+    fireEvent.click(screen.getByTestId("server-override-trigger"));
+    fireEvent.click(screen.getByTestId("server-override-reset"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("server-override-error").textContent).toBe(
+      "Could not reach that server. Check the address and try again.",
+    );
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(mockedSetServerOverride).not.toHaveBeenCalled();
+    expect(mockedClearServerOverride).not.toHaveBeenCalled();
+  });
+});
+
+describe("ServerOverride — storage failure after probe succeeds", () => {
+  beforeEach(() => {
+    withTauri();
+    mockFetchOk();
+  });
+
+  it("setServerOverride throws storage message → that message rendered; location.assign not called", async () => {
+    mockedSetServerOverride.mockImplementation(() => {
+      throw new Error("Couldn't save the server address — storage is unavailable.");
+    });
 
     const assignSpy = vi.fn();
     vi.spyOn(window, "location", "get").mockReturnValue({
@@ -282,17 +395,17 @@ describe("ServerOverride — unreachable server: error shown AND override rolled
     fireEvent.click(screen.getByTestId("server-override-trigger"));
 
     const input = screen.getByTestId("server-override-input") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "https://unreachable.example" } });
+    fireEvent.change(input, { target: { value: "https://chat.example.com" } });
     fireEvent.click(screen.getByTestId("server-override-save"));
 
     await waitFor(() =>
       expect(screen.queryByTestId("server-override-error")).toBeTruthy(),
     );
-    // Error must be shown
-    expect(screen.getByTestId("server-override-error")).toBeTruthy();
-    // Navigation must NOT have happened
+
+    expect(screen.getByTestId("server-override-error").textContent).toContain(
+      "storage is unavailable",
+    );
     expect(assignSpy).not.toHaveBeenCalled();
-    // Rollback: setServerOverride called with the previous value (prev was "https://old.example")
-    expect(mockedSetServerOverride).toHaveBeenLastCalledWith("https://old.example");
+    expect(mockedClearAuthToken).not.toHaveBeenCalled();
   });
 });

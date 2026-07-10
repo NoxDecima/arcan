@@ -4,6 +4,7 @@ import {
   bakedOrigin,
   getServerOrigin,
   getServerOverride,
+  validateServerOrigin,
   setServerOverride,
   clearServerOverride,
 } from "@/platform/server-config";
@@ -28,40 +29,56 @@ export function ServerOverride() {
 
   const current = new URL(getServerOrigin()).host;
 
+  function handleClose() {
+    setOpen(false);
+    setError(null);
+    setChecking(false);
+  }
+
   async function apply(origin: string | null) {
     setError(null);
     setChecking(true);
-    // Capture current override before writing so we can roll back if the probe fails.
-    const prev = getServerOverride();
-    try {
-      // setServerOverride validates the URL and throws a user-facing message on
-      // bad input (e.g. missing https). We call it first so validation errors
-      // surface before any network probe. On reset (origin === null) there's
-      // nothing to validate; the baked origin is always well-formed.
-      if (origin !== null) {
-        setServerOverride(origin);
+
+    // Step 1: validate (throws immediately with a user-facing message; nothing persisted).
+    let target: string;
+    if (origin === null) {
+      target = bakedOrigin();
+    } else {
+      try {
+        target = validateServerOrigin(origin);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Invalid server address.");
+        setChecking(false);
+        return;
       }
-      const target = origin ?? bakedOrigin();
-      // Reachability probe — better-auth exposes /api/auth/ok on every
-      // deployment; any HTTP response (even 404) proves the host resolves
-      // and speaks TLS. Network-level failure is the signal we care about.
-      await fetch(`${target}/api/auth/ok`, { method: "GET" });
+    }
+
+    // Step 2: probe — success requires an Arcan server new enough to carry the
+    // shell CORS config; older/foreign servers read as unreachable.
+    try {
+      await fetch(`${target}/api/auth/ok`, { signal: AbortSignal.timeout(10_000) });
+    } catch {
+      setError("Could not reach that server. Check the address and try again.");
+      setChecking(false);
+      return;
+    }
+
+    // Step 3: persist — probe already passed; if storage fails the error is
+    // honest (nothing was persisted, nothing needs rolling back).
+    try {
       if (origin === null) {
         clearServerOverride();
+      } else {
+        setServerOverride(origin);
       }
-      clearAuthToken();
-      window.location.assign("/");
     } catch (e) {
-      // Probe failed — restore the previous override so a shown error never
-      // leaves a changed server behind.
-      if (origin !== null) {
-        prev === null ? clearServerOverride() : setServerOverride(prev);
-      }
-      setError(
-        e instanceof Error ? e.message : "Could not reach that server. Check the address and try again.",
-      );
+      setError(e instanceof Error ? e.message : "Could not save server address.");
       setChecking(false);
+      return;
     }
+
+    clearAuthToken();
+    window.location.assign("/");
   }
 
   return (
@@ -76,7 +93,7 @@ export function ServerOverride() {
       </button>
       <ModalShell
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={handleClose}
         title="Change server"
       >
         <p className="text-xs text-dim">
@@ -84,6 +101,7 @@ export function ServerOverride() {
           current server will be signed out.
         </p>
         <input
+          aria-label="Server URL"
           className="w-full rounded-r-4 border border-hairline bg-panel p-2 font-mono text-sm text-text"
           value={value}
           onChange={(e) => {

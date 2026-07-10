@@ -4,6 +4,7 @@ import {
   getServerOverride,
   setServerOverride,
   clearServerOverride,
+  validateServerOrigin,
   deriveSyncUrl,
   SERVER_OVERRIDE_KEY,
   bakedOrigin,
@@ -55,6 +56,31 @@ describe("bakedOrigin", () => {
     enterTauri();
     vi.stubEnv("VITE_ARCAN_ORIGIN", "localhost:3000");
     expect(getServerOrigin()).toBe("https://arcan.example");
+  });
+});
+
+describe("validateServerOrigin", () => {
+  it("returns the normalized https origin for a valid URL", () => {
+    expect(validateServerOrigin("https://chat.example.com")).toBe("https://chat.example.com");
+  });
+
+  it("strips a trailing slash and path when normalizing", () => {
+    expect(validateServerOrigin("https://other.example/")).toBe("https://other.example");
+    expect(validateServerOrigin("https://other.example/some/path")).toBe("https://other.example");
+  });
+
+  it("throws the full-URL message for a schemeless/unparseable value", () => {
+    expect(() => validateServerOrigin("not a url")).toThrow("Enter a full URL, e.g. https://chat.example.com");
+  });
+
+  it("throws the https message for an http:// URL", () => {
+    expect(() => validateServerOrigin("http://insecure.example")).toThrow(
+      "Server must be reachable over https://",
+    );
+  });
+
+  it("throws the https message for a non-http scheme", () => {
+    expect(() => validateServerOrigin("ftp://files.example")).toThrow(/https/);
   });
 });
 
