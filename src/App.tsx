@@ -22,6 +22,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
 import { NotificationManager } from "@/components/notification-manager";
+import { DeepLinkBridge } from "@/components/deep-link-bridge";
 import { TrustedDevicePrompt } from "@/components/trusted-device-prompt";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
@@ -221,6 +222,10 @@ function App() {
                   sound, and browser-notification fanout. Reads `me` via its own
                   useAccount call so App.tsx's resolve stays shallow. */}
               {showNotificationManager && <NotificationManager />}
+              {/* Task 12: App Link routing + cross-instance switch prompt.
+                  Mounts unconditionally — self-gates on isTauri(); unauthenticated
+                  arrivals must work so the invite/pair flow can start from a cold tap. */}
+              <DeepLinkBridge />
               {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
                   only renders when a pending pairing is detected. Authenticated only. */}
               {isAuthenticated && <TrustedDevicePrompt />}
