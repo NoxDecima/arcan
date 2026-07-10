@@ -9,13 +9,38 @@ import { getServerOrigin } from "./server-config";
  * don't survive, so the api server's better-auth `bearer` plugin issues a
  * session token via the `set-auth-token` response header; we persist it and
  * attach `Authorization: Bearer` on every auth/feedback request.
+ * The token is bound to the origin that issued it; a server override or
+ * foreign URL never sees it.
  * See docs/superpowers/specs/2026-07-09-android-tauri-app-design.md §Auth.
  */
 export const AUTH_TOKEN_KEY = "arcan-auth-token";
 
-export function getAuthToken(): string | null {
+interface StoredToken {
+  origin: string;
+  token: string;
+}
+
+export function getAuthToken(origin: string = getServerOrigin()): string | null {
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    const raw = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!raw) return null;
+    // Tolerate legacy plain-string values by treating them as origin-mismatched.
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof (parsed as StoredToken).origin !== "string" ||
+      typeof (parsed as StoredToken).token !== "string"
+    ) {
+      return null;
+    }
+    const stored = parsed as StoredToken;
+    return stored.origin === origin ? stored.token : null;
   } catch {
     return null;
   }
@@ -29,11 +54,12 @@ export function clearAuthToken(): void {
   }
 }
 
-function captureToken(response: Response): void {
+function captureToken(response: Response, origin: string): void {
   const token = response.headers.get("set-auth-token");
   if (token) {
     try {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      const stored: StoredToken = { origin, token };
+      localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(stored));
     } catch {
       /* a failed persist only costs a re-login next launch */
     }
@@ -49,12 +75,18 @@ export async function authFetch(
 ): Promise<Response> {
   if (!isTauri()) return fetch(input, init);
 
-  const url = input.startsWith("/") ? `${getServerOrigin()}${input}` : input;
+  const serverOrigin = getServerOrigin();
+  const url = new URL(input, serverOrigin).href;
+  const targetOrigin = new URL(input, serverOrigin).origin;
+
   const headers = new Headers(init.headers);
-  const token = getAuthToken();
-  if (token) headers.set("authorization", `Bearer ${token}`);
+  // Only attach the bearer token when the request targets the configured server origin.
+  if (targetOrigin === serverOrigin) {
+    const token = getAuthToken(serverOrigin);
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
 
   const response = await fetch(url, { ...init, headers });
-  captureToken(response);
+  captureToken(response, serverOrigin);
   return response;
 }

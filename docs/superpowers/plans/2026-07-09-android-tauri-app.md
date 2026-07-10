@@ -503,66 +503,30 @@ Expected: FAIL — cannot resolve `@/platform/auth-transport`.
 
 - [ ] **Step 3: Write the implementation**
 
+Token stored as JSON `{"origin": string, "token": string}` under `AUTH_TOKEN_KEY`.
+`getAuthToken(origin)` returns the token only when the stored origin matches; legacy
+plain-string values are treated as mismatched (forward-compat, no migration needed).
+`authFetch` only attaches the Authorization header when the target URL's origin equals
+`getServerOrigin()`; absolute foreign URLs pass through with no bearer header.
+
 ```typescript
-// src/platform/auth-transport.ts
-import { isTauri } from "./is-tauri";
-import { getServerOrigin } from "./server-config";
-
-/**
- * Bearer-token session transport for Tauri shells.
- *
- * Web keeps HTTP-only cookies (XSS-immune, zero migration) — authFetch is a
- * plain fetch there. In the shell (origin https://tauri.localhost) cookies
- * don't survive, so the api server's better-auth `bearer` plugin issues a
- * session token via the `set-auth-token` response header; we persist it and
- * attach `Authorization: Bearer` on every auth/feedback request.
- * See spec §Auth.
- */
+// src/platform/auth-transport.ts — origin-bound shape (see actual file for full impl)
 export const AUTH_TOKEN_KEY = "arcan-auth-token";
-
-export function getAuthToken(): string | null {
-  try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function clearAuthToken(): void {
-  try {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-function captureToken(response: Response): void {
-  const token = response.headers.get("set-auth-token");
-  if (token) {
-    try {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-/**
- * Drop-in replacement for fetch() on /api/* paths. On web it IS fetch().
- */
-export async function authFetch(
-  input: string,
-  init: RequestInit = {},
-): Promise<Response> {
+export function getAuthToken(origin: string = getServerOrigin()): string | null { … }
+export function clearAuthToken(): void { … }
+function captureToken(response: Response, origin: string): void { … } // stores {origin, token}
+export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   if (!isTauri()) return fetch(input, init);
-
-  const url = input.startsWith("/") ? `${getServerOrigin()}${input}` : input;
+  const serverOrigin = getServerOrigin();
+  const url = new URL(input, serverOrigin).href;
+  const targetOrigin = new URL(input, serverOrigin).origin;
   const headers = new Headers(init.headers);
-  const token = getAuthToken();
-  if (token) headers.set("authorization", `Bearer ${token}`);
-
+  if (targetOrigin === serverOrigin) {
+    const token = getAuthToken(serverOrigin);
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
   const response = await fetch(url, { ...init, headers });
-  captureToken(response);
+  captureToken(response, serverOrigin);
   return response;
 }
 ```
@@ -570,13 +534,15 @@ export async function authFetch(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/platform/auth-transport.test.ts`
-Expected: PASS (4 tests)
+Expected: PASS (8 tests)
 
 - [ ] **Step 5: Rewire callers**
 
 `src/auth/flows.ts` — add `import { authFetch } from "@/platform/auth-transport";` and replace all four `fetch(` calls (`/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/reset-with-recovery`, `/api/auth/me/auth-material`) with `authFetch(` — arguments unchanged (keeping `credentials: "include"` is harmless in the shell).
 
 `src/routes/settings/feedback-route.tsx` — same: import `authFetch`, replace the `fetch("/api/feedback", …)` call with `authFetch("/api/feedback", …)`.
+
+`src/routes/settings/index.tsx` — add `import { clearAuthToken } from "@/platform/auth-transport"` and call `clearAuthToken()` immediately after `authClient.signOut()` in `handleSignOut` (harmless on web; clears the bearer token in the shell).
 
 `src/auth/client.ts` — make the better-auth client shell-aware:
 

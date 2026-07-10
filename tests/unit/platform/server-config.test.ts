@@ -6,6 +6,7 @@ import {
   clearServerOverride,
   deriveSyncUrl,
   SERVER_OVERRIDE_KEY,
+  bakedOrigin,
 } from "@/platform/server-config";
 
 function enterTauri() {
@@ -41,6 +42,13 @@ describe("getServerOrigin", () => {
     enterTauri();
     vi.stubEnv("VITE_ARCAN_ORIGIN", "");
     expect(getServerOrigin()).toBe("https://arcan.example");
+  });
+});
+
+describe("bakedOrigin", () => {
+  it("strips a trailing slash from the env value", () => {
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu/");
+    expect(bakedOrigin()).toBe("https://chat.meteory.eu");
   });
 });
 

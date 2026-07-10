@@ -25,13 +25,21 @@ describe("authFetch on web", () => {
     await authFetch("/api/auth/sign-in/email", { method: "POST" });
     expect(spy).toHaveBeenCalledWith("/api/auth/sign-in/email", { method: "POST" });
   });
+
+  it("never attaches the token on web even when one is stored", async () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ origin: window.location.origin, token: "tok" }));
+    const spy = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", spy);
+    await authFetch("/api/auth/me/auth-material", {});
+    expect(spy.mock.calls[0][1]).toEqual({});
+  });
 });
 
 describe("authFetch in the shell", () => {
   it("prefixes the server origin and attaches the bearer token", async () => {
     enterTauri();
     vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
-    localStorage.setItem(AUTH_TOKEN_KEY, "tok-123");
+    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ origin: "https://chat.meteory.eu", token: "tok-123" }));
     const spy = vi.fn(async () => new Response("{}"));
     vi.stubGlobal("fetch", spy);
 
@@ -44,17 +52,48 @@ describe("authFetch in the shell", () => {
 
   it("captures set-auth-token from responses", async () => {
     enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("{}", { headers: { "set-auth-token": "fresh-tok" } })),
     );
     await authFetch("/api/auth/sign-in/email", { method: "POST" });
-    expect(getAuthToken()).toBe("fresh-tok");
+    expect(getAuthToken("https://chat.meteory.eu")).toBe("fresh-tok");
   });
 
   it("clearAuthToken removes the stored token", () => {
     localStorage.setItem(AUTH_TOKEN_KEY, "tok");
     clearAuthToken();
     expect(getAuthToken()).toBeNull();
+  });
+
+  it("attaches no header in the shell when no token is stored", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    const spy = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", spy);
+    await authFetch("/api/auth/me/auth-material", {});
+    expect(new Headers(spy.mock.calls[0][1].headers).get("authorization")).toBeNull();
+  });
+
+  it("does not send the token to a foreign absolute URL in the shell", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ origin: "https://chat.meteory.eu", token: "tok-123" }));
+    const spy = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", spy);
+    await authFetch("https://evil.example/steal", {});
+    expect(spy.mock.calls[0][0]).toBe("https://evil.example/steal");
+    expect(new Headers(spy.mock.calls[0][1]?.headers).get("authorization")).toBeNull();
+  });
+
+  it("ignores a token captured for a different origin", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ origin: "https://old.example", token: "stale" }));
+    const spy = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", spy);
+    await authFetch("/api/auth/me/auth-material", {});
+    expect(new Headers(spy.mock.calls[0][1].headers).get("authorization")).toBeNull();
   });
 });

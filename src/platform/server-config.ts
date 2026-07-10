@@ -13,9 +13,17 @@ import { isTauri } from "./is-tauri";
 export const SERVER_OVERRIDE_KEY = "arcan-server-origin";
 
 /** Build-time baked origin for shell builds. Placeholder until the real
- * domain is supplied via env at build time. */
+ * domain is supplied via env at build time. Normalizes via URL (strips
+ * trailing slashes, lower-cases scheme/host) and falls back to the placeholder
+ * if the env value is absent or malformed. */
 export function bakedOrigin(): string {
-  return import.meta.env.VITE_ARCAN_ORIGIN || "https://arcan.example";
+  const raw = import.meta.env.VITE_ARCAN_ORIGIN;
+  if (!raw) return "https://arcan.example";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "https://arcan.example";
+  }
 }
 
 export function getServerOverride(): string | null {

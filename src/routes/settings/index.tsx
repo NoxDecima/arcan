@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { authClient } from "@/auth/client";
+import { clearAuthToken } from "@/platform/auth-transport";
 import { ChangePasswordRoute } from "./change-password-route";
 import { RecoveryCodeRoute } from "./recovery-code-route";
 import { FeedbackRoute } from "./feedback-route";
@@ -211,6 +212,7 @@ function SettingsBody() {
     } catch {
       // Network failure shouldn't block local logOut.
     }
+    clearAuthToken();
     logOut();
   }
 
