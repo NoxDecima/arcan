@@ -79,6 +79,7 @@ type Phase =
   | "sending"
   | "sent"
   | "approved"
+  | "declined"
   | "expired"
   | "error";
 
@@ -193,6 +194,9 @@ export function InviteRoute() {
             inviterDisplayName: invitation.inviterDisplayName,
           });
           setPhase("approved");
+        } else if (r.deniedAt) {
+          clearInterval(interval);
+          setPhase("declined");
         } else if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) {
           clearInterval(interval);
           setPhase("expired");
@@ -334,6 +338,22 @@ export function InviteRoute() {
             label: "open Arcan",
             onClick: () => navigate("/"),
           }}
+        />
+      );
+    }
+
+    if (phase === "declined") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="request declined"
+          sub="they declined your request."
+          rootTestId="invite-declined"
+          outline={{
+            label: "back to app",
+            onClick: () => navigate("/"),
+          }}
+          outlineTestId="invite-declined-home-btn"
         />
       );
     }
