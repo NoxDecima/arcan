@@ -31,6 +31,7 @@ import {
 import { resolveDisplayName } from "@/jazz/displayName";
 import { ConversationAvatar } from "@/components/conversation-avatar";
 import { useToast } from "@/components/toast";
+import { useConfirm } from "@/components/confirm-dialog";
 import { setConversationIcon } from "@/jazz/avatar";
 import {
   AttachmentTooLargeError,
@@ -152,6 +153,7 @@ export function MembersRoute() {
   const [titleDraft, setTitleDraft] = useState("");
   const [_iconUploading, setIconUploading] = useState(false);
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
@@ -305,7 +307,13 @@ export function MembersRoute() {
   }
 
   async function handleRemove(accountID: string) {
-    if (!confirm("Remove this member from the conversation?")) return;
+    const ok = await confirmDialog({
+      title: "remove member",
+      body: "they will lose access to this conversation and its messages.",
+      confirmLabel: "remove",
+      testId: "confirm-remove-member",
+    });
+    if (!ok) return;
     setActionInProgress(true);
     try {
       await removeMemberFromConversation(me as any, conversation, accountID);
@@ -320,12 +328,13 @@ export function MembersRoute() {
       setLeavePromoteOpen(true);
       return;
     }
-    if (
-      !confirm(
-        "Leave this conversation? You will lose access to its messages.",
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: "leave conversation",
+      body: "you lose access to its messages. others keep their copies and will see that you left.",
+      confirmLabel: "leave",
+      testId: "confirm-leave-conversation",
+    });
+    if (!ok) return;
     setActionInProgress(true);
     try {
       await leaveConversation(me as any, conversation);
