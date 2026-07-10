@@ -50,6 +50,10 @@ describe("IncomingConnectionPrompt", () => {
     expect(modal).toBeTruthy();
     const img = modal.querySelector("img");
     expect(img?.getAttribute("src")).toBe("blob:bob-avatar");
+    // Feedback round 2: display name is its own line, separated from the
+    // "wants to connect" sentence.
+    expect(screen.getByText("Bob Tester")).toBeTruthy();
+    expect(screen.getByText("wants to connect")).toBeTruthy();
   });
 
   test("stays closed for a locally-dismissed qr request", () => {
