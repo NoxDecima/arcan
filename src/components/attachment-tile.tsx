@@ -140,17 +140,21 @@ export function AttachmentTile({
   // sent file → download via native dialog (shell) or hidden <a> (web)
   async function handleDownload() {
     if (!streamID || !loadAs) return;
-    const blob = await co.fileStream().loadAsBlob(streamID, { loadAs });
-    if (!blob) return;
-    if (await saveBlobNative(blob, filename)) return;
-    const dlUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = dlUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(dlUrl);
+    try {
+      const blob = await co.fileStream().loadAsBlob(streamID, { loadAs });
+      if (!blob) return;
+      if (await saveBlobNative(blob, filename)) return;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(dlUrl);
+    } catch (err) {
+      console.warn("[attachment-tile] download failed:", err);
+    }
   }
 
   return (

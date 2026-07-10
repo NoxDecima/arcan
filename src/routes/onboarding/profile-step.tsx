@@ -72,9 +72,14 @@ export function ProfileStep({
   }
 
   async function handleAvatarPick() {
-    const native = await pickFilesNative({ imagesOnly: true, multiple: false });
-    if (native !== null) {
-      if (native.length > 0) ingestAvatar(native[0]);
+    try {
+      const native = await pickFilesNative({ imagesOnly: true, multiple: false, maxBytes: MAX_ATTACHMENT_BYTES });
+      if (native !== null) {
+        if (native.length > 0) ingestAvatar(native[0]);
+        return;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "pick failed — try again.");
       return;
     }
     fileInputRef.current?.click();

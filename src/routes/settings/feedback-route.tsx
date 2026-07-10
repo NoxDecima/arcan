@@ -47,9 +47,18 @@ export function FeedbackRoute() {
   };
 
   async function openPicker(inputRef: React.RefObject<HTMLInputElement | null>) {
-    const native = await pickFilesNative({ multiple: true });
-    if (native !== null) {
-      if (native.length > 0) ingestFiles(native);
+    try {
+      const native = await pickFilesNative({ multiple: true, maxBytes: MAX_TOTAL_BYTES });
+      if (native !== null) {
+        if (native.length > 0) ingestFiles(native);
+        return;
+      }
+    } catch (err) {
+      toast({
+        icon: "alert",
+        text: err instanceof Error ? err.message : "pick failed — try again.",
+        tone: "error",
+      });
       return;
     }
     inputRef.current?.click();
@@ -87,7 +96,13 @@ export function FeedbackRoute() {
   // ── attachment slot ───────────────────────────────────────────────────────
   const attachmentSlot =
     files.length === 0 ? (
-      <div className="flex cursor-pointer items-center justify-center gap-2 rounded-r-3 border border-dashed border-hairline p-3 text-sm text-text-2 hover:bg-panel-2">
+      <div
+        className="flex cursor-pointer items-center justify-center gap-2 rounded-r-3 border border-dashed border-hairline p-3 text-sm text-text-2 hover:bg-panel-2"
+        onClick={() => void openPicker(fileInputRef)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") void openPicker(fileInputRef); }}
+      >
         {/* Hidden input keeps data-testid for Playwright setInputFiles */}
         <input
           ref={fileInputRef}
@@ -97,13 +112,7 @@ export function FeedbackRoute() {
           className="hidden"
           data-testid="feedback-file-input"
         />
-        <button
-          type="button"
-          className="flex items-center gap-2"
-          onClick={() => void openPicker(fileInputRef)}
-        >
-          <span>add a screenshot (any type, ≤10 MB total)</span>
-        </button>
+        <span>add a screenshot (any type, ≤10 MB total)</span>
       </div>
     ) : (
       <div className="flex flex-col gap-2">

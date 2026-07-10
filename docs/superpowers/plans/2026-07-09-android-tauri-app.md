@@ -1542,6 +1542,14 @@ git commit -m "feat(platform): native QR scanning on Android via barcode-scanner
 - Modify trigger sites: `src/routes/onboarding/profile-step.tsx`, `src/components/profile-view.tsx`, `src/routes/conversations/detail.tsx`, `src/routes/conversations/members.tsx`, `src/routes/settings/feedback-route.tsx`
 - Test: `tests/unit/platform/files.test.ts`
 
+**Review fixes applied (2026-07-10):**
+- `sniffImageMime(bytes)` exported — reads PNG/JPEG/GIF/WebP magic bytes; `pickFilesNative` prefers sniff result over `inferMime(name)`. Rescues extension-less Android `content://` URIs.
+- `PickFilesOptions.maxBytes?: number` — stat-checked before readFile (best-effort; stat failure falls through to read). Throws `"file is larger than the N MB limit"` without reading bytes.
+- `inferMime` and `EXT_MIME` are now exported; `heic`/`heif` entries added.
+- Every call site wraps `pickFilesNative` in try/catch and surfaces errors via its existing affordance: `setAvatarError` (profile-view, profile-step), `toast` (members, detail, feedback), `console.warn` (attachment-tile download).
+- Feedback route first-slot click-target fixed: `onClick` moved to the padded container div (was only on inner button).
+- Header comment updated: errors propagate BY DESIGN and call sites own the display.
+
 - [ ] **Step 1: Write the failing test (web no-op contract)**
 
 ```typescript

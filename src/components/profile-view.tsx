@@ -399,9 +399,14 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           onBack={() => navigate(-1)}
           onEditName={beginEditName}
           onEditAvatar={() => void (async () => {
-            const native = await pickFilesNative({ imagesOnly: true, multiple: false });
-            if (native !== null) {
-              if (native.length > 0) await ingestAvatarFile(native[0]);
+            try {
+              const native = await pickFilesNative({ imagesOnly: true, multiple: false, maxBytes: MAX_ATTACHMENT_BYTES });
+              if (native !== null) {
+                if (native.length > 0) await ingestAvatarFile(native[0]);
+                return;
+              }
+            } catch (err) {
+              setAvatarError(err instanceof Error ? err.message : "pick failed — try again.");
               return;
             }
             fileInputRef.current?.click();

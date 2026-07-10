@@ -481,9 +481,18 @@ export function MembersRoute() {
         onEditAvatar={
           iAmAdmin
             ? () => void (async () => {
-                const native = await pickFilesNative({ imagesOnly: true, multiple: false });
-                if (native !== null) {
-                  if (native.length > 0) await ingestIcon(native[0]);
+                try {
+                  const native = await pickFilesNative({ imagesOnly: true, multiple: false, maxBytes: MAX_ATTACHMENT_BYTES });
+                  if (native !== null) {
+                    if (native.length > 0) await ingestIcon(native[0]);
+                    return;
+                  }
+                } catch (err) {
+                  toast({
+                    icon: "alert",
+                    text: err instanceof Error ? err.message : "pick failed — try again.",
+                    tone: "error",
+                  });
                   return;
                 }
                 iconInputRef.current?.click();
