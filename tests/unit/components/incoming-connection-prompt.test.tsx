@@ -54,6 +54,7 @@ describe("IncomingConnectionPrompt", () => {
     // "wants to connect" sentence.
     expect(screen.getByText("Bob Tester")).toBeTruthy();
     expect(screen.getByText("wants to connect")).toBeTruthy();
+    expect(screen.getByText("scanned your QR code in person")).toBeTruthy();
   });
 
   test("stays closed for a locally-dismissed qr request", () => {
