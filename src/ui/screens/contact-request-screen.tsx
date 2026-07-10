@@ -1,6 +1,7 @@
 // src/ui/screens/contact-request-screen.tsx — node-for-node port of design/hf-flows.jsx:229–257 (ScContactRequest).
 // Rung 2 presenter: pure props in / JSX out; no Jazz, no router.
 // The /invite confirm phase: a contact is requesting to connect.
+// Copy updated 2026-07-10 (feedback round 2): "request to become contacts"/"cancel"; sub-line "invited you to connect" — proto cells patched to match.
 //
 // USER DECISION (2026-07-06): account-id line DROPPED.
 //   hf proto shows "co_9f2…b41" (text-ui-chatsub text-dim); Wave-C decision #7 dropped ids
@@ -21,8 +22,8 @@ export function ContactRequestScreen({
   safetySlot,
   onAccept,
   onDecline,
-  acceptLabel = "accept & add contact",
-  declineLabel = "decline",
+  acceptLabel = "request to become contacts",
+  declineLabel = "cancel",
   rootTestId,
   nameTestId,
   avatarTestId,
@@ -85,7 +86,7 @@ export function ContactRequestScreen({
             {vm.name}
           </div>
           <div className="mt-1.5 font-body text-ui-empty-sub leading-[1.4] text-text-2">
-            wants to connect with you
+            invited you to connect
           </div>
           {/* account-id line dropped — user decision (no raw ids in UI; Wave-C pattern) */}
         </div>

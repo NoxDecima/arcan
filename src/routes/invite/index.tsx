@@ -370,9 +370,9 @@ export function InviteRoute() {
         onToggleSecurity={() => setSecurityOpen((o) => !o)}
         safetySlot={safetySlot}
         onAccept={onConnect}
-        onDecline={() => window.history.back()}
-        acceptLabel="accept & add contact"
-        declineLabel="decline"
+        onDecline={() => navigate("/")}
+        acceptLabel="request to become contacts"
+        declineLabel="cancel"
         rootTestId="invite-confirm"
         nameTestId="invite-inviter-name"
         avatarTestId="invite-inviter-avatar"

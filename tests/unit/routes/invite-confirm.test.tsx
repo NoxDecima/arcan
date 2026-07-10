@@ -55,10 +55,10 @@ describe("InviteRoute confirm phase", () => {
     expect(screen.getByTestId("invite-inviter-avatar")).toBeTruthy();
     // Accept + decline buttons present with expected labels.
     expect(screen.getByTestId("invite-accept-btn").textContent).toContain(
-      "accept & add contact",
+      "request to become contacts",
     );
     expect(screen.getByTestId("invite-decline-btn").textContent).toContain(
-      "decline",
+      "cancel",
     );
   });
 });
