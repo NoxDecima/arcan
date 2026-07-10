@@ -110,6 +110,7 @@ export function AddContactRoute() {
           window.location.assign(url);
         }
       }}
+      onManageInvites={() => navigate("/connections/live-invites")}
       // testid carries
       waitingCardTestId="add-contact-waiting"
       ttlPickerTestId="ttl-picker"

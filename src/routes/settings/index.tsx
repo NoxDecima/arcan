@@ -225,6 +225,7 @@ function SettingsBody() {
       onChangePassword={() => navigate("/settings/change-password")}
       onRecoveryCode={() => navigate("/settings/recovery-code")}
       onFeedback={() => navigate("/settings/feedback")}
+      onInviteLinks={() => navigate("/connections/live-invites")}
       theme={theme}
       onTheme={handleTheme}
       accent={accent}
@@ -263,6 +264,7 @@ function SettingsBody() {
       accentPickerTestId="appearance-accent-picker"
       devicesCardTestId="devices-card"
       linkDeviceRowTestId="link-device-row"
+      inviteLinksTestId="settings-invite-links"
       signOutTestId="sign-out-btn"
     />
   );
