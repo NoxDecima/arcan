@@ -772,6 +772,9 @@ export function useConversationInboxSubscription(me: any) {
     // Self-heal: remove any duplicate entries in knownConversations that
     // may have been created by two devices each appending the same ID before
     // CRDT sync merged their writes. Idempotent; silent; runs on every mount.
+    // Ordering contract: the heal MUST run synchronously here, before the
+    // async Inbox.load drain below opens — moving it into the async block
+    // could race the drain's own push.
     selfHealKnownConversations(me);
 
     (async () => {
