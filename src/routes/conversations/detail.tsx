@@ -1055,6 +1055,24 @@ export function ConversationDetailRoute() {
         onChange={handleFileInputChange}
         data-testid="composer-file-input"
       />
+      {composerDisabled && (
+        <div
+          className="flex items-center justify-between gap-3 px-3 py-2 border-t border-hairline"
+          data-testid="composer-disabled-banner"
+        >
+          <span className="font-body text-ui-sub text-dim">
+            you're the only one left in this conversation.
+          </span>
+          <button
+            type="button"
+            onClick={() => void handleHeaderDelete()}
+            data-testid="last-person-delete-btn"
+            className="shrink-0 px-2 py-1 font-body text-ui-sub text-red rounded border border-hairline"
+          >
+            delete conversation
+          </button>
+        </div>
+      )}
       <ChatComposer
         value={composerText}
         onChange={setComposerText}
