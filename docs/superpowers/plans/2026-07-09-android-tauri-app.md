@@ -1899,68 +1899,27 @@ git commit -m "feat(shell): server override affordance on the login screen"
 ### Task 12: Deep links — App Links config, URL bridge, cross-instance prompt
 
 **Files:**
-- Create: `src/platform/deep-link.ts`
-- Create: `src/components/deep-link-bridge.tsx`
-- Modify: `src/App.tsx` (mount bridge)
-- Test: `tests/unit/platform/deep-link.test.ts`
+- `src/platform/deep-link.ts`
+- `src/components/deep-link-bridge.tsx`
+- `src/App.tsx` (bridge mounted)
+- `tests/unit/platform/deep-link.test.ts`
+- `tests/unit/components/deep-link-bridge.test.tsx`
 
-- [ ] **Step 1: Write the failing test for the pure URL logic**
+> **Status: COMPLETE.** Steps below reflect implemented reality; code blocks show
+> the actual shipped code, not the original scaffolding.
 
-```typescript
-// tests/unit/platform/deep-link.test.ts
-import { describe, it, expect } from "vitest";
-import { classifyIncomingUrl } from "@/platform/deep-link";
+- [x] **Step 1: Pure URL logic tests** — `tests/unit/platform/deep-link.test.ts`
 
-describe("classifyIncomingUrl", () => {
-  const current = "https://chat.meteory.eu";
+  Seven cases covering same-origin navigation, search+hash preservation, foreign
+  invite detection, garbage rejection, exact `/invite` match, `/invite/<sub>`
+  prefix, and `/invitees` false-positive guard.  The file also imports
+  `_resetInitialUrlConsumedForTests` for use in `beforeEach`.
 
-  it("maps a same-origin invite URL to an in-app navigation", () => {
-    expect(
-      classifyIncomingUrl("https://chat.meteory.eu/invite#frag123", current),
-    ).toEqual({ kind: "navigate", to: "/invite#frag123" });
-  });
-
-  it("preserves search and hash", () => {
-    expect(
-      classifyIncomingUrl("https://chat.meteory.eu/pair?step=2#secret", current),
-    ).toEqual({ kind: "navigate", to: "/pair?step=2#secret" });
-  });
-
-  it("flags a foreign-instance URL for the switch prompt", () => {
-    expect(
-      classifyIncomingUrl("https://other.example/invite#frag", current),
-    ).toEqual({
-      kind: "foreign",
-      origin: "https://other.example",
-      to: "/invite#frag",
-      hash: "#frag",
-      isInvite: true,
-    });
-  });
-
-  it("rejects garbage", () => {
-    expect(classifyIncomingUrl("not a url", current)).toBeNull();
-    expect(classifyIncomingUrl("http://insecure.example/invite", current)).toBeNull();
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx vitest run tests/unit/platform/deep-link.test.ts`
-Expected: FAIL — module missing.
-
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 2–4: Implementation** — `src/platform/deep-link.ts`
 
 ```typescript
-// src/platform/deep-link.ts
 import { isTauri } from "./is-tauri";
 
-/**
- * Deep-link handling (spec §Deep links): one entry point for every URL
- * arrival — App Link taps (warm + cold start) and native QR scans all
- * resolve through classifyIncomingUrl.
- */
 export type IncomingUrl =
   | { kind: "navigate"; to: string }
   | {
@@ -1992,8 +1951,19 @@ export function classifyIncomingUrl(
     origin: url.origin,
     to,
     hash: url.hash,
-    isInvite: url.pathname.startsWith("/invite"),
+    // /invite and /invite/<anything> are invite paths; /invitees etc. are not.
+    isInvite: url.pathname === "/invite" || url.pathname.startsWith("/invite/"),
   };
+}
+
+// The plugin never clears currentUrl; the cold-start URL must be consumed
+// exactly once per JS context. A fresh context after the switch-server reload
+// re-consumes by design.
+let initialUrlConsumed = false;
+
+/** Test-only reset — do not call in production code. */
+export function _resetInitialUrlConsumedForTests(): void {
+  initialUrlConsumed = false;
 }
 
 /**
@@ -2005,9 +1975,12 @@ export async function initDeepLinks(
 ): Promise<() => void> {
   if (!isTauri()) return () => {};
   const { onOpenUrl, getCurrent } = await import("@tauri-apps/plugin-deep-link");
-  const initial = await getCurrent();
-  if (initial) {
-    for (const u of initial) onUrl(u);
+  if (!initialUrlConsumed) {
+    initialUrlConsumed = true;
+    const initial = await getCurrent();
+    if (initial) {
+      for (const u of initial) onUrl(u);
+    }
   }
   const unlisten = await onOpenUrl((urls) => {
     for (const u of urls) onUrl(u);
@@ -2016,96 +1989,173 @@ export async function initDeepLinks(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+Key implementation details vs. original scaffold:
+- **Once-per-context flag** (`initialUrlConsumed`): `getCurrent()` is called at
+  most once per JS context lifetime.  A switch-server reload creates a new
+  context, so the cold-start URL is re-consumed correctly on that load.
+- **Test-reset export** (`_resetInitialUrlConsumedForTests`): allows unit tests
+  to reset the module-level flag without a full `vi.resetModules()`.
+- **Exact `isInvite` match**: `url.pathname === "/invite" || url.pathname.startsWith("/invite/")` —
+  guards against `/invitees` being mis-classified.
 
-Run: `npx vitest run tests/unit/platform/deep-link.test.ts`
-Expected: PASS (4 tests)
-
-- [ ] **Step 5: Write the bridge component**
-
-Check `src/App.tsx` for the existing `ConfirmProvider` usage (`grep -rn useConfirm src/ | head -3`) and match its API:
+- [x] **Step 5: Bridge component** — `src/components/deep-link-bridge.tsx`
 
 ```tsx
-// src/components/deep-link-bridge.tsx
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isTauri } from "@/platform/is-tauri";
 import { classifyIncomingUrl, initDeepLinks } from "@/platform/deep-link";
-import { getServerOrigin, setServerOverride } from "@/platform/server-config";
+import {
+  getServerOrigin,
+  setServerOverride,
+  probeServer,
+} from "@/platform/server-config";
 import { clearAuthToken } from "@/platform/auth-transport";
-import { useConfirm } from "@/components/confirm"; // match the real import path/API
+import { useConfirm } from "@/components/confirm-dialog";
 
 /**
  * Shell-only: routes App Link arrivals into react-router; foreign-instance
  * links get a switch-server confirmation (spec §Deep links).
+ *
+ * Mount UNCONDITIONALLY in App (self-gates on isTauri) — unauthenticated
+ * arrivals must work too. Must be inside BrowserRouter (needs useNavigate)
+ * and ConfirmProvider (needs useConfirm) — both are satisfied by App.tsx's
+ * provider stack.
  */
 export function DeepLinkBridge() {
   const navigate = useNavigate();
   const confirm = useConfirm();
 
+  // Keep latest navigate/confirm in refs so the handler (closed over in the
+  // init effect) always calls the current version without re-running init.
+  const navigateRef = useRef(navigate);
+  const confirmRef = useRef(confirm);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  });
+  useEffect(() => {
+    confirmRef.current = confirm;
+  });
+
+  // Init effect runs ONCE per mount (empty deps). Re-navigation never
+  // re-invokes initDeepLinks so the cold-start URL is not re-dispatched.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
+    // cancelled tracks whether the component unmounted before the async init
+    // resolved, so we can properly clean up the late-resolved unlisten fn.
+    let cancelled = false;
 
     void initDeepLinks((raw) => {
       const incoming = classifyIncomingUrl(raw, getServerOrigin());
       if (!incoming) return;
+
       if (incoming.kind === "navigate") {
-        navigate(incoming.to);
+        navigateRef.current(incoming.to);
         return;
       }
+
       // Foreign instance → ask before repointing the app.
       void (async () => {
         const host = new URL(incoming.origin).host;
-        const ok = await confirm({
+        const ok = await confirmRef.current({
           title: "Switch server?",
-          body: `This link belongs to ${host}. Switching signs you out of the current server.`,
+          body: `You'll be signing in through ${host} — everything you send will go through that server. Only switch if you trust its operator. You'll be signed out here first.`,
           confirmLabel: "switch server",
+          danger: true,
         });
         if (!ok) return;
+
+        // Probe the foreign origin before committing. The CORS config on the
+        // server gates whether the probe succeeds in a browser context; an
+        // unreachable or non-Arcan server silently bails.
+        if (!(await probeServer(incoming.origin))) {
+          console.warn("[deep-link] foreign server probe failed — switch aborted", incoming.origin);
+          return;
+        }
+
+        // setServerOverride validates + persists; it can throw if storage is
+        // unavailable (QuotaExceededError, security policy). On failure we
+        // warn and bail — no reload, no token clear — so the user stays on
+        // the current server rather than ending up in a half-switched state.
+        try {
+          setServerOverride(incoming.origin);
+        } catch (err) {
+          console.warn("[deep-link] setServerOverride failed — switch aborted", err);
+          return;
+        }
+
+        // Stash the pending invite AFTER persist succeeds (M1: the new
+        // context needs it available when it loads the invite route).
         if (incoming.isInvite && incoming.hash) {
           try {
             sessionStorage.setItem("pending-invite-fragment", incoming.hash);
           } catch {
-            /* degrade to no replay */
+            /* degrade gracefully — invite replay skipped */
           }
         }
-        setServerOverride(incoming.origin);
+
         clearAuthToken();
         window.location.assign(incoming.isInvite ? "/" : incoming.to);
       })();
     }).then((fn) => {
-      unlisten = fn;
+      // If the component unmounted before init resolved, invoke unlisten
+      // immediately to avoid a subscription leak.
+      if (cancelled) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     });
 
-    return () => unlisten?.();
-  }, [navigate, confirm]);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []); // empty deps — see navigate/confirm refs above
 
   return null;
 }
 ```
 
-- [ ] **Step 6: Mount inside the router**
+Key implementation details vs. original scaffold:
+- **`navigate`/`confirm` refs**: avoids re-running the init effect on every
+  render while still calling the latest versions of the hooks.
+- **`cancelled` flag**: if the component unmounts before the async init
+  resolves, the late-resolved `unlisten` fn is invoked immediately to prevent
+  a subscription leak.
+- **`probeServer` before switch**: verifies the foreign origin is reachable
+  before committing to a server change.
+- **`setServerOverride` in try/catch**: guards against `QuotaExceededError`
+  or security-policy failures; on error the user stays on the current server.
+- **Stash after persist**: `sessionStorage.setItem("pending-invite-fragment")`
+  runs only after `setServerOverride` succeeds.
+- **`danger: true`** on the confirm dialog + trust-decision consent copy:
+  "You'll be signing in through … Only switch if you trust its operator."
+- **`isInvite ? "/" : incoming.to`** on the `location.assign` call: foreign
+  invites reload at `/` so the new context picks up the stashed fragment.
+- **Import path**: `@/components/confirm-dialog` (not `@/components/confirm`).
 
-In `src/App.tsx`, inside the provider stack (it needs `useNavigate`, so it must be inside `BrowserRouter` — App already is) next to `NotificationManager`:
+- [x] **Step 6: Mount inside the router** — `src/App.tsx`
 
-```tsx
-import { DeepLinkBridge } from "@/components/deep-link-bridge";
-// in the JSX, alongside the other app-wide bridges:
-<DeepLinkBridge />
-```
+  `<DeepLinkBridge />` mounted unconditionally alongside `<NotificationManager />`.
 
-(Mount unconditionally — it self-gates on `isTauri()`; unauthenticated arrivals must work too, so do NOT wrap it in `isAuthenticated &&`.)
+- [x] **Step 7: Component tests** — `tests/unit/components/deep-link-bridge.test.tsx`
 
-- [ ] **Step 7: Gates + commit**
+  Four assertions:
+  1. `initDeepLinks` called exactly once on mount.
+  2. Re-render does NOT call `initDeepLinks` again (C1 regression guard for refs pattern).
+  3. Unmount before init resolves → late-resolved unlisten fn is invoked (cancelled-flag cleanup).
+  4. Same-origin URL → `navigate` called with path+search+hash.
 
-Run: `npm run typecheck && npx vitest run`
-Expected: PASS.
+- [x] **Step 8: Once-flag unit test** — `tests/unit/platform/deep-link.test.ts`
 
-```bash
-git add src/platform/deep-link.ts tests/unit/platform/deep-link.test.ts src/components/deep-link-bridge.tsx src/App.tsx
-git commit -m "feat(shell): deep-link bridge — App Link routing + cross-instance switch prompt"
-```
+  `initDeepLinks once-flag` describe block: mocks `@tauri-apps/plugin-deep-link` via
+  `vi.doMock`, stubs `window.__TAURI_INTERNALS__`, calls `vi.resetModules()` and
+  does a fresh `import` of the module.  Verifies `getCurrent` called ONCE across
+  two `initDeepLinks` calls, then `_resetInitialUrlConsumedForTests()` lets a third
+  call hit `getCurrent` again.
 
 ---
 

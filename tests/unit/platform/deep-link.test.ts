@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { classifyIncomingUrl, _resetInitialUrlConsumedForTests } from "@/platform/deep-link";
 
 beforeEach(() => {
@@ -53,5 +53,58 @@ describe("classifyIncomingUrl", () => {
     expect(
       classifyIncomingUrl("https://other.example/invitees", current),
     ).toMatchObject({ kind: "foreign", isInvite: false });
+  });
+});
+
+describe("initDeepLinks once-flag", () => {
+  let originalTauriInternals: unknown;
+
+  beforeEach(() => {
+    originalTauriInternals = (window as Record<string, unknown>).__TAURI_INTERNALS__;
+    (window as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+  });
+
+  afterEach(() => {
+    if (originalTauriInternals === undefined) {
+      delete (window as Record<string, unknown>).__TAURI_INTERNALS__;
+    } else {
+      (window as Record<string, unknown>).__TAURI_INTERNALS__ = originalTauriInternals;
+    }
+    vi.doUnmock("@tauri-apps/plugin-deep-link");
+    vi.resetModules();
+  });
+
+  it("calls getCurrent once even when initDeepLinks is called twice, and resets after _resetInitialUrlConsumedForTests", async () => {
+    const unlistenSpy = vi.fn();
+    const getCurrentMock = vi.fn().mockResolvedValue(["https://x.example/invite#f"]);
+    const onOpenUrlMock = vi.fn().mockResolvedValue(unlistenSpy);
+
+    vi.doMock("@tauri-apps/plugin-deep-link", () => ({
+      getCurrent: getCurrentMock,
+      onOpenUrl: onOpenUrlMock,
+    }));
+
+    vi.resetModules();
+    const { initDeepLinks: init, _resetInitialUrlConsumedForTests: resetFlag } =
+      await import("@/platform/deep-link");
+
+    const cb = vi.fn();
+
+    // First call: getCurrent should be called, cb fired once with the URL.
+    await init(cb);
+    expect(getCurrentMock).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith("https://x.example/invite#f");
+
+    // Second call: getCurrent must NOT be called again (once-flag is set).
+    await init(cb);
+    expect(getCurrentMock).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    // Reset the flag; third call should hit getCurrent again.
+    resetFlag();
+    await init(cb);
+    expect(getCurrentMock).toHaveBeenCalledTimes(2);
+    expect(cb).toHaveBeenCalledTimes(2);
   });
 });

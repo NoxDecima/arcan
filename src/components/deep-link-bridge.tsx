@@ -110,7 +110,7 @@ export function DeepLinkBridge() {
       cancelled = true;
       unlisten?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }
