@@ -60,6 +60,19 @@ describe("ConfirmProvider / useConfirm", () => {
     await waitFor(() => expect(results).toEqual([false]));
   });
 
+  test("unmount settles a pending confirm as false", async () => {
+    const results: boolean[] = [];
+    const { unmount } = render(
+      <ConfirmProvider>
+        <Harness onResult={(ok) => results.push(ok)} />
+      </ConfirmProvider>,
+    );
+    fireEvent.click(screen.getByTestId("trigger"));
+    await screen.findByTestId("confirm-dialog");
+    unmount();
+    await waitFor(() => expect(results).toEqual([false]));
+  });
+
   test("rendering useConfirm without a provider does not throw", () => {
     // Invoking would throw; merely rendering must be safe so existing
     // component tests don't need provider wrapping.

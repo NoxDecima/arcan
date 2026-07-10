@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
@@ -60,6 +61,15 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     resolver.current?.(ok);
     resolver.current = null;
     setPending(null);
+  }, []);
+
+  // Settle any in-flight request if the provider unmounts mid-dialog —
+  // otherwise the awaiting call site hangs forever.
+  useEffect(() => {
+    return () => {
+      resolver.current?.(false);
+      resolver.current = null;
+    };
   }, []);
 
   return (
