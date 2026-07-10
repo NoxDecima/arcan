@@ -5,6 +5,7 @@ import { ArcanAccount } from "./schema/ArcanAccount";
 // Better Auth 1.6 does not ship a provider component — auth state is a
 // global nanostore reached via authClient.useSession() / signIn() / etc.
 import "@/auth/client";
+import { deriveSyncUrl } from "@/platform/server-config";
 
 /**
  * Derive a default sync-server URL from the current page origin.
@@ -23,6 +24,10 @@ import "@/auth/client";
  *   who reverse-proxy through their own gateway.
  *
  * Tested in tests/unit/jazz/provider.test.ts.
+ *
+ * Note: actual sync-URL selection (including Tauri shell support) now lives
+ * in @/platform/server-config.deriveSyncUrl. This function remains the
+ * documented web fallback.
  */
 export function deriveDefaultSyncURL(): `ws://${string}` | `wss://${string}` {
   if (typeof window === "undefined") return "ws://localhost:4200";
@@ -30,19 +35,7 @@ export function deriveDefaultSyncURL(): `ws://${string}` | `wss://${string}` {
   return `${proto}://${window.location.host}/sync/`;
 }
 
-/**
- * The WebSocket sync URL.
- *
- * Priority:
- * 1. VITE_SYNC_URL env var (build-time bake) — explicit override wins.
- *    Use this for local dev pointing at a Tailscale IP, or for any deploy
- *    where the sync server lives on a different host than the SPA.
- * 2. window.location-derived default (wss://<host>/sync/) — what the
- *    one-container Docker deploy uses.
- */
-const SYNC_URL =
-  (import.meta.env.VITE_SYNC_URL as `ws://${string}` | `wss://${string}` | undefined) ??
-  deriveDefaultSyncURL();
+const SYNC_URL = deriveSyncUrl();
 
 interface MessangerProviderProps {
   children: React.ReactNode;
