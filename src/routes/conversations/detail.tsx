@@ -47,7 +47,7 @@ import {
   deleteMessage,
 } from "@/jazz/messages";
 import { resolveDisplayName } from "@/jazz/displayName";
-import { isArchived, ensureMyWriteGroup } from "@/jazz/conversation";
+import { isArchived, ensureMyWriteGroup, isLastAdmin, leaveConversation } from "@/jazz/conversation";
 import {
   findNewMarkIndex,
   type DividerTimelineItem,
@@ -75,6 +75,7 @@ import {
   type ChatTimelineItem,
   type ChatHeaderVM,
 } from "@/ui/screens";
+import { Icon, tapClass } from "@/ui/kit";
 
 // ---- module-level helpers (mirrors Composer component internals) ----
 
@@ -146,6 +147,7 @@ export function ConversationDetailRoute() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const toast = useToast();
   const confirmDialog = useConfirm();
@@ -639,6 +641,44 @@ export function ConversationDetailRoute() {
     await deleteMessage(me as any, message);
   }
 
+  async function handleHeaderDelete() {
+    setHeaderMenuOpen(false);
+    if (!conversation) return;
+    const is1to1 = Boolean(counterpartAccountID);
+    if (!is1to1 && isLastAdmin(me as any, conversation)) {
+      const others = ((conversation as any).$jazz?.owner as any)
+        ?.getDirectMembers?.()
+        .filter(
+          (m: any) =>
+            m.account?.$jazz?.id !== (me as any).$jazz?.id &&
+            (m.role === "admin" || m.role === "writer"),
+        );
+      if (others && others.length > 0) {
+        // Promote flow lives on the members screen.
+        navigate(`/conversations/${convId ?? id}/members`);
+        return;
+      }
+    }
+    const ok = await confirmDialog(
+      is1to1
+        ? {
+            title: "delete conversation",
+            body: "your copy is deleted for good — you lose this history. they will see that you left. messaging them again starts fresh.",
+            confirmLabel: "delete conversation",
+            testId: "confirm-delete-conversation",
+          }
+        : {
+            title: "leave conversation",
+            body: "you lose access to its messages. others keep their copies and will see that you left.",
+            confirmLabel: "leave",
+            testId: "confirm-leave-conversation",
+          },
+    );
+    if (!ok) return;
+    await leaveConversation(me as any, conversation);
+    navigate("/conversations");
+  }
+
   // ---- render ----
 
   const bubbleWidth = isDesktop ? 460 : 190;
@@ -946,6 +986,57 @@ export function ConversationDetailRoute() {
     group: !contact,
   };
 
+  // ---- Header menu node (feedback round 2: ⋮ overflow menu) ----
+
+  const headerMenu = (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setHeaderMenuOpen((o) => !o)}
+        aria-label="conversation actions"
+        data-testid="conversation-menu-btn"
+        className={`${tapClass} w-8 h-8 justify-center`}
+      >
+        <Icon d="dots" size={18} className="text-text-2" />
+      </button>
+      {headerMenuOpen && (
+        <>
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setHeaderMenuOpen(false)}
+          />
+          <div
+            data-testid="conversation-menu"
+            className="absolute right-0 top-full mt-1 z-20 min-w-[200px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
+          >
+            <button
+              type="button"
+              data-testid="conversation-menu-settings"
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+              onClick={() => {
+                setHeaderMenuOpen(false);
+                navigate(`/conversations/${convId ?? id}/members`);
+              }}
+            >
+              conversation settings
+            </button>
+            <button
+              type="button"
+              data-testid="conversation-menu-delete"
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+              onClick={() => void handleHeaderDelete()}
+            >
+              {counterpartAccountID ? "delete conversation" : "leave conversation"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   // ---- Composer element (container-rendered; pure ChatComposer is visual-only) ----
 
   // proto:194 — first word of the name, original casing ("message ada").
@@ -1035,6 +1126,7 @@ export function ConversationDetailRoute() {
         backBtnTestId="chat-back-arrow"
         titleTestId="conversation-title"
         avatarTestId="conversation-header-avatar"
+        headerRight={headerMenu}
       />
     </main>
   );

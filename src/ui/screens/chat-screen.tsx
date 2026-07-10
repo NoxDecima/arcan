@@ -27,6 +27,7 @@ export function ChatScreen({
   backBtnTestId,
   titleTestId,
   avatarTestId,
+  headerRight,
 }: {
   header: ChatHeaderVM;
   items: ChatTimelineItem[];
@@ -55,6 +56,9 @@ export function ChatScreen({
   titleTestId?: string;
   /** Sanctioned: data-testid on the HAv avatar (e.g. "conversation-header-avatar"). */
   avatarTestId?: string;
+  /** intent-fix (feedback round 2): header overflow menu slot (⋮). Parity
+   * cells omit it — PHeader's right slot renders nothing by default. */
+  headerRight?: ReactNode;
 }): JSX.Element {
   // Sub text — rendered only when header.sub is set (groups only; 1:1 presence dropped NOX-31/33).
   // v5 headMono=true + sysComment=true: font-mono, "// " prefix. proto:177.
@@ -85,6 +89,7 @@ export function ChatScreen({
         titleButtonTestId={headerLinkTestId}
         backTestId={backBtnTestId}
         titleTestId={titleTestId}
+        right={headerRight}
       />
 
       {/* Rung 4: connection banner above timeline */}
