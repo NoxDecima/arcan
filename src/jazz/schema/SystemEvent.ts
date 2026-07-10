@@ -13,9 +13,11 @@ import { co, z } from "jazz-tools";
  * the trust-circle threat model — the log is for UX clarity, not security.
  *
  * `targetAccountID` is omitted for kind="left" (actor IS target).
+ *
+ * "icon" = the conversation picture changed (feedback round 2).
  */
 export const SystemEvent = co.map({
-  kind: z.enum(["added", "removed", "left", "promoted", "renamed"]),
+  kind: z.enum(["added", "removed", "left", "promoted", "renamed", "icon"]),
   actorAccountID: z.string(),
   targetAccountID: z.string().optional(),
   newTitle: z.string().optional(),

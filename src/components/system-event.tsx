@@ -2,7 +2,7 @@ import { resolveDisplayName } from "@/jazz/displayName";
 
 interface SystemEventProps {
   event: {
-    kind: "added" | "removed" | "left" | "promoted" | "renamed";
+    kind: "added" | "removed" | "left" | "promoted" | "renamed" | "icon";
     actorAccountID: string;
     targetAccountID?: string;
     newTitle?: string;
@@ -17,7 +17,7 @@ interface SystemEventProps {
  * can exercise the rename / membership messages without mounting a JSX tree.
  */
 export function formatSystemEventMessage(args: {
-  kind: SystemEventProps["event"]["kind"];
+  kind: SystemEventProps["event"]["kind"] | (string & {});
   actorName: string;
   targetName?: string;
   newTitle?: string;
@@ -34,6 +34,12 @@ export function formatSystemEventMessage(args: {
       return `${actorName} promoted ${targetName ?? "someone"} to admin`;
     case "renamed":
       return `${actorName} renamed the group to "${newTitle ?? "—"}"`;
+    case "icon":
+      return `${actorName} changed the group picture`;
+    default:
+      // Forward compat: a newer client may write kinds this build doesn't
+      // know. Render something neutral instead of crashing.
+      return `${actorName} updated the conversation`;
   }
 }
 

@@ -4,6 +4,7 @@
 // Styling is token-only; no inline paint values.
 
 import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { HAv } from "./hav";
 import { Icon } from "./icon";
 import { tapClass } from "./tap";
@@ -131,6 +132,7 @@ export function MessageRow({
   bodyOverride,
   endSlot,
   onAvatar,
+  onContext,
 }: {
   m: BubbleMsg;
   w: number;
@@ -152,6 +154,10 @@ export function MessageRow({
    * (preflight zeroes button padding/border). Parity unaffected (default
    * undefined). */
   onAvatar?: () => void;
+  /** intent-fix (feedback round 2, non-visual): right-click / long-press
+   * opens the message context menu. Rendering is unchanged; parity
+   * unaffected (default undefined). */
+  onContext?: () => void;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -185,6 +191,22 @@ export function MessageRow({
     <div
       className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
       {...(testId ? { "data-testid": testId } : {})}
+      {...(onContext
+        ? {
+            onContextMenu: (e: ReactMouseEvent) => {
+              e.preventDefault();
+              onContext();
+            },
+            onPointerDown: (e: ReactPointerEvent) => {
+              if (e.pointerType === "mouse") return;
+              const timer = window.setTimeout(onContext, 500);
+              const cancel = () => window.clearTimeout(timer);
+              e.currentTarget.addEventListener("pointerup", cancel, { once: true });
+              e.currentTarget.addEventListener("pointerleave", cancel, { once: true });
+              e.currentTarget.addEventListener("pointermove", cancel, { once: true });
+            },
+          }
+        : {})}
     >
       {!mine &&
         (onAvatar ? (

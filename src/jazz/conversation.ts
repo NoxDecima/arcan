@@ -39,7 +39,7 @@ function writeSystemEvent(
   me: Account,
   conversation: any,
   payload: {
-    kind: "added" | "removed" | "left" | "promoted" | "renamed";
+    kind: "added" | "removed" | "left" | "promoted" | "renamed" | "icon";
     targetAccountID?: string;
     newTitle?: string;
   },
@@ -555,13 +555,18 @@ export async function updateConversationTitle(
  * cojson permission gating is a future hardening per the spec).
  *
  * Pass null/undefined to clear (reverts to monogram).
+ *
+ * Feedback round 2: picture changes land in the sidecar log like renames.
  */
 export async function updateConversationIcon(
-  _me: Account,
+  me: Account,
   conversation: any,
   icon: any | null,
 ): Promise<void> {
   conversation.$jazz.set("icon", icon ?? undefined);
+
+  // Feedback round 2: picture changes land in the sidecar log like renames.
+  writeSystemEvent(me, conversation, { kind: "icon" });
 }
 
 /**
