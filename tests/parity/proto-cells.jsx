@@ -343,7 +343,8 @@ function PProfileScreen({ s, params }) {
             <div style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>{params.name}</div>
             {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           </div>
-          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="message" onClick={() => {}} /></div>
+          {/* intent-fix (feedback round 2): "message" → "create conversation" */}
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="create conversation" onClick={() => {}} /></div>
           <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
             {/* Section order — user decision patch (2026-07-05 walkthrough):
                 safety moved directly below action-buttons; shared-convos below it. */}

@@ -40,7 +40,7 @@ export function ProfileScreen({
   /** Intent-fix (non-visual, 2026-07-08 walkthrough): opens the avatar in a
       lightbox. Optional — when absent the avatar renders exactly as proto. */
   onAvatar?: () => void;
-  onMessage: () => void;                // primary "message" PButton
+  onMessage: () => void;                // primary "create conversation" PButton
   onOpenConversation?: (id: string) => void; // Rung-4 real shared list
   safetyOpen: boolean;                  // expandable "verify safety number"
   onToggleSafety: () => void;
@@ -119,7 +119,7 @@ export function ProfileScreen({
               primary
               full
               icon="chat"
-              label="message"
+              label="create conversation"
               onClick={onMessage}
               data-testid={messageTestId}
             />
