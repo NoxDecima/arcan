@@ -168,7 +168,7 @@ git commit -m "feat(platform): isTauri/isTauriAndroid feature detection"
 
 ```typescript
 // tests/unit/platform/server-config.test.ts
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
   getServerOrigin,
   getServerOverride,
@@ -206,6 +206,12 @@ describe("getServerOrigin", () => {
     localStorage.setItem(SERVER_OVERRIDE_KEY, "https://other.example");
     expect(getServerOrigin()).toBe("https://other.example");
   });
+
+  it("falls back to the placeholder origin in the shell when no env is baked", () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "");
+    expect(getServerOrigin()).toBe("https://arcan.example");
+  });
 });
 
 describe("setServerOverride", () => {
@@ -217,8 +223,17 @@ describe("setServerOverride", () => {
 
   it("rejects non-https origins", () => {
     enterTauri();
-    expect(() => setServerOverride("http://insecure.example")).toThrow();
-    expect(() => setServerOverride("not a url")).toThrow();
+    expect(() => setServerOverride("http://insecure.example")).toThrow(/https/);
+    expect(() => setServerOverride("not a url")).toThrow(/full URL/);
+  });
+
+  it("throws dialog-grade copy when storage writes fail", () => {
+    enterTauri();
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    expect(() => setServerOverride("https://other.example")).toThrow(/storage is unavailable/);
+    spy.mockRestore();
   });
 
   it("clearServerOverride removes the stored value", () => {
@@ -230,6 +245,10 @@ describe("setServerOverride", () => {
 });
 
 describe("deriveSyncUrl", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_SYNC_URL", "");
+  });
+
   it("uses VITE_SYNC_URL verbatim when set", () => {
     vi.stubEnv("VITE_SYNC_URL", "ws://192.168.1.42:4200");
     expect(deriveSyncUrl()).toBe("ws://192.168.1.42:4200");
@@ -274,10 +293,7 @@ export const SERVER_OVERRIDE_KEY = "arcan-server-origin";
 /** Build-time baked origin for shell builds. Placeholder until the real
  * domain is supplied via env at build time. */
 export function bakedOrigin(): string {
-  return (
-    (import.meta.env.VITE_ARCAN_ORIGIN as string | undefined) ??
-    "https://arcan.example"
-  );
+  return import.meta.env.VITE_ARCAN_ORIGIN || "https://arcan.example";
 }
 
 export function getServerOverride(): string | null {
@@ -288,7 +304,7 @@ export function getServerOverride(): string | null {
   }
 }
 
-/** Throws on anything that isn't a plain https origin. */
+/** Validates and normalizes to the https origin; throws user-facing errors on invalid input or storage failure. */
 export function setServerOverride(raw: string): void {
   let url: URL;
   try {
@@ -302,7 +318,7 @@ export function setServerOverride(raw: string): void {
   try {
     localStorage.setItem(SERVER_OVERRIDE_KEY, url.origin);
   } catch {
-    // localStorage unavailable — override simply won't stick.
+    throw new Error("Couldn't save the server address — storage is unavailable.");
   }
 }
 
@@ -343,7 +359,7 @@ export function deriveSyncUrl(): `ws://${string}` | `wss://${string}` {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/platform/server-config.test.ts`
-Expected: PASS (9 tests)
+Expected: PASS (11 tests)
 
 - [ ] **Step 5: Rewire `src/jazz/provider.tsx`**
 

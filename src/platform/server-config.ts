@@ -15,10 +15,7 @@ export const SERVER_OVERRIDE_KEY = "arcan-server-origin";
 /** Build-time baked origin for shell builds. Placeholder until the real
  * domain is supplied via env at build time. */
 export function bakedOrigin(): string {
-  return (
-    (import.meta.env.VITE_ARCAN_ORIGIN as string | undefined) ??
-    "https://arcan.example"
-  );
+  return import.meta.env.VITE_ARCAN_ORIGIN || "https://arcan.example";
 }
 
 export function getServerOverride(): string | null {
@@ -29,7 +26,7 @@ export function getServerOverride(): string | null {
   }
 }
 
-/** Throws on anything that isn't a plain https origin. */
+/** Validates and normalizes to the https origin; throws user-facing errors on invalid input or storage failure. */
 export function setServerOverride(raw: string): void {
   let url: URL;
   try {
@@ -43,7 +40,7 @@ export function setServerOverride(raw: string): void {
   try {
     localStorage.setItem(SERVER_OVERRIDE_KEY, url.origin);
   } catch {
-    // localStorage unavailable — override simply won't stick.
+    throw new Error("Couldn't save the server address — storage is unavailable.");
   }
 }
 
@@ -68,8 +65,6 @@ export function getServerOrigin(): string {
  * The WebSocket sync URL. Priority:
  * 1. VITE_SYNC_URL (explicit dev/build override — unchanged behavior)
  * 2. derived from getServerOrigin(): wss for https, ws for http
- *
- * Actual selection logic lives here; see @/platform/server-config.deriveSyncUrl.
  */
 export function deriveSyncUrl(): `ws://${string}` | `wss://${string}` {
   const envUrl = import.meta.env.VITE_SYNC_URL || undefined;

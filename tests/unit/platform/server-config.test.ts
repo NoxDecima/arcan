@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
   getServerOrigin,
   getServerOverride,
@@ -36,6 +36,12 @@ describe("getServerOrigin", () => {
     localStorage.setItem(SERVER_OVERRIDE_KEY, "https://other.example");
     expect(getServerOrigin()).toBe("https://other.example");
   });
+
+  it("falls back to the placeholder origin in the shell when no env is baked", () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "");
+    expect(getServerOrigin()).toBe("https://arcan.example");
+  });
 });
 
 describe("setServerOverride", () => {
@@ -47,8 +53,17 @@ describe("setServerOverride", () => {
 
   it("rejects non-https origins", () => {
     enterTauri();
-    expect(() => setServerOverride("http://insecure.example")).toThrow();
-    expect(() => setServerOverride("not a url")).toThrow();
+    expect(() => setServerOverride("http://insecure.example")).toThrow(/https/);
+    expect(() => setServerOverride("not a url")).toThrow(/full URL/);
+  });
+
+  it("throws dialog-grade copy when storage writes fail", () => {
+    enterTauri();
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    expect(() => setServerOverride("https://other.example")).toThrow(/storage is unavailable/);
+    spy.mockRestore();
   });
 
   it("clearServerOverride removes the stored value", () => {
@@ -60,6 +75,10 @@ describe("setServerOverride", () => {
 });
 
 describe("deriveSyncUrl", () => {
+  beforeEach(() => {
+    vi.stubEnv("VITE_SYNC_URL", "");
+  });
+
   it("uses VITE_SYNC_URL verbatim when set", () => {
     vi.stubEnv("VITE_SYNC_URL", "ws://192.168.1.42:4200");
     expect(deriveSyncUrl()).toBe("ws://192.168.1.42:4200");
