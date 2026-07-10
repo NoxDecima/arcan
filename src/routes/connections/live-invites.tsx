@@ -1,6 +1,6 @@
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { revokeInvitation } from "@/jazz/invitations";
+import { revokeInvitation, invitationUrl } from "@/jazz/invitations";
 import { PCard, PButton, PSectionLabel } from "@/ui/kit";
 import { useToast } from "@/components/toast";
 import { Link } from "react-router-dom";
@@ -11,6 +11,7 @@ export function LiveInvitesRoute() {
   });
   const toast = useToast();
   if (!me.$isLoaded) return null;
+  const myAccountId: string = (me as any).$jazz?.id ?? "";
   const items = Array.from(((me.root as any).liveInvitations as Iterable<any>) ?? []).filter(Boolean);
   const now = Date.now();
   const active = items.filter(
@@ -34,21 +35,34 @@ export function LiveInvitesRoute() {
           </div>
         ) : (
           active.map((inv: any) => {
-            const remainingMs = new Date(inv.expiresAt).getTime() - now;
-            const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
-            const remainingLabel =
-              remainingMin >= 60
-                ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
-                : `${remainingMin}m`;
+            const expiresAt: Date | undefined = inv.expiresAt;
+            const expiryLabel = (() => {
+              if (!expiresAt) return "no expiry";
+              const remainingMs = new Date(expiresAt).getTime() - now;
+              const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
+              return remainingMin >= 60
+                ? `expires in ${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
+                : `expires in ${remainingMin}m`;
+            })();
             return (
               <PCard key={inv.$jazz.id} data-testid={`invite-${inv.$jazz.id}`}>
                 <div className="px-3.5 py-3 flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="font-mono text-ui-value text-dim">{inv.channel}</div>
                     <div className="font-body text-ui-sub text-dim">
-                      expires in {remainingLabel}
+                      {expiryLabel}
                     </div>
                   </div>
+                  <PButton
+                    icon="copy"
+                    label="copy link"
+                    onClick={async () => {
+                      const url = invitationUrl(inv.$jazz.id, myAccountId);
+                      await navigator.clipboard.writeText(url);
+                      toast({ icon: "copy", text: "invite link copied", tone: "accent" });
+                    }}
+                    data-testid="copy-invite-link"
+                  />
                   <PButton
                     danger
                     label="revoke"

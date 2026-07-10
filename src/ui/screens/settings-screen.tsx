@@ -62,6 +62,7 @@ export function SettingsScreen({
   devices,
   onLinkDevice,
   devicesNote,
+  onInviteLinks,
   onSignOut,
   onBack,
   // testid carries
@@ -77,6 +78,7 @@ export function SettingsScreen({
   accentPickerTestId,
   devicesCardTestId,
   linkDeviceRowTestId,
+  inviteLinksTestId,
   signOutTestId,
 }: {
   account: SettingsAccountVM;
@@ -98,6 +100,7 @@ export function SettingsScreen({
   devices: SettingsDeviceRow[];
   onLinkDevice: () => void;             // → /pair?role=initiator
   devicesNote?: ReactNode;              // Rung-4: NOX-10 soft-revoke caveat
+  onInviteLinks?: () => void;           // → /connections/live-invites (Bundle E)
   // sign out
   onSignOut: () => void;
   // chrome — mobile only (desktop uses the persistent sidebar)
@@ -115,6 +118,7 @@ export function SettingsScreen({
   accentPickerTestId?: string;          // "appearance-accent-picker"
   devicesCardTestId?: string;           // "devices-card"
   linkDeviceRowTestId?: string;         // "link-device-row"
+  inviteLinksTestId?: string;           // "settings-invite-links"
   signOutTestId?: string;               // "sign-out-btn"
 }): JSX.Element {
   return (
@@ -321,6 +325,21 @@ export function SettingsScreen({
               {notifErrorSlot}
             </PCard>
           </div>
+
+          {/* ── invite links ──────────────────────────────────────────────── */}
+          {/* Bundle E: links to /connections/live-invites */}
+          {onInviteLinks && (
+            <PCard>
+              <PRow
+                icon="people"
+                label="invite links"
+                sub="manage your active invite links"
+                onClick={onInviteLinks}
+                last
+                data-testid={inviteLinksTestId}
+              />
+            </PCard>
+          )}
 
           {/* ── devices ───────────────────────────────────────────────────── */}
           <div>

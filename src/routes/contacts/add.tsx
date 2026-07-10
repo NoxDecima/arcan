@@ -17,7 +17,7 @@ import { useToast } from "@/components/toast";
 import { createInvitation, withQrChannelMarker, type LinkTtl } from "@/jazz/invitations";
 import { AddContactScreen } from "@/ui/screens/add-contact-screen";
 
-const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d"];
+const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d", "none"];
 
 export function AddContactRoute() {
   const navigate = useNavigate();
@@ -110,6 +110,7 @@ export function AddContactRoute() {
           window.location.assign(url);
         }
       }}
+      onManageInvites={() => navigate("/connections/live-invites")}
       // testid carries
       waitingCardTestId="add-contact-waiting"
       ttlPickerTestId="ttl-picker"
