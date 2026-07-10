@@ -35,8 +35,9 @@ original feature slices above, a separate track).
 - Unit 3 follow-up (feedback → Linear) — merged.
 - Unit 4 (conversation display) — merged.
 - Unit 8 (final UI alignment sweep: AuthSurface, EmptyPane, ModalShell, mobile chrome, toast/skeleton/typography) — merged + 2 polish passes. Audit method (screenshot diffing) missed IA/interaction/feel issues — see Unit 9.
-- Unit 9 (IA & interaction-fidelity pass) — DESIGNED, not started. Spec: `docs/superpowers/specs/2026-06-23-unit-9-ia-interaction-design.md`. Reference is the prototype `design/proto.jsx`. Includes a connection-request delivery bug fix (9-0).
+- Unit 9 (IA & interaction-fidelity pass) — merged (sub-units 9-0…9-7 as `--no-ff` merges, incl. the 9-0 connection-request delivery fix). Spec: `docs/superpowers/specs/2026-06-23-unit-9-ia-interaction-design.md`.
 - Unit 10 (kit architecture + phase 4 cleanup) — merged through Phase 4. Full kit+screens presenter layer in `src/ui/`; legacy components deleted; tokens pruned; purity guard passing.
+- Feedback round 2 (2026-07-10 walkthrough) — triaged + designed. Spec: `docs/superpowers/specs/2026-07-10-feedback-round-2-design.md` (bundles A–E + duplicate-conversation spike). Pending separate brainstorms: the 1:1-vs-group conversation model ("Bundle F") and the identity-code rename/shortening. Deferred features: Linear NOX-42…48.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
