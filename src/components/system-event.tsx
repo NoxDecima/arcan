@@ -76,7 +76,7 @@ export function SystemEvent({ event, me, group }: SystemEventProps) {
       className="flex justify-center py-2"
       data-testid={`system-event-${event.kind}`}
     >
-      <div className="bg-muted text-xs text-muted-foreground italic px-3 py-1 rounded-full">
+      <div className="bg-panel-2 text-xs text-dim italic px-3 py-1 rounded-full">
         {message}
       </div>
     </div>
