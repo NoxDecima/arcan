@@ -2173,7 +2173,7 @@ Key implementation details vs. original scaffold:
 # under src/platform/. Everything else goes through the adapter layer.
 set -euo pipefail
 
-hits=$(grep -rnE "from ['\"]@tauri-apps|import\(['\"]@tauri-apps" src \
+hits=$(grep -rnE "[\"'\`]@tauri-apps" src \
   --include="*.ts" --include="*.tsx" 2>/dev/null \
   | grep -v "^src/platform/" || true)
 
