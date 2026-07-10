@@ -103,7 +103,7 @@ export function NewConversationRoute() {
       ? "select contacts"
       : isGroup
         ? `create group · ${selectedCount} members`
-        : "message";
+        : "create conversation";
 
   return (
     <NewConvoScreen

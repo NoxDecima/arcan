@@ -40,7 +40,7 @@ export function ScanInviteRoute() {
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="w-full max-w-[600px] mx-auto flex flex-col">
         <PHeader
-          title="scan their code"
+          title="scan their QR code"
           onBack={() => navigate(-1)}
           backTestId="scan-invite-back"
         />

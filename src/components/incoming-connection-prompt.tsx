@@ -78,9 +78,12 @@ function Body({ me, request }: { me: any; request: any }) {
           src={avatars.get(r.requesterAccountID)}
           size={48}
         />
-        <AuthTitle>{r.requesterDisplayName} wants to connect</AuthTitle>
+        <AuthTitle>{r.requesterDisplayName}</AuthTitle>
+        <p className="font-body text-ui-empty-sub leading-[1.4] text-text-2 text-center">
+          wants to connect
+        </p>
         <p className="font-body text-ui-sub text-dim text-center">
-          Scanned your code in person.
+          scanned your QR code in person
         </p>
         {shared.length > 0 && (
           <p className="font-body text-ui-sub text-arcan-accent text-center">

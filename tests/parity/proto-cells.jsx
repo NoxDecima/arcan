@@ -343,7 +343,8 @@ function PProfileScreen({ s, params }) {
             <div style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>{params.name}</div>
             {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           </div>
-          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="message" onClick={() => {}} /></div>
+          {/* intent-fix (feedback round 2): "message" → "create conversation" */}
+          <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="chat" label="create conversation" onClick={() => {}} /></div>
           <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
             {/* Section order — user decision patch (2026-07-05 walkthrough):
                 safety moved directly below action-buttons; shared-convos below it. */}
@@ -731,7 +732,8 @@ function PAddContactScreen({ s }) {
             </div>
           </PCard>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 300 }}><div style={{ flex: 1, height: 1, background: c.border }} /><span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.12em', textTransform: 'uppercase', color: c.dim }}>add someone</span><div style={{ flex: 1, height: 1, background: c.border }} /></div>
-          <div style={{ width: '100%', maxWidth: 300 }}><PButton s={s} primary full label="scan their code" icon="search" onClick={() => {}} /></div>
+          {/* intent-fix (feedback round 2): "scan their code" → "scan their QR code" */}
+          <div style={{ width: '100%', maxWidth: 300 }}><PButton s={s} primary full label="scan their QR code" icon="search" onClick={() => {}} /></div>
           <button style={tapBtn} onClick={() => {}}><span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>or paste a link</span></button>
         </div>
       </Body>
@@ -875,7 +877,7 @@ function PScContactRequest({ s }) {
         <div style={{ width: 64, height: 64, borderRadius: s.avatarRadius === 999 ? 999 : s.radius + 4, background: c.accentSoft, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', font: `600 22px/1 ${s.font}`, color: c.accent }}>RA</div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ font: `700 17px/1.2 ${s.font}`, color: c.text, letterSpacing: '-.01em' }}>rana</div>
-          <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>wants to connect with you</div>
+          <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>invited you to connect</div>
           {/* id line dropped — user decision (no raw ids in UI); hf shows "co_9f2…b41" */}
         </div>
         {/* expandable security code — collapsed for parity (SN body Rung-4) */}
@@ -887,8 +889,9 @@ function PScContactRequest({ s }) {
           </div>
         </div>
       </div>
-      <PButton s={s} primary full label="accept & add contact" onClick={() => {}} />
-      <PButton s={s} danger full label="decline" onClick={() => {}} />
+      {/* intent-fix (feedback round 2): request/cancel phrasing */}
+      <PButton s={s} primary full label="request to become contacts" onClick={() => {}} />
+      <PButton s={s} danger full label="cancel" onClick={() => {}} />
     </AuthSurface>
   );
 }
