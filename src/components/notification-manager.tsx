@@ -112,8 +112,8 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
       if (event.conversationID === activeConvId) {
         return;
       }
-      // Gate: sound requires pref + hidden. In the shell the Android channel
-      // owns the sound — skip the mp3 to avoid double-sounding.
+      // Gate: sound requires pref + hidden. In the shell the OS notification owns
+      // the sound (Android: channel; desktop: OS notification sound) — skip the mp3.
       if (prefs?.sound && document.hidden && !isTauri()) {
         void new Audio("/notification.mp3").play().catch(() => {});
       }

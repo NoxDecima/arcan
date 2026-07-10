@@ -1267,9 +1267,11 @@ import { isTauri, isTauriAndroid } from "./is-tauri";
 
 /**
  * Notification adapter. Web: window.Notification (unchanged behavior).
- * Shell: @tauri-apps/plugin-notification — the plugin does NOT patch the
- * web Notification API, hence this layer. Android notifications go through
- * the "messages" channel (created once at startup; the channel owns sound).
+ * Shell: @tauri-apps/plugin-notification. The plugin DOES patch window.Notification
+ * in shell webviews (injected init script), but without channel routing — this
+ * adapter exists for explicit channel routing (channelId "messages") + permission
+ * control. The web-path fallback below must never run in the shell: the patched
+ * constructor would fire channel-less notifications that Android drops silently.
  * Plugin modules are imported dynamically so web bundles stay clean.
  */
 export const MESSAGES_CHANNEL_ID = "messages";
@@ -1289,7 +1291,10 @@ export async function getNotificationPermission(): Promise<NotificationPermissio
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (isTauri()) {
     const { requestPermission } = await import("@tauri-apps/plugin-notification");
-    return (await requestPermission()) as NotificationPermission;
+    // The plugin returns raw Tauri PermissionState which includes "prompt" and
+    // "prompt-with-rationale" (Android) — normalize to the web NotificationPermission type.
+    const result = await requestPermission();
+    return result === "granted" || result === "denied" ? result : "default";
   }
   return Notification.requestPermission();
 }
@@ -1305,7 +1310,8 @@ export async function initNotificationChannel(): Promise<void> {
       description: "New message notifications",
       importance: Importance.High,
     });
-  } catch {
+  } catch (err) {
+    console.warn("[notifications]", err);
     // Channel creation failing must never break app startup.
   }
 }
@@ -1326,9 +1332,10 @@ export async function showNotification(opts: ShowNotificationOptions): Promise<v
         body: opts.body,
         channelId: MESSAGES_CHANNEL_ID,
       });
-      // onClick (deep-route to conversation) is a spec stretch goal — the
-      // shell notification opens/focuses the app via the OS default.
-    } catch {
+      // Tap-to-route deep-linking via the plugin's onAction is a deferred stretch goal
+      // (plan §Plan-time decisions 3); OS default (open app) applies.
+    } catch (err) {
+      console.warn("[notifications]", err);
       /* never throw into the notification fanout path */
     }
     return;

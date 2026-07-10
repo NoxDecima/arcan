@@ -4,6 +4,23 @@ import {
   showNotification,
 } from "@/platform/notifications";
 
+describe("notifications in the shell", () => {
+  it("sends via the messages channel in the shell", async () => {
+    (window as any).__TAURI_INTERNALS__ = {};
+    const sendNotification = vi.fn();
+    vi.doMock("@tauri-apps/plugin-notification", () => ({ sendNotification }));
+    // re-import the adapter fresh so its dynamic import resolves to the mock
+    vi.resetModules();
+    const { showNotification, MESSAGES_CHANNEL_ID } = await import("@/platform/notifications");
+    await showNotification({ title: "Arcan", body: "hi", tag: "conv-1" });
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ channelId: MESSAGES_CHANNEL_ID, title: "Arcan", body: "hi" }),
+    );
+    vi.doUnmock("@tauri-apps/plugin-notification");
+    delete (window as any).__TAURI_INTERNALS__;
+  });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
