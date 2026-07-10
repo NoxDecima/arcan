@@ -406,7 +406,6 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         onEditName={() => {}}
         onEditAvatar={() => {}}
         onAddContact={() => {}}
-        onSettings={() => {}}
       />
     </div>
   ),

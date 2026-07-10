@@ -79,6 +79,7 @@ export function ChatsScreen({
         onClick={onNewConvo}
         aria-label="new conversation"
         data-testid={tid("fab")}
+        variant="chats"
       />
     </>
   );

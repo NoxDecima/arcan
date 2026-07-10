@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { useNavigate } from "react-router-dom";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -6,7 +6,9 @@ import {
   findOrCreate1to1Conversation,
   createGroupConversation,
 } from "@/jazz/conversation";
+import { setConversationIcon } from "@/jazz/avatar";
 import { NewConvoScreen } from "@/ui/screens/new-convo-screen";
+import { Icon, PButton } from "@/ui/kit";
 import type { PickItem } from "@/ui/screens/picker-types";
 
 /**
@@ -29,6 +31,15 @@ export function NewConversationRoute() {
   const [groupName, setGroupName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [groupImageFile, setGroupImageFile] = useState<File | null>(null);
+  const [groupImageUrl, setGroupImageUrl] = useState<string | null>(null);
+  const groupImageInputRef = useRef<HTMLInputElement>(null);
+  useEffect(
+    () => () => {
+      if (groupImageUrl) URL.revokeObjectURL(groupImageUrl);
+    },
+    [groupImageUrl],
+  );
 
   if (!me.$isLoaded) {
     return (
@@ -53,6 +64,17 @@ export function NewConversationRoute() {
 
   const selectedCount = selected.size;
   const isGroup = selectedCount >= 2;
+
+  // Feedback round 2: default group name is the first members' first names.
+  const selectedFirstNames = Array.from(selected).map(
+    (id) =>
+      (rawContacts.find((c: any) => c?.contactAccountID === id) as any)
+        ?.displayNameLocal?.trim()
+        .split(/\s+/)[0] ?? "someone",
+  );
+  const defaultGroupTitle =
+    selectedFirstNames.slice(0, 3).join(", ") +
+    (selectedFirstNames.length > 3 ? ` +${selectedFirstNames.length - 3}` : "");
 
   function toggle(accountID: string) {
     setSelected((prev) => {
@@ -80,13 +102,19 @@ export function NewConversationRoute() {
         );
         navigate(`/conversations/${(conv as any).$jazz.id}`);
       } else {
-        const title =
-          groupName.trim() || `Group with ${selectedCount} people`;
+        const title = groupName.trim() || defaultGroupTitle;
         const conv = await createGroupConversation(
           me as any,
           Array.from(selected),
           title,
         );
+        if (groupImageFile) {
+          try {
+            await setConversationIcon(me as any, conv, groupImageFile);
+          } catch {
+            // Icon upload failing shouldn't block the conversation.
+          }
+        }
         navigate(`/conversations/${(conv as any).$jazz.id}`);
       }
     } catch (e) {
@@ -106,48 +134,75 @@ export function NewConversationRoute() {
         : "create conversation";
 
   return (
-    <NewConvoScreen
-      onBack={() => navigate(-1)}
-      contacts={contacts}
-      selected={selected}
-      onToggle={toggle}
-      groupNameSlot={
-        isGroup ? (
-          <input
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            placeholder="group name (optional)"
-            maxLength={100}
-            className="h-9 flex-1 rounded-r-4 border border-hairline bg-panel px-3 font-body text-sm text-text outline-none focus:border-arcan-accent"
-            data-testid="new-convo-group-name"
-          />
-        ) : undefined
-      }
-      emptySlot={
-        contacts.length === 0 ? (
-          <>
-            <p className="text-sm text-dim">You have no contacts yet.</p>
-            <button
-              type="button"
-              onClick={() => navigate("/contacts/add")}
-              className="mt-2 text-sm text-arcan-accent hover:underline"
-            >
-              Add a contact
-            </button>
-          </>
-        ) : undefined
-      }
-      errorSlot={
-        error ? <p className="text-xs text-red">{error}</p> : undefined
-      }
-      submitLabel={submitLabel}
-      submitDisabled={selectedCount === 0 || creating}
-      onSubmit={() => void submit()}
-      // testid carries
-      backTestId="new-convo-back"
-      emptyTestId="new-convo-empty"
-      errorTestId="new-convo-error"
-      submitTestId="new-convo-submit"
-    />
+    <>
+      <NewConvoScreen
+        onBack={() => navigate(-1)}
+        contacts={contacts}
+        selected={selected}
+        onToggle={toggle}
+        groupNameSlot={
+          isGroup ? (
+            <input
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder={defaultGroupTitle || "group name (optional)"}
+              maxLength={100}
+              className="h-9 flex-1 rounded-r-4 border border-hairline bg-panel px-3 font-body text-sm text-text outline-none focus:border-arcan-accent"
+              data-testid="new-convo-group-name"
+            />
+          ) : undefined
+        }
+        onGroupImagePick={() => groupImageInputRef.current?.click()}
+        groupImageUrl={groupImageUrl}
+        emptySlot={
+          contacts.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <Icon d="people" size={28} className="text-dim" />
+              <p className="font-body text-ui-sub text-dim">
+                no contacts yet — conversations start with a contact.
+              </p>
+              <div className="w-full max-w-[240px]">
+                <PButton
+                  primary
+                  full
+                  icon="plus"
+                  label="add a contact"
+                  onClick={() => navigate("/contacts/add")}
+                  data-testid="new-convo-empty-add"
+                />
+              </div>
+            </div>
+          ) : undefined
+        }
+        errorSlot={
+          error ? <p className="text-xs text-red">{error}</p> : undefined
+        }
+        submitLabel={submitLabel}
+        submitDisabled={selectedCount === 0 || creating}
+        onSubmit={() => void submit()}
+        // testid carries
+        backTestId="new-convo-back"
+        emptyTestId="new-convo-empty"
+        errorTestId="new-convo-error"
+        submitTestId="new-convo-submit"
+      />
+      <input
+        ref={groupImageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        data-testid="new-convo-group-image-input"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (!f) return;
+          setGroupImageFile(f);
+          setGroupImageUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return URL.createObjectURL(f);
+          });
+        }}
+      />
+    </>
   );
 }

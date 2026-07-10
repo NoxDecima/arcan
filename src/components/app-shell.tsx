@@ -7,6 +7,7 @@ import { MobileShell, PTabBar } from "@/ui/kit";
 import { NavColumn } from "@/ui/screens";
 import { PendingRequestsSection } from "@/components/pending-requests-section";
 import { NavListSkeleton } from "@/components/skeleton";
+import { useIncomingConnectionRequests } from "@/jazz/use-incoming-connection-requests";
 
 /**
  * Authenticated layout shell — Unit 10 Wave A.
@@ -41,6 +42,7 @@ export function AppShell() {
   // mobile ConversationsRoute calls its own separate useHomeLists instance.
   const shell = useHomeLists();
   const { tab, setTab } = useSidebarTab();
+  const pendingCount = useIncomingConnectionRequests().length;
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -101,6 +103,7 @@ export function AppShell() {
               pendingSlot={
                 tab === "contacts" ? <PendingRequestsSection /> : undefined
               }
+              contactsBadge={pendingCount}
             />
           )}
         {/* Routed pane — Outlet fills this flex column. */}
@@ -123,6 +126,7 @@ export function AppShell() {
                 setTab(t);
                 navigate("/");
               }}
+              contactsBadge={pendingCount}
             />
           ) : undefined
         }

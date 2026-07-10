@@ -6,7 +6,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
-import { setProfileAvatar, clearProfileAvatar } from "@/jazz/avatar";
+import { setProfileAvatar, clearProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import {
@@ -213,7 +213,8 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     setBusy(true);
     setAvatarError(null);
     try {
-      await setProfileAvatar(me as any, file);
+      const resized = await resizeImageToSquare(file, 256);
+      await setProfileAvatar(me as any, resized);
     } catch (err) {
       if (err instanceof AttachmentTooLargeError) setAvatarError(err.message);
       else setAvatarError("upload failed — try again.");
@@ -361,18 +362,6 @@ export function ProfileView({ accountID }: ProfileViewProps) {
         )}
       </section>
 
-      {/* Remove avatar */}
-      {ownStreamId && (
-        <button
-          type="button"
-          onClick={() => void handleAvatarRemove()}
-          disabled={busy}
-          data-testid="profile-avatar-remove"
-          className="text-xs text-red hover:underline"
-        >
-          remove profile picture
-        </button>
-      )}
     </>
   );
 
@@ -395,7 +384,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           onEditName={beginEditName}
           onEditAvatar={() => fileInputRef.current?.click()}
           onAddContact={() => navigate("/contacts/add")}
-          onSettings={() => navigate("/settings")}
+          onRemoveAvatar={ownStreamId ? () => void handleAvatarRemove() : undefined}
           safetyOpen={showSafety}
           onToggleSafety={() => setShowSafety((s) => !s)}
           safetySlot={
@@ -446,7 +435,6 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           nameTestId="profile-display-name"
           editNameTestId="profile-edit-name"
           addContactTestId="profile-add-contact"
-          settingsTestId="profile-settings-link"
         />
       ) : (
         <ProfileScreen

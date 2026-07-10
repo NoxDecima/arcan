@@ -67,7 +67,10 @@ export function Bubble({
             mine ? "bg-media-veil" : "bg-rail",
             ...(attSlot ? ["min-h-[84px]"] : []),
           ].join(" ")}
-          style={{ width: w - 12, ...(attSlot ? {} : { height: 84 }) }}
+          // intent-fix (feedback round 2): with a real attachment the wrapper
+          // hugs the image (maxWidth) instead of forcing full bubble width;
+          // the parity placeholder branch (no attSlot) keeps fixed metrics.
+          style={attSlot ? { maxWidth: w - 12 } : { width: w - 12, height: 84 }}
         >
           {attSlot ?? (
             <Icon
