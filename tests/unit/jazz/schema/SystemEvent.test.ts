@@ -38,10 +38,10 @@ describe("SystemEvent schema", () => {
     expect(event.targetAccountID).toBeUndefined();
   });
 
-  it("accepts all four kinds: added, removed, left, promoted", async () => {
+  it("accepts all six kinds: added, removed, left, promoted, renamed, icon", async () => {
     const me = await createJazzTestAccount({ AccountSchema: ArcanAccount });
     const group = Group.create({ owner: me });
-    const kinds = ["added", "removed", "left", "promoted"] as const;
+    const kinds = ["added", "removed", "left", "promoted", "renamed", "icon"] as const;
     for (const kind of kinds) {
       const event = SystemEvent.create(
         {

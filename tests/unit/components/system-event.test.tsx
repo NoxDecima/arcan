@@ -45,6 +45,12 @@ describe("formatSystemEventMessage", () => {
       formatSystemEventMessage({ kind: "left", actorName: "Carol" }),
     ).toBe("Carol left the chat");
   });
+
+  it("formats icon", () => {
+    expect(
+      formatSystemEventMessage({ kind: "icon", actorName: "ada" }),
+    ).toBe("ada changed the group picture");
+  });
 });
 
 describe("SystemEvent component", () => {
@@ -78,5 +84,20 @@ describe("SystemEvent component", () => {
     );
     const el = getByTestId("system-event-renamed");
     expect(el.textContent).toContain("—");
+  });
+
+  test("icon event renders with 'changed the group picture'", () => {
+    const { getByTestId } = render(
+      <SystemEvent
+        event={{
+          kind: "icon",
+          actorAccountID: "co_zAda",
+          occurredAt: new Date(),
+        }}
+        me={{ $jazz: { id: "co_zMe" } }}
+      />,
+    );
+    const el = getByTestId("system-event-icon");
+    expect(el.textContent).toContain("changed the group picture");
   });
 });
