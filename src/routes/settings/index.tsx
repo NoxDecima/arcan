@@ -7,6 +7,7 @@ import { useTheme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { useAccountAvatars } from "@/components/use-account-avatars";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { authClient } from "@/auth/client";
@@ -45,6 +46,7 @@ function SettingsBody() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const logOut = useLogOut();
+  const confirmDialog = useConfirm();
 
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -151,13 +153,16 @@ function SettingsBody() {
   }
   const activeDevices = (me.root.devices ?? []).filter((d) => d && !d.revoked);
 
-  function handleRevoke(idx: number) {
+  async function handleRevoke(idx: number) {
     const device = activeDevices[idx];
     if (!device) return;
-    const confirmed = confirm(
-      "Forget this device? It stays hidden from your list, but anything already synced to it remains readable. Full cryptographic revocation lands in a later release.",
-    );
-    if (confirmed) (device as any).$jazz.set("revoked", true);
+    const ok = await confirmDialog({
+      title: "forget device",
+      body: "it stays hidden from your list, but anything already synced to it remains readable. full cryptographic revocation lands in a later release.",
+      confirmLabel: "forget device",
+      testId: "confirm-forget-device",
+    });
+    if (ok) (device as any).$jazz.set("revoked", true);
   }
 
   const devices: SettingsDeviceRow[] = activeDevices.map((device, idx) => {
@@ -194,12 +199,13 @@ function SettingsBody() {
 
   // ── sign out ─────────────────────────────────────────────────────────────
   async function handleSignOut() {
-    if (
-      !confirm(
-        "Sign out? You'll need your password to sign back in. Local data will be cleared.",
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: "sign out",
+      body: "you'll need your password to sign back in. local data on this device is cleared.",
+      confirmLabel: "sign out",
+      testId: "confirm-sign-out",
+    });
+    if (!ok) return;
     try {
       await authClient.signOut();
     } catch {

@@ -26,6 +26,7 @@ import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
 import { SettingsSync } from "@/styles/settings-sync";
 import { ToastProvider } from "@/components/toast";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
@@ -202,26 +203,28 @@ function App() {
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
-          <SidebarTabProvider>
-            {/* Unit 7: sync persisted appearance settings (theme + accent) into
-                ThemeProvider + AccentProvider on sign-in. Authenticated only —
-                SettingsSync depends on a logged-in Jazz account. */}
-            {isAuthenticated && <SettingsSync />}
-            {/* Slice 8: in-app notification manager — drives tab title badge,
-                sound, and browser-notification fanout. Reads `me` via its own
-                useAccount call so App.tsx's resolve stays shallow. */}
-            {showNotificationManager && <NotificationManager />}
-            {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
-                only renders when a pending pairing is detected. Authenticated only. */}
-            {isAuthenticated && <TrustedDevicePrompt />}
-            {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
-                an in-person ConnectionRequest arrives (channel="qr"). Other
-                channels land silently on the Pending Connections list. */}
-            {isAuthenticated && <IncomingConnectionPrompt />}
-            {routeTable}
-            {/* Unit 10: the kit PTabBar lives in AppShell's MobileShell
-                tabBar slot (legacy MobileTabBar deleted in Phase 4). */}
-          </SidebarTabProvider>
+          <ConfirmProvider>
+            <SidebarTabProvider>
+              {/* Unit 7: sync persisted appearance settings (theme + accent) into
+                  ThemeProvider + AccentProvider on sign-in. Authenticated only —
+                  SettingsSync depends on a logged-in Jazz account. */}
+              {isAuthenticated && <SettingsSync />}
+              {/* Slice 8: in-app notification manager — drives tab title badge,
+                  sound, and browser-notification fanout. Reads `me` via its own
+                  useAccount call so App.tsx's resolve stays shallow. */}
+              {showNotificationManager && <NotificationManager />}
+              {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
+                  only renders when a pending pairing is detected. Authenticated only. */}
+              {isAuthenticated && <TrustedDevicePrompt />}
+              {/* Unit 1 Phase 11: QR channel — surface an immediate modal when
+                  an in-person ConnectionRequest arrives (channel="qr"). Other
+                  channels land silently on the Pending Connections list. */}
+              {isAuthenticated && <IncomingConnectionPrompt />}
+              {routeTable}
+              {/* Unit 10: the kit PTabBar lives in AppShell's MobileShell
+                  tabBar slot (legacy MobileTabBar deleted in Phase 4). */}
+            </SidebarTabProvider>
+          </ConfirmProvider>
         </ToastProvider>
       </AccentProvider>
     </ThemeProvider>

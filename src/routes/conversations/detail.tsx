@@ -67,6 +67,7 @@ import {
 } from "@/jazz/attachments";
 import { formatSystemEventMessage } from "@/components/system-event";
 import { useToast } from "@/components/toast";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useAccountAvatars } from "@/components/use-account-avatars";
 import {
   ChatScreen,
@@ -147,6 +148,7 @@ export function ConversationDetailRoute() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const toast = useToast();
+  const confirmDialog = useConfirm();
 
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -619,7 +621,13 @@ export function ConversationDetailRoute() {
   }
 
   async function handleDeleteMessage(message: any) {
-    if (!confirm("Delete this message for everyone in this chat?")) return;
+    const ok = await confirmDialog({
+      title: "delete message",
+      body: "this message is deleted for everyone in this chat.",
+      confirmLabel: "delete",
+      testId: "confirm-delete-message",
+    });
+    if (!ok) return;
     await deleteMessage(me as any, message);
   }
 
