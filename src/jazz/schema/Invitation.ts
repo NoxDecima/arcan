@@ -6,6 +6,6 @@ export const Invitation = co.map({
   inviterDisplayName: z.string(),
   channel: z.enum(["qr", "link"]),
   createdAt: z.date(),
-  expiresAt: z.date(),
+  expiresAt: z.date().optional(),
   revokedAt: z.date().optional(),
 });

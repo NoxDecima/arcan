@@ -220,7 +220,9 @@ export function InviteRoute() {
         openedChannel,
         {
           invitationID: invitation.$jazz?.id,
-          expiresAt: invitation.expiresAt,
+          // Permanent invites (no expiresAt) still mint expiring requests so
+          // the pending-list timeout logic works. Fall back to 30 days.
+          expiresAt: invitation.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       );
       setRequest(req);

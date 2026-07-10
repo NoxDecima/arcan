@@ -34,19 +34,22 @@ export function LiveInvitesRoute() {
           </div>
         ) : (
           active.map((inv: any) => {
-            const remainingMs = new Date(inv.expiresAt).getTime() - now;
-            const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
-            const remainingLabel =
-              remainingMin >= 60
-                ? `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
-                : `${remainingMin}m`;
+            const expiresAt: Date | undefined = inv.expiresAt;
+            const expiryLabel = (() => {
+              if (!expiresAt) return "no expiry";
+              const remainingMs = new Date(expiresAt).getTime() - now;
+              const remainingMin = Math.max(0, Math.floor(remainingMs / 60000));
+              return remainingMin >= 60
+                ? `expires in ${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m`
+                : `expires in ${remainingMin}m`;
+            })();
             return (
               <PCard key={inv.$jazz.id} data-testid={`invite-${inv.$jazz.id}`}>
                 <div className="px-3.5 py-3 flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="font-mono text-ui-value text-dim">{inv.channel}</div>
                     <div className="font-body text-ui-sub text-dim">
-                      expires in {remainingLabel}
+                      {expiryLabel}
                     </div>
                   </div>
                   <PButton

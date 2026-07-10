@@ -31,6 +31,8 @@ export const LINK_TTL_OPTIONS = {
   "1h": 60 * 60 * 1000,
   "24h": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
+  // "none" = permanent invite; falsy so createInvitation skips expiresAt.
+  "none": 0,
 } as const;
 
 export const QR_TTL_MS = 5 * 60 * 1000;
@@ -59,11 +61,26 @@ function fromB64url(s: string): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * Derive a shareable /invite#<fragment> URL from a CoValue ID and an account
+ * ID. Pure — no side effects.
+ *
+ * Extracted so live-invites.tsx can reconstruct the URL from a stored
+ * Invitation CoValue without re-creating the whole invitation.
+ */
+export function invitationUrl(coValueId: string, accountId: string): string {
+  const fragment = toB64url(`${coValueId}|${accountId}`);
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "https://arcan.app";
+  return `${baseUrl}/invite#${fragment}`;
+}
+
+/**
  * Create a multi-use Invitation CoValue in an everyone-writer group.
  *
- * @param account - the inviter's account (me from useAccount)
+ * @param account  - the inviter's account (me from useAccount)
  * @param channel  - "qr" (fixed 5-min TTL) or "link" (TTL from linkTtl)
- * @param linkTtl  - only used when channel === "link"; defaults to "24h"
+ * @param linkTtl  - only used when channel === "link"; defaults to "24h".
+ *                   Pass "none" for a permanent invite (expiresAt omitted).
  * @returns the Invitation CoValue and a shareable URL
  */
 export async function createInvitation(
@@ -77,8 +94,9 @@ export async function createInvitation(
   };
 
   const now = new Date();
+  // "none" maps to 0 (falsy) — permanent invite, no expiresAt.
   const ttlMs = channel === "qr" ? QR_TTL_MS : LINK_TTL_OPTIONS[linkTtl];
-  const expiresAt = new Date(now.getTime() + ttlMs);
+  const expiresAt = ttlMs ? new Date(now.getTime() + ttlMs) : undefined;
 
   const displayName =
     me.profile?.displayName ?? me.profile?.name ?? "Anonymous";
@@ -94,7 +112,7 @@ export async function createInvitation(
       inviterDisplayName: displayName,
       channel,
       createdAt: now,
-      expiresAt,
+      ...(expiresAt ? { expiresAt } : {}),
     },
     { owner: inviteGroup },
   );
@@ -109,12 +127,7 @@ export async function createInvitation(
     console.warn("[invitation] could not push to liveInvitations:", e);
   }
 
-  const fragment = toB64url(
-    `${(invitation as any).$jazz.id}|${me.$jazz.id}`,
-  );
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "https://arcan.app";
-  const url = `${baseUrl}/invite#${fragment}`;
+  const url = invitationUrl((invitation as any).$jazz.id, me.$jazz.id);
 
   return { invitation, url };
 }

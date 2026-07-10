@@ -85,8 +85,9 @@ export function InvitesSection() {
                   </span>
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  Expires:{" "}
-                  {formatDate((inv as any).expiresAt as Date)}
+                  {(inv as any).expiresAt
+                    ? `Expires: ${formatDate((inv as any).expiresAt as Date)}`
+                    : "no expiry"}
                 </p>
               </div>
               <Button
