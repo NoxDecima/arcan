@@ -1,5 +1,6 @@
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { dedupeConversationsByID } from "@/jazz/conversation";
 
 export interface SharedGroup {
   id: string;
@@ -27,7 +28,9 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
     },
   });
   if (!me.$isLoaded || !otherAccountID) return [];
-  const conversations = Array.from((me.root.knownConversations as any) ?? []);
+  const conversations = dedupeConversationsByID(
+    Array.from((me.root.knownConversations as any) ?? []),
+  );
   const contactBook = Array.from((me.root.contactBook as any) ?? []);
   const myID = (me as any).$jazz?.id as string | undefined;
   const out: SharedGroup[] = [];

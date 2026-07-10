@@ -51,6 +51,7 @@ import { Group, co } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
+import { dedupeConversationsByID, selfHealKnownConversations } from "@/jazz/conversation";
 
 // ---------------------------------------------------------------------------
 // Drain logic replicated verbatim from useConversationInboxSubscription
@@ -251,6 +252,153 @@ describe("knownConversations dedup — raw-ID guard (regression for group duplic
 
       const rawID = (known as any).$jazz.raw.get(0);
       expect(rawID).toBe(conversationID);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// NEW: render-time dedup helper + startup self-heal
+// ---------------------------------------------------------------------------
+
+describe("dedupeConversationsByID — render-time belt", () => {
+  it(
+    "returns a single row when the same conversation appears twice in the list",
+    async () => {
+      const alice = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Alice" },
+        isCurrentActiveAccount: true,
+      });
+      const bob = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Bob" },
+        isCurrentActiveAccount: false,
+      });
+      await linkAccounts(alice, bob);
+
+      const conversation = await makeGroupConversation(alice, bob);
+
+      // Simulate the CRDT-merge duplicate: same CoValue reference twice
+      const duplicatedList = [conversation, conversation];
+
+      const deduped = dedupeConversationsByID(duplicatedList);
+
+      expect(deduped).toHaveLength(1);
+      expect((deduped[0] as any)?.$jazz?.id).toBe(
+        (conversation as any).$jazz.id,
+      );
+    },
+  );
+
+  it("passes through a clean list unchanged", async () => {
+    const alice = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "Alice" },
+      isCurrentActiveAccount: true,
+    });
+    const bob = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "Bob" },
+      isCurrentActiveAccount: false,
+    });
+    const charlie = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "Charlie" },
+      isCurrentActiveAccount: false,
+    });
+    await linkAccounts(alice, bob);
+    await linkAccounts(alice, charlie);
+
+    const conv1 = await makeGroupConversation(alice, bob);
+    const conv2 = await makeGroupConversation(alice, charlie);
+
+    const deduped = dedupeConversationsByID([conv1, conv2]);
+
+    expect(deduped).toHaveLength(2);
+  });
+
+  it("filters nullish entries", () => {
+    const deduped = dedupeConversationsByID([null, undefined, null]);
+    expect(deduped).toHaveLength(0);
+  });
+});
+
+describe("selfHealKnownConversations — startup data fix", () => {
+  it(
+    "removes the duplicate entry when knownConversations contains the same ID twice",
+    async () => {
+      const alice = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Alice" },
+        isCurrentActiveAccount: true,
+      });
+      const bob = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Bob" },
+        isCurrentActiveAccount: false,
+      });
+      await linkAccounts(alice, bob);
+
+      const conversation = await makeGroupConversation(alice, bob);
+      const conversationID = (conversation as any).$jazz.id as string;
+
+      // Inject the duplicate directly — simulating what two-device CRDT merge produces
+      bob.root.knownConversations.$jazz.push(conversation);
+      bob.root.knownConversations.$jazz.push(conversation);
+
+      expect(bob.root.knownConversations.length).toBe(2);
+
+      selfHealKnownConversations(bob as any);
+
+      expect(bob.root.knownConversations.length).toBe(1);
+      // The surviving entry must be the correct conversation
+      const surviving = (bob.root.knownConversations as any).$jazz.refs[0];
+      expect(surviving.id).toBe(conversationID);
+    },
+  );
+
+  it(
+    "is a no-op when knownConversations has no duplicates",
+    async () => {
+      const alice = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Alice" },
+        isCurrentActiveAccount: true,
+      });
+      const bob = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Bob" },
+        isCurrentActiveAccount: false,
+      });
+      await linkAccounts(alice, bob);
+
+      const conversation = await makeGroupConversation(alice, bob);
+
+      bob.root.knownConversations.$jazz.push(conversation);
+
+      expect(bob.root.knownConversations.length).toBe(1);
+
+      selfHealKnownConversations(bob as any);
+
+      // Length unchanged, still exactly 1
+      expect(bob.root.knownConversations.length).toBe(1);
+    },
+  );
+
+  it(
+    "is a no-op on an empty list",
+    async () => {
+      const alice = await createJazzTestAccount({
+        AccountSchema: ArcanAccount,
+        creationProps: { name: "Alice" },
+        isCurrentActiveAccount: true,
+      });
+
+      expect(alice.root.knownConversations.length).toBe(0);
+
+      selfHealKnownConversations(alice as any);
+
+      expect(alice.root.knownConversations.length).toBe(0);
     },
   );
 });

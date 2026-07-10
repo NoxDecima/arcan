@@ -641,6 +641,74 @@ async function removeFromKnownConversations(
   }
 }
 
+// ----- public dedup helpers -----
+
+/**
+ * Render-time belt: given an array of conversation CoValues (which may contain
+ * nullish entries), return a new array keeping only the FIRST occurrence of
+ * each `$jazz.id`. Filters nullish entries along the way.
+ *
+ * This is a pure transformation over already-resolved proxy values — it does
+ * not touch the CoList itself, so it is safe to call on every render.
+ *
+ * Exported so it can be unit-tested directly without mounting hooks.
+ */
+export function dedupeConversationsByID(conversations: any[]): any[] {
+  const seen = new Set<string>();
+  const result: any[] = [];
+  for (const c of conversations) {
+    if (c == null) continue;
+    const id: string | undefined = c?.$jazz?.id;
+    if (!id) {
+      // No ID available (unusual edge-case); include it to be safe
+      result.push(c);
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    result.push(c);
+  }
+  return result;
+}
+
+/**
+ * Startup self-heal: walk `me.root.knownConversations`, find entries whose
+ * CoValue ID has already been seen at an earlier index, and remove them by
+ * index. Uses `.$jazz.refs[i].id` (typed access from the CoListJazzApi) to
+ * read IDs without triggering proxy resolution.
+ *
+ * Idempotent and safe to call on every mount — has no effect when the list is
+ * already clean. Removes backward so index shifts don't affect earlier items.
+ * Silent: no logging, no errors thrown.
+ */
+export function selfHealKnownConversations(me: any): void {
+  const known = me?.root?.knownConversations;
+  if (!known || typeof known.$jazz?.remove !== "function") return;
+
+  const refs = known.$jazz?.refs;
+  if (!refs || typeof refs.length !== "number") return;
+
+  const seen = new Set<string>();
+  const indicesToRemove: number[] = [];
+
+  for (let i = 0; i < refs.length; i++) {
+    const id: string | undefined = refs[i]?.id;
+    if (!id) continue;
+    if (seen.has(id)) {
+      indicesToRemove.push(i);
+    } else {
+      seen.add(id);
+    }
+  }
+
+  if (indicesToRemove.length === 0) return;
+
+  // Remove in reverse order so earlier indices remain valid after each removal
+  for (let j = indicesToRemove.length - 1; j >= 0; j--) {
+    known.$jazz.remove(indicesToRemove[j]);
+  }
+}
+
 // ----- private helpers -----
 
 /**
@@ -700,6 +768,14 @@ export function useConversationInboxSubscription(me: any) {
 
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
+
+    // Self-heal: remove any duplicate entries in knownConversations that
+    // may have been created by two devices each appending the same ID before
+    // CRDT sync merged their writes. Idempotent; silent; runs on every mount.
+    // Ordering contract: the heal MUST run synchronously here, before the
+    // async Inbox.load drain below opens — moving it into the async block
+    // could race the drain's own push.
+    selfHealKnownConversations(me);
 
     (async () => {
       try {
