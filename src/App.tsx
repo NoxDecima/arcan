@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
@@ -30,6 +31,7 @@ import { ConfirmProvider } from "@/components/confirm-dialog";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
+import { initNotificationChannel } from "@/platform/notifications";
 
 /**
  * Wrapper that reads the :accountID route param and forwards it to ProfileView.
@@ -63,6 +65,12 @@ function ProfileRoute(): ReactElement {
 function App() {
   const isAuthenticated = useIsAuthenticated();
   const location = useLocation();
+
+  // Android: create the notification channel once at startup (idempotent).
+  // No-op on web and non-Android Tauri; never throws into startup.
+  useEffect(() => {
+    void initNotificationChannel();
+  }, []);
 
   // Load me with enough depth for the inbox subscription to find contacts
   // and push arriving conversations to knownConversations.

@@ -6,6 +6,8 @@ import { useTabTitleBadge } from "@/hooks/useTabTitleBadge";
 import { useNewMessageEvents } from "@/hooks/useNewMessageEvents";
 import { getUnreadCount } from "@/jazz/notifications";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { isTauri } from "@/platform/is-tauri";
+import { showNotification } from "@/platform/notifications";
 
 interface NotificationManagerProps {
   /**
@@ -110,27 +112,23 @@ export function NotificationManager({ me: meProp }: NotificationManagerProps = {
       if (event.conversationID === activeConvId) {
         return;
       }
-      // Gate: sound requires pref + hidden
-      if (prefs?.sound && document.hidden) {
+      // Gate: sound requires pref + hidden. In the shell the Android channel
+      // owns the sound — skip the mp3 to avoid double-sounding.
+      if (prefs?.sound && document.hidden && !isTauri()) {
         void new Audio("/notification.mp3").play().catch(() => {});
       }
-      // Gate: browser notification requires pref + permission + hidden
-      if (
-        prefs?.browser &&
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted" &&
-        document.hidden
-      ) {
-        const n = new Notification("Arcan", {
+      // Gate: notification requires pref + hidden (permission enforced inside
+      // the adapter for web; the shell plugin manages its own permission).
+      if (prefs?.browser && document.hidden) {
+        void showNotification({
+          title: "Arcan",
           body: `New message in ${event.conversationLabel}`,
           tag: `conv-${event.conversationID}`,
-          renotify: false,
-        } as NotificationOptions);
-        n.onclick = () => {
-          window.focus();
-          window.location.assign(`/conversations/${event.conversationID}`);
-          n.close();
-        };
+          onClick: () => {
+            window.focus();
+            window.location.assign(`/conversations/${event.conversationID}`);
+          },
+        });
       }
     },
     [prefs?.sound, prefs?.browser, activeConvId],
