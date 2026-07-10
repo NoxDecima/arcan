@@ -5,13 +5,14 @@
 # First time:  rustup default stable && rustup target add aarch64-linux-android \
 #                armv7-linux-androideabi i686-linux-android x86_64-linux-android
 #
-# Requires nixpkgs config allowing unfree (Android SDK):
-#   export NIXPKGS_ALLOW_UNFREE=1   (or set in ~/.config/nixpkgs/config.nix)
+# Unfree acceptance is handled in-file (config.allowUnfree below). Only if
+# you pass your own pkgs must you set NIXPKGS_ALLOW_UNFREE=1 yourself.
 
 { pkgs ? import <nixpkgs> { config.android_sdk.accept_license = true; config.allowUnfree = true; } }:
 
 let
   androidComposition = pkgs.androidenv.composeAndroidPackages {
+    # These versions must exist in your channel's androidenv repo.json.
     platformVersions = [ "34" ];
     buildToolsVersions = [ "34.0.0" ];
     includeNDK = true;
@@ -37,13 +38,22 @@ pkgs.mkShell {
     export NDK_HOME=$ANDROID_HOME/ndk-bundle
     export JAVA_HOME=${pkgs.jdk21.home}
 
+    # NixOS: Gradle/AGP's Maven-downloaded aapt2 is dynamically linked against
+    # /lib64 and dies with "AAPT2 Daemon startup failed" — use the SDK's own.
+    # Keep the build-tools version in sync with buildToolsVersions above.
+    export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/34.0.0/aapt2"
+
+    # Tauri reads NDK_HOME; cargo-ndk and other tooling read these aliases.
+    export ANDROID_NDK_HOME=$NDK_HOME
+    export ANDROID_NDK_ROOT=$NDK_HOME
+
     echo
     echo "arcan android shell"
     echo "  ANDROID_HOME: $ANDROID_HOME"
     echo "  NDK_HOME:     $NDK_HOME"
     echo "  rustup:       $(rustup --version 2>/dev/null || echo 'run: rustup default stable')"
     echo
-    echo "Dev:    npm run tauri android dev     (device via adb or emulator)"
+    echo "Dev:    npm run tauri android dev     (physical device via adb; no emulator composed)"
     echo "Build:  npm run tauri android build -- --apk"
     echo
   '';
