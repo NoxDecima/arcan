@@ -2,6 +2,7 @@ import { mnemonicToEntropy, entropyToMnemonic, validateMnemonic } from "@scure/b
 import { wordlist } from "@scure/bip39/wordlists/english";
 import { deriveKey, encryptSeed, decryptSeed } from "./kdf";
 import { recoveryProof } from "./recovery-proof";
+import { authFetch } from "@/platform/auth-transport";
 
 type JazzHandle = {
   accountID: string;
@@ -73,7 +74,7 @@ export async function signUp(params: SignUpParams): Promise<{
 
   let response: Response;
   try {
-    response = await fetch("/api/auth/sign-up/email", {
+    response = await authFetch("/api/auth/sign-up/email", {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -124,7 +125,7 @@ type SignInParams = {
 };
 
 export async function signIn(params: SignInParams): Promise<{ accountID: string }> {
-  const response = await fetch("/api/auth/sign-in/email", {
+  const response = await authFetch("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email: params.email, password: params.password }),
@@ -179,7 +180,7 @@ export async function setPasswordAfterRecovery(
   const newEncryptedSeed = await encryptSeed(params.seed, key);
   const proof = await recoveryProof(params.seed);
 
-  const response = await fetch("/api/auth/reset-with-recovery", {
+  const response = await authFetch("/api/auth/reset-with-recovery", {
     method: "POST",
     headers: { "content-type": "application/json" },
     credentials: "include",
@@ -203,7 +204,7 @@ type ChangePasswordParams = {
 };
 
 export async function changePassword(params: ChangePasswordParams): Promise<void> {
-  const materialRes = await fetch("/api/auth/me/auth-material", {
+  const materialRes = await authFetch("/api/auth/me/auth-material", {
     method: "GET",
     credentials: "include",
   });
@@ -221,7 +222,7 @@ export async function changePassword(params: ChangePasswordParams): Promise<void
   const newKey = await deriveKey(params.newPassword, newSalt);
   const newEnvelope = await encryptSeed(seed, newKey);
 
-  const response = await fetch("/api/auth/change-password", {
+  const response = await authFetch("/api/auth/change-password", {
     method: "POST",
     headers: { "content-type": "application/json" },
     credentials: "include",
@@ -246,7 +247,7 @@ type ViewRecoveryCodeParams = {
 export async function viewRecoveryCode(
   params: ViewRecoveryCodeParams,
 ): Promise<string> {
-  const materialRes = await fetch("/api/auth/me/auth-material", {
+  const materialRes = await authFetch("/api/auth/me/auth-material", {
     method: "GET",
     credentials: "include",
   });

@@ -1,4 +1,7 @@
 import { createAuthClient } from "better-auth/client";
+import { isTauri } from "@/platform/is-tauri";
+import { getServerOrigin } from "@/platform/server-config";
+import { authFetch } from "@/platform/auth-transport";
 
 /**
  * Plugin-side client mirror of jazzZkPlugin. Exposes typed access to the
@@ -14,19 +17,34 @@ function jazzZkPluginClient() {
 }
 
 /**
- * Singleton Better Auth client. The browser sends cookies automatically.
+ * Singleton Better Auth client.
  *
- * No explicit `baseURL` is passed: Better Auth 1.6's createAuthClient
- * derives it from `window.location.origin` and appends `/api/auth`, which
- * is exactly what we want for the production deploy (Caddy routes
- * /api/auth/* on the same domain to the auth-server). For local dev the
- * Vite dev server proxies /api/auth/* to localhost:4300 via
- * vite.config.ts.
+ * Web: no baseURL (derived from window.location.origin — unchanged). The
+ * browser sends cookies automatically and no custom fetch is needed.
+ *
+ * Shell (https://tauri.localhost): cookies don't survive cross-origin
+ * requests, so we give Better Auth an absolute baseURL pointing at the
+ * configured server and swap in authFetch as the customFetchImpl so that
+ * every auth call gets the bearer token attached and any `set-auth-token`
+ * response header is captured.
  *
  * Passing a relative path like "/api/auth" as baseURL would throw
  * "Invalid base URL" because BA's URL parser requires an absolute origin.
+ * For local dev the Vite dev server proxies /api/auth/* to localhost:4300
+ * via vite.config.ts (web path only; shell uses the explicit origin).
  */
 export const authClient = createAuthClient({
+  // Web: no baseURL (derived from window.location.origin — unchanged).
+  // Shell: absolute base against the configured server + bearer transport.
+  ...(isTauri()
+    ? {
+        baseURL: `${getServerOrigin()}/api/auth`,
+        fetchOptions: {
+          customFetchImpl: (input: string | URL | Request, init?: RequestInit) =>
+            authFetch(String(input), init),
+        },
+      }
+    : {}),
   plugins: [jazzZkPluginClient()],
 });
 

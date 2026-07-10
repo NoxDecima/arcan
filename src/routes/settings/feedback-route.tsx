@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/toast";
 import { FeedbackScreen } from "@/ui/screens/feedback-screen";
+import { authFetch } from "@/platform/auth-transport";
 
 const CATEGORIES: [string, string][] = [
   ["bug", "Bug"],
@@ -51,7 +52,7 @@ export function FeedbackRoute() {
       if (found) body.set("category", found[1]);
       // email field removed — server infers from authenticated account session
       for (const f of files) body.append("attachment", f);
-      const res = await fetch("/api/feedback", {
+      const res = await authFetch("/api/feedback", {
         method: "POST",
         body,
         credentials: "include",
