@@ -15,4 +15,5 @@ export const ConnectionRequest = co.map({
   createdAt: z.date(),
   expiresAt: z.date(),
   approvedAt: z.date().optional(),
+  deniedAt: z.date().optional(),
 });

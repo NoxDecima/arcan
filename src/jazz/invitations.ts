@@ -367,8 +367,12 @@ export async function dismissConnectionRequest(
  * Also records the ID in dismissedRequestIDs — if the same request ever
  * reappears (e.g. a delivery race re-drains it), the modal stays muted.
  *
- * No shared CoValue is mutated: the requester is not notified, same as
- * dismissal always behaved.
+ * Feedback round 2: stamps `deniedAt` on the shared CoValue before doing the
+ * local cleanup. The recipient already has writer access to the request
+ * (same mechanism `approveConnectionRequest` uses for `approvedAt`). The
+ * requester's waiting screen polls for `deniedAt` and transitions to a
+ * terminal "declined" state when it is set. Idempotent: a second call is a
+ * no-op when `deniedAt` is already set.
  *
  * @param recipient - the denying account (me from useAccount)
  * @param request   - the ConnectionRequest CoValue to deny
@@ -377,6 +381,14 @@ export async function denyConnectionRequest(
   recipient: Account,
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
+  const r = request as any;
+  // Feedback round 2: propagate the decision — the requester's waiting
+  // screen watches deniedAt (recipient has writer access to the request
+  // CoValue, same mechanism approveConnectionRequest uses for approvedAt).
+  if (!r.deniedAt && typeof r.$jazz?.set === "function") {
+    r.$jazz.set("deniedAt", new Date());
+  }
+
   const root = (recipient as any).root;
   const id = (request as any).$jazz.id as string;
 
