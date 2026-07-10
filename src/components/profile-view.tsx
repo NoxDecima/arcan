@@ -17,6 +17,7 @@ import {
 import { ImageLightbox } from "@/components/image-lightbox";
 import { RemoveContactDialog } from "@/components/remove-contact-dialog";
 import { useToast } from "@/components/toast";
+import { useConfirm } from "@/components/confirm-dialog";
 import { PButton } from "@/ui/kit";
 import { OwnProfileScreen } from "@/ui/screens/own-profile-screen";
 import { ProfileScreen } from "@/ui/screens/profile-screen";
@@ -57,6 +58,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const toast = useToast();
+  const confirmDialog = useConfirm();
 
   const myID = (me as any)?.$jazz?.id as string | undefined;
   const isOwn = !!myID && accountID === myID;
@@ -221,7 +223,13 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   }
 
   async function handleAvatarRemove() {
-    if (!confirm("remove your profile picture?")) return;
+    const ok = await confirmDialog({
+      title: "remove profile picture",
+      body: "your profile picture will be removed for everyone.",
+      confirmLabel: "remove",
+      testId: "confirm-remove-avatar",
+    });
+    if (!ok) return;
     setBusy(true);
     setAvatarError(null);
     try {
@@ -298,7 +306,14 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   // fresh thread.
   async function handleDeleteConversation() {
     if (!convo1to1) return;
-    if (!confirm("delete this conversation? your copy is removed for good — messaging them again starts fresh.")) return;
+    const name = contact?.displayNameLocal ?? "the other person";
+    const ok = await confirmDialog({
+      title: "delete conversation",
+      body: `your copy is deleted for good — you lose this history. ${name} keeps their copy and will see that you left. messaging them again starts fresh.`,
+      confirmLabel: "delete conversation",
+      testId: "confirm-delete-conversation",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await leaveConversation(me as any, convo1to1);
