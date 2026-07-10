@@ -58,7 +58,7 @@ function Body({ me, request }: { me: any; request: any }) {
     <ModalShell
       open
       onClose={onDismiss}
-      title=""
+      title="connection request"
       dataTestId="incoming-connection-prompt"
       footer={
         <ModalFooter>

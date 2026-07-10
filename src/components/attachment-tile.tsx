@@ -62,13 +62,13 @@ export function AttachmentTile({
     if (mode === "pending") {
       return (
         <div
-          className="relative w-20 h-20 rounded border border-border overflow-hidden bg-muted"
+          className="relative w-20 h-20 rounded border border-hairline overflow-hidden bg-panel-2"
           data-testid="attachment-tile-pending-image"
         >
           {url ? (
             <img src={url} alt={filename} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+            <div className="w-full h-full flex items-center justify-center text-xs text-dim">
               …
             </div>
           )}
@@ -99,11 +99,11 @@ export function AttachmentTile({
           <img
             src={url}
             alt={filename}
-            className="rounded max-w-full object-contain border border-border"
+            className="rounded max-w-full object-contain border border-hairline"
             style={{ maxWidth: 280, maxHeight: 280 }}
           />
         ) : (
-          <div className="w-48 h-32 flex items-center justify-center bg-muted text-xs text-muted-foreground rounded">
+          <div className="w-48 h-32 flex items-center justify-center bg-panel-2 text-xs text-dim rounded">
             Loading image…
           </div>
         )}
@@ -115,19 +115,19 @@ export function AttachmentTile({
   if (mode === "pending") {
     return (
       <div
-        className="flex items-center gap-2 px-2 py-1 border border-border rounded bg-muted/30 text-xs"
+        className="flex items-center gap-2 px-2 py-1 border border-hairline rounded bg-panel-2/30 text-xs"
         data-testid="attachment-tile-pending-file"
       >
         <span aria-hidden>📄</span>
         <span className="truncate max-w-[140px]">{filename}</span>
-        <span className="text-muted-foreground">{formatSize(size)}</span>
+        <span className="text-dim">{formatSize(size)}</span>
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
             aria-label={`Remove ${filename}`}
             data-testid="attachment-tile-remove"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-dim hover:text-text"
           >
             ×
           </button>
@@ -155,14 +155,14 @@ export function AttachmentTile({
     <button
       type="button"
       onClick={handleDownload}
-      className="inline-flex items-center gap-2 px-3 py-2 rounded border border-border bg-muted/30 text-sm hover:bg-muted"
+      className="inline-flex items-center gap-2 px-3 py-2 rounded border border-hairline bg-panel-2/30 text-sm hover:bg-panel-2"
       data-testid="attachment-tile-sent-file"
       aria-label={`Download ${filename}`}
     >
       <span aria-hidden className="text-lg">📄</span>
       <span className="flex flex-col text-left">
         <span className="truncate max-w-[180px]">{filename}</span>
-        <span className="text-xs text-muted-foreground">{formatSize(size)}</span>
+        <span className="text-xs text-dim">{formatSize(size)}</span>
       </span>
     </button>
   );

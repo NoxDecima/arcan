@@ -56,6 +56,9 @@ describe("IncomingConnectionPrompt", () => {
     expect(screen.getByText("Bob Tester")).toBeTruthy();
     expect(screen.getByText("wants to connect")).toBeTruthy();
     expect(screen.getByText("scanned your QR code in person")).toBeTruthy();
+    // a11y: the dialog must have an accessible name so screen readers can
+    // identify it (aria-labelledby pointing at the <h2>).
+    expect(screen.getByRole("dialog", { name: "connection request" })).toBeTruthy();
   });
 
   test("decline button denies the request", async () => {
