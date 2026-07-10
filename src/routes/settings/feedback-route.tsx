@@ -101,7 +101,7 @@ export function FeedbackRoute() {
         onClick={() => void openPicker(fileInputRef)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") void openPicker(fileInputRef); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void openPicker(fileInputRef); } }}
       >
         {/* Hidden input keeps data-testid for Playwright setInputFiles */}
         <input
@@ -111,6 +111,7 @@ export function FeedbackRoute() {
           onChange={onFileChange}
           className="hidden"
           data-testid="feedback-file-input"
+          onClick={(e) => e.stopPropagation()}
         />
         <span>add a screenshot (any type, ≤10 MB total)</span>
       </div>
