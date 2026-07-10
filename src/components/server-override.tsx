@@ -7,6 +7,7 @@ import {
   validateServerOrigin,
   setServerOverride,
   clearServerOverride,
+  probeServer,
 } from "@/platform/server-config";
 import { clearAuthToken } from "@/platform/auth-transport";
 import { ModalShell } from "@/components/modal-shell";
@@ -55,9 +56,8 @@ export function ServerOverride() {
 
     // Step 2: probe — success requires an Arcan server new enough to carry the
     // shell CORS config; older/foreign servers read as unreachable.
-    try {
-      await fetch(`${target}/api/auth/ok`, { signal: AbortSignal.timeout(10_000) });
-    } catch {
+    const reachable = await probeServer(target);
+    if (!reachable) {
       setError("Could not reach that server. Check the address and try again.");
       setChecking(false);
       return;

@@ -72,6 +72,22 @@ export function clearServerOverride(): void {
   }
 }
 
+/**
+ * Probe whether `origin` is reachable. Fetches /api/auth/ok with a 10-second
+ * timeout; returns true on any HTTP response (even non-2xx), false on network
+ * failure. Note: the CORS config on the server gates whether browsers actually
+ * see a response vs. an opaque network error — a correct Arcan server exposes
+ * the endpoint; older or foreign servers may appear unreachable.
+ */
+export async function probeServer(origin: string): Promise<boolean> {
+  try {
+    await fetch(`${origin}/api/auth/ok`, { signal: AbortSignal.timeout(10_000) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getServerOrigin(): string {
   if (!isTauri()) {
     return typeof window === "undefined"
