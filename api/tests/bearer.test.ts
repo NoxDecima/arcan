@@ -14,6 +14,9 @@ async function makeAuth() {
     baseURL: "http://localhost/api/auth",
     trustedOrigins: SHELL_ORIGINS,
     emailAndPassword: { enabled: true, minPasswordLength: 12 },
+    // better-auth skips origin checks under NODE_ENV=test by default; force them on so
+    // trustedOrigins is actually exercised.
+    advanced: { disableOriginCheck: false },
     // Reject raw session tokens — only the signed token from set-auth-token authenticates.
     plugins: [jazzZkPlugin(), bearer({ requireSignature: true })],
   };
@@ -159,12 +162,9 @@ describe("bearer plugin integration", () => {
 
   // --- Negative tests ---
 
-  test("sign-in from untrusted origin — origin check is skipped in NODE_ENV=test", async () => {
-    // better-auth sets skipOriginCheck=true when isTest() returns true (NODE_ENV=test).
-    // This means the trustedOrigins CSRF guard cannot be exercised in unit tests —
-    // it is covered by manual end-to-end verification (Task 4 Step 4 in the plan).
-    // This test documents the limitation and confirms the config is wired correctly
-    // (trustedOrigins is set; the guard fires in production where NODE_ENV != test).
+  test("sign-in from untrusted origin is rejected with 403", async () => {
+    // advanced: { disableOriginCheck: false } overrides better-auth's default
+    // skipOriginCheck=true in NODE_ENV=test, so trustedOrigins is actually exercised.
     await signUp(auth, "evil-origin@example.com");
 
     const res = await signIn(
@@ -174,8 +174,24 @@ describe("bearer plugin integration", () => {
       "https://evil.example",
     );
 
-    // 200: origin check is skipped in test mode — see comment above.
+    expect(res.status).toBe(403);
+  });
+
+  test("sign-in from trusted Tauri origin succeeds — trustedOrigins line is load-bearing", async () => {
+    // Positive counterpart: a request from https://tauri.localhost (in SHELL_ORIGINS)
+    // succeeds even with origin checks forced on. Removing the trustedOrigins line in
+    // api/src/index.ts would flip this test to 403.
+    await signUp(auth, "trusted-origin@example.com");
+
+    const res = await signIn(
+      auth,
+      "trusted-origin@example.com",
+      "correcthorsebattery1",
+      "https://tauri.localhost",
+    );
+
     expect(res.status).toBe(200);
+    expect(res.headers.get("set-auth-token")).toBeTruthy();
   });
 
   test("GET /get-session with Authorization: Bearer garbage returns null user", async () => {
