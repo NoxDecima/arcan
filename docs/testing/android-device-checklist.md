@@ -4,12 +4,12 @@ Run before each android-v* release tag. Device: real hardware, USB debugging.
 Record date + device + result per line.
 
 ## Phase 0 — platform assumptions (/diag)
-- [ ] Run `npx tauri android init` (first time only) and re-run `npx tauri icon` afterwards — icons initially land in `src-tauri/icons/`; after init they must also be present in the Gradle `res/` dirs that the init generates. Apply Gradle signing wiring per `docs/android-signing.md`.
-- [ ] /diag: secure context PASS
-- [ ] /diag: WebCrypto PASS
-- [ ] /diag: WASM (argon2id) PASS
-- [ ] /diag: IndexedDB write PASS
-- [ ] /diag: sync WebSocket PASS (against the real deployment)
+- [~] Run `npx tauri android init` (first time only) and re-run `npx tauri icon` afterwards — icons initially land in `src-tauri/icons/`; after init they must also be present in the Gradle `res/` dirs that the init generates. Apply Gradle signing wiring per `docs/android-signing.md`. *(2026-07-13, Fairphone 5 5G: init done; icons still placeholder, signing wiring pending — release prep, not dev blockers)*
+- [x] /diag: secure context PASS *(2026-07-13, Fairphone 5 5G, dev build via Tailscale Serve)*
+- [x] /diag: WebCrypto PASS *(2026-07-13, Fairphone 5 5G)*
+- [x] /diag: WASM (argon2id) PASS *(2026-07-13, Fairphone 5 5G)*
+- [x] /diag: IndexedDB write PASS *(2026-07-13, Fairphone 5 5G)*
+- [x] /diag: sync WebSocket PASS *(2026-07-13, Fairphone 5 5G — wss via Tailscale Serve → Vite proxy → local sync; real deployment still to be tested)*
 
 ## Core flows
 - [ ] Install signed APK (adb install or Obtainium)
