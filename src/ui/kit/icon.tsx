@@ -9,7 +9,7 @@ export type IconName =
   | "image" | "paperclip" | "chat" | "people" | "pencil" | "copy"
   | "share" | "camera" | "check" | "dots" | "bell" | "at" | "device"
   | "key" | "shield" | "logout" | "sun" | "moon" | "sparkle" | "alert"
-  | "refresh" | "close" | "message";
+  | "refresh" | "close" | "message" | "chatplus" | "personplus";
 
 // hf-kit.jsx lines 115–143 — byte-for-byte paths.
 export const IPATHS: Record<IconName, string> = {
@@ -43,6 +43,11 @@ export const IPATHS: Record<IconName, string> = {
   refresh:   'M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6',
   close:     'M18 6 6 18M6 6l12 12',
   message:   'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z',
+  // feedback round 2 addendum (intent-fix): not in hf-kit.jsx — lucide
+  // message-square-plus / user-plus, same source family + stroke style
+  // as the ported set. Used by the tab-aware FAB.
+  chatplus:   'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM12 7v6M9 10h6',
+  personplus: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
 };
 
 // hf-kit.jsx lines 144–146 — node-for-node port.

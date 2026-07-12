@@ -22,8 +22,9 @@ export function Fab({
   size?: number;
   iconSize?: number;
   /** intent-fix (feedback round 2): tab-aware icon — "chats" renders a
-   * chat bubble + small plus, "contacts" a person + small plus. Default
-   * (undefined) keeps the proto's plain plus; parity cells omit it. */
+   * single lucide-family chatplus glyph (message-square-plus), "contacts"
+   * a single personplus glyph (user-plus). Default (undefined) keeps the
+   * proto's plain plus; parity cells omit it. */
   variant?: "chats" | "contacts";
 }): JSX.Element {
   return (
@@ -35,20 +36,12 @@ export function Fab({
       style={{ width: size, height: size }}
     >
       {variant ? (
-        <span className="relative flex">
-          <Icon
-            d={variant === "chats" ? "chat" : "people"}
-            size={iconSize - 4}
-            sw={2.2}
-            className="text-on-accent"
-          />
-          <Icon
-            d="plus"
-            size={11}
-            sw={3}
-            className="text-on-accent absolute -right-1.5 -top-1"
-          />
-        </span>
+        <Icon
+          d={variant === "chats" ? "chatplus" : "personplus"}
+          size={iconSize - 2}
+          sw={2.2}
+          className="text-on-accent"
+        />
       ) : (
         <Icon d="plus" size={iconSize} sw={2.2} className="text-on-accent" />
       )}
