@@ -13,8 +13,8 @@
 let
   androidComposition = pkgs.androidenv.composeAndroidPackages {
     # These versions must exist in your channel's androidenv repo.json.
-    platformVersions = [ "34" ];
-    buildToolsVersions = [ "34.0.0" ];
+    platformVersions = [ "34" "36" ];
+    buildToolsVersions = [ "34.0.0" "35.0.0" ];
     includeNDK = true;
     ndkVersions = [ "27.0.12077973" ];
     includeEmulator = false;
@@ -41,7 +41,7 @@ pkgs.mkShell {
     # NixOS: Gradle/AGP's Maven-downloaded aapt2 is dynamically linked against
     # /lib64 and dies with "AAPT2 Daemon startup failed" — use the SDK's own.
     # Keep the build-tools version in sync with buildToolsVersions above.
-    export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/34.0.0/aapt2"
+    export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/35.0.0/aapt2"
 
     # Tauri reads NDK_HOME; cargo-ndk and other tooling read these aliases.
     export ANDROID_NDK_HOME=$NDK_HOME
