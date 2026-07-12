@@ -79,6 +79,12 @@ export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-$TS_SERVE_URL}"
 # explicit VITE_SYNC_URL would defeat the Serve routing — ensure it's unset.
 unset VITE_SYNC_URL
 
+# Tailscale Serve proxies to http://127.0.0.1:5173 (IPv4). On Node >=17,
+# Vite's default `localhost` binding can land on [::1] only, which 502s the
+# Serve proxy. Pin the IPv4 loopback via the TAURI_DEV_HOST knob that
+# vite.config.ts already reads — loopback-only, nothing exposed on the LAN.
+export TAURI_DEV_HOST=127.0.0.1
+
 # Auth-server env (same defaults + secret pinning as dev-all.sh).
 if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
   BETTER_AUTH_SECRET="dev-$(head -c 24 /dev/urandom | base64 | tr -d /+=)"
