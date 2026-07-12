@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QrScanner from "qr-scanner";
 import { Button } from "@/components/ui/button";
+import { nativeQrAvailable, scanQrNative } from "@/platform/qr";
 
 interface QRScannerProps {
   onUrl: (url: string) => void;
@@ -22,7 +23,21 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
   const [mismatch, setMismatch] = useState(false);
   const accepted = useRef(false);
 
+  async function handleNativeScan() {
+    const data = await scanQrNative();
+    if (data === null) return; // cancelled or denied — no state change
+    if (!data.includes(expectedPathPrefix)) {
+      setMismatch(true);
+      return;
+    }
+    if (accepted.current) return;
+    accepted.current = true;
+    setMismatch(false);
+    onUrl(data);
+  }
+
   useEffect(() => {
+    if (nativeQrAvailable()) return;
     if (!videoRef.current) return;
     let cancelled = false;
 
@@ -78,20 +93,26 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
     <div className="grid gap-6 md:grid-cols-2">
       <div className="space-y-2">
         <h3 className="text-sm font-medium">scan with camera</h3>
-        <div className="aspect-square w-full overflow-hidden rounded-lg border bg-black">
-          {(cameraState === "loading" || cameraState === "running") && (
-            <video
-              ref={videoRef}
-              className="h-full w-full object-cover"
-              data-testid="qr-camera-video"
-            />
-          )}
-          {cameraState === "denied" && (
-            <div className="flex h-full items-center justify-center p-4 text-center text-sm text-white">
-              camera unavailable — paste the link instead.
-            </div>
-          )}
-        </div>
+        {nativeQrAvailable() ? (
+          <Button onClick={handleNativeScan} data-testid="qr-native-scan">
+            open camera scanner
+          </Button>
+        ) : (
+          <div className="aspect-square w-full overflow-hidden rounded-lg border bg-black">
+            {(cameraState === "loading" || cameraState === "running") && (
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                data-testid="qr-camera-video"
+              />
+            )}
+            {cameraState === "denied" && (
+              <div className="flex h-full items-center justify-center p-4 text-center text-sm text-white">
+                camera unavailable — paste the link instead.
+              </div>
+            )}
+          </div>
+        )}
         {mismatch && (
           <p className="text-sm text-dim" data-testid="qr-mismatch">
             that QR code was read, but it isn&apos;t the kind this screen

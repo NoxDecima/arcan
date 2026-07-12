@@ -22,6 +22,7 @@ import { Invitation } from "./schema/Invitation";
 import { ConnectionRequest } from "./schema/ConnectionRequest";
 import { Contact } from "./schema/Contact";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getServerOrigin } from "@/platform/server-config";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,8 +70,13 @@ function fromB64url(s: string): string {
  */
 export function invitationUrl(coValueId: string, accountId: string): string {
   const fragment = toB64url(`${coValueId}|${accountId}`);
+  // getServerOrigin() returns window.location.origin on web (unchanged
+  // behavior) and the baked/overridden origin in the Tauri shell — so
+  // generated invite URLs point at the correct server rather than
+  // tauri.localhost. The no-window fallback keeps the pre-existing
+  // placeholder contract (pinned by invitation-no-expiry.test.ts).
   const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "https://arcan.app";
+    typeof window === "undefined" ? "https://arcan.app" : getServerOrigin();
   return `${baseUrl}/invite#${fragment}`;
 }
 

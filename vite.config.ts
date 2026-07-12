@@ -46,6 +46,10 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname, "./src") },
   },
   server: {
+    // Tauri mobile dev: `tauri android dev --host <ip>` sets TAURI_DEV_HOST so
+    // the phone's webview can reach this dev server over the network.
+    // Unset (normal web dev) → Vite's default localhost-only binding.
+    host: process.env.TAURI_DEV_HOST,
     allowedHosts: parseAllowedHosts(),
     proxy: {
       // All /api/* routes: dev auth-server runs on :4300. Proxied as a

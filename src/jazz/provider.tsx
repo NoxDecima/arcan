@@ -5,6 +5,7 @@ import { ArcanAccount } from "./schema/ArcanAccount";
 // Better Auth 1.6 does not ship a provider component — auth state is a
 // global nanostore reached via authClient.useSession() / signIn() / etc.
 import "@/auth/client";
+import { deriveSyncUrl } from "@/platform/server-config";
 
 /**
  * Derive a default sync-server URL from the current page origin.
@@ -17,12 +18,19 @@ import "@/auth/client";
  * Edge cases:
  * - SSR / non-browser context: window is undefined; fall back to the
  *   local-dev default so unit tests + node tooling don't crash.
+ *   Note: the SSR fallback here (ws://localhost:4200) intentionally differs
+ *   from server-config's SSR fallback (http://localhost:5173-derived) — both
+ *   are dead paths in the SPA and exist only to satisfy type-checkers.
  * - Non-standard ports: window.location.host already includes the port if
  *   the page is served on a non-default one (e.g. "localhost:8080"), so
  *   the resulting URL targets the same port. Correct behaviour for users
  *   who reverse-proxy through their own gateway.
  *
  * Tested in tests/unit/jazz/provider.test.ts.
+ *
+ * NOTE: This function is retained for its unit tests and is NOT called at
+ * runtime — deriveSyncUrl() from @/platform/server-config is used instead.
+ * The web branch of deriveSyncUrl mirrors this function's logic.
  */
 export function deriveDefaultSyncURL(): `ws://${string}` | `wss://${string}` {
   if (typeof window === "undefined") return "ws://localhost:4200";
@@ -30,19 +38,7 @@ export function deriveDefaultSyncURL(): `ws://${string}` | `wss://${string}` {
   return `${proto}://${window.location.host}/sync/`;
 }
 
-/**
- * The WebSocket sync URL.
- *
- * Priority:
- * 1. VITE_SYNC_URL env var (build-time bake) — explicit override wins.
- *    Use this for local dev pointing at a Tailscale IP, or for any deploy
- *    where the sync server lives on a different host than the SPA.
- * 2. window.location-derived default (wss://<host>/sync/) — what the
- *    one-container Docker deploy uses.
- */
-const SYNC_URL =
-  (import.meta.env.VITE_SYNC_URL as `ws://${string}` | `wss://${string}` | undefined) ??
-  deriveDefaultSyncURL();
+const SYNC_URL = deriveSyncUrl();
 
 interface MessangerProviderProps {
   children: React.ReactNode;
@@ -52,8 +48,8 @@ interface MessangerProviderProps {
  * MessangerProvider: top-level Jazz context provider for the application.
  *
  * Wires JazzReactProvider with:
- * - WebSocket sync (VITE_SYNC_URL env var, defaulting to a
- *   window.location-derived URL — see deriveDefaultSyncURL above)
+ * - WebSocket sync (VITE_SYNC_URL env var, or server-config-derived URL —
+ *   see @/platform/server-config for the full priority chain)
  * - IndexedDB persistence for local-first operation
  * - ArcanAccount as the AccountSchema (activates the migration hook)
  * - A centered "Loading..." fallback shown while the context initialises

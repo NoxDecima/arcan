@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAccount, useLogOut } from "jazz-tools/react";
 import type { Account } from "jazz-tools";
@@ -11,6 +11,12 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 import { authClient } from "@/auth/client";
+import { clearAuthToken } from "@/platform/auth-transport";
+import {
+  notificationsSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from "@/platform/notifications";
 import { ChangePasswordRoute } from "./change-password-route";
 import { RecoveryCodeRoute } from "./recovery-code-route";
 import { FeedbackRoute } from "./feedback-route";
@@ -59,10 +65,15 @@ function SettingsBody() {
   });
 
   // ── notifications local state ────────────────────────────────────────────
-  const [permissionState, setPermissionState] = useState<NotificationPermission>(
-    typeof Notification !== "undefined" ? Notification.permission : "denied",
-  );
+  // Seeded to "default" then async-populated via getNotificationPermission()
+  // so the Tauri shell (which resolves permission asynchronously) is handled
+  // correctly alongside the synchronous web Notification.permission path.
+  const [permissionState, setPermissionState] = useState<NotificationPermission>("default");
   const [notifError, setNotifError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getNotificationPermission().then(setPermissionState);
+  }, []);
 
   // Own avatar — resolved via the shared useAccountAvatars hook (live; same
   // subscription pattern as home lists). Must be called before any early return.
@@ -90,7 +101,7 @@ function SettingsBody() {
 
   // ── notifications ────────────────────────────────────────────────────────
   const prefs = (me.root as any)?.settings?.notifications;
-  const apiSupported = typeof Notification !== "undefined";
+  const apiSupported = notificationsSupported();
   const browserEffective = prefs?.browser && permissionState === "granted";
 
   function handleSoundToggle() {
@@ -107,7 +118,7 @@ function SettingsBody() {
       return;
     }
     try {
-      const result = await Notification.requestPermission();
+      const result = await requestNotificationPermission();
       setPermissionState(result);
       if (result === "granted") {
         prefs?.$jazz?.set("browser", true);
@@ -211,6 +222,7 @@ function SettingsBody() {
     } catch {
       // Network failure shouldn't block local logOut.
     }
+    clearAuthToken();
     logOut();
   }
 

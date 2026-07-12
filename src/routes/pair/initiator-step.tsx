@@ -45,6 +45,7 @@ import {
   InviteStatusScreen,
 } from "@/ui/screens";
 import type { ApproveDeviceVM } from "@/ui/screens/auth-types";
+import { getServerOrigin } from "@/platform/server-config";
 
 type Phase =
   | "loading"
@@ -98,7 +99,10 @@ export function InitiatorStep() {
     if (creationStartedRef.current) return;
     creationStartedRef.current = true;
 
-    const baseUrl = `${window.location.protocol}//${window.location.host}`;
+    // getServerOrigin() returns window.location.origin on web (unchanged behavior)
+    // and the baked/overridden origin in the Tauri shell — pairing links must
+    // point at the real server, not tauri.localhost.
+    const baseUrl = getServerOrigin();
 
     createPairingInvite(me, baseUrl)
       .then((inv) => {

@@ -1,0 +1,26 @@
+[package]
+name = "arcan"
+version = "0.1.0"
+description = "Arcan — local-first E2EE messenger (Tauri shell)"
+edition = "2021"
+
+[lib]
+name = "arcan_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# tauri::generate_context! expands to code referencing serde/serde_json in
+# the app crate's namespace — they must be direct dependencies.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-deep-link = "2"
+
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-barcode-scanner = "2"

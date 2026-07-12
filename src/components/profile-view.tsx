@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { pickFilesNative } from "@/platform/files";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { co } from "jazz-tools";
 import { Link, useNavigate } from "react-router-dom";
@@ -200,10 +201,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
 
   // ── handlers ─────────────────────────────────────────────────────────────
 
-  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function ingestAvatarFile(file: File) {
     if (file.size > MAX_ATTACHMENT_BYTES) {
       setAvatarError(
         `${file.name} is ${(file.size / 1_000_000).toFixed(1)} MB. Max 5 MB.`,
@@ -221,6 +219,13 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await ingestAvatarFile(file);
   }
 
   async function handleAvatarRemove() {
@@ -382,7 +387,19 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           }}
           onBack={() => navigate(-1)}
           onEditName={beginEditName}
-          onEditAvatar={() => fileInputRef.current?.click()}
+          onEditAvatar={() => void (async () => {
+            try {
+              const native = await pickFilesNative({ imagesOnly: true, multiple: false, maxBytes: MAX_ATTACHMENT_BYTES });
+              if (native !== null) {
+                if (native.length > 0) await ingestAvatarFile(native[0]);
+                return;
+              }
+            } catch (err) {
+              setAvatarError(err instanceof Error ? err.message : "pick failed — try again.");
+              return;
+            }
+            fileInputRef.current?.click();
+          })()}
           onAddContact={() => navigate("/contacts/add")}
           onRemoveAvatar={ownStreamId ? () => void handleAvatarRemove() : undefined}
           safetyOpen={showSafety}

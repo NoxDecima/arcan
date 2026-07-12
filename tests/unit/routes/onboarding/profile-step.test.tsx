@@ -49,7 +49,7 @@ beforeEach(() => {
 });
 
 describe("ProfileStep avatar picker", () => {
-  test("clicking the camera badge opens the hidden file input", () => {
+  test("clicking the camera badge opens the hidden file input", async () => {
     render(
       <MemoryRouter>
         <ProfileStep
@@ -64,7 +64,10 @@ describe("ProfileStep avatar picker", () => {
     ) as HTMLInputElement;
     const clickSpy = vi.spyOn(input, "click");
     fireEvent.click(screen.getByTestId("onboarding-avatar-change"));
-    expect(clickSpy).toHaveBeenCalled();
+    // handleAvatarPick is async (awaits pickFilesNative → null on web,
+    // then falls through to the DOM input click); waitFor gives the
+    // microtask queue time to drain.
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled());
   });
 
   test("selecting an image previews it on the avatar tile", async () => {

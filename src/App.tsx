@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useIsAuthenticated, useAccount } from "jazz-tools/react";
@@ -21,6 +22,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
 import { NotificationManager } from "@/components/notification-manager";
+import { DeepLinkBridge } from "@/components/deep-link-bridge";
 import { TrustedDevicePrompt } from "@/components/trusted-device-prompt";
 import { ThemeProvider } from "@/styles/use-theme";
 import { AccentProvider } from "@/styles/use-accent";
@@ -30,6 +32,7 @@ import { ConfirmProvider } from "@/components/confirm-dialog";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
+import { initNotificationChannel } from "@/platform/notifications";
 
 /**
  * Wrapper that reads the :accountID route param and forwards it to ProfileView.
@@ -63,6 +66,12 @@ function ProfileRoute(): ReactElement {
 function App() {
   const isAuthenticated = useIsAuthenticated();
   const location = useLocation();
+
+  // Android: create the notification channel once at startup (idempotent).
+  // No-op on web and non-Android Tauri; never throws into startup.
+  useEffect(() => {
+    void initNotificationChannel();
+  }, []);
 
   // Load me with enough depth for the inbox subscription to find contacts
   // and push arriving conversations to knownConversations.
@@ -213,6 +222,10 @@ function App() {
                   sound, and browser-notification fanout. Reads `me` via its own
                   useAccount call so App.tsx's resolve stays shallow. */}
               {showNotificationManager && <NotificationManager />}
+              {/* Task 12: App Link routing + cross-instance switch prompt.
+                  Mounts unconditionally — self-gates on isTauri(); unauthenticated
+                  arrivals must work so the invite/pair flow can start from a cold tap. */}
+              <DeepLinkBridge />
               {/* Unit 2: app-wide trusted-device approval prompt. Fixed overlay;
                   only renders when a pending pairing is detected. Authenticated only. */}
               {isAuthenticated && <TrustedDevicePrompt />}

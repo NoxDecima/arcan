@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { pickFilesNative } from "@/platform/files";
 import { signUp } from "@/auth/flows";
 import { decodeRecoveryCode } from "@/auth/recovery-code";
 import {
@@ -59,14 +60,7 @@ export function ProfileStep({
     return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  function handleAvatarPick() {
-    fileInputRef.current?.click();
-  }
-
-  function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function ingestAvatar(file: File) {
     if (file.size > MAX_ATTACHMENT_BYTES) {
       setError(
         `${file.name} is ${(file.size / 1_000_000).toFixed(1)} MB. max 5 MB.`,
@@ -75,6 +69,27 @@ export function ProfileStep({
     }
     setError(null);
     setAvatarFile(file);
+  }
+
+  async function handleAvatarPick() {
+    try {
+      const native = await pickFilesNative({ imagesOnly: true, multiple: false, maxBytes: MAX_ATTACHMENT_BYTES });
+      if (native !== null) {
+        if (native.length > 0) ingestAvatar(native[0]);
+        return;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "pick failed — try again.");
+      return;
+    }
+    fileInputRef.current?.click();
+  }
+
+  function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    ingestAvatar(file);
   }
 
   const createAccountWithSeed = useCreateAccountWithSeed();
@@ -161,7 +176,7 @@ export function ProfileStep({
     <div className="h-screen w-screen flex flex-col">
       <ProfileSetupScreen
         avatarPreview={avatarPreview}
-        onPickAvatar={handleAvatarPick}
+        onPickAvatar={() => void handleAvatarPick()}
         avatarInput={avatarInput}
         displayName={displayName}
         onDisplayName={setDisplayName}

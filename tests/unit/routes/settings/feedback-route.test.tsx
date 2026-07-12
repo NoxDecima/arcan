@@ -2,7 +2,7 @@
 // assertion lost when the legacy feedback-section test was deleted in
 // Phase 4: the CATEGORIES tuple Title-casing and the no-category shape).
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, waitFor, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
 import { FeedbackRoute } from "@/routes/settings/feedback-route";
@@ -15,6 +15,11 @@ vi.mock("jazz-tools/react", () => ({
   }),
 }));
 
+// pickFilesNative returns null on web — openPicker falls through to inputRef.click()
+vi.mock("@/platform/files", () => ({
+  pickFilesNative: vi.fn(async () => null),
+}));
+
 function renderRoute() {
   return render(
     <ToastProvider>
@@ -24,6 +29,30 @@ function renderRoute() {
     </ToastProvider>,
   );
 }
+
+describe("FeedbackRoute dropzone click-loop regression", () => {
+  it("one click on the dropzone triggers the file input click exactly once", async () => {
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/settings/feedback"]}>
+          <FeedbackRoute />
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+
+    const input = screen.getByTestId("feedback-file-input") as HTMLInputElement;
+    const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
+
+    // Click the dropzone container (the role=button div)
+    fireEvent.click(screen.getByRole("button", { name: /add a screenshot/i }));
+
+    // Give the async openPicker microtask time to drain
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled());
+
+    // The critical assertion: must be exactly 1 — not 21 from the loop
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("FeedbackRoute FormData contract", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
