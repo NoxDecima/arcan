@@ -24,6 +24,7 @@
     "parity": "node tests/parity/run-parity.mjs",
     "tauri": "tauri",
     "android:dev": "tauri android dev",
+    "android:dev:all": "./scripts/android-dev.sh",
     "android:build": "tauri android build --apk"
   },
   "dependencies": {
