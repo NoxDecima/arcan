@@ -64,6 +64,8 @@ vi.mock("@/jazz/messages", () => ({
 vi.mock("@/jazz/conversation", () => ({
   isArchived: () => false,
   ensureMyWriteGroup: vi.fn(),
+  isLastAdmin: () => false,
+  leaveConversation: vi.fn(),
 }));
 vi.mock("@/jazz/displayName", () => ({ resolveDisplayName: () => "bob" }));
 // ArcanAccount.subscribe is called by useAccountAvatars (message-row author avatars).

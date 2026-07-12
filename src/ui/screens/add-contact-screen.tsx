@@ -27,6 +27,7 @@ export function AddContactScreen({
   onPrimary,
   onScan,
   onPaste,
+  onManageInvites,
   hiddenUrlSlot,
   // testid carries
   waitingCardTestId,
@@ -47,6 +48,8 @@ export function AddContactScreen({
   onPrimary: () => void;                 // share or copy — "add-contact-share-btn"
   onScan: () => void;                    // "scan their QR code" — "scan-their-code"
   onPaste: () => void;                   // "or paste a link" — "add-contact-cancel-btn"
+  /** Bundle E: optional link to /connections/live-invites; parity cells omit it. */
+  onManageInvites?: () => void;          // "manage-invites-link"
   /** Rung-4: sr-only qr-url-text / copy-url-text spans (e2e hooks; no pixels). */
   hiddenUrlSlot?: ReactNode;
   // testid carries
@@ -186,6 +189,19 @@ export function AddContactScreen({
               or paste a link
             </span>
           </button>
+
+          {/* "manage invite links" ghost — Bundle E; parity cells omit this */}
+          {onManageInvites && (
+            <button
+              className={tapClass}
+              onClick={onManageInvites}
+              data-testid="manage-invites-link"
+            >
+              <span className="font-body text-ui-sub leading-none text-dim">
+                manage invite links
+              </span>
+            </button>
+          )}
         </div>
       </Body>
     </div>

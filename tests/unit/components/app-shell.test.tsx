@@ -22,6 +22,9 @@ vi.mock("@/components/use-home-lists", () => ({
 vi.mock("@/components/pending-requests-section", () => ({
   PendingRequestsSection: () => null,
 }));
+vi.mock("@/jazz/use-incoming-connection-requests", () => ({
+  useIncomingConnectionRequests: () => [],
+}));
 
 function renderShell(path = "/x") {
   return render(

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ToastProvider } from "@/components/toast";
 import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 
@@ -19,6 +19,7 @@ vi.mock("@/components/use-account-avatars", () => ({
 vi.mock("@/jazz/invitations", () => ({
   approveConnectionRequest: vi.fn(async () => undefined),
   dismissConnectionRequest: vi.fn(async () => undefined),
+  denyConnectionRequest: vi.fn(async () => undefined),
 }));
 
 vi.mock("jazz-tools/react", () => ({
@@ -55,6 +56,21 @@ describe("IncomingConnectionPrompt", () => {
     expect(screen.getByText("Bob Tester")).toBeTruthy();
     expect(screen.getByText("wants to connect")).toBeTruthy();
     expect(screen.getByText("scanned your QR code in person")).toBeTruthy();
+    // a11y: the dialog must have an accessible name so screen readers can
+    // identify it (aria-labelledby pointing at the <h2>).
+    expect(screen.getByRole("dialog", { name: "connection request" })).toBeTruthy();
+  });
+
+  test("decline button denies the request", async () => {
+    pendingMock.mockReturnValue([makeEntry(false)]);
+    const { denyConnectionRequest } = await import("@/jazz/invitations");
+    render(
+      <ToastProvider>
+        <IncomingConnectionPrompt />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByTestId("decline"));
+    await waitFor(() => expect(denyConnectionRequest).toHaveBeenCalled());
   });
 
   test("stays closed for a locally-dismissed qr request", () => {

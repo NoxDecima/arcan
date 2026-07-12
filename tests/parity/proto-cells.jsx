@@ -49,8 +49,10 @@ function Bubble({ s, m, w }) {
       {/* intent-fix: '#fff' → '#ffffff' — _hx('#fff') → [255,15,NaN] (3-digit shorthand: first two chars pair up, third slice empty → NaN); invalid rgba drops the veil in the raw proto. hf-chat.jsx:126 already uses #ffffff (designer's corrected version). */}
       {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#0e1019' : '#eef0f5'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        {/* intent-fix (feedback round 2): own-message timestamp on the left */}
+        {mine && m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
         <span style={{ flex: 1, font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
-        {m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
+        {!mine && m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
       </div>
     </div>
   );
@@ -378,9 +380,7 @@ function POwnProfileScreen({ s, params }) {
           <button onClick={() => {}} style={{ ...tapBtn, gap: 8 }}><span style={{ font: `700 19px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text }}>decima</span><Icon d="pencil" c={c.dim} size={15} /></button>
           {/* account-id line removed — user decision patch (2026-07-05 walkthrough) */}
           <div style={{ width: '100%', maxWidth: 320 }}><PButton s={s} primary full icon="plus" label="add a contact" onClick={() => {}} /></div>
-          <PCard s={s} style={{ width: '100%', maxWidth: 320 }}>
-            <PRow s={s} icon="gear" label="account & settings" onClick={() => {}} last />
-          </PCard>
+          {/* intent-fix (feedback round 2): settings row dropped from own profile */}
         </div>
       </Body>
     </React.Fragment>
@@ -1283,7 +1283,9 @@ const PROTO_CELLS = {
   /* patched copy: design/proto.jsx:550–565 (SignInScreen) — buttons via PButton (decision A);
      AuthField=display div matching app AuthField empty input (38px/12px/placeholder in c.dim).
      USER DECISION 2026-07-06 (walkthrough): PHeader back arrow removed from proto copy to match
-     app cell (no top back arrows in auth flow; pre-Wave-D original had no back nav here). */
+     app cell (no top back arrows in auth flow; pre-Wave-D original had no back nav here).
+     intent-fix (feedback round 2): create-account promoted from a footer MuteLink to a visible
+     secondary PButton; footer now contains only forgot-password, centered. */
   "sign-in-screen": (s) => {
     const c = s.c;
     /* local helper: display-only field matching app AuthField with empty value (placeholder-only).
@@ -1319,13 +1321,12 @@ const PROTO_CELLS = {
           <div style={{ height: 4 }} />
           {/* proto:561 — primary submit button */}
           <PButton s={s} primary full label="sign in" onClick={() => {}} />
-          {/* proto:562 — footer: forgot + create account */}
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          {/* intent-fix (feedback round 2): create-account promoted to a secondary outline button */}
+          <PButton s={s} full label="create account" onClick={() => {}} />
+          {/* proto:562 — footer: forgot-password only, centered (create account moved above) */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button style={tapBtn} onClick={() => {}}>
               <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.dim }}>forgot password?</span>
-            </button>
-            <button style={tapBtn} onClick={() => {}}>
-              <span style={{ font: `400 10.5px/1 ${s.body}`, color: c.accent }}>create account</span>
             </button>
           </div>
         </AuthShell>

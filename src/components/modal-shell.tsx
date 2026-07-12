@@ -57,6 +57,11 @@ export function ModalShell({
 
   if (!open) return null;
 
+  const untitled = typeof title === "string" && title.trim() === "";
+  if (import.meta.env.DEV && untitled) {
+    console.warn("ModalShell: empty title — every dialog needs an accessible name");
+  }
+
   return createPortal(
     <div
       data-testid="modal-shell-backdrop"
@@ -71,7 +76,8 @@ export function ModalShell({
         ref={cardRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={untitled ? undefined : titleId}
+        {...(untitled ? { "aria-label": "dialog" } : {})}
         data-testid={dataTestId}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapTab(cardRef)}
@@ -123,6 +129,11 @@ export function MobileBottomSheet({
 
   if (!open) return null;
 
+  const untitled = typeof title === "string" && title.trim() === "";
+  if (import.meta.env.DEV && untitled) {
+    console.warn("ModalShell: empty title — every dialog needs an accessible name");
+  }
+
   return createPortal(
     <div
       data-testid="modal-shell-backdrop"
@@ -137,7 +148,8 @@ export function MobileBottomSheet({
         ref={cardRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={untitled ? undefined : titleId}
+        {...(untitled ? { "aria-label": "dialog" } : {})}
         data-testid={dataTestId}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapTab(cardRef)}

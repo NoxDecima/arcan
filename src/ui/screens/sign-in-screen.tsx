@@ -91,13 +91,19 @@ export function SignInScreen({
           />
         </form>
 
-        {/* proto:562 — footer: "forgot password?" (dim) + "create account" (accent) */}
-        <div className="flex justify-between">
+        {/* intent-fix (feedback round 2): create-account promoted from a
+            footer MuteLink to a visible secondary button. */}
+        <PButton
+          full
+          label="create account"
+          onClick={onCreate}
+          data-testid="signin-create-account"
+        />
+
+        {/* proto:562 — footer: forgot-password only, centered (create account moved above) */}
+        <div className="flex justify-center">
           <button className={tapClass} onClick={onForgot} type="button">
             <MuteLink>forgot password?</MuteLink>
-          </button>
-          <button className={tapClass} onClick={onCreate} type="button">
-            <MuteLink accent>create account</MuteLink>
           </button>
         </div>
       </AuthShell>

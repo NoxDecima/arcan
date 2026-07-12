@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { co } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { isArchived } from "@/jazz/conversation";
+import { isArchived, dedupeConversationsByID } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { getUnreadCount, getLastMessagePreview } from "@/jazz/notifications";
 import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
@@ -372,7 +372,7 @@ export function useHomeLists(): HomeListsResult {
   // --- conversations ---
   const knownConversations = me.root.knownConversations;
 
-  const conversations = Array.from(knownConversations ?? [])
+  const conversations = dedupeConversationsByID(Array.from(knownConversations ?? []))
     .filter(
       (c: any) =>
         c != null &&

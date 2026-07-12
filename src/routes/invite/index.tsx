@@ -79,6 +79,7 @@ type Phase =
   | "sending"
   | "sent"
   | "approved"
+  | "declined"
   | "expired"
   | "error";
 
@@ -193,6 +194,9 @@ export function InviteRoute() {
             inviterDisplayName: invitation.inviterDisplayName,
           });
           setPhase("approved");
+        } else if (r.deniedAt) {
+          clearInterval(interval);
+          setPhase("declined");
         } else if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) {
           clearInterval(interval);
           setPhase("expired");
@@ -220,7 +224,9 @@ export function InviteRoute() {
         openedChannel,
         {
           invitationID: invitation.$jazz?.id,
-          expiresAt: invitation.expiresAt,
+          // Permanent invites (no expiresAt) still mint expiring requests so
+          // the pending-list timeout logic works. Fall back to 30 days.
+          expiresAt: invitation.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       );
       setRequest(req);
@@ -316,6 +322,8 @@ export function InviteRoute() {
           title="request sent — waiting for approval…"
           sub="You can close this tab; you'll be notified when they accept."
           rootTestId="invite-sent"
+          outline={{ label: "back to app", onClick: () => navigate("/") }}
+          outlineTestId="invite-sent-home-btn"
         />
       );
     }
@@ -330,6 +338,22 @@ export function InviteRoute() {
             label: "open Arcan",
             onClick: () => navigate("/"),
           }}
+        />
+      );
+    }
+
+    if (phase === "declined") {
+      return (
+        <InviteStatusScreen
+          markSize={48}
+          title="request declined"
+          sub="they declined your request."
+          rootTestId="invite-declined"
+          outline={{
+            label: "back to app",
+            onClick: () => navigate("/"),
+          }}
+          outlineTestId="invite-declined-home-btn"
         />
       );
     }

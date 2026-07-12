@@ -8,9 +8,14 @@ import type { JSX } from "react";
 export function PTabBar({
   active,
   onTab,
+  contactsBadge,
 }: {
   active: "chats" | "contacts";
   onTab: (t: "chats" | "contacts") => void;
+  /** intent-fix (feedback round 2): pending-connection-requests count pill
+   * on the contacts tab. Default (undefined/0) renders nothing — parity
+   * cells omit it. */
+  contactsBadge?: number;
 }): JSX.Element {
   const tab = (
     key: "chats" | "contacts",
@@ -24,7 +29,18 @@ export function PTabBar({
         onClick={() => onTab(key)}
         className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px]`}
       >
-        <Icon d={icon} size={20} className={on ? "text-arcan-accent" : "text-dim"} />
+        <span className="relative flex">
+          <Icon d={icon} size={20} className={on ? "text-arcan-accent" : "text-dim"} />
+          {key === "contacts" && !!contactsBadge && (
+            <span
+              data-testid="tab-pending-badge"
+              className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+              style={{ lineHeight: "15px" }}
+            >
+              {contactsBadge > 99 ? "99+" : contactsBadge}
+            </span>
+          )}
+        </span>
         <span
           className={[
             "font-mono text-ui-tab tracking-tab",

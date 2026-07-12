@@ -4,6 +4,7 @@
 // Styling is token-only; no inline paint values.
 
 import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { HAv } from "./hav";
 import { Icon } from "./icon";
 import { tapClass } from "./tap";
@@ -67,7 +68,10 @@ export function Bubble({
             mine ? "bg-media-veil" : "bg-rail",
             ...(attSlot ? ["min-h-[84px]"] : []),
           ].join(" ")}
-          style={{ width: w - 12, ...(attSlot ? {} : { height: 84 }) }}
+          // intent-fix (feedback round 2): with a real attachment the wrapper
+          // hugs the image (maxWidth) instead of forcing full bubble width;
+          // the parity placeholder branch (no attSlot) keeps fixed metrics.
+          style={attSlot ? { maxWidth: w - 12 } : { width: w - 12, height: 84 }}
         >
           {attSlot ?? (
             <Icon
@@ -81,13 +85,23 @@ export function Bubble({
       {bodyOverride ?? (
         <>
           <div className="flex items-end gap-2">
+            {/* intent-fix (feedback round 2): own-message timestamp sits on
+                the LEFT of the body; theirs keeps time on the right. */}
+            {mine && m.time && (
+              <span
+                className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
+                {...(timeTestId ? { "data-testid": timeTestId } : {})}
+              >
+                {m.time}
+              </span>
+            )}
             <span
               className="flex-1 font-body text-ui-bubble"
               {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
             >
               {m.text}
             </span>
-            {m.time && (
+            {!mine && m.time && (
               <span
                 className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
                 {...(timeTestId ? { "data-testid": timeTestId } : {})}
@@ -118,6 +132,7 @@ export function MessageRow({
   bodyOverride,
   endSlot,
   onAvatar,
+  onContext,
 }: {
   m: BubbleMsg;
   w: number;
@@ -139,6 +154,10 @@ export function MessageRow({
    * (preflight zeroes button padding/border). Parity unaffected (default
    * undefined). */
   onAvatar?: () => void;
+  /** intent-fix (feedback round 2, non-visual): right-click / long-press
+   * opens the message context menu. Rendering is unchanged; parity
+   * unaffected (default undefined). */
+  onContext?: () => void;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -172,6 +191,22 @@ export function MessageRow({
     <div
       className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
       {...(testId ? { "data-testid": testId } : {})}
+      {...(onContext
+        ? {
+            onContextMenu: (e: ReactMouseEvent) => {
+              e.preventDefault();
+              onContext();
+            },
+            onPointerDown: (e: ReactPointerEvent) => {
+              if (e.pointerType === "mouse") return;
+              const timer = window.setTimeout(onContext, 500);
+              const cancel = () => window.clearTimeout(timer);
+              e.currentTarget.addEventListener("pointerup", cancel, { once: true });
+              e.currentTarget.addEventListener("pointerleave", cancel, { once: true });
+              e.currentTarget.addEventListener("pointermove", cancel, { once: true });
+            },
+          }
+        : {})}
     >
       {!mine &&
         (onAvatar ? (
