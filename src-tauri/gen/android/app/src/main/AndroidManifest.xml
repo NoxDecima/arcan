@@ -31,7 +31,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:scheme="http" />
-                <data android:host="arcan.example" />
+                <data android:host="app.arcan.nox-decima.dev" />
                 
                 
                 <data android:pathPrefix="/invite" />

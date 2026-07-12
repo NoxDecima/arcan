@@ -6,6 +6,16 @@ plugins {
     id("rust")
 }
 
+// Release signing: values come from keystore.properties (never committed;
+// written by CI at release time, or created locally per docs/android-signing.md).
+// Guards keep debug/CI builds working when the file is absent.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
 val tauriProperties = Properties().apply {
     val propFile = file("tauri.properties")
     if (propFile.exists()) {
@@ -14,6 +24,18 @@ val tauriProperties = Properties().apply {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                // storeFile resolves relative paths against app/ — use an
+                // absolute path in keystore.properties (CI writes one).
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
     compileSdk = 36
     namespace = "dev.nox_decima.arcan"
     defaultConfig {
@@ -37,6 +59,9 @@ android {
             }
         }
         getByName("release") {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }

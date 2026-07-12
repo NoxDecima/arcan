@@ -24,7 +24,7 @@
     "deep-link": {
       "mobile": [
         {
-          "host": "arcan.example",
+          "host": "app.arcan.nox-decima.dev",
           "pathPrefix": [
             "/invite",
             "/pair"
