@@ -21,6 +21,15 @@ Secrets: ANDROID_KEYSTORE_B64 (`base64 -w0 arcan-release.jks`),
 ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS (=arcan), ANDROID_KEY_PASSWORD.
 Variable: ARCAN_ORIGIN (=https://<your-domain>).
 
+## CI debug builds (no keystore needed)
+
+Pushes to `worktree-android-tauri-spec` — or a manual **Actions → android → Run
+workflow** with profile `debug` — produce an **installable** debug-signed APK as
+the `arcan-apk-debug` artifact. The debug signature differs per CI run, so
+uninstall the app before installing a newer artifact. If the `ARCAN_ORIGIN`
+repo variable is unset, the build bakes the placeholder origin — use the
+login screen's `server:` override to point the app at your instance.
+
 ## Cutting a release
 
     git tag android-v0.1.0 && git push origin android-v0.1.0
