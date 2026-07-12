@@ -19,7 +19,7 @@
 | Value | Placeholder used in code | Who provides |
 | --- | --- | --- |
 | Deployed domain | `arcan.example` / `VITE_ARCAN_ORIGIN` | user (build-time env; also `tauri.conf.json` deep-link host) |
-| Android app identifier | `eu.meteory.arcan` | user confirms or replaces |
+| Android app identifier | `dev.nox_decima.arcan` | user confirms or replaces |
 | Release keystore + passwords | n/a (never committed) | user generates (Task 14 documents how) |
 | GitHub repo (Releases) | n/a | user (CI publishes there) |
 
@@ -870,7 +870,7 @@ fn main() {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Arcan",
   "version": "../package.json",
-  "identifier": "eu.meteory.arcan",
+  "identifier": "dev.nox_decima.arcan",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5173",
@@ -990,7 +990,7 @@ git commit -m "feat(android): Tauri 2 crate scaffold — useHttpsScheme, plugins
 - [ ] **Step 1: Initialize the Android project**
 
 Run (inside `nix-shell shell.android.nix`): `npx tauri android init`
-Expected: `src-tauri/gen/android/` Gradle project generated referencing identifier `eu.meteory.arcan`. If the toolchain isn't available in this environment, this step moves to the user/CI — do NOT fake the directory by hand; continue with Step 2 (pure web code) and flag it.
+Expected: `src-tauri/gen/android/` Gradle project generated referencing identifier `dev.nox_decima.arcan`. If the toolchain isn't available in this environment, this step moves to the user/CI — do NOT fake the directory by hand; continue with Step 2 (pure web code) and flag it.
 
 - [ ] **Step 2: Write the diagnostics screen (Phase-0 smoke, permanent utility)**
 
@@ -2404,7 +2404,7 @@ git commit -m "ci(android): build + signed GitHub Release workflow; signing docs
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "eu.meteory.arcan",
+      "package_name": "dev.nox_decima.arcan",
       "sha256_cert_fingerprints": [
         "REPLACE:WITH:RELEASE:KEY:SHA256:FINGERPRINT"
       ]
@@ -2498,7 +2498,7 @@ git commit -m "docs(android): assetlinks template, device checklist, status entr
 ## Post-plan: what remains manual (user)
 
 1. Set the real domain: `VITE_ARCAN_ORIGIN` (local `.env` + GitHub Actions variable `ARCAN_ORIGIN`) and the `deep-link` host in `src-tauri/tauri.conf.json`.
-2. Confirm/replace the identifier `eu.meteory.arcan` (in `tauri.conf.json` **before** first `tauri android init` if possible — it's baked into `src-tauri/gen/android` package paths).
+2. Confirm/replace the identifier `dev.nox_decima.arcan` (in `tauri.conf.json` **before** first `tauri android init` if possible — it's baked into `src-tauri/gen/android` package paths).
 3. Generate the keystore + set GitHub secrets (docs/android-signing.md).
 4. Deploy `assetlinks.json` to the Caddy web root.
 5. Run the on-device checklist (docs/testing/android-device-checklist.md) — especially Phase 0 `/diag` before trusting the adapters.
