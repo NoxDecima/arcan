@@ -19,7 +19,7 @@
 | Value | Placeholder used in code | Who provides |
 | --- | --- | --- |
 | Deployed domain | `arcan.example` / `VITE_ARCAN_ORIGIN` | user (build-time env; also `tauri.conf.json` deep-link host) |
-| Android app identifier | `dev.nox_decima.arcan` | user confirms or replaces |
+| Android app identifier | `dev.nox-decima.arcan` (Tauri identifier; hyphens map to underscores in the Android applicationId: `dev.nox_decima.arcan`) | user confirms or replaces |
 | Release keystore + passwords | n/a (never committed) | user generates (Task 14 documents how) |
 | GitHub repo (Releases) | n/a | user (CI publishes there) |
 
