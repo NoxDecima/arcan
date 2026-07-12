@@ -53,8 +53,13 @@ pkgs.mkShell {
     echo "  NDK_HOME:     $NDK_HOME"
     echo "  rustup:       $(rustup --version 2>/dev/null || echo 'run: rustup default stable')"
     echo
-    echo "Dev:    npm run tauri android dev     (physical device via adb; no emulator composed)"
-    echo "Build:  npm run tauri android build -- --apk"
+    echo "Dev (recommended):  npm run android:dev:all"
+    echo "    one command: sync + auth + tauri android dev, served to the phone"
+    echo "    over Tailscale Serve HTTPS. Add -- --print to inspect without launching."
+    echo "Build APK:          npm run android:build"
+    echo ""
+    echo "First time on this machine? README.md 'Android' section:"
+    echo "  rustup targets, npm ci + better-sqlite3 rebuild, adb device acceptance."
     echo
   '';
 }

@@ -69,6 +69,9 @@ pkgs.mkShell {
     echo "Dev loop:"
     echo "  npm run dev:all"
     echo
+    echo "Android shell:"
+    echo "  nix-shell shell.android.nix   # then: npm run android:dev:all (see README)"
+    echo
     echo "Tests:"
     echo "  npm test              # Vitest (tests/unit)"
     echo "  npm run test:e2e      # Playwright (chromium + firefox)"
