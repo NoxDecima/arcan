@@ -43,12 +43,17 @@ original feature slices above, a separate track).
 
 ### Native shells
 
-- Android (Tauri 2 bundled shell) — IN PROGRESS on branch `worktree-android-tauri-spec`.
+- Android (Tauri 2 bundled shell) — MERGED to main; first signed release
+  `android-v0.1.0` on GitHub Releases (2026-07-13). Baked origin
+  `https://app.arcan.nox-decima.dev` (VPS deploy pending — see deploy/README.md).
   Spec: `docs/superpowers/specs/2026-07-09-android-tauri-app-design.md`.
   Plan: `docs/superpowers/plans/2026-07-09-android-tauri-app.md`.
+  Dev loop: `nix-shell shell.android.nix` → `npm run android:dev:all` (README §Android).
   `src/platform/` is the only layer that may import `@tauri-apps/*`
-  (enforced by `npm run check-platform-purity`). Follow-ups: background
-  push notifier spec; Windows/Linux desktop shell spec.
+  (enforced by `npm run check-platform-purity`). Device checklist:
+  `docs/testing/android-device-checklist.md` (Phase 0 green on Fairphone 5 5G).
+  Follow-ups: background push notifier spec; Windows/Linux desktop shell spec;
+  real app icons before circulating the release.
 
 ## Issue tracking
 
