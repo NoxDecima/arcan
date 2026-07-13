@@ -5,7 +5,11 @@ export interface RateLimiterConfig {
 
 export class InMemoryRateLimiter {
   private buckets = new Map<string, { count: number; windowStart: number }>();
-  constructor(private readonly config: RateLimiterConfig) {}
+  private readonly config: RateLimiterConfig;
+
+  constructor(config: RateLimiterConfig) {
+    this.config = config;
+  }
 
   consume(key: string): boolean {
     const now = Date.now();

@@ -29,7 +29,11 @@ export interface UploadedFile {
 }
 
 export class LinearClient {
-  constructor(private readonly config: LinearClientConfig) {}
+  private readonly config: LinearClientConfig;
+
+  constructor(config: LinearClientConfig) {
+    this.config = config;
+  }
 
   async createIssue(input: CreateIssueInput): Promise<CreatedIssue> {
     const query = `
