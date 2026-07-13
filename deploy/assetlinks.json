@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.nox_decima.arcan",
+      "sha256_cert_fingerprints": [
+        "BD:EC:7B:6F:75:64:5D:E6:60:9C:44:3C:38:EF:6B:67:96:22:C6:4F:5C:22:D4:75:A6:1C:53:55:61:81:6C:5D"
+      ]
+    }
+  }
+]
