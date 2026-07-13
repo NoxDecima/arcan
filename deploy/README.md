@@ -79,13 +79,14 @@ If we ever need either path back, the fix is renaming the prefix (e.g.
 ## Android App Links
 
 The Android app opens https://$DOMAIN/invite and /pair links directly. For
-Android to verify that, serve `.well-known/assetlinks.json` from the SPA
-web root (the existing `handle` block's `file_server` serves it — just add
-the file):
+Android to verify that, `.well-known/assetlinks.json` must be served from
+the web root. The Caddy image bakes it in at build time when the file
+exists — create it once and rebuild:
 
-    cp assetlinks.json.example <caddy-webroot>/.well-known/assetlinks.json
-
-Fill in the release-key SHA256 fingerprint per docs/android-signing.md.
+    cp assetlinks.json.example assetlinks.json
+    # fill in the release-key SHA256 fingerprint (docs/android-signing.md);
+    # fingerprints are public — the file is safe to commit.
+    docker compose up -d --build caddy
 Verify after deploy: https://$DOMAIN/.well-known/assetlinks.json returns
 JSON with content-type application/json.
 

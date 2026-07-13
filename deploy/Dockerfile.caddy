@@ -11,6 +11,12 @@ RUN npm ci
 # and produce dist/.
 COPY . .
 RUN npm run build
+# Android App Links: bake deploy/assetlinks.json (if present) into the web
+# root so https://$DOMAIN/.well-known/assetlinks.json verifies the app's
+# signing key. Create it from deploy/assetlinks.json.example with the real
+# release-key SHA256 fingerprint (fingerprints are public — safe to commit).
+RUN mkdir -p dist/.well-known && \
+    if [ -f deploy/assetlinks.json ]; then cp deploy/assetlinks.json dist/.well-known/; fi
 
 # Stage 2: Caddy serves the built static files and reverse-proxies /sync/*.
 FROM caddy:2-alpine
