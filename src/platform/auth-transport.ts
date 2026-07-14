@@ -85,7 +85,11 @@ export async function authFetch(
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(target.href, { ...init, headers });
+  // credentials MUST be omitted in the shell: the fetch is cross-origin
+  // (tauri.localhost -> server) and the api's CORS intentionally has no
+  // Access-Control-Allow-Credentials — a credentialed request would fail
+  // the CORS check outright ("Failed to fetch"). Bearer needs no cookies.
+  const response = await fetch(target.href, { ...init, headers, credentials: "omit" });
   // response.url is the post-redirect URL; capture only tokens the
   // configured server itself issued. "" occurs for synthetic Responses
   // (tests/mocks) — treat as same-origin.

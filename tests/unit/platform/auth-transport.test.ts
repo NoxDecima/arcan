@@ -71,6 +71,15 @@ describe("authFetch in the shell", () => {
     expect(getAuthToken(window.location.origin)).toBeNull();
   });
 
+  it("omits credentials in the shell (cross-origin CORS has no allow-credentials)", async () => {
+    enterTauri();
+    vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
+    const spy = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", spy);
+    await authFetch("/api/auth/sign-in/email", { method: "POST", credentials: "include" });
+    expect(spy.mock.calls[0][1].credentials).toBe("omit");
+  });
+
   it("does not capture a token from a foreign response", async () => {
     enterTauri();
     vi.stubEnv("VITE_ARCAN_ORIGIN", "https://chat.meteory.eu");
