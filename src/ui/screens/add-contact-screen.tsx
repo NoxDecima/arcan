@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import type { ReactNode, JSX } from "react";
-import { PHeader, Body, PCard, PButton, PQR, tapClass } from "../kit";
+import { PHeader, Body, PCard, PButton, PQR, Icon, tapClass } from "../kit";
 
 export function AddContactScreen({
   onBack,
@@ -29,6 +29,7 @@ export function AddContactScreen({
   onScan,
   onPasteSubmit,
   pasteError,
+  inviteCount,
   onManageInvites,
   hiddenUrlSlot,
   // testid carries
@@ -166,6 +167,29 @@ export function AddContactScreen({
             </div>
           </PCard>
 
+          {/* intent-fix (feedback round 3): proto has no invite-links entry;
+              the previous ghost text at the page bottom was too small to find.
+              User direction: below the QR card, above "add someone", visually
+              recessive — must not compete with QR/copy/scan. */}
+          {onManageInvites && (
+            <button
+              onClick={onManageInvites}
+              data-testid="manage-invites-link"
+              className={`${tapClass} w-full max-w-[300px] flex items-center gap-2 rounded-r-2 border border-hairline bg-panel px-3 py-2`}
+            >
+              <Icon d="personplus" size={14} className="text-dim" />
+              <span className="flex-1 text-left font-body text-ui-sub leading-none text-text-2">
+                invite links
+              </span>
+              {typeof inviteCount === "number" && (
+                <span className="font-mono text-ui-value leading-none text-dim">
+                  {inviteCount} active
+                </span>
+              )}
+              <Icon d="chev" size={14} className="text-dim" />
+            </button>
+          )}
+
           {/* "add someone" labeled divider — proto:424 (cluster) */}
           <div className="flex items-center gap-2 w-full max-w-[300px]">
             <div className="flex-1 h-px bg-hairline" />
@@ -231,18 +255,6 @@ export function AddContactScreen({
             </div>
           )}
 
-          {/* "manage invite links" ghost — Bundle E; parity cells omit this */}
-          {onManageInvites && (
-            <button
-              className={tapClass}
-              onClick={onManageInvites}
-              data-testid="manage-invites-link"
-            >
-              <span className="font-body text-ui-sub leading-none text-dim">
-                manage invite links
-              </span>
-            </button>
-          )}
         </div>
       </Body>
     </div>

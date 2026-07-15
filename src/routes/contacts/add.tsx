@@ -26,7 +26,7 @@ export function AddContactRoute() {
   const me = useAccount(ArcanAccount, {
     // liveInvitations is required so createInvitation() can push the
     // newly-created Invitation CoValue for surfacing on /connections/live-invites.
-    resolve: { profile: true, root: { liveInvitations: true } },
+    resolve: { profile: true, root: { liveInvitations: { $each: true } } },
   });
   const toast = useToast();
 
@@ -79,6 +79,16 @@ export function AddContactRoute() {
     : "";
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
 
+  const invitations = Array.from(
+    ((me as any).root?.liveInvitations as Iterable<any>) ?? [],
+  ).filter(Boolean);
+  const nowMs = Date.now();
+  const inviteCount = invitations.filter(
+    (i: any) =>
+      !i.revokedAt &&
+      (!i.expiresAt || new Date(i.expiresAt).getTime() > nowMs),
+  ).length;
+
   async function handlePrimary() {
     if (!inviteUrl) return;
     if (canShare) {
@@ -128,6 +138,7 @@ export function AddContactRoute() {
       onPasteSubmit={handlePasteSubmit}
       pasteError={pasteError}
       onManageInvites={() => navigate("/connections/live-invites")}
+      inviteCount={inviteCount}
       // testid carries
       waitingCardTestId="add-contact-waiting"
       ttlPickerTestId="ttl-picker"
