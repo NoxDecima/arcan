@@ -131,6 +131,26 @@ profile it renders); `parentOf` alone cannot tell from the path. The container
 passes `{ ownProfile: true }` for the user's own profile; `parentOf` stays pure
 and testable.
 
+## 4. Invite-links row on add-contact (added 2026-07-15, second walkthrough note)
+
+The "manage invite links" entry on `/contacts/add` is a tiny ghost-text button
+at the bottom of the page — too small to find. User direction: give it a more
+fitting position and rendering, but keep it visually recessive — it must not
+compete with the page's main highlights (QR card, copy/share, scan button).
+
+- Position: directly below the your-code card, above the "add someone" divider.
+- Rendering: a quiet full-width utility row (max-w-[300px], hairline border,
+  dim/secondary tokens): "invite links" label, active-invite count (e.g.
+  "2 active"), chevron. Replaces the ghost-text button; keeps the
+  `manage-invites-link` testid. Navigates to `/connections/live-invites`
+  as before.
+- The container (`src/routes/contacts/add.tsx`) computes the active count from
+  `me.root.liveInvitations` with the same filter the live-invites route uses
+  (not revoked, not expired).
+- `/connections/live-invites` gets a proper `PHeader` ("invite links") with
+  up-navigation (parent per the map above: `/?tab=contacts`) — it currently
+  has no header or back affordance at all.
+
 ## Testing
 
 - Unit (Vitest, `tests/unit/`):
@@ -142,6 +162,8 @@ and testable.
     inline error on invalid URL.
   - Back navigation: from another user's profile, header back lands on
     `/?tab=contacts` (not the chronologically previous page).
+  - Invite-links row on add-contact: visible with active count, navigates
+    to `/connections/live-invites`.
 - Android device checklist (`docs/testing/android-device-checklist.md`), new items:
   - Scan flows open the native camera scanner immediately (no button screen).
   - Cancelling the scanner shows paste field + "scan again"; no relaunch loop.
