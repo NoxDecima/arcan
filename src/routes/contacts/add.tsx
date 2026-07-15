@@ -32,6 +32,25 @@ export function AddContactRoute() {
 
   const [ttl, setTtl] = useState<LinkTtl>("24h");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
+  // Mirrors ScanInviteRoute.handleUrl: drop the pasted URL's origin — the
+  // ?via marker + fragment are origin-independent CoValue IDs, so navigating
+  // locally keeps the accept flow on this device's own origin.
+  function handlePasteSubmit(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed.includes("/invite")) {
+      setPasteError("that doesn't look like an invite link");
+      return;
+    }
+    try {
+      const u = new URL(trimmed);
+      setPasteError(null);
+      navigate(`${u.pathname}${u.search}${u.hash}`);
+    } catch {
+      setPasteError("that doesn't look like an invite link");
+    }
+  }
 
   // Prevent double-creation in React StrictMode double-invoke.
   const creationInProgressRef = useRef(false);
@@ -106,12 +125,8 @@ export function AddContactRoute() {
       // Scan a contact-invite QR (/invite URLs) — NOT the device-pairing
       // responder, which only accepts /pair URLs (walkthrough fix, 2026-07-08).
       onScan={() => navigate("/contacts/scan")}
-      onPaste={() => {
-        const url = prompt("paste invite link");
-        if (url) {
-          window.location.assign(url);
-        }
-      }}
+      onPasteSubmit={handlePasteSubmit}
+      pasteError={pasteError}
       onManageInvites={() => navigate("/connections/live-invites")}
       // testid carries
       waitingCardTestId="add-contact-waiting"

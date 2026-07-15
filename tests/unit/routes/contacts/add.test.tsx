@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, screen, waitFor, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { ToastProvider } from "@/components/toast";
 import { AddContactRoute } from "@/routes/contacts/add";
 
@@ -27,6 +27,11 @@ function Wrap({ children }: { children: React.ReactNode }) {
       <ToastProvider>{children}</ToastProvider>
     </MemoryRouter>
   );
+}
+
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="loc">{loc.pathname + loc.search + loc.hash}</div>;
 }
 
 const origShare = (navigator as any).share;
@@ -84,5 +89,61 @@ describe("AddContactRoute adaptive copy/share button", () => {
     await waitFor(() => {
       expect(share).toHaveBeenCalledWith({ url: "https://test.example/i/abc" });
     });
+  });
+});
+
+describe("AddContactRoute inline paste-a-link (feedback round 3)", () => {
+  test("tapping 'or paste a link' reveals an inline field — no prompt() dialog", async () => {
+    render(
+      <Wrap>
+        <AddContactRoute />
+      </Wrap>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("add-contact-cancel-btn")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByTestId("add-contact-cancel-btn"));
+    expect(screen.getByTestId("paste-invite-input")).toBeTruthy();
+  });
+
+  test("invalid input shows an inline error and does not navigate", async () => {
+    render(
+      <Wrap>
+        <AddContactRoute />
+        <LocationProbe />
+      </Wrap>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("add-contact-cancel-btn")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByTestId("add-contact-cancel-btn"));
+    fireEvent.change(screen.getByTestId("paste-invite-input"), {
+      target: { value: "not a link" },
+    });
+    fireEvent.click(screen.getByTestId("paste-invite-submit"));
+    expect(screen.getByTestId("paste-invite-error")).toBeTruthy();
+    expect(screen.getByTestId("loc").textContent).toBe("/");
+  });
+
+  test("a valid invite URL navigates locally with the origin dropped", async () => {
+    render(
+      <Wrap>
+        <AddContactRoute />
+        <LocationProbe />
+      </Wrap>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("add-contact-cancel-btn")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByTestId("add-contact-cancel-btn"));
+    fireEvent.change(screen.getByTestId("paste-invite-input"), {
+      target: { value: "https://other-origin.example/invite?via=qr#co_zfrag" },
+    });
+    fireEvent.click(screen.getByTestId("paste-invite-submit"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).toBe(
+        "/invite?via=qr#co_zfrag",
+      ),
+    );
   });
 });
