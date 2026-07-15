@@ -29,3 +29,16 @@ Record date + device + result per line.
       clipboard-manager plugin follow-up (spec plan-time decision 2)
 - [ ] Kill app → reopen → data present, sync catches up
 - [ ] Update install (v N-1 → N) preserves account + messages
+
+## Feedback round 3 (2026-07-15)
+- [ ] "scan their QR code" (add contact) opens the native camera scanner
+      immediately — no intermediate button screen
+- [ ] Device pairing responder scan also opens the camera immediately
+- [ ] Cancelling the native scanner shows "scan again" + paste field; the
+      camera does NOT relaunch on its own
+- [ ] "or paste a link" reveals an inline text field; pasting an invite URL
+      opens the accept flow (no browser dialog)
+- [ ] Header back from a contact's profile lands on the contacts tab; no
+      back-and-forth loop between conversation and profile
+- [ ] Feedback submit succeeds against a token-configured server; shows
+      "feedback isn't set up on this server" against an unconfigured one
