@@ -87,4 +87,34 @@ describe("FeedbackRoute FormData contract", () => {
     const body = fetchSpy.mock.calls[0][1]?.body as FormData;
     expect(body.get("category")).toBe("Bug");
   });
+
+  it("shows the not-set-up message when the endpoint is missing (404)", async () => {
+    fetchSpy.mockResolvedValue(
+      new Response("Not Found", { status: 404 }) as any,
+    );
+    const { getByTestId } = renderRoute();
+    fireEvent.change(getByTestId("feedback-message"), {
+      target: { value: "hello" },
+    });
+    fireEvent.click(getByTestId("feedback-submit"));
+    await waitFor(() =>
+      expect(
+        screen.getByText("feedback isn't set up on this server"),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("keeps the generic retry message for other failures (500)", async () => {
+    fetchSpy.mockResolvedValue(
+      new Response("boom", { status: 500 }) as any,
+    );
+    const { getByTestId } = renderRoute();
+    fireEvent.change(getByTestId("feedback-message"), {
+      target: { value: "hello" },
+    });
+    fireEvent.click(getByTestId("feedback-submit"));
+    await waitFor(() =>
+      expect(screen.getByText("couldn't send — try again")).toBeTruthy(),
+    );
+  });
 });
