@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { QRScanner } from "@/qr/scanner";
 import { PHeader } from "@/ui/kit";
 
@@ -22,6 +23,7 @@ import { PHeader } from "@/ui/kit";
  */
 export function ScanInviteRoute() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
 
   const handleUrl = useCallback(
     (url: string) => {
@@ -41,7 +43,7 @@ export function ScanInviteRoute() {
       <div className="w-full max-w-[600px] mx-auto flex flex-col">
         <PHeader
           title="scan their QR code"
-          onBack={() => navigate(-1)}
+          onBack={() => goUp()}
           backTestId="scan-invite-back"
         />
         <div className="px-4 py-4">

@@ -37,6 +37,7 @@
 import { useRef, useEffect, useState, type ChangeEvent, type ClipboardEvent } from "react";
 import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -131,6 +132,7 @@ function dayLabel(
 export function ConversationDetailRoute() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const isDesktop = useIsDesktop();
 
   // Autoscroll anchor + the scrollable timeline element
@@ -1148,7 +1150,7 @@ export function ConversationDetailRoute() {
         header={headerVM}
         items={timelineItems}
         bubbleWidth={bubbleWidth}
-        onBack={isDesktop ? undefined : () => navigate("/conversations")}
+        onBack={isDesktop ? undefined : () => goUp()}
         onOpenInfo={() =>
           navigate(`/conversations/${convId ?? id}/members`)
         }

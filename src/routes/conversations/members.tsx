@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -146,6 +147,7 @@ function MemberKebabMenu({
 export function MembersRoute() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
 
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [leavePromoteOpen, setLeavePromoteOpen] = useState(false);
@@ -464,7 +466,7 @@ export function MembersRoute() {
       />
 
       <ConvoSettingsScreen
-        onBack={() => navigate(`/conversations/${id}`)}
+        onBack={() => goUp()}
         title={conversationTitle}
         initials={conversationTitle[0]?.toUpperCase() ?? "?"}
         avatarSlot={

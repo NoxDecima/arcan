@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { SafetyNumber } from "@/components/safety-number";
@@ -22,6 +23,7 @@ import { ProfileScreen } from "@/ui/screens/profile-screen";
 export function ContactDetailRoute() {
   const { contactID } = useParams<{ contactID: string }>();
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
 
   const me = useAccount(ArcanAccount, {
     resolve: {
@@ -104,7 +106,7 @@ export function ContactDetailRoute() {
         idShort,
         sharedConversations: [],
       }}
-      onBack={() => navigate(-1)}
+      onBack={() => goUp()}
       onMessage={() => void handleStartChat()}
       safetyOpen={safetyOpen}
       onToggleSafety={() => setSafetyOpen((o) => !o)}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useLogOut } from "jazz-tools/react";
 import type { Account } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -48,6 +49,7 @@ const ACCENT_SWATCH: Record<Accent, string> = {
  */
 function SettingsBody() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const isDesktop = useIsDesktop();
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
@@ -262,7 +264,7 @@ function SettingsBody() {
         </p>
       }
       onSignOut={() => void handleSignOut()}
-      onBack={!isDesktop ? () => navigate(-1) : undefined}
+      onBack={!isDesktop ? () => goUp() : undefined}
       // testid carries (E2E + unit)
       rootTestId="settings-body"
       meRowTestId="settings-me-row"

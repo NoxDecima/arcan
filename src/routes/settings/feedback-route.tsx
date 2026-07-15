@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useToast } from "@/components/toast";
 import { FeedbackScreen } from "@/ui/screens/feedback-screen";
 import { authFetch } from "@/platform/auth-transport";
@@ -24,6 +25,7 @@ const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
  */
 export function FeedbackRoute() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const toast = useToast();
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -164,7 +166,7 @@ export function FeedbackRoute() {
 
   return (
     <FeedbackScreen
-      onBack={() => navigate("/settings")}
+      onBack={() => goUp()}
       message={message}
       onMessage={setMessage}
       category={category}

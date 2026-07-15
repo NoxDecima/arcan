@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
@@ -21,6 +22,7 @@ const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d", "none"];
 
 export function AddContactRoute() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const me = useAccount(ArcanAccount, {
     // liveInvitations is required so createInvitation() can push the
     // newly-created Invitation CoValue for surfacing on /connections/live-invites.
@@ -74,7 +76,7 @@ export function AddContactRoute() {
 
   return (
     <AddContactScreen
-      onBack={() => navigate(-1)}
+      onBack={() => goUp()}
       idShort={idShort}
       qrSlot={
         inviteUrl ? (

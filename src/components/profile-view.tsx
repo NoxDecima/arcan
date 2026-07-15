@@ -3,6 +3,7 @@ import { pickFilesNative } from "@/platform/files";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { co } from "jazz-tools";
 import { Link, useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
@@ -58,6 +59,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const toast = useToast();
   const confirmDialog = useConfirm();
 
@@ -385,7 +387,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
             avatarSrc: avatarSrc ?? undefined,
             idShort,
           }}
-          onBack={() => navigate(-1)}
+          onBack={() => goUp({ ownProfile: true })}
           onEditName={beginEditName}
           onEditAvatar={() => void (async () => {
             try {
@@ -462,7 +464,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
             idShort,
             sharedConversations: sharedGroups,
           }}
-          onBack={() => navigate(-1)}
+          onBack={() => goUp()}
           // Avatar tap → lightbox, only when a real image resolved (user
           // decision, 2026-07-08 walkthrough). Initials tiles stay inert.
           onAvatar={avatarSrc ? () => setAvatarLightbox(true) : undefined}
