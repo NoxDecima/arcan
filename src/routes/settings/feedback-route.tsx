@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useToast } from "@/components/toast";
 import { FeedbackScreen } from "@/ui/screens/feedback-screen";
 import { authFetch } from "@/platform/auth-transport";
@@ -24,6 +25,7 @@ const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
  */
 export function FeedbackRoute() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const toast = useToast();
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -82,6 +84,17 @@ export function FeedbackRoute() {
         body,
         credentials: "include",
       });
+      if (res.status === 404) {
+        // The api registers /api/feedback only when LINEAR_API_TOKEN is set
+        // (api/src/index.ts) — a 404 means this server isn't configured for
+        // feedback, not a transient failure. Don't suggest retrying.
+        toast({
+          icon: "alert",
+          text: "feedback isn't set up on this server",
+          tone: "error",
+        });
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast({ icon: "check", text: "thanks — feedback sent", tone: "success" });
       navigate("/settings");
@@ -164,7 +177,7 @@ export function FeedbackRoute() {
 
   return (
     <FeedbackScreen
-      onBack={() => navigate("/settings")}
+      onBack={() => goUp()}
       message={message}
       onMessage={setMessage}
       category={category}

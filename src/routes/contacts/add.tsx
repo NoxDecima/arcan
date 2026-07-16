@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { QRDisplay } from "@/components/qr-display";
@@ -21,15 +22,35 @@ const TTL_PRESETS: LinkTtl[] = ["1h", "24h", "7d", "none"];
 
 export function AddContactRoute() {
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const me = useAccount(ArcanAccount, {
     // liveInvitations is required so createInvitation() can push the
     // newly-created Invitation CoValue for surfacing on /connections/live-invites.
-    resolve: { profile: true, root: { liveInvitations: true } },
+    resolve: { profile: true, root: { liveInvitations: { $each: true } } },
   });
   const toast = useToast();
 
   const [ttl, setTtl] = useState<LinkTtl>("24h");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
+  // Mirrors ScanInviteRoute.handleUrl: drop the pasted URL's origin — the
+  // ?via marker + fragment are origin-independent CoValue IDs, so navigating
+  // locally keeps the accept flow on this device's own origin.
+  function handlePasteSubmit(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed.includes("/invite")) {
+      setPasteError("that doesn't look like an invite link");
+      return;
+    }
+    try {
+      const u = new URL(trimmed);
+      setPasteError(null);
+      navigate(`${u.pathname}${u.search}${u.hash}`);
+    } catch {
+      setPasteError("that doesn't look like an invite link");
+    }
+  }
 
   // Prevent double-creation in React StrictMode double-invoke.
   const creationInProgressRef = useRef(false);
@@ -58,6 +79,16 @@ export function AddContactRoute() {
     : "";
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
 
+  const invitations = Array.from(
+    ((me as any).root?.liveInvitations as Iterable<any>) ?? [],
+  ).filter(Boolean);
+  const nowMs = Date.now();
+  const inviteCount = invitations.filter(
+    (i: any) =>
+      !i.revokedAt &&
+      (!i.expiresAt || new Date(i.expiresAt).getTime() > nowMs),
+  ).length;
+
   async function handlePrimary() {
     if (!inviteUrl) return;
     if (canShare) {
@@ -74,7 +105,7 @@ export function AddContactRoute() {
 
   return (
     <AddContactScreen
-      onBack={() => navigate(-1)}
+      onBack={() => goUp()}
       idShort={idShort}
       qrSlot={
         inviteUrl ? (
@@ -104,13 +135,10 @@ export function AddContactRoute() {
       // Scan a contact-invite QR (/invite URLs) — NOT the device-pairing
       // responder, which only accepts /pair URLs (walkthrough fix, 2026-07-08).
       onScan={() => navigate("/contacts/scan")}
-      onPaste={() => {
-        const url = prompt("paste invite link");
-        if (url) {
-          window.location.assign(url);
-        }
-      }}
+      onPasteSubmit={handlePasteSubmit}
+      pasteError={pasteError}
       onManageInvites={() => navigate("/connections/live-invites")}
+      inviteCount={inviteCount}
       // testid carries
       waitingCardTestId="add-contact-waiting"
       ttlPickerTestId="ttl-picker"

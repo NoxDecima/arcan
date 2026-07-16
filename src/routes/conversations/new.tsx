@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { useNavigate } from "react-router-dom";
+import { useUpNavigation } from "@/nav/use-up-navigation";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import {
   findOrCreate1to1Conversation,
@@ -27,6 +28,7 @@ export function NewConversationRoute() {
     },
   });
   const navigate = useNavigate();
+  const goUp = useUpNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [groupName, setGroupName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -136,7 +138,7 @@ export function NewConversationRoute() {
   return (
     <>
       <NewConvoScreen
-        onBack={() => navigate(-1)}
+        onBack={() => goUp()}
         contacts={contacts}
         selected={selected}
         onToggle={toggle}

@@ -13,8 +13,9 @@
 //   - hiddenUrlSlot: sr-only spans — no pixels; omitted in parity.
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
+import { useState } from "react";
 import type { ReactNode, JSX } from "react";
-import { PHeader, Body, PCard, PButton, PQR, tapClass } from "../kit";
+import { PHeader, Body, PCard, PButton, PQR, Icon, tapClass } from "../kit";
 
 export function AddContactScreen({
   onBack,
@@ -26,7 +27,9 @@ export function AddContactScreen({
   primaryLabel,
   onPrimary,
   onScan,
-  onPaste,
+  onPasteSubmit,
+  pasteError,
+  inviteCount,
   onManageInvites,
   hiddenUrlSlot,
   // testid carries
@@ -47,7 +50,12 @@ export function AddContactScreen({
   primaryLabel: string;
   onPrimary: () => void;                 // share or copy — "add-contact-share-btn"
   onScan: () => void;                    // "scan their QR code" — "scan-their-code"
-  onPaste: () => void;                   // "or paste a link" — "add-contact-cancel-btn"
+  /** Feedback round 3: inline paste reveal — container validates + navigates. */
+  onPasteSubmit: (value: string) => void;
+  /** Inline validation error from the container; null/undefined = none. */
+  pasteError?: string | null;
+  /** Active (non-revoked, non-expired) invite count for the invite-links row. */
+  inviteCount?: number;
   /** Bundle E: optional link to /connections/live-invites; parity cells omit it. */
   onManageInvites?: () => void;          // "manage-invites-link"
   /** Rung-4: sr-only qr-url-text / copy-url-text spans (e2e hooks; no pixels). */
@@ -62,6 +70,10 @@ export function AddContactScreen({
 }): JSX.Element {
   // Infer primary icon from label — "share invite" uses "share", else "copy"
   const primaryIcon = primaryLabel.toLowerCase().includes("share") ? "share" : "copy";
+
+  // Reveal state is pure presentation — the container owns validation/nav.
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteValue, setPasteValue] = useState("");
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -155,6 +167,29 @@ export function AddContactScreen({
             </div>
           </PCard>
 
+          {/* intent-fix (feedback round 3): proto has no invite-links entry;
+              the previous ghost text at the page bottom was too small to find.
+              User direction: below the QR card, above "add someone", visually
+              recessive — must not compete with QR/copy/scan. */}
+          {onManageInvites && (
+            <button
+              onClick={onManageInvites}
+              data-testid="manage-invites-link"
+              className={`${tapClass} w-full max-w-[300px] flex items-center gap-2 rounded-r-2 border border-hairline bg-panel px-3 py-2`}
+            >
+              <Icon d="personplus" size={14} className="text-dim" />
+              <span className="flex-1 text-left font-body text-ui-sub leading-none text-text-2">
+                invite links
+              </span>
+              {typeof inviteCount === "number" && (
+                <span className="font-mono text-ui-value leading-none text-dim">
+                  {inviteCount} active
+                </span>
+              )}
+              <Icon d="chev" size={14} className="text-dim" />
+            </button>
+          )}
+
           {/* "add someone" labeled divider — proto:424 (cluster) */}
           <div className="flex items-center gap-2 w-full max-w-[300px]">
             <div className="flex-1 h-px bg-hairline" />
@@ -178,30 +213,48 @@ export function AddContactScreen({
             />
           </div>
 
-          {/* "or paste a link" ghost — proto:426 */}
-          <button
-            className={tapClass}
-            onClick={onPaste}
-            {...(pasteBtnTestId ? { "data-testid": pasteBtnTestId } : {})}
-          >
-            {/* 400 10.5px/1 body → font-body text-ui-sub leading-none; color accent */}
-            <span className="font-body text-ui-sub leading-none text-arcan-accent">
-              or paste a link
-            </span>
-          </button>
-
-          {/* "manage invite links" ghost — Bundle E; parity cells omit this */}
-          {onManageInvites && (
+          {/* intent-fix (feedback round 3): proto:426 ghost link → inline
+              reveal with a real text field. prompt() is not implemented in
+              Tauri's Android WebView, so the dialog approach silently did
+              nothing on device. */}
+          {!pasteOpen ? (
             <button
               className={tapClass}
-              onClick={onManageInvites}
-              data-testid="manage-invites-link"
+              onClick={() => setPasteOpen(true)}
+              {...(pasteBtnTestId ? { "data-testid": pasteBtnTestId } : {})}
             >
-              <span className="font-body text-ui-sub leading-none text-dim">
-                manage invite links
+              <span className="font-body text-ui-sub leading-none text-arcan-accent">
+                or paste a link
               </span>
             </button>
+          ) : (
+            <div className="w-full max-w-[300px] flex flex-col gap-2">
+              <input
+                autoFocus
+                type="text"
+                value={pasteValue}
+                onChange={(e) => setPasteValue(e.target.value)}
+                placeholder="paste an invite link…"
+                data-testid="paste-invite-input"
+                className="w-full rounded-r-2 border border-hairline bg-panel px-2 py-2 font-mono text-ui-value text-text outline-none focus:border-arcan-accent"
+              />
+              {pasteError && (
+                <p
+                  className="font-body text-ui-sub leading-none text-red"
+                  data-testid="paste-invite-error"
+                >
+                  {pasteError}
+                </p>
+              )}
+              <PButton
+                full
+                label="connect"
+                onClick={() => onPasteSubmit(pasteValue)}
+                data-testid="paste-invite-submit"
+              />
+            </div>
           )}
+
         </div>
       </Body>
     </div>

@@ -552,6 +552,8 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
   // proto.jsx:401–429 (AddContactScreen) — patched: one adaptive button (9-7 §2-J);
   // ttlOptions = app presets (1h/24h/7d); ttl="24h"; qrSlot=<PQR size={128}>.
   // hiddenUrlSlot omitted (sr-only, no pixels).
+  // feedback round 3: onPaste → onPasteSubmit (inline reveal, closed by
+  // default — closed state renders the same ghost link, no pixel change).
   "add-contact-screen": () => (
     <div className="flex flex-col h-full">
       <AddContactScreen
@@ -564,7 +566,7 @@ export const APP_CELLS: Record<string, () => ReactNode> = {
         primaryLabel="copy link"
         onPrimary={() => {}}
         onScan={() => {}}
-        onPaste={() => {}}
+        onPasteSubmit={() => {}}
       />
     </div>
   ),

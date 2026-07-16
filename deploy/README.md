@@ -90,6 +90,23 @@ exists — create it once and rebuild:
 Verify after deploy: https://$DOMAIN/.well-known/assetlinks.json returns
 JSON with content-type application/json.
 
+## Feedback → Linear
+
+The in-app "give feedback" button (settings → give feedback) files issues in
+Linear via `POST /api/feedback`. The endpoint only exists when the api
+container has a Linear API token:
+
+1. Create a personal API key in Linear (Settings → Security & access →
+   Personal API keys).
+2. Add it to `.env`: `LINEAR_API_TOKEN=lin_api_…`
+3. Recreate the api container: `docker compose up -d --build api`
+
+Without the token the api boots fine but logs
+`LINEAR_API_TOKEN not set — feedback route disabled`, and the app shows
+"feedback isn't set up on this server" on submit. Team, project, and label
+IDs default to the Nox/Arcan workspace — override them via the commented-out
+vars in `.env.example` if you run a fork against another workspace.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -101,3 +118,4 @@ JSON with content-type application/json.
 | `auth` container exits with "BETTER_AUTH_SECRET must be set" | The `.env` file is missing the secret. Generate one with `openssl rand -base64 32` and add it as `BETTER_AUTH_SECRET=…`. |
 | `auth` container restarts on every request | Migration step (in the entrypoint) failed. `docker compose logs auth` will show the underlying SQLite error — usually the bind-mounted `./auth-data/` directory isn't writable by the container user. |
 | Sign-up always returns 500 | First-boot migrations didn't run. Re-create the container with `docker compose up -d --build --force-recreate auth` so the entrypoint's migration step runs against a clean DB. |
+| App says "feedback isn't set up on this server" | `LINEAR_API_TOKEN` missing from `.env` (or api container not rebuilt since adding it). See § Feedback → Linear. |

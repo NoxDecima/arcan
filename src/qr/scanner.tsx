@@ -23,11 +23,26 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
   const [mismatch, setMismatch] = useState(false);
   const accepted = useRef(false);
 
+  // Feedback round 3: on Android the camera opens immediately on mount —
+  // the old button-first layout read as "another screen before the camera".
+  // "launching" = native scanner open (or opening); "idle" = user cancelled /
+  // denied / mismatched, show scan-again + paste fallback. Never auto-relaunch
+  // from "idle" — that would trap the user in the camera.
+  const [nativePhase, setNativePhase] = useState<"launching" | "idle">(
+    "launching",
+  );
+  const nativeLaunched = useRef(false);
+
   async function handleNativeScan() {
+    setNativePhase("launching");
     const data = await scanQrNative();
-    if (data === null) return; // cancelled or denied — no state change
+    if (data === null) {
+      setNativePhase("idle"); // cancelled or permission denied
+      return;
+    }
     if (!data.includes(expectedPathPrefix)) {
       setMismatch(true);
+      setNativePhase("idle");
       return;
     }
     if (accepted.current) return;
@@ -35,6 +50,16 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
     setMismatch(false);
     onUrl(data);
   }
+
+  useEffect(() => {
+    if (!nativeQrAvailable()) return;
+    // Ref-guarded: StrictMode double-invokes effects in dev; the OS camera
+    // sheet must open exactly once.
+    if (nativeLaunched.current) return;
+    nativeLaunched.current = true;
+    void handleNativeScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (nativeQrAvailable()) return;
@@ -94,9 +119,18 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
       <div className="space-y-2">
         <h3 className="text-sm font-medium">scan with camera</h3>
         {nativeQrAvailable() ? (
-          <Button onClick={handleNativeScan} data-testid="qr-native-scan">
-            open camera scanner
-          </Button>
+          nativePhase === "launching" ? (
+            <p className="text-sm text-dim" data-testid="qr-native-launching">
+              opening the camera scanner…
+            </p>
+          ) : (
+            <Button
+              onClick={() => void handleNativeScan()}
+              data-testid="qr-native-scan"
+            >
+              scan again
+            </Button>
+          )
         ) : (
           <div className="aspect-square w-full overflow-hidden rounded-lg border bg-black">
             {(cameraState === "loading" || cameraState === "running") && (
@@ -125,9 +159,9 @@ export function QRScanner({ onUrl, expectedPathPrefix }: QRScannerProps) {
 
       <div className="space-y-2">
         <h3 className="text-sm font-medium">or paste link</h3>
-        <textarea
+        <input
+          type="text"
           className="w-full rounded-md border bg-background p-2 text-sm font-mono"
-          rows={4}
           value={pasteValue}
           onChange={(e) => {
             setPasteValue(e.target.value);

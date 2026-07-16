@@ -7,7 +7,10 @@ function required(name: string): string {
 }
 
 function optional(name: string, fallback: string): string {
-  return process.env[name] ?? fallback;
+  const value = process.env[name];
+  // Treat empty as unset: docker-compose `${VAR:-}` pass-throughs hand us ""
+  // when the operator leaves the var out of .env.
+  return value && value.length > 0 ? value : fallback;
 }
 
 function optionalEmpty(name: string): string {
