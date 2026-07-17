@@ -62,17 +62,23 @@ Four message-timeline issues from using the app:
 
 ### Popover
 
-- The inline gutter buttons are replaced with the positioned-menu pattern
-  already used by the conversation-header menu (`detail.tsx` header menu):
-  a `relative` wrapper around the ⋮ button; when open, a full-screen
-  invisible backdrop (`fixed inset-0 z-10`, closes on tap) plus an `absolute`
-  menu (`z-20`, `min-w`, vertical list, `rounded-r-4 border border-hairline
-  bg-panel shadow-bubble`) with two items: edit, delete.
-- Anchor: the menu opens adjacent to the ⋮ button, UPWARD (`bottom-full
-  mb-1 right-0`) — an absolute child of the `overflow-y-auto` timeline gets
-  clipped below the container's bottom edge, and the messages users act on
-  sit at the bottom of the scroll area (plan-time correction; the earlier
-  `top-full` wording predated checking the scroll-clipping behavior).
+- The inline gutter buttons are replaced with an anchored popover modeled on
+  the conversation-header menu: a `relative` wrapper around the ⋮ button;
+  when open, an `absolute` menu (`z-20`, `min-w`, vertical list,
+  `rounded-r-4 border border-hairline bg-panel shadow-bubble`) with two
+  items: edit, delete. Implementation deviation from the header pattern
+  (verified in review): tap-away closes via focusout (`onBlur` with a
+  `relatedTarget`-containment guard) rather than a fixed backdrop — the
+  timeline's overflow clipping applies to absolute descendants while a fixed
+  backdrop escapes it, so the header's backdrop approach misbehaves inside
+  the scroll container. Focus-based close works for mouse and touch (buttons
+  take focus on tap; tapping non-focusable timeline area blurs them).
+- Anchor: the menu opens adjacent to the ⋮ button, DOWNWARD (`top-full mt-1
+  right-0`). Implementation-time correction: upward (`bottom-full`) extends
+  above the scroll container's top edge for early messages, where overflow
+  content is unreachable (no scrolling above the content start); downward
+  only clips for bottom-of-timeline messages and remains reachable —
+  verified against the running app in e2e.
 - Existing testids stay: `message-menu-btn`, `message-edit-btn`,
   `message-delete-btn`.
 

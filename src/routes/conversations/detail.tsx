@@ -894,11 +894,13 @@ export function ConversationDetailRoute() {
             className="relative"
             onBlur={(e) => {
               // Close when focus leaves the popover container entirely.
-              // relatedTarget is null on non-focusable clicks (pointer events
-              // close via the backdrop button instead in the header menu; here
-              // we use blur because a fixed-position backdrop sits below the
-              // overflow-y-auto timeline's stacking context and would intercept
-              // pointer events to the menu items — intent-fix, feedback round 4).
+              // relatedTarget stays inside the wrapper when tapping the menu
+              // items (focusout fires between mousedown and click), so the
+              // contains() guard keeps the menu alive for those clicks. The
+              // header menu uses a fixed backdrop instead; that doesn't work
+              // here because the timeline's overflow clipping applies to
+              // absolute descendants while a fixed backdrop escapes it —
+              // blur-close avoids the mismatch (intent-fix, feedback round 4).
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 setMenuOpenId(null);
               }
@@ -915,15 +917,13 @@ export function ConversationDetailRoute() {
             </button>
             {isMenuOpen && (
               <>
-                {/* Opens UPWARD (bottom-full): recent messages sit at the
-                    bottom of the scroll container, and an absolute child of an
-                    overflow-y-auto ancestor gets clipped below it. right-0
+                {/* Opens DOWNWARD (top-full): bottom-full would extend above
+                    the scroll container's top edge for early messages, where
+                    overflow content is unreachable (you can't scroll up past
+                    the content start); top-full only clips for bottom-of-
+                    timeline messages and stays reachable in practice. right-0
                     keeps it inside the row (kebab sits in the gutter on the
-                    bubble's free side; own rows are flex-row-reverse).
-                    No fixed backdrop: a fixed z-10 backdrop sits below the
-                    overflow-y-auto stacking context and would intercept clicks
-                    on these z-20 menu items; blur-based close handles tap-away
-                    without that issue (intent-fix, feedback round 4). */}
+                    bubble's free side; own rows are flex-row-reverse). */}
                 <div
                   data-testid="message-menu"
                   className="absolute right-0 top-full mt-1 z-20 min-w-[120px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
