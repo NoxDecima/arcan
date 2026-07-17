@@ -78,6 +78,7 @@ import {
   type ChatHeaderVM,
 } from "@/ui/screens";
 import { Icon, tapClass } from "@/ui/kit";
+import { editBoxWidth } from "@/lib/edit-box-width";
 
 // ---- module-level helpers (mirrors Composer component internals) ----
 
@@ -849,7 +850,10 @@ export function ConversationDetailRoute() {
       const isEditing = editingMessageId === msgId;
       const bodyOverride = isEditing ? (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center rounded-pill border border-hairline bg-bg px-3 h-[38px] w-[220px]">
+          <div
+            className="flex items-center rounded-pill border border-hairline bg-bg px-3 h-[38px]"
+            style={{ width: editBoxWidth(bubbleWidth) }}
+          >
             <input
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
