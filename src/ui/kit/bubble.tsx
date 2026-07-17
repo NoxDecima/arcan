@@ -169,11 +169,36 @@ export function MessageRow({
             },
             onPointerDown: (e: ReactPointerEvent) => {
               if (e.pointerType === "mouse") return;
-              const timer = window.setTimeout(onContext, 500);
-              const cancel = () => window.clearTimeout(timer);
-              e.currentTarget.addEventListener("pointerup", cancel, { once: true });
-              e.currentTarget.addEventListener("pointerleave", cancel, { once: true });
-              e.currentTarget.addEventListener("pointermove", cancel, { once: true });
+              // intent-fix (feedback round 4): the old guard cancelled on the
+              // FIRST pointermove — real fingers always jitter, so long-press
+              // effectively never fired. Cancel only beyond a 10px slop, and
+              // clean every listener on fire/cancel. Scrolling emits
+              // pointercancel, which also cancels.
+              const el = e.currentTarget;
+              const startX = e.clientX;
+              const startY = e.clientY;
+              let timer = 0;
+              const onMove = (ev: Event) => {
+                const p = ev as PointerEvent;
+                if (Math.hypot(p.clientX - startX, p.clientY - startY) > 10) {
+                  cancel();
+                }
+              };
+              const cancel = () => {
+                window.clearTimeout(timer);
+                el.removeEventListener("pointerup", cancel);
+                el.removeEventListener("pointercancel", cancel);
+                el.removeEventListener("pointerleave", cancel);
+                el.removeEventListener("pointermove", onMove);
+              };
+              timer = window.setTimeout(() => {
+                cancel();
+                onContext();
+              }, 500);
+              el.addEventListener("pointerup", cancel);
+              el.addEventListener("pointercancel", cancel);
+              el.addEventListener("pointerleave", cancel);
+              el.addEventListener("pointermove", onMove);
             },
           }
         : {})}

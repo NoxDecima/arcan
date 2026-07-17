@@ -890,7 +890,20 @@ export function ConversationDetailRoute() {
       const isMenuOpen = menuOpenId === msgId;
       const menuSlot =
         isMine && !isDeleted && !malformed && !isEditing ? (
-          <div className="flex flex-col items-end gap-1">
+          <div
+            className="relative"
+            onBlur={(e) => {
+              // Close when focus leaves the popover container entirely.
+              // relatedTarget is null on non-focusable clicks (pointer events
+              // close via the backdrop button instead in the header menu; here
+              // we use blur because a fixed-position backdrop sits below the
+              // overflow-y-auto timeline's stacking context and would intercept
+              // pointer events to the menu items — intent-fix, feedback round 4).
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setMenuOpenId(null);
+              }
+            }}
+          >
             <button
               type="button"
               onClick={() => setMenuOpenId(isMenuOpen ? null : msgId)}
@@ -901,31 +914,45 @@ export function ConversationDetailRoute() {
               ⋮
             </button>
             {isMenuOpen && (
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpenId(null);
-                    setEditingMessageId(msgId);
-                    setEditText(message?.body ?? "");
-                  }}
-                  data-testid="message-edit-btn"
-                  className="px-2 py-0.5 font-body text-ui-sub text-text-2 rounded border border-hairline"
+              <>
+                {/* Opens UPWARD (bottom-full): recent messages sit at the
+                    bottom of the scroll container, and an absolute child of an
+                    overflow-y-auto ancestor gets clipped below it. right-0
+                    keeps it inside the row (kebab sits in the gutter on the
+                    bubble's free side; own rows are flex-row-reverse).
+                    No fixed backdrop: a fixed z-10 backdrop sits below the
+                    overflow-y-auto stacking context and would intercept clicks
+                    on these z-20 menu items; blur-based close handles tap-away
+                    without that issue (intent-fix, feedback round 4). */}
+                <div
+                  data-testid="message-menu"
+                  className="absolute right-0 top-full mt-1 z-20 min-w-[120px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
                 >
-                  edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpenId(null);
-                    void handleDeleteMessage(message);
-                  }}
-                  data-testid="message-delete-btn"
-                  className="px-2 py-0.5 font-body text-ui-sub text-text-2 rounded border border-hairline"
-                >
-                  delete
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      setEditingMessageId(msgId);
+                      setEditText(message?.body ?? "");
+                    }}
+                    data-testid="message-edit-btn"
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+                  >
+                    edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      void handleDeleteMessage(message);
+                    }}
+                    data-testid="message-delete-btn"
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+                  >
+                    delete
+                  </button>
+                </div>
+              </>
             )}
           </div>
         ) : undefined;
