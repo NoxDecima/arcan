@@ -68,11 +68,11 @@ Four message-timeline issues from using the app:
   invisible backdrop (`fixed inset-0 z-10`, closes on tap) plus an `absolute`
   menu (`z-20`, `min-w`, vertical list, `rounded-r-4 border border-hairline
   bg-panel shadow-bubble`) with two items: edit, delete.
-- Anchor: the menu opens below the ⋮ button (`top-full mt-1`), horizontally
-  toward the message center — i.e. away from the nearer viewport edge. The
-  exact `left-0`/`right-0` choice is resolved at implementation against the
-  row's real flex order (own rows are `flex-row-reverse`; the kebab sits in
-  the gutter on the bubble's free side).
+- Anchor: the menu opens adjacent to the ⋮ button, UPWARD (`bottom-full
+  mb-1 right-0`) — an absolute child of the `overflow-y-auto` timeline gets
+  clipped below the container's bottom edge, and the messages users act on
+  sit at the bottom of the scroll area (plan-time correction; the earlier
+  `top-full` wording predated checking the scroll-clipping behavior).
 - Existing testids stay: `message-menu-btn`, `message-edit-btn`,
   `message-delete-btn`.
 
@@ -87,14 +87,18 @@ Four message-timeline issues from using the app:
    `preventDefault` on own-message bubbles only; elsewhere the browser's
    native context menu is untouched.
 
-- Kit purity: `MessageRow` gains two presentational callback props —
-  `onBubbleLongPress?: () => void` and `onBubbleContextMenu?: () => void`.
-  The kit implements the interaction detection internally (pointer-event
-  timer with touch-only + move-cancel guards for long-press; `preventDefault`
-  on `contextmenu` only when the callback is provided) — pure UI behavior,
-  no Jazz/router, purity guard unaffected. The container (`detail.tsx`)
-  passes both callbacks (both simply open the message menu) only for own,
-  non-deleted, non-editing messages.
+- Kit purity: plan-time discovery — `MessageRow` ALREADY has a combined
+  presentational `onContext?: () => void` prop (feedback round 2) that wires
+  both right-click and long-press, and the container already passes it for
+  own, non-deleted, non-editing messages (detail.tsx). No new props are
+  added. What changes: the long-press guard is hardened — today ANY
+  pointermove cancels the 500 ms timer (a `once: true` listener), so a real
+  finger's jitter means long-press effectively never fires on device. The
+  fix cancels only beyond a ~10px slop, handles `pointercancel` (scroll
+  takeover), and cleans all listeners on fire/cancel. The `contextmenu`
+  branch (right-click, `preventDefault` only when the callback is provided)
+  already matches this spec and stays as-is. Detection stays in the kit —
+  pure UI behavior, purity guard unaffected.
 
 ## Testing
 
