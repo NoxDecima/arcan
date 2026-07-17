@@ -99,9 +99,10 @@ test("1:1 messaging — send, receive, edit, delete", async ({ browser }) => {
     await expect(pageA.getByTestId("message-timeline")).toContainText("Hey Bob! (edited)", {
       timeout: 5_000,
     });
-    await expect(pageA.getByTestId("message-timeline")).toContainText("(edited)", {
-      timeout: 5_000,
-    });
+    // The edited marker lives in the caption below the bubble now.
+    await expect(
+      pageA.locator('[data-testid="bubble-time"]', { hasText: "edited" }).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Bob sees the edited version.
     // Jazz sync for edits on existing messages in cross-context scenarios can
@@ -121,18 +122,19 @@ test("1:1 messaging — send, receive, edit, delete", async ({ browser }) => {
         timeout: 15_000,
       });
     }
-    await expect(pageB.getByTestId("message-timeline")).toContainText("(edited)", {
-      timeout: 10_000,
-    });
+    // The edited marker lives in the caption below the bubble now.
+    await expect(
+      pageB.locator('[data-testid="bubble-time"]', { hasText: "edited" }).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
     // ── 8. Alice deletes her message ─────────────────────────────────────────
     const aliceMsgAfterEdit = pageA.getByTestId("message-mine").first();
     await aliceMsgAfterEdit.hover();
     await pageA.getByTestId("message-menu-btn").first().click();
 
-    // Click delete and confirm the browser dialog
-    pageA.once("dialog", (dialog) => dialog.accept());
+    // Click delete and confirm via custom modal (feedback round 2 replaced native confirm())
     await pageA.getByTestId("message-delete-btn").click();
+    await pageA.getByTestId("confirm-dialog-confirm").click();
 
     // Alice sees the deleted placeholder
     await expect(pageA.getByTestId("message-deleted")).toBeVisible({ timeout: 5_000 });

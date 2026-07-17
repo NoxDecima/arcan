@@ -42,3 +42,14 @@ Record date + device + result per line.
       back-and-forth loop between conversation and profile
 - [ ] Feedback submit succeeds against a token-configured server; shows
       "feedback isn't set up on this server" against an unconfigured one
+
+## Feedback round 4 (2026-07-17)
+- [ ] Timestamps render below bubbles (right-aligned own, left-aligned theirs);
+      edited messages show "HH:MM · edited"
+- [ ] A wide image stays inside its bubble on the phone screen
+- [ ] Editing a message: the input fits inside the bubble, save/cancel reachable
+- [ ] Long-press (~0.5s) on an own message opens the edit/delete popover
+- [ ] Scrolling the timeline with a finger over an own message does NOT open it
+- [ ] Tap-away closes the popover; edit and delete both work from it
+- [ ] Desktop web: right-click on an own message opens the same popover;
+      right-click elsewhere keeps the browser's native context menu

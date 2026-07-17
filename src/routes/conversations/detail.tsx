@@ -78,6 +78,7 @@ import {
   type ChatHeaderVM,
 } from "@/ui/screens";
 import { Icon, tapClass } from "@/ui/kit";
+import { editBoxWidth } from "@/lib/edit-box-width";
 
 // ---- module-level helpers (mirrors Composer component internals) ----
 
@@ -849,7 +850,10 @@ export function ConversationDetailRoute() {
       const isEditing = editingMessageId === msgId;
       const bodyOverride = isEditing ? (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center rounded-pill border border-hairline bg-bg px-3 h-[38px] w-[220px]">
+          <div
+            className="flex items-center rounded-pill border border-hairline bg-bg px-3 h-[38px]"
+            style={{ width: editBoxWidth(bubbleWidth) }}
+          >
             <input
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
@@ -886,7 +890,22 @@ export function ConversationDetailRoute() {
       const isMenuOpen = menuOpenId === msgId;
       const menuSlot =
         isMine && !isDeleted && !malformed && !isEditing ? (
-          <div className="flex flex-col items-end gap-1">
+          <div
+            className="relative"
+            onBlur={(e) => {
+              // Close when focus leaves the popover container entirely.
+              // relatedTarget stays inside the wrapper when tapping the menu
+              // items (focusout fires between mousedown and click), so the
+              // contains() guard keeps the menu alive for those clicks. The
+              // header menu uses a fixed backdrop instead; that doesn't work
+              // here because the timeline's overflow clipping applies to
+              // absolute descendants while a fixed backdrop escapes it —
+              // blur-close avoids the mismatch (intent-fix, feedback round 4).
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setMenuOpenId(null);
+              }
+            }}
+          >
             <button
               type="button"
               onClick={() => setMenuOpenId(isMenuOpen ? null : msgId)}
@@ -897,31 +916,43 @@ export function ConversationDetailRoute() {
               ⋮
             </button>
             {isMenuOpen && (
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpenId(null);
-                    setEditingMessageId(msgId);
-                    setEditText(message?.body ?? "");
-                  }}
-                  data-testid="message-edit-btn"
-                  className="px-2 py-0.5 font-body text-ui-sub text-text-2 rounded border border-hairline"
+              <>
+                {/* Opens DOWNWARD (top-full): bottom-full would extend above
+                    the scroll container's top edge for early messages, where
+                    overflow content is unreachable (you can't scroll up past
+                    the content start); top-full only clips for bottom-of-
+                    timeline messages and stays reachable in practice. right-0
+                    keeps it inside the row (kebab sits in the gutter on the
+                    bubble's free side; own rows are flex-row-reverse). */}
+                <div
+                  data-testid="message-menu"
+                  className="absolute right-0 top-full mt-1 z-20 min-w-[120px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
                 >
-                  edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpenId(null);
-                    void handleDeleteMessage(message);
-                  }}
-                  data-testid="message-delete-btn"
-                  className="px-2 py-0.5 font-body text-ui-sub text-text-2 rounded border border-hairline"
-                >
-                  delete
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      setEditingMessageId(msgId);
+                      setEditText(message?.body ?? "");
+                    }}
+                    data-testid="message-edit-btn"
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+                  >
+                    edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      void handleDeleteMessage(message);
+                    }}
+                    data-testid="message-delete-btn"
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+                  >
+                    delete
+                  </button>
+                </div>
+              </>
             )}
           </div>
         ) : undefined;

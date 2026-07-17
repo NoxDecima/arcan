@@ -101,7 +101,10 @@ export function AttachmentTile({
             src={url}
             alt={filename}
             className="rounded max-w-full object-contain border border-hairline"
-            style={{ maxWidth: 280, maxHeight: 280 }}
+            // Inline style overrides the max-w-full class, so cap against the
+            // container too — a 280px image must not escape a ~190px mobile
+            // bubble (feedback round 4).
+            style={{ maxWidth: "min(280px, 100%)", maxHeight: 280 }}
           />
         ) : (
           <div className="w-48 h-32 flex items-center justify-center bg-panel-2 text-xs text-dim rounded">

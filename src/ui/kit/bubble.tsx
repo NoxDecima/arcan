@@ -19,7 +19,7 @@ export interface BubbleMsg {
   src?: string;
   time?: string;
   att?: boolean;
-  /** Rung 4: message was edited — renders "(edited)" indicator below the body row. */
+  /** Message was edited — MessageRow appends "· edited" to the caption below the bubble (feedback round 4). */
   edited?: boolean;
 }
 
@@ -30,7 +30,6 @@ export function Bubble({
   w,
   attSlot,
   bodyTestId,
-  timeTestId,
   bodyOverride,
 }: {
   m: BubbleMsg;
@@ -39,8 +38,6 @@ export function Bubble({
   attSlot?: ReactNode;
   /** Optional testid on the body text span (e.g. "bubble-body"). Sanctioned: ChatScreen presenter. */
   bodyTestId?: string;
-  /** Optional testid on the time span (e.g. "bubble-time"). Sanctioned: ChatScreen presenter. */
-  timeTestId?: string;
   /** Rung 4: replaces the body text+time row (e.g. inline edit input). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
 }): JSX.Element {
@@ -83,39 +80,12 @@ export function Bubble({
         </div>
       )}
       {bodyOverride ?? (
-        <>
-          <div className="flex items-end gap-2">
-            {/* intent-fix (feedback round 2): own-message timestamp sits on
-                the LEFT of the body; theirs keeps time on the right. */}
-            {mine && m.time && (
-              <span
-                className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
-                {...(timeTestId ? { "data-testid": timeTestId } : {})}
-              >
-                {m.time}
-              </span>
-            )}
-            <span
-              className="flex-1 font-body text-ui-bubble"
-              {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
-            >
-              {m.text}
-            </span>
-            {!mine && m.time && (
-              <span
-                className="font-mono font-medium text-ui-time text-dim shrink-0 mb-px"
-                {...(timeTestId ? { "data-testid": timeTestId } : {})}
-              >
-                {m.time}
-              </span>
-            )}
-          </div>
-          {m.edited && (
-            <span className="block font-mono text-ui-time text-dim mt-0.5">
-              (edited)
-            </span>
-          )}
-        </>
+        <span
+          className="block font-body text-ui-bubble"
+          {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
+        >
+          {m.text}
+        </span>
       )}
     </div>
   );
@@ -141,7 +111,7 @@ export function MessageRow({
   testId?: string;
   /** Forwarded to Bubble: testid on the body text span. */
   bodyTestId?: string;
-  /** Forwarded to Bubble: testid on the time span. */
+  /** testid on the caption below the bubble. */
   timeTestId?: string;
   /** Rung 4: forwarded to Bubble — replaces body text+time (e.g. inline edit). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
@@ -199,11 +169,36 @@ export function MessageRow({
             },
             onPointerDown: (e: ReactPointerEvent) => {
               if (e.pointerType === "mouse") return;
-              const timer = window.setTimeout(onContext, 500);
-              const cancel = () => window.clearTimeout(timer);
-              e.currentTarget.addEventListener("pointerup", cancel, { once: true });
-              e.currentTarget.addEventListener("pointerleave", cancel, { once: true });
-              e.currentTarget.addEventListener("pointermove", cancel, { once: true });
+              // intent-fix (feedback round 4): the old guard cancelled on the
+              // FIRST pointermove — real fingers always jitter, so long-press
+              // effectively never fired. Cancel only beyond a 10px slop, and
+              // clean every listener on fire/cancel. Scrolling emits
+              // pointercancel, which also cancels.
+              const el = e.currentTarget;
+              const startX = e.clientX;
+              const startY = e.clientY;
+              let timer = 0;
+              const onMove = (ev: Event) => {
+                const p = ev as PointerEvent;
+                if (Math.hypot(p.clientX - startX, p.clientY - startY) > 10) {
+                  cancel();
+                }
+              };
+              const cancel = () => {
+                window.clearTimeout(timer);
+                el.removeEventListener("pointerup", cancel);
+                el.removeEventListener("pointercancel", cancel);
+                el.removeEventListener("pointerleave", cancel);
+                el.removeEventListener("pointermove", onMove);
+              };
+              timer = window.setTimeout(() => {
+                cancel();
+                onContext();
+              }, 500);
+              el.addEventListener("pointerup", cancel);
+              el.addEventListener("pointercancel", cancel);
+              el.addEventListener("pointerleave", cancel);
+              el.addEventListener("pointermove", onMove);
             },
           }
         : {})}
@@ -232,7 +227,21 @@ export function MessageRow({
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} timeTestId={timeTestId} bodyOverride={bodyOverride} />
+        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} bodyOverride={bodyOverride} />
+        {/* intent-fix (feedback round 4): timestamp moved OUT of the bubble
+            to a caption below it — user direction, 2026-07-16 walkthrough.
+            The in-bubble "(edited)" line merges into the caption too. */}
+        {(m.time || m.edited) && (
+          <span
+            className={`font-mono font-medium text-ui-time text-dim ${
+              mine ? "text-right" : "text-left"
+            }`}
+            {...(timeTestId ? { "data-testid": timeTestId } : {})}
+          >
+            {m.time}
+            {m.edited ? (m.time ? " · edited" : "· edited") : ""}
+          </span>
+        )}
       </div>
       {endSlot && <div className="self-center shrink-0">{endSlot}</div>}
     </div>
