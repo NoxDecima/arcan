@@ -33,7 +33,8 @@ function AuthSurface({ s, w = 320, tall, children }) {
 
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
-/* patched copy: design/proto.jsx:33–71 — one intent-fix, see Bubble:att inline note */
+/* patched copy: design/proto.jsx:33–71 — one intent-fix, see Bubble:att inline note;
+   feedback round 4: time moved out of the bubble to a caption below (both sides patched identically). */
 function ownPaintP(s) {
   const c = s.c;
   if (s.ownStyle === 'grad') return { bg: c.accentGrad, fg: c.onAccent, bd: 'transparent', time: alpha(c.onAccent, .6) };
@@ -48,12 +49,7 @@ function Bubble({ s, m, w }) {
     <div style={{ maxWidth: w, background: p.bg, border: p.bd !== 'transparent' ? `1px solid ${p.bd}` : 'none', color: p.fg, padding: m.att ? 6 : '8px 11px', borderRadius: s.bubbleRadius, borderBottomRightRadius: mine ? Math.max(2, s.bubbleRadius - 12) : s.bubbleRadius, borderBottomLeftRadius: mine ? s.bubbleRadius : Math.max(2, s.bubbleRadius - 12), boxShadow: s.soft && !mine && s.theme === 'light' ? '0 1px 2px rgba(20,20,40,.05)' : 'none' }}>
       {/* intent-fix: '#fff' → '#ffffff' — _hx('#fff') → [255,15,NaN] (3-digit shorthand: first two chars pair up, third slice empty → NaN); invalid rgba drops the veil in the raw proto. hf-chat.jsx:126 already uses #ffffff (designer's corrected version). */}
       {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#0e1019' : '#eef0f5'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        {/* intent-fix (feedback round 2): own-message timestamp on the left */}
-        {mine && m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
-        <span style={{ flex: 1, font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
-        {!mine && m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: p.time, flexShrink: 0, marginBottom: 1 }}>{m.time}</span>}
-      </div>
+      <span style={{ display: 'block', font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
     </div>
   );
 }
@@ -72,6 +68,8 @@ function Row({ s, m, w }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: mine ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
         {!mine && m.name && <span style={{ font: `600 9.5px/1 ${s.headMono ? s.font : s.body}`, color: c.text2, marginLeft: 3 }}>{m.name}</span>}
         <Bubble s={s} m={m} w={w} />
+        {/* intent-fix (feedback round 4): timestamp caption below the bubble */}
+        {m.time && <span style={{ font: `500 8.5px/1 ${s.font}`, color: c.dim, textAlign: mine ? 'right' : 'left' }}>{m.time}</span>}
       </div>
     </div>
   );
