@@ -27,10 +27,14 @@ export function PTabBar({
       <button
         key={key}
         onClick={() => onTab(key)}
-        className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px]`}
+        className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px] hover:bg-panel-2 active:bg-hairline`}
       >
         <span className="relative flex">
-          <Icon d={icon} size={20} className={on ? "text-arcan-accent" : "text-dim"} />
+          <Icon
+            d={icon}
+            size={20}
+            className={`${on ? "text-arcan-accent" : "text-dim"} transition-colors duration-fast ease-out`}
+          />
           {key === "contacts" && !!contactsBadge && (
             <span
               data-testid="tab-pending-badge"
@@ -43,7 +47,7 @@ export function PTabBar({
         </span>
         <span
           className={[
-            "font-mono text-ui-tab tracking-tab",
+            "font-mono text-ui-tab tracking-tab transition-colors duration-fast ease-out",
             on ? "text-arcan-accent font-semibold" : "text-dim font-medium",
           ].join(" ")}
         >

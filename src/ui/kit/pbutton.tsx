@@ -36,14 +36,17 @@ export function PButton({
   if (primary) {
     // proto has `border: 1px solid transparent` — keeps all variants' box
     // geometry identical when stacked next to bordered siblings
-    variantClass = "bg-arcan-accent-fill text-on-accent border border-transparent";
+    variantClass =
+      "bg-arcan-accent-fill text-on-accent border border-transparent hover:opacity-90 active:opacity-80";
   } else if (danger) {
-    variantClass = "bg-transparent text-red border border-red-border";
+    variantClass =
+      "bg-transparent text-red border border-red-border hover:bg-red/10 active:bg-red-wash";
   } else if (ghost) {
-    variantClass = "bg-transparent text-text-2";
+    variantClass = "bg-transparent text-text-2 hover:bg-panel-2 active:bg-hairline";
   } else {
     // default: outline
-    variantClass = "bg-transparent text-text border border-hairline";
+    variantClass =
+      "bg-transparent text-text border border-hairline hover:bg-panel-2 active:bg-hairline";
   }
 
   return (

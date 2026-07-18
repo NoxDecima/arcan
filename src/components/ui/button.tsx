@@ -4,20 +4,20 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-pill font-body font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 rounded-pill font-body font-semibold transition-tint duration-fast ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         // Primary (previously "default") — uses the user-picked arcan-accent
-        default:     "bg-arcan-accent text-on-accent hover:opacity-90",
-        primary:     "bg-arcan-accent text-on-accent hover:opacity-90",
-        outline:     "bg-transparent text-text border border-hairline hover:bg-panel-2",
-        ghost:       "bg-transparent text-text-2 hover:bg-panel-2",
+        default:     "bg-arcan-accent text-on-accent hover:opacity-90 active:opacity-80",
+        primary:     "bg-arcan-accent text-on-accent hover:opacity-90 active:opacity-80",
+        outline:     "bg-transparent text-text border border-hairline hover:bg-panel-2 active:bg-hairline",
+        ghost:       "bg-transparent text-text-2 hover:bg-panel-2 active:bg-hairline",
         // Danger (previously "destructive")
-        destructive: "bg-transparent text-red border border-red/40 hover:bg-red/10",
-        danger:      "bg-transparent text-red border border-red/40 hover:bg-red/10",
+        destructive: "bg-transparent text-red border border-red/40 hover:bg-red/10 active:bg-red-wash",
+        danger:      "bg-transparent text-red border border-red/40 hover:bg-red/10 active:bg-red-wash",
         // Secondary + link kept for backward compat
-        secondary:   "bg-panel-2 text-text hover:bg-panel-2/80",
+        secondary:   "bg-panel-2 text-text hover:bg-panel-2/80 active:bg-panel-2/60",
         link:        "text-text-2 underline-offset-4 hover:underline",
       },
       size: {

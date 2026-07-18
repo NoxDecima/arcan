@@ -61,6 +61,7 @@ export function PRow({
       className={[
         tapClass,
         "w-full text-left flex items-center gap-3 px-3.5 py-3",
+        onClick && "hover:bg-panel-2 active:bg-hairline",
         !last && "border-b border-hairline",
       ]
         .filter(Boolean)
