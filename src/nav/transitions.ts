@@ -5,6 +5,10 @@
 // (parents.ts): navigating to a descendant slides forward, to an ancestor
 // slides back; unrelated moves (tab roots, cross-branch jumps, anything
 // touching the auth flow) cross-fade.
+//
+// Island routes (/pair, /invite) render in their own early-return shells in
+// App.tsx and are never matched by the main route tables — so island exits
+// always commit without a view transition to avoid animating from blank.
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -14,6 +18,17 @@ import { parentOf } from "./parents";
 export type NavDirection = "forward" | "back" | "fade";
 
 const AUTH_ROOTS = ["/auth", "/onboarding", "/pair", "/invite"];
+
+// Single-route islands render OUTSIDE the main route tables (App.tsx early
+// returns). During an island exit the lagged displayed location can't render
+// in the main table (it falls into the `*` redirect — a blank frame), so a
+// view transition would animate from blank; island entry swaps instantly
+// anyway. Island moves always commit without a transition.
+const ISLANDS = ["/pair", "/invite"];
+
+function inIsland(path: string): boolean {
+  return ISLANDS.some((r) => path === r || path.startsWith(`${r}/`));
+}
 
 function normalize(path: string): string {
   return path.split("?")[0].split("#")[0].replace(/\/+$/, "") || "/";
@@ -67,10 +82,13 @@ type DocumentWithVT = Document & {
  * Accepted nit (recorded in the plan header): chrome that keys off the LIVE
  * location (tab-bar visibility, active-row highlight) updates at transition
  * start and cross-fades via the root snapshot instead of sliding.
+ *
+ * Island routes (/pair, /invite) always commit instantly — see ISLANDS above.
  */
 export function useTransitionedLocation(location: Location): Location {
   const [displayed, setDisplayed] = useState(location);
   const displayedRef = useRef(location);
+  const genRef = useRef(0);
 
   useLayoutEffect(() => {
     const from = displayedRef.current;
@@ -85,21 +103,35 @@ export function useTransitionedLocation(location: Location): Location {
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    if (typeof doc.startViewTransition !== "function" || reduceMotion) {
+    const fromPath = from.pathname + from.search;
+    const toPath = location.pathname + location.search;
+    if (
+      typeof doc.startViewTransition !== "function" ||
+      reduceMotion ||
+      // Same path+search re-push (double-click): nothing to animate — and a
+      // no-op transition would skip an in-flight slide mid-animation.
+      fromPath === toPath ||
+      inIsland(from.pathname) ||
+      inIsland(location.pathname)
+    ) {
       commit();
       return;
     }
 
-    document.documentElement.dataset.navDir = navDirection(
-      from.pathname + from.search,
-      location.pathname + location.search,
-    );
+    const gen = ++genRef.current;
+    document.documentElement.dataset.navDir = navDirection(fromPath, toPath);
     const vt = doc.startViewTransition(() => {
       flushSync(commit);
     });
-    void vt.finished.finally(() => {
-      delete document.documentElement.dataset.navDir;
-    });
+    void vt.finished
+      .finally(() => {
+        // An interrupted (skipped) transition resolves while its successor
+        // animates — only the newest navigation may clear the direction.
+        if (genRef.current === gen) {
+          delete document.documentElement.dataset.navDir;
+        }
+      })
+      .catch(() => {});
   }, [location]);
 
   return displayed;

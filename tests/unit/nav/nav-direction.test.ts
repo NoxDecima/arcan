@@ -63,4 +63,8 @@ describe("navDirection — screen-slide direction from the parents.ts hierarchy"
     expect(navDirection("/conversations", "/conversations/new")).toBe("forward");
     expect(navDirection("/conversations/new", "/conversations")).toBe("back");
   });
+
+  test("hash fragments are ignored for ancestry", () => {
+    expect(navDirection("/settings#privacy", "/")).toBe("back");
+  });
 });

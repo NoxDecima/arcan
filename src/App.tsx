@@ -162,6 +162,7 @@ function App() {
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route path="/auth/login" element={<LoginRoute />} />
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        {/* Renders displayedLocation — a transiently unmatched displayed path lands here; keep this redirect query-free (it would drop params). */}
         <Route path="*" element={<Navigate to="/auth/login" replace />} />
       </Routes>
     );
@@ -200,6 +201,7 @@ function App() {
             screen, so it renders chromeless (no sidebar). Reachable while
             authenticated; navigates to "/" on completion or skip. */}
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        {/* Renders displayedLocation — a transiently unmatched displayed path lands here; keep this redirect query-free (it would drop params). */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
