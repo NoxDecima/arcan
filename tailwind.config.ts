@@ -132,6 +132,21 @@ export default {
       },
       transitionDuration: {
         switch: 'var(--dur-switch)',
+        fast: 'var(--dur-fast)',
+        base: 'var(--dur-base)',
+        nav: 'var(--dur-nav)',
+      },
+      transitionTimingFunction: {
+        // Overrides Tailwind's built-in ease-out/ease-in with our tokens.
+        // Verified 2026-07-18: no existing ease-out/ease-in class usage in src.
+        out: 'var(--ease-out)',
+        in: 'var(--ease-in)',
+      },
+      transitionProperty: {
+        // Every channel color-only feedback touches (opacity for primary
+        // buttons, filter for own-bubble brightness). Usage:
+        // `transition-tint duration-fast ease-out`.
+        tint: 'color, background-color, border-color, opacity, filter',
       },
       borderRadius: {
         lg: "var(--radius)",

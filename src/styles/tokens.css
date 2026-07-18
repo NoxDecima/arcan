@@ -132,6 +132,7 @@
   --dur-base: 200ms;
   --dur-slow: 360ms;
   --dur-switch: 180ms; /* PToggle knob/track transition (.18s in proto) */
+  --dur-nav: 240ms;    /* screen-slide transitions (UI motion spec 2026-07-18) */
 
   /* Layout */
   --content-narrow: 640px;
@@ -238,7 +239,66 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-arcan-fade-in,
   .animate-arcan-modal-in,
-  .animate-arcan-sheet-in { animation: none; }
+  .animate-arcan-sheet-in,
+  .animate-arcan-rise,
+  .animate-arcan-pop { animation: none; }
+  /* Belt-and-braces: useTransitionedLocation also refuses to start a view
+     transition under reduced motion — this covers external navigations. */
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(arcan-pane),
+  ::view-transition-new(arcan-pane) { animation: none !important; }
+}
+
+/* ---------- Content-entrance motion (UI motion spec 2026-07-18) ---------- */
+@keyframes arcan-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes arcan-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-arcan-rise { animation: arcan-rise var(--dur-base) var(--ease-out) both; }
+.animate-arcan-pop  { animation: arcan-pop var(--dur-base) var(--ease-out) both; }
+
+/* ---------- Screen-transition motion (View Transitions API) ----------
+   useTransitionedLocation (src/nav/transitions.ts) stamps
+   <html data-nav-dir="forward|back|fade"> for the duration of the
+   transition. The routed pane carries [view-transition-name:arcan-pane]
+   (AppShell); chrome (sidebar / tab bar) stays in the root snapshot and
+   never slides. Browsers without the API skip all of this (instant swap). */
+@keyframes arcan-nav-in-right  { from { transform: translateX(100%); } }
+@keyframes arcan-nav-out-left  { to   { transform: translateX(-18%); } }
+@keyframes arcan-nav-in-left   { from { transform: translateX(-18%); } }
+@keyframes arcan-nav-out-right { to   { transform: translateX(100%); } }
+@keyframes arcan-fade-out      { to   { opacity: 0; } }
+
+/* Root snapshots: chrome pixels are near-identical across the swap — keep
+   the default cross-fade but shorten it so it never outlasts the pane. */
+html[data-nav-dir]::view-transition-old(root),
+html[data-nav-dir]::view-transition-new(root) {
+  animation-duration: var(--dur-fast);
+}
+
+html[data-nav-dir="forward"]::view-transition-old(arcan-pane) {
+  animation: arcan-nav-out-left var(--dur-nav) var(--ease-out) both;
+}
+html[data-nav-dir="forward"]::view-transition-new(arcan-pane) {
+  animation: arcan-nav-in-right var(--dur-nav) var(--ease-out) both;
+}
+html[data-nav-dir="back"]::view-transition-old(arcan-pane) {
+  animation: arcan-nav-out-right var(--dur-nav) var(--ease-out) both;
+  z-index: 1; /* the departing child rides OVER the returning parent */
+}
+html[data-nav-dir="back"]::view-transition-new(arcan-pane) {
+  animation: arcan-nav-in-left var(--dur-nav) var(--ease-out) both;
+}
+html[data-nav-dir="fade"]::view-transition-old(arcan-pane) {
+  animation: arcan-fade-out var(--dur-fast) var(--ease-in) both;
+}
+html[data-nav-dir="fade"]::view-transition-new(arcan-pane) {
+  animation: arcan-fade-in var(--dur-fast) var(--ease-out) both;
 }
 
 /* ---------- Accent-derived tokens (generated) ---------- */
