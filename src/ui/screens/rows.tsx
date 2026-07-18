@@ -71,8 +71,9 @@ export function ConvoRow({
           </span>
           {item.unread > 0 && (
             <span
+              key={item.unread}
               data-testid={tid(`unread-badge-${index}`)}
-              className="min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+              className="min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab animate-arcan-pop"
               style={{ lineHeight: "17px" }}
             >
               {item.unread > 99 ? "99+" : item.unread}

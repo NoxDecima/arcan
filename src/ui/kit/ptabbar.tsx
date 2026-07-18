@@ -37,8 +37,9 @@ export function PTabBar({
           />
           {key === "contacts" && !!contactsBadge && (
             <span
+              key={contactsBadge}
               data-testid="tab-pending-badge"
-              className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+              className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab animate-arcan-pop"
               style={{ lineHeight: "15px" }}
             >
               {contactsBadge > 99 ? "99+" : contactsBadge}
