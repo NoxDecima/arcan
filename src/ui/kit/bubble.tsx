@@ -31,6 +31,7 @@ export function Bubble({
   attSlot,
   bodyTestId,
   bodyOverride,
+  interactive,
 }: {
   m: BubbleMsg;
   w: number;
@@ -40,6 +41,10 @@ export function Bubble({
   bodyTestId?: string;
   /** Rung 4: replaces the body text+time row (e.g. inline edit input). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
+  /** UI motion spec (2026-07-18): hover/press color feedback. Only OWN
+   * bubbles are interactive today (menu / long-press) — an affordance on
+   * non-interactive bubbles would lie. Parity unaffected (default undefined). */
+  interactive?: boolean;
 }): JSX.Element {
   const mine = m.who === "me";
   return (
@@ -48,12 +53,19 @@ export function Bubble({
         mine
           ? "bg-bubble-own border border-accent-border text-text"
           : "bg-panel border border-hairline text-text shadow-bubble",
+        interactive &&
+          (mine
+            ? "hover:brightness-110 active:brightness-125"
+            : "hover:bg-panel-2 active:bg-hairline"),
+        interactive && "transition-tint duration-fast ease-out",
         // bubbleRadius 14 → rounded-r-5 (all corners); tail corner overrides
         "rounded-r-5",
         mine ? "rounded-br-r-1" : "rounded-bl-r-1",
         // attachment variant: p 6 (p-1.5); normal: 8px 11px
         m.att ? "p-1.5" : "px-[11px] py-2",
-      ].join(" ")}
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={{ maxWidth: w }}
     >
       {m.att && (
@@ -103,6 +115,7 @@ export function MessageRow({
   endSlot,
   onAvatar,
   onContext,
+  entering,
 }: {
   m: BubbleMsg;
   w: number;
@@ -128,6 +141,10 @@ export function MessageRow({
    * opens the message context menu. Rendering is unchanged; parity
    * unaffected (default undefined). */
   onContext?: () => void;
+  /** UI motion (2026-07-18): plays arcan-rise on the row once (class stays
+   * so re-renders during the 200ms play don't cancel it). Parity unaffected
+   * (default undefined; galleries freeze animations). */
+  entering?: boolean;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -159,7 +176,7 @@ export function MessageRow({
   const mine = m.who === "me";
   return (
     <div
-      className={`flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
+      className={`group flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}${entering ? " animate-arcan-rise" : ""}`}
       {...(testId ? { "data-testid": testId } : {})}
       {...(onContext
         ? {
@@ -227,7 +244,7 @@ export function MessageRow({
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} bodyOverride={bodyOverride} />
+        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} bodyOverride={bodyOverride} interactive={Boolean(onContext)} />
         {/* intent-fix (feedback round 4): timestamp moved OUT of the bubble
             to a caption below it — user direction, 2026-07-16 walkthrough.
             The in-bubble "(edited)" line merges into the caption too. */}

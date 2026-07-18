@@ -63,13 +63,17 @@ export function ChatComposer({
       <div className="shrink-0 border-t border-hairline p-2.5 flex items-center gap-[9px] bg-bg">
         {/* Attach button — proto:190, v5 soft → plusc 22 */}
         <button
-          className={tapClass}
+          className={`${tapClass} group`}
           onClick={onAttach}
           disabled={disabled || sending}
           data-testid="composer-attach-btn"
           aria-label="attach file"
         >
-          <Icon d="plusc" size={22} className="text-text-2" />
+          <Icon
+            d="plusc"
+            size={22}
+            className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out"
+          />
         </button>
 
         {/* Input pill — proto:191; min-w-0 + overflow-hidden allow flex-1 to resolve to exactly 202px */}
@@ -100,8 +104,10 @@ export function ChatComposer({
           data-testid="composer-send-btn"
           className={[
             tapClass,
-            "w-[38px] h-[38px] rounded-pill justify-center transition-colors duration-[150ms]",
-            armed ? "bg-arcan-accent-fill" : "bg-panel-2",
+            "w-[38px] h-[38px] rounded-pill justify-center",
+            armed
+              ? "bg-arcan-accent-fill hover:opacity-90 active:opacity-80"
+              : "bg-panel-2",
           ].join(" ")}
           aria-label="send"
         >

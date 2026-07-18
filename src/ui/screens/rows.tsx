@@ -35,7 +35,7 @@ export function ConvoRow({
       type="button"
       data-testid={tid(`conversation-row-${index}`)}
       onClick={onClick}
-      className={`${tapClass} w-full text-left gap-[11px] px-2.5 py-[9px] rounded-r-4${active ? " bg-accent-soft" : ""}`}
+      className={`${tapClass} w-full text-left gap-[11px] px-2.5 py-[9px] rounded-r-4 ${active ? "bg-accent-soft" : "hover:bg-panel-2 active:bg-hairline"}`}
     >
       {/* NOX-31: presence dropped — no status prop */}
       <div data-testid={tid(`conversation-avatar-${index}`)}>
@@ -71,8 +71,9 @@ export function ConvoRow({
           </span>
           {item.unread > 0 && (
             <span
+              key={item.unread}
               data-testid={tid(`unread-badge-${index}`)}
-              className="min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+              className="min-w-[17px] h-[17px] px-[5px] rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab animate-arcan-pop"
               style={{ lineHeight: "17px" }}
             >
               {item.unread > 99 ? "99+" : item.unread}
@@ -98,7 +99,7 @@ export function ContactRow({
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className={`${tapClass} w-full text-left gap-3 px-3 py-2.5 rounded-r-4`}
+      className={`${tapClass} w-full text-left gap-3 px-3 py-2.5 rounded-r-4 hover:bg-panel-2 active:bg-hairline`}
     >
       <HAv txt={item.initials} src={item.avatarSrc} size={38} />
       <span className="flex-1 font-body font-semibold text-ui-contact text-text">

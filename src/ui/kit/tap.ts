@@ -8,6 +8,13 @@
 // (utilities beat preflight; `border-none` sets border-style:none which kills
 // a later `border-b`'s 1px width). Composers like PRow add borders on top of
 // this reset safely.
+//
+// Motion (UI motion spec 2026-07-18): tapClass carries the shared
+// color-feedback transition (transition-tint duration-fast ease-out) so every
+// interactive element built on it animates hover/active color changes
+// uniformly. Hover/active COLORS stay per-component. CSS transitions are
+// per-element, not inherited — child icons/text needing animated color
+// changes must declare their own transition-colors / transition-tint.
 
 export const tapClass =
-  "p-0 m-0 cursor-pointer flex items-center [-webkit-tap-highlight-color:transparent]";
+  "p-0 m-0 cursor-pointer flex items-center [-webkit-tap-highlight-color:transparent] transition-tint duration-fast ease-out disabled:pointer-events-none";

@@ -68,10 +68,14 @@ export function PHeader({
         <button
           onClick={onBack}
           aria-label={backLabel ?? "back"}
-          className={tapClass}
+          className={`${tapClass} group`}
           {...(backTestId ? { "data-testid": backTestId } : {})}
         >
-          <Icon d="back" size={20} className="text-text-2" />
+          <Icon
+            d="back"
+            size={20}
+            className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out"
+          />
         </button>
       )}
       {onTitle ? (

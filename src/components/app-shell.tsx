@@ -106,8 +106,9 @@ export function AppShell() {
               contactsBadge={pendingCount}
             />
           )}
-        {/* Routed pane — Outlet fills this flex column. */}
-        <div className="flex-1 min-w-0 relative flex flex-col bg-bg">
+        {/* Routed pane — Outlet fills this flex column. [view-transition-name]
+            scopes screen slides to this pane; the NavColumn stays put. */}
+        <div className="flex-1 min-w-0 relative flex flex-col bg-bg [view-transition-name:arcan-pane]">
           <Outlet />
         </div>
       </div>
@@ -131,7 +132,11 @@ export function AppShell() {
           ) : undefined
         }
       >
-        <Outlet />
+        {/* [view-transition-name] scopes screen slides to the routed pane;
+            the tab bar below stays put. */}
+        <div className="flex-1 min-h-0 relative flex flex-col [view-transition-name:arcan-pane]">
+          <Outlet />
+        </div>
       </MobileShell>
     </div>
   );

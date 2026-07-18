@@ -196,6 +196,7 @@ export function ChatScreen({
                       timeTestId="bubble-time"
                       bodyOverride={item.bodyOverride}
                       onContext={item.onContext}
+                      entering={item.entering}
                       // Rung 4: edit/delete menu — beside the bubble in the
                       // row gutter (walkthrough feedback 2026-07-05), not a
                       // stray row below it.

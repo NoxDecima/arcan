@@ -27,14 +27,19 @@ export function PTabBar({
       <button
         key={key}
         onClick={() => onTab(key)}
-        className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px]`}
+        className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px] hover:bg-panel-2 active:bg-hairline`}
       >
         <span className="relative flex">
-          <Icon d={icon} size={20} className={on ? "text-arcan-accent" : "text-dim"} />
+          <Icon
+            d={icon}
+            size={20}
+            className={`${on ? "text-arcan-accent" : "text-dim"} transition-colors duration-fast ease-out`}
+          />
           {key === "contacts" && !!contactsBadge && (
             <span
+              key={contactsBadge}
               data-testid="tab-pending-badge"
-              className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab"
+              className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 rounded-pill bg-arcan-accent-fill text-on-accent text-center font-mono font-bold text-ui-tab animate-arcan-pop"
               style={{ lineHeight: "15px" }}
             >
               {contactsBadge > 99 ? "99+" : contactsBadge}
@@ -43,7 +48,7 @@ export function PTabBar({
         </span>
         <span
           className={[
-            "font-mono text-ui-tab tracking-tab",
+            "font-mono text-ui-tab tracking-tab transition-colors duration-fast ease-out",
             on ? "text-arcan-accent font-semibold" : "text-dim font-medium",
           ].join(" ")}
         >

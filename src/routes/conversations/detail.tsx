@@ -140,6 +140,22 @@ export function ConversationDetailRoute() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
+  // UI motion (2026-07-18, AUDIT-011): only messages appended AFTER this
+  // conversation's first loaded render animate in. `primed` flips once the
+  // messages list has rendered loaded; keys seen while unprimed enter
+  // silently. `enter` is remembered so re-renders during the 200ms play
+  // don't strip the class mid-animation. `mountTs` is a belt against
+  // late-syncing history: anything older than mount never rises. `sortAt` is
+  // sender-authored (`sentAt`), so the 2s belt tolerates modest clock skew
+  // between devices; the seen/primed gate is the primary guard.
+  const motionRef = useRef<{
+    convoId: string | null;
+    seen: Set<string>;
+    enter: Set<string>;
+    primed: boolean;
+  }>({ convoId: null, seen: new Set(), enter: new Set(), primed: false });
+  const mountTsRef = useRef(Date.now());
+
   // Composer state (moved from Composer component to this container)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [composerText, setComposerText] = useState("");
@@ -738,6 +754,35 @@ export function ConversationDetailRoute() {
   }
   rawItems.sort((a, b) => a.sortAt - b.sortAt);
 
+  // ---- Rise-in bookkeeping (render path, after early returns) ----
+  const convoIdForMotion = ((conversation as any)?.$jazz?.id as string) ?? null;
+  if (motionRef.current.convoId !== convoIdForMotion) {
+    motionRef.current = {
+      convoId: convoIdForMotion,
+      seen: new Set(),
+      enter: new Set(),
+      primed: false,
+    };
+    mountTsRef.current = Date.now();
+  }
+  const motion = motionRef.current;
+  for (const it of rawItems) {
+    if (it.kind !== "message") continue;
+    if (
+      motion.primed &&
+      !motion.seen.has(it.key) &&
+      it.sortAt >= mountTsRef.current - 2000
+    ) {
+      motion.enter.add(it.key);
+    }
+    motion.seen.add(it.key);
+  }
+  // Prime only once the messages CoList itself has resolved — priming on a
+  // still-loading empty list would make the whole history "new".
+  if ((conversation as any)?.messages) {
+    motion.primed = true;
+  }
+
   // ---- New-mark divider position ----
   const dividerInput: DividerTimelineItem[] = rawItems.map((item) => {
     if (item.kind === "message") {
@@ -909,7 +954,17 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               onClick={() => setMenuOpenId(isMenuOpen ? null : msgId)}
-              className="text-dim font-body text-ui-sub mt-0.5"
+              className={[
+                "text-dim font-body text-ui-sub mt-0.5",
+                "transition-tint duration-fast ease-out hover:text-text-2",
+                // Hover-capable pointers: hidden until the row is hovered,
+                // the menu is open, or the button is focused. Touch
+                // (hover:none) keeps it always visible — long-press users
+                // must still see the affordance (feedback round 4).
+                isMenuOpen
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100",
+              ].join(" ")}
               data-testid="message-menu-btn"
               aria-label="Message actions"
             >
@@ -936,7 +991,7 @@ export function ConversationDetailRoute() {
                       setEditText(message?.body ?? "");
                     }}
                     data-testid="message-edit-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
                   >
                     edit
                   </button>
@@ -947,7 +1002,7 @@ export function ConversationDetailRoute() {
                       void handleDeleteMessage(message);
                     }}
                     data-testid="message-delete-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
                   >
                     delete
                   </button>
@@ -993,6 +1048,7 @@ export function ConversationDetailRoute() {
             ? () => setMenuOpenId(msgId)
             : undefined,
         bodyOverride,
+        entering: motion.enter.has(item.key),
       });
     }
   }
@@ -1045,9 +1101,13 @@ export function ConversationDetailRoute() {
         onClick={() => setHeaderMenuOpen((o) => !o)}
         aria-label="conversation actions"
         data-testid="conversation-menu-btn"
-        className={`${tapClass} w-8 h-8 justify-center`}
+        className={`${tapClass} group w-8 h-8 justify-center rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
       >
-        <Icon d="dots" size={18} className="text-text-2" />
+        <Icon
+          d="dots"
+          size={18}
+          className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out"
+        />
       </button>
       {headerMenuOpen && (
         <>
@@ -1065,7 +1125,7 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               data-testid="conversation-menu-settings"
-              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
               onClick={() => {
                 setHeaderMenuOpen(false);
                 navigate(`/conversations/${convId ?? id}/members`);
@@ -1076,7 +1136,7 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               data-testid="conversation-menu-delete"
-              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
               onClick={() => void handleHeaderDelete()}
             >
               {counterpartAccountID ? "delete conversation" : "leave conversation"}

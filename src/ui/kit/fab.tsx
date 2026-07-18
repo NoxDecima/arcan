@@ -32,7 +32,7 @@ export function Fab({
       onClick={onClick}
       aria-label={ariaLabel}
       data-testid={testId}
-      className={`${tapClass} absolute right-4 bottom-4 rounded-pill bg-arcan-accent-fill justify-center shadow-fab z-[4]`}
+      className={`${tapClass} absolute right-4 bottom-4 rounded-pill bg-arcan-accent-fill justify-center shadow-fab z-[4] hover:opacity-90 active:opacity-80`}
       style={{ width: size, height: size }}
     >
       {variant ? (

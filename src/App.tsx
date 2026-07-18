@@ -32,6 +32,7 @@ import { ConfirmProvider } from "@/components/confirm-dialog";
 import { SidebarTabProvider } from "@/components/sidebar-tab";
 import { ProfileView } from "@/components/profile-view";
 import { AppShell } from "@/components/app-shell";
+import { useTransitionedLocation } from "@/nav/transitions";
 import { initNotificationChannel } from "@/platform/notifications";
 
 /**
@@ -66,6 +67,11 @@ function ProfileRoute(): ReactElement {
 function App() {
   const isAuthenticated = useIsAuthenticated();
   const location = useLocation();
+
+  // UI motion spec (2026-07-18): the route tables render displayedLocation,
+  // which lags `location` by exactly one startViewTransition. Must be called
+  // before the /pair and /invite early returns (hook order).
+  const displayedLocation = useTransitionedLocation(location);
 
   // Android: create the notification channel once at startup (idempotent).
   // No-op on web and non-Android Tauri; never throws into startup.
@@ -152,16 +158,17 @@ function App() {
     // /auth/login route, not the onboarding flow. /onboarding remains
     // reachable via the "Create new account" link on the login screen.
     routeTable = (
-      <Routes>
+      <Routes location={displayedLocation}>
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route path="/auth/login" element={<LoginRoute />} />
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        {/* Renders displayedLocation — a transiently unmatched displayed path lands here; keep this redirect query-free (it would drop params). */}
         <Route path="*" element={<Navigate to="/auth/login" replace />} />
       </Routes>
     );
   } else {
     routeTable = (
-      <Routes>
+      <Routes location={displayedLocation}>
         {/* Unit 9-2 / 2-F: the authenticated app screens live inside the
             AppShell layout route, which renders the persistent desktop
             sidebar + the routed pane via <Outlet />. Mobile hides the
@@ -194,6 +201,7 @@ function App() {
             screen, so it renders chromeless (no sidebar). Reachable while
             authenticated; navigates to "/" on completion or skip. */}
         <Route path="/auth/recovery" element={<RecoveryRoute />} />
+        {/* Renders displayedLocation — a transiently unmatched displayed path lands here; keep this redirect query-free (it would drop params). */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
