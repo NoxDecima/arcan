@@ -17,7 +17,7 @@ test.describe("screen transitions", () => {
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text());
     });
-    page.on("pageerror", (err) => consoleErrors.push(String(err)));
+    page.on("pageerror", (err) => consoleErrors.push(err.stack ?? String(err)));
 
     await createAccount(page, "Motion Nav");
 
@@ -31,7 +31,7 @@ test.describe("screen transitions", () => {
     if (browserName === "chromium") expect(hasVT).toBe(true);
 
     // Drill in: home → own profile (forward), then up: profile → settings
-    // (back) — the exact chain back-navigation.spec.ts already exercises.
+    // (fade — ownProfile isn't plumbed through isAncestor; see transitions.ts).
     // Navigation chain verified against:
     //   - tests/e2e/back-navigation.spec.ts (same selectors)
     //   - src/nav/parents.ts: /profile/:id with ownProfile=true → /settings
@@ -47,8 +47,10 @@ test.describe("screen transitions", () => {
     // data-nav-dir is stamped only DURING a transition; once settled it must
     // be gone (finished-promise cleanup in useTransitionedLocation).
     await expect
-      .poll(() =>
-        page.evaluate(() => document.documentElement.dataset.navDir ?? "none"),
+      .poll(
+        () =>
+          page.evaluate(() => document.documentElement.dataset.navDir ?? "none"),
+        { timeout: 2_000 },
       )
       .toBe("none");
 
