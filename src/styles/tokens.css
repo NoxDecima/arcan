@@ -236,6 +236,19 @@ body {
 .animate-arcan-fade-in  { animation: arcan-fade-in var(--dur-base) var(--ease-out) both; }
 .animate-arcan-modal-in { animation: arcan-modal-in var(--dur-base) var(--ease-out) both; }
 .animate-arcan-sheet-in { animation: arcan-sheet-in var(--dur-base) var(--ease-out) both; }
+
+/* ---------- Content-entrance motion (UI motion spec 2026-07-18) ---------- */
+@keyframes arcan-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes arcan-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-arcan-rise { animation: arcan-rise var(--dur-base) var(--ease-out) both; }
+.animate-arcan-pop  { animation: arcan-pop var(--dur-base) var(--ease-out) both; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-arcan-fade-in,
   .animate-arcan-modal-in,
@@ -249,18 +262,6 @@ body {
   ::view-transition-old(arcan-pane),
   ::view-transition-new(arcan-pane) { animation: none !important; }
 }
-
-/* ---------- Content-entrance motion (UI motion spec 2026-07-18) ---------- */
-@keyframes arcan-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes arcan-pop {
-  from { opacity: 0; transform: scale(0.5); }
-  to   { opacity: 1; transform: scale(1); }
-}
-.animate-arcan-rise { animation: arcan-rise var(--dur-base) var(--ease-out) both; }
-.animate-arcan-pop  { animation: arcan-pop var(--dur-base) var(--ease-out) both; }
 
 /* ---------- Screen-transition motion (View Transitions API) ----------
    useTransitionedLocation (src/nav/transitions.ts) stamps
