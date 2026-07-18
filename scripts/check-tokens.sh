@@ -23,4 +23,17 @@ if [ -n "$hits" ]; then
   exit 1
 fi
 
+# Motion tokens: raw duration-[...] literals bypass the motion scale — use
+# the named utilities (duration-fast/base/nav/switch) from tailwind.config.
+dur_hits=$(grep -rnE 'duration-\[[0-9]' src --include="*.tsx" 2>/dev/null || true)
+
+if [ -n "$dur_hits" ]; then
+  echo "❌ raw duration-[...] literals found — use motion tokens instead:"
+  echo "$dur_hits"
+  echo
+  echo "  duration-[150ms] → duration-fast (120ms) | duration-base (200ms)"
+  echo "                     duration-nav (240ms)  | duration-switch (180ms)"
+  exit 1
+fi
+
 echo "✓ no ad-hoc Tailwind color/typography classes detected"
