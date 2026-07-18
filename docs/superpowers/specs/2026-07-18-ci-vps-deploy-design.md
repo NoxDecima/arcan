@@ -31,10 +31,14 @@ Decisions (user-confirmed):
      deploy time — TOFU is not acceptable against the box hosting an E2EE
      messenger). Loud `::error::` failures when secrets are missing.
   2. **Update VPS** — remote script over SSH (`set -euo pipefail`, args passed
-     with `printf %q`): `git fetch --tags --prune origin`,
-     `git checkout --detach <ref>`, `cd <app-dir>/deploy`,
+     with `printf %q`): `git fetch --tags --prune origin`, then
+     `git fetch origin <ref>` + `git checkout --detach FETCH_HEAD` — the ref
+     must resolve against the REMOTE; a plain `git checkout --detach <ref>`
+     detaches at the stale LOCAL branch for branch refs, which fetch never
+     moves (bug observed in the first validation run, 29644330453). The
+     deployed commit is echoed into the CI log. Then `cd <app-dir>/deploy`,
      `docker compose up -d --build` (run from `deploy/` — the compose file
-     uses relative bind mounts), then assert ≥3 services running
+     uses relative bind mounts), and assert ≥3 services running
      (`docker compose ps --status running --quiet | wc -l`).
   3. **Health check** — retry loop (12 × 10 s) curling `${ARCAN_ORIGIN}/`
      expecting success; reuses the existing `ARCAN_ORIGIN` repo variable.

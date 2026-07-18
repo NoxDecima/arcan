@@ -62,9 +62,15 @@ jobs:
           REF="$2"
           cd "$HOME/$APP_DIR"
           git fetch --tags --prune origin
-          # Detached checkout: the deployed state is exactly the tag. Manual
-          # `git pull` updates need `git checkout main` first (see README).
-          git checkout --detach "$REF"
+          # Resolve REF against the REMOTE. `git checkout --detach "$REF"`
+          # would detach at the LOCAL branch for branch refs — which fetch
+          # never moves — deploying the VPS's stale last-pulled state
+          # (observed in run 29644330453: fetched ad72560, deployed 8c94bcc).
+          # `git fetch origin <ref>` matches remote heads AND tags and leaves
+          # the resolved commit in FETCH_HEAD.
+          git fetch origin "$REF"
+          git checkout --detach FETCH_HEAD
+          echo "deployed commit: $(git log -1 --oneline)"
           cd deploy
           docker compose up -d --build
           # compose up -d can "succeed" with a crash-looping container —
