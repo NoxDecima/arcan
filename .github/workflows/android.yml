@@ -4,7 +4,9 @@ name: android
 on:
   push:
     branches: [main]
-    tags: ["android-v*"]
+    # v* is the general release convention (APK + VPS deploy via deploy.yml);
+    # android-v* kept as a forgiving alias that builds the APK only.
+    tags: ["v*", "android-v*"]
   pull_request:
     paths:
       - "src/**"
@@ -70,7 +72,7 @@ jobs:
         # If secrets are set but the committed src-tauri/gen/android does not reference
         # keystore.properties, a release would silently ship unsigned.
         # Fail loudly so the prerequisite is obvious.
-        if: startsWith(github.ref, 'refs/tags/android-v')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           GRADLE_KTS="src-tauri/gen/android/app/build.gradle.kts"
           if [ ! -f "$GRADLE_KTS" ]; then
@@ -89,7 +91,7 @@ jobs:
           echo "Signing wiring check PASSED — keystore.properties referenced in build.gradle.kts."
 
       - name: Decode signing keystore
-        if: startsWith(github.ref, 'refs/tags/android-v')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           [ -n "$ANDROID_KEYSTORE_B64" ] || { echo "::error::ANDROID_KEYSTORE_B64 secret is not set — cannot sign a release"; exit 1; }
           echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
@@ -108,7 +110,7 @@ jobs:
       - name: Check ARCAN_ORIGIN is set for release tags
         # Refuse to bake the placeholder origin into a release APK — the app
         # would ship pointing at https://arcan.example.
-        if: startsWith(github.ref, 'refs/tags/android-v')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           [ -n "$VITE_ARCAN_ORIGIN" ] || { echo "::error::ARCAN_ORIGIN repo variable is not set — refusing to bake the placeholder into a release"; exit 1; }
         env:
@@ -132,7 +134,7 @@ jobs:
           if-no-files-found: error
 
       - name: GitHub Release
-        if: startsWith(github.ref, 'refs/tags/android-v')
+        if: startsWith(github.ref, 'refs/tags/')
         # third-party action — consider SHA-pinning before secrets-bearing releases become routine
         uses: softprops/action-gh-release@v2
         with:

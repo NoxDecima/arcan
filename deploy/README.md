@@ -41,13 +41,62 @@ image to a different host (just update `.env` and restart).
 
 ## Updates
 
+Manual (from the repo root on the VPS):
+
 ```bash
+git checkout main   # CI deploys leave the clone on a detached tag — see below
 git pull
-docker compose up -d --build
+cd deploy && docker compose up -d --build
 ```
 
 The named `caddy_data` Docker volume persists the issued cert across
 rebuilds, so updates don't hit Let's Encrypt's rate limit.
+
+## Automated deploys (CI)
+
+Pushing a `v*` tag deploys this VPS automatically
+(`.github/workflows/deploy.yml`); the same tag also builds and publishes the
+signed Android APK (`android.yml`). Manual runs: GitHub → Actions → deploy →
+Run workflow (deploys whichever branch/tag you pick).
+
+A deploy SSHes in and runs exactly the manual update: `git fetch --tags` →
+`git checkout --detach <tag>` → `docker compose up -d --build`, then asserts
+all three containers are running and the public origin answers over HTTPS.
+On failure the workflow dumps `docker compose ps` + recent logs into the CI
+log. **`.env` is never touched by CI** — it stays on this VPS, manually
+managed. Rollback = re-run the workflow from the previous good tag.
+
+One-time setup:
+
+1. Generate a dedicated deploy keypair (on your machine, NOT your personal
+   key):
+
+   ```bash
+   ssh-keygen -t ed25519 -f arcan-deploy -N "" -C "arcan-ci-deploy"
+   ```
+
+2. Authorize it on the VPS: append `arcan-deploy.pub` to
+   `~/.ssh/authorized_keys`. Optional hardening: prefix the line with
+   `restrict,command="..."` to pin the key to the deploy script.
+3. Capture the VPS host key once, from a network you trust:
+
+   ```bash
+   ssh-keyscan -H <vps-host> 2>/dev/null
+   ```
+
+4. GitHub → repo Settings → Secrets and variables → Actions:
+
+   | Name | Kind | Content |
+   |---|---|---|
+   | `VPS_SSH_KEY` | secret | contents of the `arcan-deploy` private key file |
+   | `VPS_HOST` | secret | VPS hostname or IP |
+   | `VPS_USER` | secret | SSH user owning the clone |
+   | `VPS_KNOWN_HOSTS` | secret | the `ssh-keyscan` output from step 3 |
+   | `VPS_APP_DIR` | variable (optional) | clone path relative to the SSH user's home; default `arcan` |
+   | `ARCAN_ORIGIN` | variable | already set for the APK build; reused as the health-check URL |
+
+5. The clone on the VPS must have `origin` pointing at GitHub (it does if you
+   followed Quick start).
 
 ## Data on disk
 
@@ -98,8 +147,15 @@ container has a Linear API token:
 
 1. Create a personal API key in Linear (Settings → Security & access →
    Personal API keys).
-2. Add it to `.env`: `LINEAR_API_TOKEN=lin_api_…`
-3. Recreate the api container: `docker compose up -d --build api`
+2. Add it to the VPS's `.env` (CI never writes `.env`, so this is a one-time
+   manual step even with automated deploys):
+
+   ```bash
+   ssh <user>@<vps-host> 'echo "LINEAR_API_TOKEN=lin_api_…" >> ~/arcan/deploy/.env'
+   ```
+
+3. Recreate the api container — either wait for the next `v*` deploy, or
+   immediately: `docker compose up -d --build api` (from `~/arcan/deploy`).
 
 Without the token the api boots fine but logs
 `LINEAR_API_TOKEN not set — feedback route disabled`, and the app shows
