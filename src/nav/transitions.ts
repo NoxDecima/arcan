@@ -13,14 +13,19 @@ export type NavDirection = "forward" | "back" | "fade";
 const AUTH_ROOTS = ["/auth", "/onboarding", "/pair", "/invite"];
 
 function normalize(path: string): string {
-  return path.split("?")[0].replace(/\/+$/, "") || "/";
+  return path.split("?")[0].split("#")[0].replace(/\/+$/, "") || "/";
 }
 
 function inAuthFlow(path: string): boolean {
   return AUTH_ROOTS.some((r) => path === r || path.startsWith(`${r}/`));
 }
 
-/** Walks the parentOf chain upward from `of`, looking for `candidate`. */
+/**
+ * Walks the parentOf chain upward from `of`, looking for `candidate`.
+ * Note: parentOf's `ownProfile` option is not plumbed through — /profile/:id is
+ * always treated as a child of the contacts root ("/" after normalization), so
+ * own-profile back-navigation direction may fade rather than slide; acceptable per plan.
+ */
 function isAncestor(candidate: string, of: string): boolean {
   let cur = of;
   // parents.ts is a finite tree rooted at "/" — 10 hops far exceeds its depth.

@@ -53,4 +53,14 @@ describe("navDirection — screen-slide direction from the parents.ts hierarchy"
       navDirection("/conversations/co_z1/", "/conversations/co_z1/members?x=1"),
     ).toBe("forward");
   });
+
+  test("settings sub-pages drill forward and back", () => {
+    expect(navDirection("/settings", "/settings/change-password")).toBe("forward");
+    expect(navDirection("/settings/change-password", "/settings")).toBe("back");
+  });
+
+  test("new-conversation drills forward from the list and back", () => {
+    expect(navDirection("/conversations", "/conversations/new")).toBe("forward");
+    expect(navDirection("/conversations/new", "/conversations")).toBe("back");
+  });
 });
