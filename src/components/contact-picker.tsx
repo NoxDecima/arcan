@@ -88,7 +88,7 @@ export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactP
                 <li key={i}>
                   <button
                     onClick={() => toggleContact(i)}
-                    className={`flex w-full items-center gap-2 rounded-r-3 px-3 py-2 text-left text-sm text-text hover:bg-panel-2 ${
+                    className={`flex w-full items-center gap-2 rounded-r-3 px-3 py-2 text-left text-sm text-text hover:bg-panel-2 active:bg-hairline transition-tint duration-fast ease-out ${
                       isOn ? "bg-panel-2" : ""
                     }`}
                     data-testid={`contact-picker-row-${i}`}
