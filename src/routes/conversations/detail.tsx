@@ -909,7 +909,17 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               onClick={() => setMenuOpenId(isMenuOpen ? null : msgId)}
-              className="text-dim font-body text-ui-sub mt-0.5"
+              className={[
+                "text-dim font-body text-ui-sub mt-0.5",
+                "transition-tint duration-fast ease-out hover:text-text-2",
+                // Hover-capable pointers: hidden until the row is hovered,
+                // the menu is open, or the button is focused. Touch
+                // (hover:none) keeps it always visible — long-press users
+                // must still see the affordance (feedback round 4).
+                isMenuOpen
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100",
+              ].join(" ")}
               data-testid="message-menu-btn"
               aria-label="Message actions"
             >
@@ -936,7 +946,7 @@ export function ConversationDetailRoute() {
                       setEditText(message?.body ?? "");
                     }}
                     data-testid="message-edit-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
                   >
                     edit
                   </button>
@@ -947,7 +957,7 @@ export function ConversationDetailRoute() {
                       void handleDeleteMessage(message);
                     }}
                     data-testid="message-delete-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
                   >
                     delete
                   </button>
@@ -1045,9 +1055,13 @@ export function ConversationDetailRoute() {
         onClick={() => setHeaderMenuOpen((o) => !o)}
         aria-label="conversation actions"
         data-testid="conversation-menu-btn"
-        className={`${tapClass} w-8 h-8 justify-center`}
+        className={`${tapClass} group w-8 h-8 justify-center rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
       >
-        <Icon d="dots" size={18} className="text-text-2" />
+        <Icon
+          d="dots"
+          size={18}
+          className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out"
+        />
       </button>
       {headerMenuOpen && (
         <>
@@ -1065,7 +1079,7 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               data-testid="conversation-menu-settings"
-              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text`}
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
               onClick={() => {
                 setHeaderMenuOpen(false);
                 navigate(`/conversations/${convId ?? id}/members`);
@@ -1076,7 +1090,7 @@ export function ConversationDetailRoute() {
             <button
               type="button"
               data-testid="conversation-menu-delete"
-              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline`}
+              className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
               onClick={() => void handleHeaderDelete()}
             >
               {counterpartAccountID ? "delete conversation" : "leave conversation"}
