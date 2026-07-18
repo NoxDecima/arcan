@@ -91,7 +91,7 @@ export function AddContactScreen({
             </div>
             {/* 400 11.5px/1.4 body → font-body text-ui-empty-sub leading-[1.4] */}
             <div className="mt-[6px] font-body text-ui-empty-sub leading-[1.4] text-text-2">
-              share your code so people can add you
+              share your invite so people can add you
             </div>
           </div>
 
@@ -103,7 +103,7 @@ export function AddContactScreen({
             {/* "// your code" caps — 600 9px/1 mono .16em */}
             {/* inline fontSize: CSS-class var() resolves differently than inline in Chrome; override forces matching rendering */}
             <span className="font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim" style={{ fontSize: "var(--fs-ui-caps)" }}>
-              {"// your code"}
+              {"// your invite QR code"}
             </span>
 
             {/* QR code — Rung-4: real <QRDisplay> via qrSlot; parity = <PQR size={128}> */}
