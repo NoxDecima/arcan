@@ -1,0 +1,122 @@
+# .github/workflows/deploy.yml — VPS deploy on v* tags (spec:
+# docs/superpowers/specs/2026-07-18-ci-vps-deploy-design.md).
+#
+# Pushing a v* tag deploys the VPS (and android.yml builds the APK from the
+# same tag). Manual runs: Actions → deploy → Run workflow (deploys the chosen
+# branch/tag). Setup: deploy/README.md § Automated deploys (CI).
+name: deploy
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deploys queue; never kill one mid-flight.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  vps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [ -n "$VPS_SSH_KEY" ] || { echo "::error::VPS_SSH_KEY secret is not set — see deploy/README.md § Automated deploys (CI)"; exit 1; }
+          # Pinned host key, captured once from a trusted network. No
+          # ssh-keyscan here: trust-on-first-use against the box hosting an
+          # E2EE messenger is not acceptable.
+          [ -n "$VPS_KNOWN_HOSTS" ] || { echo "::error::VPS_KNOWN_HOSTS secret is not set — capture it once with: ssh-keyscan -H <vps-host>"; exit 1; }
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Update VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          # Path of the arcan clone RELATIVE to the SSH user's home.
+          APP_DIR: ${{ vars.VPS_APP_DIR || 'arcan' }}
+          REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [ -n "$VPS_HOST" ] || { echo "::error::VPS_HOST secret is not set"; exit 1; }
+          [ -n "$VPS_USER" ] || { echo "::error::VPS_USER secret is not set"; exit 1; }
+          echo "deploying $REF to $APP_DIR"
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=15 \
+              "$VPS_USER@$VPS_HOST" \
+              bash -s -- "$(printf %q "$APP_DIR")" "$(printf %q "$REF")" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="$1"
+          REF="$2"
+          cd "$HOME/$APP_DIR"
+          git fetch --tags --prune origin
+          # Detached checkout: the deployed state is exactly the tag. Manual
+          # `git pull` updates need `git checkout main` first (see README).
+          git checkout --detach "$REF"
+          cd deploy
+          docker compose up -d --build
+          # compose up -d can "succeed" with a crash-looping container —
+          # assert all three services (caddy, sync, api) are actually running.
+          sleep 5
+          RUNNING=$(docker compose ps --status running --quiet | wc -l)
+          if [ "$RUNNING" -lt 3 ]; then
+            echo "only $RUNNING/3 services running after deploy:"
+            docker compose ps
+            exit 1
+          fi
+          echo "deployed $REF — $RUNNING services running"
+          REMOTE
+
+      - name: Health check
+        env:
+          ORIGIN: ${{ vars.ARCAN_ORIGIN }}
+        run: |
+          set -euo pipefail
+          [ -n "$ORIGIN" ] || { echo "::error::ARCAN_ORIGIN repo variable is not set — needed for the health check"; exit 1; }
+          for i in $(seq 1 12); do
+            if curl -fsS -o /dev/null --max-time 10 "$ORIGIN/"; then
+              echo "healthy: $ORIGIN responded"
+              exit 0
+            fi
+            echo "waiting for $ORIGIN ($i/12)…"
+            sleep 10
+          done
+          echo "::error::$ORIGIN did not become healthy within 2 minutes of the deploy"
+          exit 1
+
+      - name: Failure forensics
+        if: failure()
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          APP_DIR: ${{ vars.VPS_APP_DIR || 'arcan' }}
+        run: |
+          set -uo pipefail
+          # Best-effort: dump container state + recent logs into the CI log so
+          # a broken deploy is diagnosable from GitHub alone.
+          [ -n "$VPS_HOST" ] && [ -n "$VPS_USER" ] || exit 0
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=15 \
+              "$VPS_USER@$VPS_HOST" \
+              bash -s -- "$(printf %q "$APP_DIR")" <<'REMOTE' || true
+          set -uo pipefail
+          cd "$HOME/$1/deploy" || exit 0
+          echo "=== docker compose ps ==="
+          docker compose ps
+          echo "=== last 50 log lines per service ==="
+          docker compose logs --tail 50
+          REMOTE
