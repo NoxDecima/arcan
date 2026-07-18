@@ -145,7 +145,9 @@ export function ConversationDetailRoute() {
   // messages list has rendered loaded; keys seen while unprimed enter
   // silently. `enter` is remembered so re-renders during the 200ms play
   // don't strip the class mid-animation. `mountTs` is a belt against
-  // late-syncing history: anything older than mount never rises.
+  // late-syncing history: anything older than mount never rises. `sortAt` is
+  // sender-authored (`sentAt`), so the 2s belt tolerates modest clock skew
+  // between devices; the seen/primed gate is the primary guard.
   const motionRef = useRef<{
     convoId: string | null;
     seen: Set<string>;
@@ -761,6 +763,7 @@ export function ConversationDetailRoute() {
       enter: new Set(),
       primed: false,
     };
+    mountTsRef.current = Date.now();
   }
   const motion = motionRef.current;
   for (const it of rawItems) {
