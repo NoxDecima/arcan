@@ -6,6 +6,9 @@
 // slides back; unrelated moves (tab roots, cross-branch jumps, anything
 // touching the auth flow) cross-fade.
 
+import { useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import type { Location } from "react-router-dom";
 import { parentOf } from "./parents";
 
 export type NavDirection = "forward" | "back" | "fade";
@@ -46,4 +49,58 @@ export function navDirection(from: string, to: string): NavDirection {
   if (isAncestor(b, a)) return "back";
   if (isAncestor(a, b)) return "forward";
   return "fade";
+}
+
+// lib.dom's startViewTransition typing depends on the TS version — a narrow
+// local type keeps us independent of it.
+type DocumentWithVT = Document & {
+  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+};
+
+/**
+ * Returns the location the route table should RENDER. When the router
+ * location changes, the swap is wrapped in document.startViewTransition with
+ * html[data-nav-dir] stamped so tokens.css can animate the old/new
+ * arcan-pane snapshots. Browsers without the API — and users with
+ * prefers-reduced-motion — get the plain instant swap.
+ *
+ * Accepted nit (recorded in the plan header): chrome that keys off the LIVE
+ * location (tab-bar visibility, active-row highlight) updates at transition
+ * start and cross-fades via the root snapshot instead of sliding.
+ */
+export function useTransitionedLocation(location: Location): Location {
+  const [displayed, setDisplayed] = useState(location);
+  const displayedRef = useRef(location);
+
+  useLayoutEffect(() => {
+    const from = displayedRef.current;
+    if (from.key === location.key) return;
+
+    const commit = () => {
+      displayedRef.current = location;
+      setDisplayed(location);
+    };
+
+    const doc = document as DocumentWithVT;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (typeof doc.startViewTransition !== "function" || reduceMotion) {
+      commit();
+      return;
+    }
+
+    document.documentElement.dataset.navDir = navDirection(
+      from.pathname + from.search,
+      location.pathname + location.search,
+    );
+    const vt = doc.startViewTransition(() => {
+      flushSync(commit);
+    });
+    void vt.finished.finally(() => {
+      delete document.documentElement.dataset.navDir;
+    });
+  }, [location]);
+
+  return displayed;
 }
