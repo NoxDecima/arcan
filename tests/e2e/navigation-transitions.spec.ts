@@ -9,6 +9,7 @@ import { createAccount } from "./helpers";
 test.describe("screen transitions", () => {
   test("navigation completes and cleans up with view transitions enabled", async ({
     page,
+    browserName,
   }) => {
     // Register error collectors BEFORE account creation so we catch any
     // console errors that occur during the full onboarding flow.
@@ -20,11 +21,14 @@ test.describe("screen transitions", () => {
 
     await createAccount(page, "Motion Nav");
 
-    // Guard the premise: if this ever flips, the suite silently stops
-    // testing the VT path — fail loudly instead.
-    expect(
-      await page.evaluate(() => typeof document.startViewTransition),
-    ).toBe("function");
+    // Guard the premise on Chromium (it ships the VT API): if this ever
+    // flips, the suite silently stops testing the VT path — fail loudly.
+    // Firefox (no API) runs the same chain as a test of the instant-swap
+    // fallback: navigation must complete and data-nav-dir must never stick.
+    const hasVT = await page.evaluate(
+      () => typeof document.startViewTransition === "function",
+    );
+    if (browserName === "chromium") expect(hasVT).toBe(true);
 
     // Drill in: home → own profile (forward), then up: profile → settings
     // (back) — the exact chain back-navigation.spec.ts already exercises.
