@@ -35,6 +35,10 @@ export type ChatTimelineItem =
       /** intent-fix (feedback round 2, non-visual): right-click / long-press
        * opens the message context menu. Non-visual. */
       onContext?: () => void;
+      /** UI motion (2026-07-18): appended after the timeline's initial
+       * render — MessageRow plays arcan-rise once. Never set on history
+       * (AUDIT-011). */
+      entering?: boolean;
     };
 
 export interface ChatHeaderVM {

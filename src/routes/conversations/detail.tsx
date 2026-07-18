@@ -140,6 +140,20 @@ export function ConversationDetailRoute() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
+  // UI motion (2026-07-18, AUDIT-011): only messages appended AFTER this
+  // conversation's first loaded render animate in. `primed` flips once the
+  // messages list has rendered loaded; keys seen while unprimed enter
+  // silently. `enter` is remembered so re-renders during the 200ms play
+  // don't strip the class mid-animation. `mountTs` is a belt against
+  // late-syncing history: anything older than mount never rises.
+  const motionRef = useRef<{
+    convoId: string | null;
+    seen: Set<string>;
+    enter: Set<string>;
+    primed: boolean;
+  }>({ convoId: null, seen: new Set(), enter: new Set(), primed: false });
+  const mountTsRef = useRef(Date.now());
+
   // Composer state (moved from Composer component to this container)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [composerText, setComposerText] = useState("");
@@ -738,6 +752,34 @@ export function ConversationDetailRoute() {
   }
   rawItems.sort((a, b) => a.sortAt - b.sortAt);
 
+  // ---- Rise-in bookkeeping (render path, after early returns) ----
+  const convoIdForMotion = ((conversation as any)?.$jazz?.id as string) ?? null;
+  if (motionRef.current.convoId !== convoIdForMotion) {
+    motionRef.current = {
+      convoId: convoIdForMotion,
+      seen: new Set(),
+      enter: new Set(),
+      primed: false,
+    };
+  }
+  const motion = motionRef.current;
+  for (const it of rawItems) {
+    if (it.kind !== "message") continue;
+    if (
+      motion.primed &&
+      !motion.seen.has(it.key) &&
+      it.sortAt >= mountTsRef.current - 2000
+    ) {
+      motion.enter.add(it.key);
+    }
+    motion.seen.add(it.key);
+  }
+  // Prime only once the messages CoList itself has resolved — priming on a
+  // still-loading empty list would make the whole history "new".
+  if ((conversation as any)?.messages) {
+    motion.primed = true;
+  }
+
   // ---- New-mark divider position ----
   const dividerInput: DividerTimelineItem[] = rawItems.map((item) => {
     if (item.kind === "message") {
@@ -1003,6 +1045,7 @@ export function ConversationDetailRoute() {
             ? () => setMenuOpenId(msgId)
             : undefined,
         bodyOverride,
+        entering: motion.enter.has(item.key),
       });
     }
   }

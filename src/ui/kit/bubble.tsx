@@ -115,6 +115,7 @@ export function MessageRow({
   endSlot,
   onAvatar,
   onContext,
+  entering,
 }: {
   m: BubbleMsg;
   w: number;
@@ -140,6 +141,10 @@ export function MessageRow({
    * opens the message context menu. Rendering is unchanged; parity
    * unaffected (default undefined). */
   onContext?: () => void;
+  /** UI motion (2026-07-18): plays arcan-rise on the row once (class stays
+   * so re-renders during the 200ms play don't cancel it). Parity unaffected
+   * (default undefined; galleries freeze animations). */
+  entering?: boolean;
 }): JSX.Element {
   // sys row: alignSelf center (needs flex-col parent in gallery)
   if (m.who === "sys") {
@@ -171,7 +176,7 @@ export function MessageRow({
   const mine = m.who === "me";
   return (
     <div
-      className={`group flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}`}
+      className={`group flex gap-2 items-end ${mine ? "flex-row-reverse" : "flex-row"}${entering ? " animate-arcan-rise" : ""}`}
       {...(testId ? { "data-testid": testId } : {})}
       {...(onContext
         ? {

@@ -246,8 +246,12 @@ body {
   from { opacity: 0; transform: scale(0.5); }
   to   { opacity: 1; transform: scale(1); }
 }
-.animate-arcan-rise { animation: arcan-rise var(--dur-base) var(--ease-out) both; }
-.animate-arcan-pop  { animation: arcan-pop var(--dur-base) var(--ease-out) both; }
+/* backwards: apply `from` state before animation starts (entrance delay guard),
+   but release to natural style after — `both`/`forwards` would leave
+   transform:translateY(0)/scale(1) which creates a CSS stacking context and
+   blocks pointer events on overlapping z-indexed children (e.g. message menu). */
+.animate-arcan-rise { animation: arcan-rise var(--dur-base) var(--ease-out) backwards; }
+.animate-arcan-pop  { animation: arcan-pop var(--dur-base) var(--ease-out) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-arcan-fade-in,
