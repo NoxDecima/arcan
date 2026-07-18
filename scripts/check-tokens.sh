@@ -25,7 +25,7 @@ fi
 
 # Motion tokens: raw duration-[...] literals bypass the motion scale — use
 # the named utilities (duration-fast/base/nav/switch) from tailwind.config.
-dur_hits=$(grep -rnE 'duration-\[[0-9]' src --include="*.tsx" 2>/dev/null || true)
+dur_hits=$(grep -rnE 'duration-\[[.0-9]' src --include="*.tsx" 2>/dev/null || true)
 
 if [ -n "$dur_hits" ]; then
   echo "❌ raw duration-[...] literals found — use motion tokens instead:"
