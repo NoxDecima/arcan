@@ -41,6 +41,14 @@ original feature slices above, a separate track).
 - Feedback round 3 (2026-07-15 walkthrough) — implemented + merged (`--no-ff`). QR scan straight to the native camera + inline paste field; feedback→Linear deploy wiring + honest 404 client message (VPS `LINEAR_API_TOKEN` still to be set by operator); hierarchical up-navigation via `src/nav/parents.ts` (never `navigate(-1)` in headers); invite-links quiet row on add-contact. Spec: `docs/superpowers/specs/2026-07-15-feedback-round-3-design.md`.
 - Feedback round 4 (2026-07-16 walkthrough) — implemented + merged (`--no-ff`). Timestamps as captions below bubbles ("HH:MM · edited"); image overflow + edit-width fixes for mobile bubbles; anchored per-message menu popover (⋮ / long-press / right-click; focusout close — a fixed backdrop breaks inside the scrolling timeline). Repaired the messaging-1to1 e2e (stale native-dialog expectations from round 2); parity harness back to 142/142 (earlier "environmental" failures were transient). Spec: `docs/superpowers/specs/2026-07-17-feedback-round-4-design.md`.
 - CI VPS deploy (2026-07-18) — merged. `v*` tags are the general release convention: `android.yml` builds+publishes the signed APK AND `deploy.yml` deploys the VPS over SSH (git checkout tag + `docker compose up -d --build`, pinned host key, health check, failure forensics). `android-v*` stays as an APK-only alias. VPS `.env` remains manual. Setup: deploy/README.md § Automated deploys (CI); spec: `docs/superpowers/specs/2026-07-18-ci-vps-deploy-design.md`.
+- UI motion (2026-07-18) — implemented + merged (`--no-ff`). Color-only
+  hover/press feedback (kit + shadcn + own bubbles + hover-revealed ⋮);
+  View-Transitions directional pane slides keyed to `src/nav/parents.ts`
+  hierarchy (`src/nav/transitions.ts`, `arcan-pane` snapshot); message
+  rise-in (closes AUDIT-011) + badge pop. `check-tokens` now rejects raw
+  `duration-[...]` literals. Note: `animate-arcan-rise/pop` use `backwards`
+  fill (a held identity transform from `both` breaks popover hit-testing).
+  Spec: `docs/superpowers/specs/2026-07-18-ui-motion-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
