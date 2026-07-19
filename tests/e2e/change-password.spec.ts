@@ -16,10 +16,10 @@ test.describe("change password", () => {
     // Success toast ("password changed") then navigates back.
     await page.getByText("password changed").waitFor();
 
-    // Sign out
+    // Sign out (custom in-DOM modal since 385844c)
     await page.goto("/settings");
-    page.on("dialog", d => d.accept());
     await page.getByTestId("sign-out-btn").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
     await page.waitForURL(/\/auth\/login/);
 
     // Old password fails

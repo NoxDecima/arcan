@@ -116,9 +116,10 @@ test("group member add and remove flows", async ({ browser }) => {
     );
 
     // ── 5. Alice removes Charlie from the conversation ───────────────────────
+    // Custom in-DOM modal since 36df664; click the confirm button after triggering.
     await openMembers(pageA);
-    pageA.once("dialog", (dialog) => dialog.accept());
     await memberAction(pageA, charlieAccountID, "remove");
+    await pageA.getByTestId("confirm-dialog-confirm").click();
 
     // Charlie's row is gone from Alice's view (the group drops to a 1:1 and the
     // members route redirects to the remaining member's profile).

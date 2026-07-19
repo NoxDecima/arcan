@@ -168,8 +168,9 @@ test("leave conversation without promote dialog — not last admin", async ({
     // ── 4. Alice clicks "Leave conversation" ─────────────────────────────────
     // Alice is NOT the sole admin (Bob is also admin) → plain confirm dialog,
     // NOT the LeaveWithPromoteDialog.
-    pageA.once("dialog", (dialog) => dialog.accept());
+    // Custom in-DOM modal since 36df664; click the confirm button after triggering.
     await pageA.getByTestId("leave-conversation-btn").click();
+    await pageA.getByTestId("confirm-dialog-confirm").click();
 
     // Alice navigates to /conversations (the plain confirm fired, so no promote
     // dialog appeared — if it had, the confirm would have been blocked).
