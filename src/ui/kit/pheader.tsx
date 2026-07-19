@@ -81,7 +81,7 @@ export function PHeader({
       {onTitle ? (
         <button
           onClick={onTitle}
-          className={`${tapClass} flex-1 min-w-0 gap-[11px] text-left`}
+          className={`${tapClass} flex-1 min-w-0 gap-[11px] text-left rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
           {...(titleButtonTestId ? { "data-testid": titleButtonTestId } : {})}
         >
           {avatar}
@@ -90,7 +90,7 @@ export function PHeader({
       ) : (
         <>
           {avatar && (
-            <button onClick={onAvatar} className={tapClass}>
+            <button onClick={onAvatar} className={`${tapClass} rounded-r-3 hover:bg-panel-2 active:bg-hairline`}>
               {avatar}
             </button>
           )}

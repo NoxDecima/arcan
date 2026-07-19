@@ -148,7 +148,7 @@ export function SettingsScreen({
                 data-testid={meRowTestId}
                 className={[
                   tapClass,
-                  "w-full text-left flex items-center gap-3 px-3.5 py-3 border-b border-hairline",
+                  "w-full text-left flex items-center gap-3 px-3.5 py-3 border-b border-hairline hover:bg-panel-2 active:bg-hairline",
                 ].join(" ")}
               >
                 <HAv
@@ -228,8 +228,8 @@ export function SettingsScreen({
                         tapClass,
                         "rounded-pill px-3 py-[5px] font-mono font-semibold text-ui-sub leading-none",
                         theme === t
-                          ? "bg-arcan-accent-fill text-on-accent"
-                          : "text-text-2 bg-transparent",
+                          ? "bg-arcan-accent-fill text-on-accent hover:opacity-90 active:opacity-80"
+                          : "text-text-2 bg-transparent hover:bg-panel-2 active:bg-hairline",
                       ].join(" ")}
                     >
                       {t}
@@ -270,7 +270,7 @@ export function SettingsScreen({
                         title={k}
                         onClick={() => onAccent(k)}
                         data-testid={`accent-${k}`}
-                        className={`${tapClass} w-7 h-7 rounded-pill justify-center`}
+                        className={`${tapClass} w-7 h-7 rounded-pill justify-center hover:opacity-90 active:opacity-80`}
                         style={{
                           background: col,
                           border: on
