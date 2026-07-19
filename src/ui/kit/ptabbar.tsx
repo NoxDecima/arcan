@@ -25,7 +25,6 @@ export function PTabBar({
     const on = active === key;
     return (
       <button
-        key={key}
         onClick={() => onTab(key)}
         className={`${tapClass} flex-1 flex-col justify-center gap-[3px] py-[7px] hover:bg-panel-2 active:bg-hairline`}
       >

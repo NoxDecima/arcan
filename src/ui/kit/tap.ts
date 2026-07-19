@@ -15,6 +15,12 @@
 // uniformly. Hover/active COLORS stay per-component. CSS transitions are
 // per-element, not inherited — child icons/text needing animated color
 // changes must declare their own transition-colors / transition-tint.
+//
+// `group` is deliberately NOT included here. Consumers that need group-hover
+// children (e.g. the header ⋮ button in detail.tsx) add `group` themselves.
+// Baking it into tapClass would re-scope all `group-hover:` descendants to
+// the tapClass element as their ancestor, which breaks components that nest
+// tapClass buttons inside an outer `group` container they don't own.
 
 export const tapClass =
   "p-0 m-0 cursor-pointer flex items-center [-webkit-tap-highlight-color:transparent] transition-tint duration-fast ease-out disabled:pointer-events-none";
