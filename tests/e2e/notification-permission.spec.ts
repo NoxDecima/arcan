@@ -92,16 +92,17 @@ test.describe("Slice 8 — notification permission flow", () => {
 
       const toggle = page.getByRole("switch", { name: "sound on new messages" });
       await expect(toggle).toBeVisible({ timeout: 10_000 });
-      await expect(toggle).not.toBeChecked();
-
-      await toggle.click();
+      // Default is sound ON (60d7cc9 flipped the schema default to true).
       await expect(toggle).toBeChecked();
 
-      // Reload + verify the bit persisted in settings.notifications.sound.
+      await toggle.click();
+      await expect(toggle).not.toBeChecked();
+
+      // Reload + verify the OFF state persisted in settings.notifications.sound.
       await page.reload();
       await expect(
         page.getByRole("switch", { name: "sound on new messages" }),
-      ).toBeChecked({
+      ).not.toBeChecked({
         timeout: 15_000,
       });
     } finally {
