@@ -13,7 +13,7 @@
  *
  * Renders a main panel containing:
  *   - Header: back button (mobile-only), conversation title, members/profile link
- *   - ConnectionBanner: shown when offline
+ *   - SyncStatusPill: floating "not syncing" pill when offline (feedback R4)
  *   - Message timeline: each message as a kit Bubble, interleaved with
  *     SystemEvent entries from the conversation's sidecar log, plus day
  *     markers and the unread divider.
@@ -51,7 +51,7 @@ import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
-import { ConnectionBanner } from "@/components/connection-banner";
+import { SyncStatusPill } from "@/components/sync-status-pill";
 import {
   sendMessage,
   getAuthorAccountIDFromMessage,
@@ -1398,7 +1398,7 @@ export function ConversationDetailRoute() {
           navigate(`/conversations/${convId ?? id}/members`)
         }
         composer={composerElement}
-        banner={<ConnectionBanner />}
+        overlay={<SyncStatusPill />}
         emptyText="No messages yet. Say hello!"
         bottomRef={bottomRef}
         timelineRef={timelineRef}

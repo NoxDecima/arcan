@@ -19,7 +19,7 @@ export function ChatScreen({
   onBack,
   onOpenInfo,
   composer,
-  banner,
+  overlay,
   emptyText,
   bottomRef,
   timelineRef,
@@ -39,8 +39,10 @@ export function ChatScreen({
   onOpenInfo: () => void;
   /** ChatComposer (or legacy container-wrapped variant) */
   composer: ReactNode;
-  /** Rung 4: ConnectionBanner slot above timeline */
-  banner?: ReactNode;
+  /** Floating status slot between header and timeline (feedback R4) — the
+   * container passes a zero-height overlay (SyncStatusPill) whose content
+   * floats over the timeline top; it costs no layout space. */
+  overlay?: ReactNode;
   /** Rung 4: empty-state text */
   emptyText?: string;
   /** container's autoscroll anchor */
@@ -92,8 +94,8 @@ export function ChatScreen({
         right={headerRight}
       />
 
-      {/* Rung 4: connection banner above timeline */}
-      {banner}
+      {/* Floating status overlay (sync pill) — zero-height, above timeline */}
+      {overlay}
 
       {/* Timeline — proto:184 cluster */}
       <div

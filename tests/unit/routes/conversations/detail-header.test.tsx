@@ -37,7 +37,7 @@ vi.mock("jazz-tools/react", () => ({
     root: { contactBook: [], knownConversations: [], lastReadAt: {} },
   }),
   useCoState: () => CONVERSATION,
-  // ConnectionBanner (rendered by the route) reads sync status; treat as online.
+  // SyncStatusPill (rendered by the route) reads sync status; treat as online.
   useSyncConnectionStatus: () => true,
 }));
 vi.mock("@/jazz/avatarResolver", () => ({
