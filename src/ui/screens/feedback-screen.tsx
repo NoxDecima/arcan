@@ -128,7 +128,7 @@ export function FeedbackScreen({
               /* Fallback static dropzone — matches proto empty state (proto:520–522) */
               <button
                 type="button"
-                className={`${tapClass} flex w-full justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent`}
+                className={`${tapClass} flex w-full justify-center gap-2 p-3 rounded-r-4 border border-dashed border-hairline bg-transparent hover:bg-panel-2 active:bg-hairline`}
               >
                 <Icon d="paperclip" size={15} className="text-text-2" />
                 {/* 500 11.5px/1 body → font-body font-medium text-ui-empty-sub */}

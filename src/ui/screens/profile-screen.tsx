@@ -82,7 +82,7 @@ export function ProfileScreen({
           {onAvatar ? (
             <button
               type="button"
-              className={tapClass}
+              className={`${tapClass} hover:opacity-90 active:opacity-80`}
               onClick={onAvatar}
               aria-label="view profile picture"
               data-testid="profile-avatar-open"
@@ -133,7 +133,7 @@ export function ProfileScreen({
 
             {/* Verify safety number expander — proto:222–230 (moved up) */}
             <button
-              className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px]`}
+              className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px] hover:bg-panel-2 active:bg-hairline`}
               onClick={onToggleSafety}
               {...(safetyToggleTestId
                 ? { "data-testid": safetyToggleTestId }

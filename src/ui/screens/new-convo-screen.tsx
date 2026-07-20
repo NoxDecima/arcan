@@ -77,7 +77,7 @@ export function NewConvoScreen({
                 onClick={onGroupImagePick}
                 aria-label="choose a group picture"
                 data-testid="new-convo-group-image"
-                className={`${tapClass} bg-avatar-group text-avatar-group-fg border border-hairline flex items-center justify-center shrink-0 overflow-hidden`}
+                className={`${tapClass} bg-avatar-group text-avatar-group-fg border border-hairline flex items-center justify-center shrink-0 overflow-hidden hover:opacity-90 active:opacity-80`}
                 style={{ width: 42, height: 42, borderRadius: 14, fontSize: 14, fontFamily: "var(--font-mono)", fontWeight: 600, lineHeight: 1 }}
               >
                 {groupImageUrl ? (

@@ -97,7 +97,7 @@ export function ContactRequestScreen({
           <button
             type="button"
             onClick={onToggleSecurity}
-            className={`${tapClass} flex items-center gap-[9px] px-3 py-2.5 w-full`}
+            className={`${tapClass} flex items-center gap-[9px] px-3 py-2.5 w-full hover:bg-panel-2 active:bg-hairline`}
           >
             <Icon d="shield" size={15} className="text-arcan-accent" />
             <span className="flex-1 text-left font-body font-medium text-ui-empty-sub leading-none text-text">

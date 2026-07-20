@@ -100,7 +100,7 @@ export function AddContactScreen({
             className="w-full max-w-[300px] p-4 flex flex-col items-center gap-[11px]"
             {...(waitingCardTestId ? { "data-testid": waitingCardTestId } : {})}
           >
-            {/* "// your code" caps — 600 9px/1 mono .16em */}
+            {/* "// your invite QR code" caps — 600 9px/1 mono .16em */}
             {/* inline fontSize: CSS-class var() resolves differently than inline in Chrome; override forces matching rendering */}
             <span className="font-mono font-semibold text-ui-caps tracking-caps uppercase text-dim" style={{ fontSize: "var(--fs-ui-caps)" }}>
               {"// your invite QR code"}
@@ -175,7 +175,7 @@ export function AddContactScreen({
             <button
               onClick={onManageInvites}
               data-testid="manage-invites-link"
-              className={`${tapClass} w-full max-w-[300px] flex items-center gap-2 rounded-r-2 border border-hairline bg-panel px-3 py-2`}
+              className={`${tapClass} w-full max-w-[300px] flex items-center gap-2 rounded-r-2 border border-hairline bg-panel px-3 py-2 hover:bg-panel-2 active:bg-hairline`}
             >
               <Icon d="personplus" size={14} className="text-dim" />
               <span className="flex-1 text-left font-body text-ui-sub leading-none text-text-2">
