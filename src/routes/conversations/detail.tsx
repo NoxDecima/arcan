@@ -203,9 +203,10 @@ function AnchoredMessageMenu({
       if (ref.current && t && ref.current.contains(t)) return;
       // A ⋮ trigger toggles/moves the menu via its own click handler; closing
       // here as well would make that click re-open instead of toggle.
+      // behavioral marker, not a test hook.
       if (
         t instanceof Element &&
-        t.closest('[data-testid="message-menu-btn"]')
+        t.closest('[data-message-menu-trigger]')
       ) {
         return;
       }
@@ -219,13 +220,18 @@ function AnchoredMessageMenu({
       if (ref.current && t && ref.current.contains(t)) return;
       onClose();
     };
+    const onResize = () => {
+      onClose();
+    };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [onClose]);
 
@@ -1108,6 +1114,7 @@ export function ConversationDetailRoute() {
                   : "opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100",
               ].join(" ")}
               data-testid="message-menu-btn"
+              data-message-menu-trigger
               aria-label="Message actions"
             >
               ⋮
