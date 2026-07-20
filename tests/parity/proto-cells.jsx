@@ -702,7 +702,8 @@ function PAddPeopleScreen({ s }) {
 /* patched copy: design/proto.jsx:398–431 (AddContactScreen) —
    toast/nav stubbed; QR = PQR size=128;
    two-button copy/share → one adaptive action per 9-7 §2-J (see patch note inline);
-   TTL options patched to app presets ['1h','24h','7d'], '24h' selected (deviation noted in manifest). */
+   TTL options patched to app presets ['1h','24h','7d'], '24h' selected (deviation noted in manifest);
+   copy patched to app invite phrasing ("share your invite…", "// your invite QR code") per 7ef4797. */
 function PAddContactScreen({ s }) {
   const c = s.c;
   const [ttl, setTtl] = React.useState('24h');
@@ -714,10 +715,10 @@ function PAddContactScreen({ s }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ font: `700 18px/1.25 ${s.headMono ? s.font : s.body}`, color: c.text }}>add a contact</div>
-            <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>share your code so people can add you</div>
+            <div style={{ marginTop: 6, font: `400 11.5px/1.4 ${s.body}`, color: c.text2 }}>share your invite so people can add you</div>
           </div>
           <PCard s={s} style={{ width: '100%', maxWidth: 300, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11 }}>
-            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// your code'}</span>
+            <span style={{ font: `600 9px/1 ${s.font}`, letterSpacing: '.16em', textTransform: 'uppercase', color: c.dim }}>{'// your invite QR code'}</span>
             <PQR s={s} size={128} />
             <span style={{ font: `400 11px/1 ${s.font}`, color: c.dim }}>co_z1a8…4f2</span>
             {/* patched copy: two-button copy/share → one adaptive action per 9-7 §2-J */}

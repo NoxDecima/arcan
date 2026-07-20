@@ -67,8 +67,8 @@ export function ProfileScreen({
         backTestId={backTestId}
         right={
           onMenu ? (
-            <button className={tapClass} onClick={onMenu}>
-              <Icon d="dots" size={18} fill className="text-text-2" />
+            <button className={`${tapClass} group w-8 h-8 justify-center rounded-r-3 hover:bg-panel-2 active:bg-hairline`} onClick={onMenu} aria-label="profile actions">
+              <Icon d="dots" size={18} fill className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out" />
             </button>
           ) : undefined
         }

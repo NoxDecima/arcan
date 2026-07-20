@@ -60,7 +60,7 @@ export function NavColumn(props: {
           data-testid="sidebar-header-profile"
           aria-label="your profile"
           onClick={onOwnProfile}
-          className={`${tapClass} gap-2.5 flex-1 min-w-0`}
+          className={`${tapClass} gap-2.5 flex-1 min-w-0 rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
         >
           <div data-testid="sidebar-avatar">
             <HAv txt={profile.initials} src={profile.avatarSrc} size={32} />
@@ -77,9 +77,9 @@ export function NavColumn(props: {
           data-testid="sidebar-settings-gear"
           aria-label="settings"
           onClick={onSettings}
-          className={tapClass}
+          className={`${tapClass} group w-8 h-8 justify-center rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
         >
-          <Icon d="gear" size={19} className="text-text-2" />
+          <Icon d="gear" size={19} className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out" />
         </button>
       </div>
 
@@ -92,7 +92,7 @@ export function NavColumn(props: {
               key={key}
               type="button"
               onClick={() => onTab(key)}
-              className={`${tapClass} flex-1 justify-center gap-[7px] py-[11px] -mb-px border-b-2 ${active ? "border-arcan-accent-fill" : "border-transparent"}`}
+              className={`${tapClass} flex-1 justify-center gap-[7px] py-[11px] -mb-px border-b-2 ${active ? "border-arcan-accent-fill" : "border-transparent hover:bg-panel-2 active:bg-hairline"}`}
             >
               <Icon
                 d={key === "contacts" ? "people" : "chat"}

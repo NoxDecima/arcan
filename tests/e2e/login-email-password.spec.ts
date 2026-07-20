@@ -5,10 +5,10 @@ test.describe("sign-in after logout", () => {
   test("user can sign back in with email + password", async ({ page }) => {
     const { credentials } = await createAccount(page, "Alice");
 
-    // Sign out
+    // Sign out (custom in-DOM modal since 385844c)
     await page.goto("/settings");
-    page.on("dialog", d => d.accept());
     await page.getByTestId("sign-out-btn").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
     await page.waitForURL(/\/auth\/login/);
 
     // Sign back in

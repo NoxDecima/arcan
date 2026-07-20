@@ -961,6 +961,11 @@ export function ConversationDetailRoute() {
                 // the menu is open, or the button is focused. Touch
                 // (hover:none) keeps it always visible — long-press users
                 // must still see the affordance (feedback round 4).
+                // `focus:opacity-100` (NOT focus-visible:) is intentional: it
+                // reveals the button on any focus event — keyboard Tab included
+                // — so screen-reader / keyboard users never encounter a visually
+                // invisible interactive element. focus-visible: would hide it
+                // again on pointer-focus, breaking that guarantee.
                 isMenuOpen
                   ? "opacity-100"
                   : "opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100",

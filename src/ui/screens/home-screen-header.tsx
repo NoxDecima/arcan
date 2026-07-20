@@ -36,7 +36,7 @@ export function HomeScreenHeader({
         data-testid={tid("sidebar-header-profile")}
         aria-label="your profile"
         onClick={onOwnProfile}
-        className={tapClass}
+        className={`${tapClass} rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
       >
         <div data-testid={tid("sidebar-avatar")}>
           <HAv txt={profile.initials} src={profile.avatarSrc} size={30} />
@@ -53,9 +53,9 @@ export function HomeScreenHeader({
         data-testid={tid("sidebar-settings-gear")}
         aria-label="settings"
         onClick={onSettings}
-        className={tapClass}
+        className={`${tapClass} group w-8 h-8 justify-center rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
       >
-        <Icon d="gear" size={20} className="text-text-2" />
+        <Icon d="gear" size={20} className="text-text-2 group-hover:text-text group-active:text-text transition-colors duration-fast ease-out" />
       </button>
     </div>
   );

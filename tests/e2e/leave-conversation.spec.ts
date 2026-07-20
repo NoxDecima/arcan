@@ -90,8 +90,9 @@ test("leave conversation — Alice revokes self, list updates", async ({ browser
     ).toBeVisible({ timeout: 10_000 });
 
     // ── 5. Alice leaves (plain confirm — she is no longer the last admin) ─────
-    pageA.once("dialog", (dialog) => dialog.accept());
+    // Custom in-DOM modal since 36df664; click the confirm button after triggering.
     await pageA.getByTestId("leave-conversation-btn").click();
+    await pageA.getByTestId("confirm-dialog-confirm").click();
 
     // Alice is navigated to /conversations
     await expect(pageA).toHaveURL(/\/conversations$/, { timeout: 10_000 });

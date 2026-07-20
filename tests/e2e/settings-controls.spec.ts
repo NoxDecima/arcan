@@ -68,13 +68,14 @@ test.describe("Unit 9-5b — settings controls + feedback", () => {
       await createAccount(page, "Cara");
       await page.goto("/settings");
       const sound = page.getByRole("switch", { name: "sound on new messages" });
-      await expect(sound).not.toBeChecked();
-      await sound.click();
+      // Default is sound ON (60d7cc9 flipped the schema default to true).
       await expect(sound).toBeChecked();
+      await sound.click();
+      await expect(sound).not.toBeChecked();
       await page.reload();
       await expect(
         page.getByRole("switch", { name: "sound on new messages" }),
-      ).toBeChecked({ timeout: 10_000 });
+      ).not.toBeChecked({ timeout: 10_000 });
     } finally {
       await ctx.close();
     }

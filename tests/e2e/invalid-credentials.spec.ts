@@ -5,8 +5,9 @@ test.describe("invalid credentials", () => {
   test("wrong password shows vague error", async ({ page }) => {
     const { credentials } = await createAccount(page, "Alice");
     await page.goto("/settings");
-    page.on("dialog", d => d.accept());
+    // Sign-out uses a custom in-DOM modal since 385844c
     await page.getByTestId("sign-out-btn").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
     await page.waitForURL(/\/auth\/login/);
     await page.getByTestId("login-email").fill(credentials.email);
     await page.getByTestId("login-password").fill("wrongpassword12345");

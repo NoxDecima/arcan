@@ -56,11 +56,12 @@ test("1:1 delete: thread gone for Alice, 'left' event for Bob, fresh thread on r
     await expect(pageA.getByTestId("profile-view")).toBeVisible({
       timeout: 10_000,
     });
-    pageA.on("dialog", (d) => void d.accept());
     await expect(pageA.getByTestId("convo-delete-btn")).toBeVisible({
       timeout: 10_000,
     });
+    // Custom in-DOM modal since 6bd1373; click the confirm button after triggering.
     await pageA.getByTestId("convo-delete-btn").click();
+    await pageA.getByTestId("confirm-dialog-confirm").click();
 
     // The danger zone loses the delete button once the 1:1 is gone.
     await expect(pageA.getByTestId("convo-delete-btn")).not.toBeVisible({

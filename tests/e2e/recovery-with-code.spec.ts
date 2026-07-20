@@ -6,10 +6,10 @@ test.describe("recovery with code", () => {
     const { credentials, recoveryCode } = await createAccount(page, "Alice");
     const newPassword = "newpassword-much-longer-123!";
 
-    // Sign out
+    // Sign out (custom in-DOM modal since 385844c)
     await page.goto("/settings");
-    page.on("dialog", d => d.accept());
     await page.getByTestId("sign-out-btn").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
     await page.waitForURL(/\/auth\/login/);
 
     // Go to recovery
@@ -23,11 +23,10 @@ test.describe("recovery with code", () => {
     await page.getByTestId("recovery-set-password").click();
     await page.getByTestId("home-main").waitFor({ timeout: 20_000 });
 
-    // Sign out again, sign in with new password
+    // Sign out again, sign in with new password (custom in-DOM modal since 385844c)
     await page.goto("/settings");
-    page.removeAllListeners("dialog");
-    page.on("dialog", d => d.accept());
     await page.getByTestId("sign-out-btn").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
     await page.waitForURL(/\/auth\/login/);
 
     await signIn(page, { ...credentials, password: newPassword });

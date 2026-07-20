@@ -10,7 +10,7 @@ set -euo pipefail
 # by design. Solid bg-white is still rejected.
 PATTERNS='bg-(white|blue-[0-9]+|gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|neutral-[0-9]+)|text-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|green-[0-9]+|blue-[0-9]+)|border-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|blue-[0-9]+)'
 
-hits=$(grep -rnE "$PATTERNS" src --include="*.tsx" 2>/dev/null || true)
+hits=$(grep -rnE "$PATTERNS" src --include="*.tsx" --include="*.ts" 2>/dev/null || true)
 
 if [ -n "$hits" ]; then
   echo "❌ ad-hoc Tailwind color/typography classes found — use tokens instead:"
@@ -25,7 +25,7 @@ fi
 
 # Motion tokens: raw duration-[...] literals bypass the motion scale — use
 # the named utilities (duration-fast/base/nav/switch) from tailwind.config.
-dur_hits=$(grep -rnE 'duration-\[[.0-9]' src --include="*.tsx" 2>/dev/null || true)
+dur_hits=$(grep -rnE 'duration-\[[.0-9]' src --include="*.tsx" --include="*.ts" 2>/dev/null || true)
 
 if [ -n "$dur_hits" ]; then
   echo "❌ raw duration-[...] literals found — use motion tokens instead:"
