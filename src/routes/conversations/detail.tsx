@@ -34,7 +34,17 @@
  * is unreadable — we redirect to /conversations rather than render a stub.
  */
 
-import { useRef, useEffect, useState, type ChangeEvent, type ClipboardEvent } from "react";
+import {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useState,
+  type ChangeEvent,
+  type ClipboardEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate } from "react-router-dom";
 import { useUpNavigation } from "@/nav/use-up-navigation";
@@ -128,6 +138,122 @@ function dayLabel(
   return `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]}`;
 }
 
+/**
+ * AnchoredMessageMenu — the per-message actions popover (R2+R3 fix).
+ *
+ * Renders through a portal into document.body with position:fixed, anchored
+ * at the interaction point (pointer coords for right-click / long-press, the
+ * ⋮ button rect for kebab clicks). The portal frees it from the timeline's
+ * overflow clipping and from transient stacking contexts (the arcan-rise
+ * entrance transform on fresh rows), and viewport clamping + flip-above
+ * keeps the last message's menu fully visible without extra scrolling.
+ *
+ * Dismissal (replaces the round-4 focusout close, which never fired when
+ * tapping the non-focusable timeline background):
+ *   - pointerdown outside the popover (capture phase; the ⋮ triggers are
+ *     exempt so their own click handlers can toggle / move the menu),
+ *   - Escape,
+ *   - any scroll outside the popover (capture catches the timeline),
+ *   - selecting an item (the item handlers close it — unchanged).
+ */
+function AnchoredMessageMenu({
+  anchor,
+  onClose,
+  children,
+}: {
+  /** Anchor in viewport coordinates: x is the horizontal reference; top /
+   * bottom the vertical extent of the anchored thing. Pointer opens pass a
+   * zero-height extent (top === bottom === clientY); the ⋮ trigger passes
+   * its rect edges so a flipped menu clears the button instead of covering
+   * it (covering would swallow the toggle-close click). */
+  anchor: { x: number; top: number; bottom: number };
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Measure after first paintless render, then clamp into the viewport.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const margin = 8; // breathing room from viewport edges
+    const gap = 4; // offset from the press point / trigger
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = anchor.x;
+    if (left + width + margin > vw) left = anchor.x - width;
+    left = Math.max(margin, Math.min(left, vw - width - margin));
+    let top = anchor.bottom + gap;
+    if (top + height + margin > vh) top = anchor.top - height - gap; // flip above
+    top = Math.max(margin, Math.min(top, vh - height - margin));
+    setPos({ left, top });
+  }, [anchor.x, anchor.top, anchor.bottom]);
+
+  // Focus the first item on open (keyboard reachability — the portal lives at
+  // the end of <body>, so natural Tab order from the ⋮ button won't reach it).
+  useEffect(() => {
+    ref.current?.querySelector("button")?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node | null;
+      if (ref.current && t && ref.current.contains(t)) return;
+      // A ⋮ trigger toggles/moves the menu via its own click handler; closing
+      // here as well would make that click re-open instead of toggle.
+      if (
+        t instanceof Element &&
+        t.closest('[data-testid="message-menu-btn"]')
+      ) {
+        return;
+      }
+      onClose();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onScroll = (e: Event) => {
+      const t = e.target as Node | null;
+      if (ref.current && t && ref.current.contains(t)) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("scroll", onScroll, true);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      data-testid="message-menu"
+      // position/coords are geometry, not paint — inline style is sanctioned.
+      style={
+        pos
+          ? { position: "fixed", left: pos.left, top: pos.top }
+          : {
+              // Pre-measure render: park at the anchor, invisible, so the
+              // first paint never flashes an unclamped menu.
+              position: "fixed",
+              left: anchor.x,
+              top: anchor.bottom,
+              visibility: "hidden",
+            }
+      }
+      className="z-50 min-w-[120px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 // ---- component ----
 
 export function ConversationDetailRoute() {
@@ -166,7 +292,16 @@ export function ConversationDetailRoute() {
   // Edit/delete per-message state (moved from MessageBubble to this container)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  // Per-message actions menu: which message it's open for + the anchor it's
+  // attached to (viewport coords; see AnchoredMessageMenu). R2+R3: pointer-
+  // anchored portal.
+  const [menuState, setMenuState] = useState<{
+    id: string;
+    x: number;
+    top: number;
+    bottom: number;
+  } | null>(null);
+  const closeMenu = useCallback(() => setMenuState(null), []);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const toast = useToast();
@@ -931,29 +1066,31 @@ export function ConversationDetailRoute() {
         </div>
       ) : undefined;
 
-      // Edit/delete menu slot — Rung 4
-      const isMenuOpen = menuOpenId === msgId;
+      // Edit/delete menu slot — Rung 4. The popover itself renders through
+      // AnchoredMessageMenu (portal to <body>, fixed at the interaction
+      // point) — see the component doc above for the R2+R3 rationale.
+      const isMenuOpen = menuState?.id === msgId;
       const menuSlot =
         isMine && !isDeleted && !malformed && !isEditing ? (
-          <div
-            className="relative"
-            onBlur={(e) => {
-              // Close when focus leaves the popover container entirely.
-              // relatedTarget stays inside the wrapper when tapping the menu
-              // items (focusout fires between mousedown and click), so the
-              // contains() guard keeps the menu alive for those clicks. The
-              // header menu uses a fixed backdrop instead; that doesn't work
-              // here because the timeline's overflow clipping applies to
-              // absolute descendants while a fixed backdrop escapes it —
-              // blur-close avoids the mismatch (intent-fix, feedback round 4).
-              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                setMenuOpenId(null);
-              }
-            }}
-          >
+          <>
             <button
               type="button"
-              onClick={() => setMenuOpenId(isMenuOpen ? null : msgId)}
+              onClick={(e) => {
+                if (isMenuOpen) {
+                  closeMenu();
+                } else {
+                  // ⋮ opens anchored to the button rect (below it, flipping
+                  // fully above it near the viewport bottom); right-click /
+                  // long-press anchor at the press point via onContext.
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setMenuState({
+                    id: msgId,
+                    x: r.left,
+                    top: r.top,
+                    bottom: r.bottom,
+                  });
+                }
+              }}
               className={[
                 "text-dim font-body text-ui-sub mt-0.5",
                 "transition-tint duration-fast ease-out hover:text-text-2",
@@ -975,46 +1112,41 @@ export function ConversationDetailRoute() {
             >
               ⋮
             </button>
-            {isMenuOpen && (
-              <>
-                {/* Opens DOWNWARD (top-full): bottom-full would extend above
-                    the scroll container's top edge for early messages, where
-                    overflow content is unreachable (you can't scroll up past
-                    the content start); top-full only clips for bottom-of-
-                    timeline messages and stays reachable in practice. right-0
-                    keeps it inside the row (kebab sits in the gutter on the
-                    bubble's free side; own rows are flex-row-reverse). */}
-                <div
-                  data-testid="message-menu"
-                  className="absolute right-0 top-full mt-1 z-20 min-w-[120px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
+            {isMenuOpen && menuState && (
+              <AnchoredMessageMenu
+                anchor={{
+                  x: menuState.x,
+                  top: menuState.top,
+                  bottom: menuState.bottom,
+                }}
+                onClose={closeMenu}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    setEditingMessageId(msgId);
+                    setEditText(message?.body ?? "");
+                  }}
+                  data-testid="message-edit-btn"
+                  className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpenId(null);
-                      setEditingMessageId(msgId);
-                      setEditText(message?.body ?? "");
-                    }}
-                    data-testid="message-edit-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-text hover:bg-panel-2 active:bg-hairline`}
-                  >
-                    edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpenId(null);
-                      void handleDeleteMessage(message);
-                    }}
-                    data-testid="message-delete-btn"
-                    className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
-                  >
-                    delete
-                  </button>
-                </div>
-              </>
+                  edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMenu();
+                    void handleDeleteMessage(message);
+                  }}
+                  data-testid="message-delete-btn"
+                  className={`${tapClass} w-full px-3 py-2.5 text-left font-body text-ui-sub text-red border-t border-hairline hover:bg-red/10 active:bg-red-wash`}
+                >
+                  delete
+                </button>
+              </AnchoredMessageMenu>
             )}
-          </div>
+          </>
         ) : undefined;
 
       // Author name: only for group chats (no contact = group), and only for
@@ -1050,7 +1182,8 @@ export function ConversationDetailRoute() {
         menuSlot,
         onContext:
           isMine && !isDeleted && !malformed && !isEditing
-            ? () => setMenuOpenId(msgId)
+            ? (at: { x: number; y: number }) =>
+                setMenuState({ id: msgId, x: at.x, top: at.y, bottom: at.y })
             : undefined,
         bodyOverride,
         entering: motion.enter.has(item.key),

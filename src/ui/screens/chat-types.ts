@@ -33,8 +33,9 @@ export type ChatTimelineItem =
           container navigates to the author's profile. Non-visual. */
       onAvatar?: () => void;
       /** intent-fix (feedback round 2, non-visual): right-click / long-press
-       * opens the message context menu. Non-visual. */
-      onContext?: () => void;
+       * opens the message context menu. Non-visual. Receives the interaction
+       * point (viewport coords) for pointer-anchored menu placement (R2+R3). */
+      onContext?: (at: { x: number; y: number }) => void;
       /** UI motion (2026-07-18): appended after the timeline's initial
        * render — MessageRow plays arcan-rise once. Never set on history
        * (AUDIT-011). */
