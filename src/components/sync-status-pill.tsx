@@ -74,7 +74,7 @@ export function SyncStatusPill() {
 
   return (
     // Zero-height positioning context: children float over the timeline.
-    <div ref={wrapRef} className="relative z-10 h-0">
+    <div ref={wrapRef} className="relative z-10 h-0" role="status">
       {/* Pill — centered via a full-width flex row (not translate-x: the
           arcan-rise keyframe owns `transform` and would drop the x-shift
           mid-animation). pointer-events pass through the empty gutters. */}
@@ -84,7 +84,7 @@ export function SyncStatusPill() {
             type="button"
             data-testid="sync-pill"
             aria-expanded={open}
-            aria-controls="sync-pill-popover"
+            {...(open ? { "aria-controls": "sync-pill-popover" } : {})}
             onClick={() => setOpen((o) => !o)}
             className="flex items-center gap-1.5 rounded-pill border border-warn bg-warn px-3 py-[5px]"
           >
