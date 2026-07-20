@@ -86,7 +86,7 @@ export function OwnProfileScreen({
             />
             {/* Camera badge — proto:247: absolute right:-2 bottom:-2 w:28 h:28 rounded-pill accentFill 2px solid bg */}
             <button
-              className={`${tapClass} absolute -right-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-arcan-accent-fill border-2 border-bg justify-center`}
+              className={`${tapClass} absolute -right-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-arcan-accent-fill border-2 border-bg justify-center hover:opacity-90 active:opacity-80`}
               onClick={onEditAvatar}
               aria-label="change avatar"
               {...(avatarChangeTestId
@@ -97,7 +97,7 @@ export function OwnProfileScreen({
             </button>
             {onRemoveAvatar && (
               <button
-                className={`${tapClass} absolute -left-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-panel border-2 border-bg justify-center`}
+                className={`${tapClass} absolute -left-0.5 -bottom-0.5 w-7 h-7 rounded-pill bg-panel border-2 border-bg justify-center hover:bg-panel-2 active:bg-hairline`}
                 onClick={onRemoveAvatar}
                 aria-label="remove profile picture"
                 data-testid="profile-avatar-remove"
@@ -112,7 +112,7 @@ export function OwnProfileScreen({
           {/* Name + pencil or inline edit slot — proto:249 */}
           {nameEditSlot ?? (
             <button
-              className={`${tapClass} gap-2`}
+              className={`${tapClass} group gap-2 rounded-r-2 hover:bg-panel-2 active:bg-hairline`}
               onClick={onEditName}
               {...(editNameTestId ? { "data-testid": editNameTestId } : {})}
             >
@@ -122,7 +122,7 @@ export function OwnProfileScreen({
               >
                 {vm.name}
               </span>
-              <Icon d="pencil" size={15} className="text-dim" />
+              <Icon d="pencil" size={15} className="text-dim group-hover:text-text group-active:text-text transition-colors duration-fast ease-out" />
             </button>
           )}
 
@@ -148,7 +148,7 @@ export function OwnProfileScreen({
             <PCard className="w-full max-w-[320px]">
               <div data-testid="profile-safety-section">
                 <button
-                  className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px]`}
+                  className={`${tapClass} w-full text-left flex items-center gap-[11px] px-[14px] py-[12px] hover:bg-panel-2 active:bg-hairline`}
                   onClick={onToggleSafety}
                   {...(safetyToggleTestId ? { "data-testid": safetyToggleTestId } : {})}
                 >

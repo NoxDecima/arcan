@@ -78,7 +78,7 @@ export function ConvoSettingsScreen({
     >
       {/* Avatar + name — tappable → onOpenMember (Rung-4) */}
       <button
-        className={`${tapClass} flex items-center gap-3 flex-1 min-w-0`}
+        className={`${tapClass} flex items-center gap-3 flex-1 min-w-0 rounded-r-3 hover:bg-panel-2 active:bg-hairline`}
         onClick={onOpenMember ? () => onOpenMember(m.accountID) : undefined}
         data-testid={`member-profile-link-${m.accountID}`}
       >
@@ -149,7 +149,7 @@ export function ConvoSettingsScreen({
             {/* Camera badge — proto:337: absolute right:-2 bottom:-2 w:26 h:26 pill accentFill 2px bg */}
             {(onEditAvatar || iAmAdmin) && (
               <button
-                className={`${tapClass} absolute -right-0.5 -bottom-0.5 w-[26px] h-[26px] rounded-pill bg-arcan-accent-fill border-2 border-bg justify-center`}
+                className={`${tapClass} absolute -right-0.5 -bottom-0.5 w-[26px] h-[26px] rounded-pill bg-arcan-accent-fill border-2 border-bg justify-center hover:opacity-90 active:opacity-80`}
                 onClick={onEditAvatar}
                 aria-label="edit group photo"
                 {...(avatarEditTestId ? { "data-testid": avatarEditTestId } : {})}
@@ -162,7 +162,7 @@ export function ConvoSettingsScreen({
           {/* Title + pencil (or inline edit slot) — proto:339 */}
           {titleEditSlot ?? (
             <button
-              className={`${tapClass} gap-2`}
+              className={`${tapClass} group gap-2 rounded-r-2 hover:bg-panel-2 active:bg-hairline`}
               onClick={onEditTitle}
               {...(editTitleTestId ? { "data-testid": editTitleTestId } : {})}
             >
@@ -175,7 +175,7 @@ export function ConvoSettingsScreen({
               >
                 {title}
               </span>
-              <Icon d="pencil" size={14} className="text-dim" />
+              <Icon d="pencil" size={14} className="text-dim group-hover:text-text group-active:text-text transition-colors duration-fast ease-out" />
             </button>
           )}
 
@@ -206,7 +206,7 @@ export function ConvoSettingsScreen({
             {/* "add people" pill — proto:345; admin-only (matches old MembersRoute) */}
             {iAmAdmin && (
               <button
-                className={`${tapClass} gap-[6px] px-[11px] py-[5px] rounded-pill bg-arcan-accent-fill`}
+                className={`${tapClass} gap-[6px] px-[11px] py-[5px] rounded-pill bg-arcan-accent-fill hover:opacity-90 active:opacity-80`}
                 onClick={onAddPeople}
                 {...(addMemberTestId ? { "data-testid": addMemberTestId } : {})}
               >

@@ -139,8 +139,10 @@ export function MessageRow({
   onAvatar?: () => void;
   /** intent-fix (feedback round 2, non-visual): right-click / long-press
    * opens the message context menu. Rendering is unchanged; parity
-   * unaffected (default undefined). */
-  onContext?: () => void;
+   * unaffected (default undefined). Receives the interaction point in
+   * viewport coords so the container can anchor the menu at the press
+   * (feedback rounds R2+R3: pointer-anchored portal placement). */
+  onContext?: (at: { x: number; y: number }) => void;
   /** UI motion (2026-07-18): plays arcan-rise on the row once (class stays
    * so re-renders during the 200ms play don't cancel it). Parity unaffected
    * (default undefined; galleries freeze animations). */
@@ -182,7 +184,7 @@ export function MessageRow({
         ? {
             onContextMenu: (e: ReactMouseEvent) => {
               e.preventDefault();
-              onContext();
+              onContext({ x: e.clientX, y: e.clientY });
             },
             onPointerDown: (e: ReactPointerEvent) => {
               if (e.pointerType === "mouse") return;
@@ -210,7 +212,7 @@ export function MessageRow({
               };
               timer = window.setTimeout(() => {
                 cancel();
-                onContext();
+                onContext({ x: startX, y: startY });
               }, 500);
               el.addEventListener("pointerup", cancel);
               el.addEventListener("pointercancel", cancel);

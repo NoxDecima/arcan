@@ -66,7 +66,7 @@ export function LinkDeviceScreen({
             <button
               onClick={onCopy}
               data-testid={copyTestId}
-              className={`${tapClass} px-[13px] py-[10px] border-l border-hairline bg-panel gap-[6px]`}
+              className={`${tapClass} px-[13px] py-[10px] border-l border-hairline bg-panel gap-[6px] hover:bg-panel-2 active:bg-hairline`}
             >
               <Icon d="copy" size={13} className="text-arcan-accent" />
               {/* 600 11px/1 body → font-body font-semibold text-ui-value */}
