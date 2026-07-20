@@ -7,9 +7,11 @@
 // attachments renders a tight cover-cropped grid that fills the bubble's
 // attachment width exactly (WhatsApp/Signal style) — 2: side-by-side squares;
 // 3: one wide 2:1 on top + two squares; 4: 2×2; 5+: 2×2 with a "+N" scrim on
-// the last cell (N = count − 4 hidden). Tapping a cell opens the existing
-// lightbox at that image. Messages with 0–1 images keep the original
-// flex-wrap tile path untouched (round-4 single-image sizing preserved).
+// the last cell (N = count − 4 hidden). Clicking the "+N" scrim EXPANDS the
+// grid to show ALL images (2-column rows; odd remainder gets a full-width 2:1
+// cell). When expanded every cell opens the lightbox at its own image.
+// Messages with 0–1 images keep the original flex-wrap tile path untouched
+// (round-4 single-image sizing preserved).
 import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
 import {
@@ -47,7 +49,7 @@ function GridCell({
   attachment: any;
   loadAs: any;
   cellClass: string;
-  /** When set, renders the "+N" scrim (5+ images, last visible cell). */
+  /** When set, renders the "+N" scrim; clicking expands (does NOT open lightbox). */
   overlayCount?: number;
   onOpen: () => void;
 }) {
@@ -61,7 +63,7 @@ function GridCell({
       data-testid="attachment-grid-cell"
       aria-label={
         overlayCount != null
-          ? `Open ${filename} (+${overlayCount} more)`
+          ? `Show ${overlayCount} more image${overlayCount === 1 ? "" : "s"}`
           : `Open ${filename}`
       }
     >
@@ -89,8 +91,19 @@ function GridCell({
   );
 }
 
+/** Cell class for the expanded grid (2-column layout, all images visible).
+ * For an odd total, the last image gets a full-width 2:1 cell matching the
+ * 3-image hero aesthetic. */
+function expandedCellClass(totalCount: number, index: number): string {
+  if (totalCount % 2 === 1 && index === totalCount - 1)
+    return "col-span-2 aspect-[2/1]";
+  return "aspect-square";
+}
+
 export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAttachmentsProps) {
   const [lightbox, setLightbox] = useState<{ src: string; filename?: string } | null>(null);
+  // Per-message expanded state: reset on unmount (fine per spec).
+  const [expanded, setExpanded] = useState(false);
 
   // Revoke the lightbox blob URL on unmount and whenever it changes.
   useEffect(() => {
@@ -125,8 +138,13 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
     const files = attachments.filter(
       (att: any) => !isImageAttachment(att?.mimeType ?? ""),
     );
-    const visible = images.slice(0, 4);
-    const hidden = images.length - visible.length;
+
+    // Collapsed: show 4 cells with "+N" scrim on the last when 5+ images.
+    // Expanded: show all images in 2-column rows.
+    const hasHidden = images.length > 4;
+    const visible = expanded ? images : images.slice(0, 4);
+    const hidden = images.length - 4; // always the total hidden count for the scrim
+
     return (
       <>
         <div
@@ -143,18 +161,30 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
             // (max(3, bubbleRadius 14 − pad 6), see kit/bubble.tsx).
             className="grid grid-cols-2 gap-[2px] rounded-[8px] overflow-hidden"
           >
-            {visible.map((att: any, i: number) => (
-              <GridCell
-                key={(att as any)?.$jazz?.id ?? i}
-                attachment={att}
-                loadAs={me}
-                cellClass={gridCellClass(visible.length, i)}
-                overlayCount={
-                  i === visible.length - 1 && hidden > 0 ? hidden : undefined
-                }
-                onOpen={() => void openLightbox(att)}
-              />
-            ))}
+            {visible.map((att: any, i: number) => {
+              // Collapsed mode: last cell of 4 gets the "+N" scrim when there
+              // are hidden images. Clicking expands — does NOT open lightbox.
+              const isScrimCell =
+                !expanded && hasHidden && i === visible.length - 1;
+              return (
+                <GridCell
+                  key={(att as any)?.$jazz?.id ?? i}
+                  attachment={att}
+                  loadAs={me}
+                  cellClass={
+                    expanded
+                      ? expandedCellClass(images.length, i)
+                      : gridCellClass(visible.length, i)
+                  }
+                  overlayCount={isScrimCell ? hidden : undefined}
+                  onOpen={
+                    isScrimCell
+                      ? () => setExpanded(true)
+                      : () => void openLightbox(att)
+                  }
+                />
+              );
+            })}
           </div>
           {files.length > 0 && (
             <div
