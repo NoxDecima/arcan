@@ -17,26 +17,25 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;
 }
 
-function isImage(mimeType: string): boolean {
+export function isImageAttachment(mimeType: string): boolean {
   return mimeType.startsWith("image/");
 }
 
-export function AttachmentTile({
-  attachment,
-  mode,
-  loadAs,
-  onRemove,
-  onImageClick,
-}: AttachmentTileProps) {
+/**
+ * Resolves an image attachment's FileStream to an object URL (revoked on
+ * cleanup). Shared by AttachmentTile and the multi-image grid cells in
+ * message-attachments.tsx. Returns null for non-images / while loading.
+ */
+export function useAttachmentImageUrl(
+  attachment: any,
+  loadAs?: any,
+): string | null {
   const mimeType = attachment?.mimeType ?? "";
-  const filename = attachment?.filename ?? "file";
-  const size = attachment?.size ?? 0;
   const streamID = attachment?.data?.$jazz?.id ?? null;
-
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!streamID || !loadAs || !isImage(mimeType)) {
+    if (!streamID || !loadAs || !isImageAttachment(mimeType)) {
       setUrl(null);
       return;
     }
@@ -57,6 +56,27 @@ export function AttachmentTile({
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [streamID, loadAs, mimeType]);
+
+  return url;
+}
+
+function isImage(mimeType: string): boolean {
+  return isImageAttachment(mimeType);
+}
+
+export function AttachmentTile({
+  attachment,
+  mode,
+  loadAs,
+  onRemove,
+  onImageClick,
+}: AttachmentTileProps) {
+  const mimeType = attachment?.mimeType ?? "";
+  const filename = attachment?.filename ?? "file";
+  const size = attachment?.size ?? 0;
+  const streamID = attachment?.data?.$jazz?.id ?? null;
+
+  const url = useAttachmentImageUrl(attachment, loadAs);
 
   // Image tile
   if (isImage(mimeType)) {

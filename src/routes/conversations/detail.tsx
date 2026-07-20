@@ -1029,7 +1029,14 @@ export function ConversationDetailRoute() {
         !malformed &&
         Array.from((message as any).attachments ?? []).length > 0;
       const attSlot = hasAttachments ? (
-        <MessageAttachments message={message} isMine={isMine} me={me} />
+        <MessageAttachments
+          message={message}
+          isMine={isMine}
+          me={me}
+          // Bubble att content width: bubbleWidth − 2·6px padding (kit
+          // bubble.tsx uses maxWidth w−12 for the attachment wrapper).
+          gridWidth={bubbleWidth - 12}
+        />
       ) : undefined;
 
       // Inline edit bodyOverride — Rung 4
