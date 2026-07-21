@@ -153,6 +153,28 @@ export function getContact(me: any, accountID: string): any | undefined {
   return c && typeof c.contactAccountID === "string" ? c : undefined;
 }
 
+/**
+ * Legacy-list lookup, REGARDLESS of record presence (repair affordance,
+ * migration-review carry-over 2026-07-21).
+ *
+ * The migration's concurrent-two-device race can strand a contact that
+ * exists ONLY in the legacy contactBook: both devices backfill, the LWW
+ * loser's `contacts` snapshot wins the record ref, and any entry the loser's
+ * snapshot missed is gone from the RECORD while still sitting in the legacy
+ * list. `getContact` won't see it (the record is present, so no fallback) —
+ * correct, because the record is authoritative for "is this a contact".
+ *
+ * The repair affordance uses this lookup so that, when re-adding such a
+ * counterpart, it copies the stranded entry's pinnedFingerprint — a
+ * legitimate TOFU pin, strictly older than any re-derivation from the live
+ * account — instead of re-pinning the counterpart's CURRENT key.
+ */
+export function getLegacyContact(me: any, accountID: string): any | undefined {
+  return legacyContactBookEntries(me).find(
+    (c: any) => c.contactAccountID === accountID,
+  );
+}
+
 /** App-side ack timeout — Inbox sendMessage has NONE upstream (canon §2a). */
 export const REQUEST_ACK_TIMEOUT_MS = 15_000;
 /** Request expiry floor: 7 days from send, decoupled from invitation TTL (FM9). */

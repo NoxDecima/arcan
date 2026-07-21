@@ -1331,6 +1331,24 @@ export function ConversationDetailRoute() {
           </button>
         </div>
       )}
+      {counterpartAccountID && !contact && (
+        <div
+          className="flex items-center justify-between gap-3 px-3 py-2 border-t border-hairline"
+          data-testid="not-a-contact-banner"
+        >
+          <span className="font-body text-ui-sub text-dim">
+            not in your contacts.
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate(`/profile/${counterpartAccountID}`)}
+            data-testid="not-a-contact-add-btn"
+            className="shrink-0 px-2 py-1 font-body text-ui-sub text-arcan-accent rounded border border-hairline"
+          >
+            view profile to add
+          </button>
+        </div>
+      )}
       <ChatComposer
         value={composerText}
         onChange={setComposerText}
