@@ -8,7 +8,7 @@ import {
   sendConnectionRequest,
   type SendConnectionRequestResult,
 } from "./handshake";
-import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getForeignAccountPubkeyHex } from "@/auth/pubkey";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -278,7 +278,9 @@ export async function requestConnectionFromGroupMember(
   }
   let fingerprint = "";
   try {
-    fingerprint = getAccountPubkeyHex(target as any);
+    // MUST be the foreign-account helper: getAccountPubkeyHex is node-derived
+    // and would snapshot MY fingerprint as the counterpart's TOFU pin (C1).
+    fingerprint = getForeignAccountPubkeyHex(target as any);
   } catch {
     // fall through to the guard below
   }

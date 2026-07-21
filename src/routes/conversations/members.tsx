@@ -369,8 +369,16 @@ export function MembersRoute() {
         toast({ icon: "check", text: "already a contact", tone: "neutral" });
       } else if (result.outcome === "send-failed") {
         toast({ icon: "alert", text: "couldn't send — will retry", tone: "error" });
-      } else {
+      } else if (result.outcome === "sent") {
         toast({ icon: "check", text: "request sent", tone: "accent" });
+      } else {
+        // "unavailable" (root records still syncing) or any future outcome:
+        // never claim success we didn't get.
+        toast({
+          icon: "alert",
+          text: "couldn't send — still syncing, try again",
+          tone: "error",
+        });
       }
     } catch {
       toast({ icon: "alert", text: "couldn't send request", tone: "error" });

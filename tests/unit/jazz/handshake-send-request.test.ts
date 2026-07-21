@@ -36,10 +36,18 @@ const COUNTERPART = {
 function makeMe(opts: {
   contacts?: Record<string, any>;
   outgoing?: Record<string, any>;
+  /** Override $jazz.has — lets a key be "present" while the proxy read is null. */
+  outgoingHas?: (key: string) => boolean;
 } = {}) {
   const outgoingSet = vi.fn();
   const outgoing: any = { ...(opts.outgoing ?? {}) };
-  outgoing.$jazz = { set: outgoingSet };
+  outgoing.$jazz = {
+    set: outgoingSet,
+    // Real CoRecord semantics: has(key) reflects raw key presence.
+    has: vi.fn((key: string) =>
+      opts.outgoingHas ? opts.outgoingHas(key) : key in (opts.outgoing ?? {}),
+    ),
+  };
   const contacts: any = { ...(opts.contacts ?? {}) };
   contacts.$jazz = { set: vi.fn() };
   const me = { $jazz: { id: "me-acc" }, root: { contacts, outgoingRequests: outgoing } };
@@ -80,6 +88,24 @@ describe("sendConnectionRequest", () => {
     });
     expect(result.outcome).toBe("already-pending");
     expect(mintSpy).not.toHaveBeenCalled();
+  });
+
+  test("present-but-unloaded outgoing entry → unavailable; never re-points the key", async () => {
+    // Real CoRecord semantics: $jazz.has(key) is true while the proxy read
+    // still returns null until the entry CoValue loads. Minting here would
+    // silently re-point the key at a fresh entry, orphaning the durable
+    // pending request (mirrors the upsertContact guard).
+    const { me, outgoingSet } = makeMe({
+      outgoingHas: (key) => key === "acc-inviter",
+    });
+    const result = await sendConnectionRequest(me as any, COUNTERPART, {
+      channel: "invite",
+      requestChannel: "link",
+    });
+    expect(result.outcome).toBe("unavailable");
+    expect(mintSpy).not.toHaveBeenCalled();
+    expect(deliverSpy).not.toHaveBeenCalled();
+    expect(outgoingSet).not.toHaveBeenCalled();
   });
 
   test("happy path: durable entry written BEFORE delivery; ack sets deliveredAt", async () => {

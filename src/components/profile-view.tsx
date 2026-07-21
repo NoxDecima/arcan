@@ -11,7 +11,7 @@ import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
 import { getContact } from "@/jazz/handshake";
 import { setProfileAvatar, clearProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
-import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getAccountPubkeyHex, getForeignAccountPubkeyHex } from "@/auth/pubkey";
 import {
   findOrCreate1to1Conversation,
   find1to1Conversation,
@@ -191,7 +191,9 @@ export function ProfileView({ accountID }: ProfileViewProps) {
       fingerprintHex = pin;
     } else if (otherAccount) {
       try {
-        fingerprintHex = getAccountPubkeyHex(otherAccount as any);
+        // Foreign account → target-derived helper; the node-derived
+        // getAccountPubkeyHex would display MY fingerprint here (C1).
+        fingerprintHex = getForeignAccountPubkeyHex(otherAccount as any);
       } catch {
         fingerprintHex = "";
       }

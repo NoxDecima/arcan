@@ -218,6 +218,18 @@ export async function sendConnectionRequest(
     return { outcome: "already-contact" };
   }
 
+  // Present-but-unloaded guard (mirrors upsertContact): $jazz.has(key) stays
+  // true while the proxy read is still null because the entry CoValue hasn't
+  // loaded yet. Minting here would silently re-point the key at a fresh
+  // entry, orphaning the durable pending request — surface "unavailable" and
+  // let the caller retry after sync.
+  if (
+    outgoing.$jazz?.has?.(counterpart.accountID) &&
+    !outgoing[counterpart.accountID]
+  ) {
+    return { outcome: "unavailable" };
+  }
+
   const existing = outgoing[counterpart.accountID];
   if (existing && existing.status === "pending" && !existing.archivedAt) {
     const expMs = existing.request?.expiresAt
