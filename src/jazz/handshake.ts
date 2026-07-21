@@ -398,6 +398,35 @@ export function shouldPruneIncomingRequest(
 }
 
 /**
+ * Foreign-payload prune predicate for incomingConnectionRequests entries
+ * (followup #52). Before the inbox dispatcher landed, ConversationNotification
+ * payloads could be persisted into the request record as phantoms — shape:
+ * conversationID set, NO requesterAccountID (see the shape guard in
+ * use-incoming-connection-requests.ts handleIncomingConnectionRequest). They
+ * are render-filtered but were never removed; this predicate lets the startup
+ * prune delete them — but ONLY when the entry is genuinely loaded.
+ *
+ * Load-state check: `$isLoaded === true`. In jazz-tools 0.20.18 every loaded
+ * CoValue instance gets `$isLoaded: { value: true }` defined at construction
+ * (chunk-MIPBSAS7.js line 195; interfaces.d.ts line 42), while a set-but-
+ * unloaded entry read off the record proxy is a truthy stub
+ * `{ $jazz: { id, loadingState }, $isLoaded: false }` (createUnloadedCoValue,
+ * chunk-MIPBSAS7.js line 8955, returned via accessChildByKey →
+ * SubscriptionScope.getCurrentValue for the UNAVAILABLE / UNAUTHORIZED /
+ * DELETED / LOADING states). A header-only REAL request is therefore a truthy
+ * object whose schema fields all read undefined — indistinguishable from a
+ * phantom by shape alone. Anything not `$isLoaded === true` (stubs, null,
+ * undefined, unknown shapes) is NEVER pruned: it could be a real request
+ * still syncing.
+ */
+export function isPrunableForeignIncomingEntry(entry: unknown): boolean {
+  if (!entry || typeof entry !== "object") return false;
+  const e = entry as { $isLoaded?: unknown; requesterAccountID?: unknown };
+  if (e.$isLoaded !== true) return false;
+  return typeof e.requesterAccountID !== "string";
+}
+
+/**
  * Prune predicate for pendingNotifications entries (carried review item 1).
  * Entries older than 30 days are permanently-undeliverable bookkeeping — any
  * counterpart whose notification we couldn't deliver in 30 days has long
@@ -412,10 +441,18 @@ export function shouldPrunePendingNotification(
 
 /**
  * Startup pruning (spec §5): settled incoming requests past retention,
- * expired pairing ceremonies, revoked/expired invitations, and stale
+ * loaded foreign payloads in the request record (followup #52), expired
+ * pairing ceremonies, revoked/expired invitations, and stale
  * pendingNotifications entries (carried review item 1 — permanently-
  * undeliverable after 30 days). All single-writer state — no cross-device
  * coordination needed.
+ *
+ * The legacy incomingRequests CoList is deliberately NOT pruned here even
+ * though it can hold the same pre-dispatcher foreign payloads: it is
+ * write-frozen (read only via the migration backfill + the reader fallback
+ * in use-incoming-connection-requests.ts), and adding a pruning writer would
+ * break that promise for marginal gain — the retirement plan (followup #53)
+ * removes the list wholesale. Its phantoms stay render-filtered until then.
  */
 export function pruneHandshakeState(me: any): void {
   const nowMs = Date.now();
@@ -424,6 +461,20 @@ export function pruneHandshakeState(me: any): void {
   if (incoming && typeof incoming.$jazz?.delete === "function") {
     for (const [id, r] of Object.entries(incoming as Record<string, any>)) {
       if (id === "$jazz" || !r) continue;
+      // Foreign-payload cleanup (followup #52): loaded entries with no
+      // string requesterAccountID are pre-dispatcher phantoms, not requests.
+      // Unloaded stubs/null are never touched — see the predicate's contract.
+      if (isPrunableForeignIncomingEntry(r)) {
+        incoming.$jazz.delete(id);
+        const dismissedForeign = me?.root?.dismissedRequests;
+        if (
+          dismissedForeign?.[id] &&
+          typeof dismissedForeign.$jazz?.delete === "function"
+        ) {
+          dismissedForeign.$jazz.delete(id);
+        }
+        continue;
+      }
       const prune = shouldPruneIncomingRequest(
         {
           approvedAtMs: r.approvedAt
