@@ -3,8 +3,16 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // --- mocks: keep the component on the "confirm" phase deterministically ---
+// mockAccount is swappable per-test: the confirm screen renders from the
+// GUEST invitation load, so it appears even while `me` is still unloaded —
+// the accept CTA must be disabled in that window (regression pin below).
+let mockAccount: any = {
+  $isLoaded: true,
+  profile: { displayName: "Me" },
+  root: {},
+};
 vi.mock("jazz-tools/react", () => ({
-  useAccount: () => ({ $isLoaded: true, profile: { displayName: "Me" }, root: {} }),
+  useAccount: () => mockAccount,
   useIsAuthenticated: () => true,
 }));
 
@@ -37,7 +45,9 @@ import { InviteRoute } from "@/routes/invite";
 
 beforeEach(() => {
   // The route reads window.location for the fragment; jsdom default is fine
-  // because parseInvitationURL is mocked. Nothing to set up.
+  // because parseInvitationURL is mocked. Reset the account to loaded.
+  mockAccount = { $isLoaded: true, profile: { displayName: "Me" }, root: {} };
+  loadInvitationAsGuest.mockClear();
 });
 
 describe("InviteRoute confirm phase", () => {
@@ -61,5 +71,35 @@ describe("InviteRoute confirm phase", () => {
     expect(screen.getByTestId("invite-decline-btn").textContent).toContain(
       "cancel",
     );
+    // Loaded account → the accept CTA is live.
+    expect(
+      (screen.getByTestId("invite-accept-btn") as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  // Regression pin (2026-07-21, e2e invite-sent stall): the confirm screen
+  // renders from the guest invitation load, so it can appear BEFORE the
+  // viewer's account graph resolves. onConnect silently no-ops while
+  // !me.$isLoaded — an enabled button in that window eats the tap and the
+  // screen never advances (observed as the second establishContact pairing
+  // timing out at invite-sent under sync-server load). The CTA must be
+  // disabled until the account is loaded.
+  test("unloaded account: confirm renders but the accept CTA is disabled", async () => {
+    mockAccount = { $isLoaded: false };
+    render(
+      <MemoryRouter>
+        <InviteRoute />
+      </MemoryRouter>
+    );
+    // The window exists: confirm renders without `me`.
+    expect(await screen.findByTestId("invite-confirm")).toBeTruthy();
+    const accept = screen.getByTestId("invite-accept-btn") as HTMLButtonElement;
+    expect(accept.disabled).toBe(true);
+    // A click in the window is impossible (not silently dropped): the
+    // handler must not run — no click-time invitation re-validation fires.
+    const callsBefore = loadInvitationAsGuest.mock.calls.length;
+    accept.click();
+    expect(loadInvitationAsGuest.mock.calls.length).toBe(callsBefore);
+    expect(screen.getByTestId("invite-confirm")).toBeTruthy();
   });
 });

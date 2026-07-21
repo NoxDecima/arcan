@@ -22,6 +22,7 @@ export function ContactRequestScreen({
   safetySlot,
   onAccept,
   onDecline,
+  acceptDisabled,
   acceptLabel = "request to become contacts",
   declineLabel = "cancel",
   rootTestId,
@@ -41,6 +42,14 @@ export function ContactRequestScreen({
   safetySlot?: ReactNode;
   onAccept: () => void;
   onDecline: () => void;
+  /** intent-fix (2026-07-21, not in proto): disable the accept CTA while the
+   * viewer's account graph is still loading. The screen renders from the
+   * GUEST-loaded invitation, so it can appear before `me` resolves; an
+   * enabled button whose handler silently no-ops on an unloaded account
+   * would eat the tap (observed as the e2e invite-sent stall — the second
+   * establishContact pairing under sync-server load). Decline stays enabled:
+   * it only navigates. */
+  acceptDisabled?: boolean;
   acceptLabel?: string;
   declineLabel?: string;
   /** data-testid for the auth card; "invite-confirm". */
@@ -124,6 +133,7 @@ export function ContactRequestScreen({
         full
         label={acceptLabel}
         onClick={onAccept}
+        disabled={acceptDisabled}
         data-testid={acceptTestId}
       />
       {/* hf:256 — decline (danger) */}
