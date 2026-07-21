@@ -187,6 +187,51 @@ export function getLegacyContact(me: any, accountID: string): any | undefined {
   );
 }
 
+/**
+ * Startup reconcile pass (stuck-account fix, 2026-07-21) — the safety net
+ * that makes the contacts backfill's $onError tolerance safe (ArcanAccount
+ * block 2i): a legacy contactBook entry that was unloadable at migration
+ * time is SKIPPED by the backfill, so its contact exists only in the legacy
+ * list. If that entry loads on a later launch, this pass copies it into the
+ * contacts record with its ORIGINAL TOFU pin.
+ *
+ * Rules (all no-ops are silent — this runs once per launch from the watcher):
+ * - contacts record absent → no-op (migration still pending; the backfill
+ *   itself will run the full planner on a future launch).
+ * - Only LOADED legacy entries with a string contactAccountID AND a string
+ *   pinnedFingerprint are considered — an unloaded/null entry has an
+ *   unreadable pin and is skipped; it heals here on a later launch once it
+ *   loads. (Reads the legacy list only — the write-freeze on it holds.)
+ * - Key already in the record → untouched. The record is authoritative;
+ *   re-upserting a stale legacy dup would re-flag a fingerprint conflict the
+ *   migration planner already resolved (oldest-pin TOFU) on every launch.
+ * - Missing key → upsertContact with the legacy pin verbatim +
+ *   displayNameLocal preserved (same data mapping as the migration planner's
+ *   keep path). upsertContact never overwrites pins by construction.
+ */
+export function reconcileLegacyContacts(me: any): void {
+  const contacts = me?.root?.contacts;
+  if (!contacts || typeof contacts.$jazz?.set !== "function") return;
+  for (const legacy of legacyContactBookEntries(me)) {
+    if (
+      typeof legacy.pinnedFingerprint !== "string" ||
+      legacy.pinnedFingerprint.length === 0 ||
+      legacy.contactAccountID.length === 0
+    ) {
+      continue; // unloaded/malformed — pin unreadable; heals once it loads
+    }
+    if (contacts.$jazz.has?.(legacy.contactAccountID)) continue;
+    upsertContact(me, {
+      contactAccountID: legacy.contactAccountID,
+      fingerprint: legacy.pinnedFingerprint,
+      displayName:
+        typeof legacy.displayNameLocal === "string"
+          ? legacy.displayNameLocal
+          : "",
+    });
+  }
+}
+
 /** App-side ack timeout — Inbox sendMessage has NONE upstream (canon §2a). */
 export const REQUEST_ACK_TIMEOUT_MS = 15_000;
 /** Request expiry floor: 7 days from send, decoupled from invitation TTL (FM9). */
@@ -560,6 +605,9 @@ export function useOutgoingRequestWatcher(): void {
     resolve: {
       root: {
         contacts: { $each: { $onError: "catch" } },
+        // Legacy list resolved for reconcileLegacyContacts (stuck-account
+        // fix): entries that fail to load are caught → null → skipped there.
+        contactBook: { $each: { $onError: "catch" } },
         outgoingRequests: { $each: { request: true, $onError: "catch" } },
         incomingConnectionRequests: { $each: { $onError: "catch" } },
         dismissedRequests: true,
@@ -671,6 +719,9 @@ export function useOutgoingRequestWatcher(): void {
       retriedThisLaunch.current = true;
       retryFailed();
       pruneHandshakeState(me);
+      // Heal contacts whose legacy entry loaded after the migration backfill
+      // skipped it (block 2i's $onError tolerance) — see the function's doc.
+      reconcileLegacyContacts(me);
     }
     window.addEventListener("online", retryFailed);
     return () => window.removeEventListener("online", retryFailed);
