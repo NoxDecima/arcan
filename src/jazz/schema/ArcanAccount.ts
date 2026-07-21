@@ -390,7 +390,7 @@ export const ArcanAccount = co.account({
         .map((c, index) => ({
           contactAccountID: c?.contactAccountID as string,
           pinnedFingerprint: c?.pinnedFingerprint as string,
-          addedAtMs: c?.addedAt ? new Date(c.addedAt).getTime() : 0,
+          addedAtMs: (() => { const t = new Date(c.addedAt).getTime(); return c?.addedAt && Number.isFinite(t) ? t : 0; })(),
           index,
         }))
         .filter(

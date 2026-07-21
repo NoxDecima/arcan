@@ -3,9 +3,10 @@
  * migration backfill (contact-robustness slice, spec §5).
  *
  * Policy: per account ID, the LATEST entry wins (freshest displayName/notes)
- * — EXCEPT when duplicate entries disagree on pinnedFingerprint: then the
- * entry with the OLDEST pin is kept (TOFU — never upgrade a pin silently,
- * threat model §6) and the latest differing fingerprint is reported as a
+ * — EXCEPT when duplicate entries disagree on pinnedFingerprint: TOFU
+ * (threat model §6) pins the oldest observed fingerprint; among all entries
+ * that carry that pin, the LATEST one is kept (preserving freshest metadata).
+ * The latest entry whose fingerprint DIFFERS from the pin is reported as a
  * conflict for the UI to surface.
  *
  * Pure so it is unit-testable without a Jazz runtime; ArcanAccount.ts maps
@@ -55,14 +56,21 @@ export function planContactMigration(
       keepIndexByAccountID[accountID] = latest.index;
       continue;
     }
-    // Fingerprint disagreement: keep the OLDEST pin (min addedAtMs, ties
-    // broken by lower list index) and report the latest differing value.
+    // Fingerprint disagreement: pin = oldest entry's fingerprint (TOFU).
+    // Keep the LATEST entry among those sharing that pin (freshest metadata).
     const oldest = group.reduce((a, b) =>
       b.addedAtMs < a.addedAtMs || (b.addedAtMs === a.addedAtMs && b.index < a.index)
         ? b
         : a,
     );
-    keepIndexByAccountID[accountID] = oldest.index;
+    const pinnedFp = oldest.pinnedFingerprint;
+    const pinGroup = group.filter((e) => e.pinnedFingerprint === pinnedFp);
+    const latestWithPin = pinGroup.reduce((a, b) =>
+      b.addedAtMs > a.addedAtMs || (b.addedAtMs === a.addedAtMs && b.index > a.index)
+        ? b
+        : a,
+    );
+    keepIndexByAccountID[accountID] = latestWithPin.index;
     const latestDiffering = group
       .filter((e) => e.pinnedFingerprint !== oldest.pinnedFingerprint)
       .reduce((a, b) =>

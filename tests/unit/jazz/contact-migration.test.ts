@@ -72,6 +72,20 @@ describe("planContactMigration", () => {
     });
   });
 
+  test("conflict: keeps LATEST same-pin entry (freshest metadata), not oldest entry", () => {
+    // fp-old appears at t=1000 (name "A") and t=3000 (name "B"); fp-new at t=2000.
+    // Pin = fp-old (oldest entry's fp). Latest with that pin = index 2 (t=3000).
+    const plan = planContactMigration([
+      entry("acc-a", "fp-old", 1000, 0), // name "A" — oldest, establishes pin
+      entry("acc-a", "fp-new", 2000, 1), // differing fp — conflict candidate
+      entry("acc-a", "fp-old", 3000, 2), // name "B" — same pin, freshest metadata
+    ]);
+    expect(plan.keepIndexByAccountID).toEqual({ "acc-a": 2 });
+    expect(plan.conflictByAccountID).toEqual({
+      "acc-a": { observedFingerprint: "fp-new" },
+    });
+  });
+
   test("empty input → empty plan", () => {
     const plan = planContactMigration([]);
     expect(plan.keepIndexByAccountID).toEqual({});
