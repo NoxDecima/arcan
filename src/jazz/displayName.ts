@@ -3,13 +3,15 @@
  * MembersRoute. Resolution order:
  *
  *   1. self → me.profile.displayName ?? "Me"
- *   2. contactBook entry whose contactAccountID matches
+ *   2. contacts-record entry keyed by accountID (displayNameLocal)
  *   3. group member whose account.$jazz.id matches, using profile.name then profile.displayName
  *   4. "Unknown"
  *
  * The helper is pure: no async, no Jazz mutations. Inputs are already-loaded
  * Jazz CoValues / proxies.
  */
+import { getContact } from "@/jazz/handshake";
+
 export function resolveDisplayName(args: {
   accountID: string;
   me: any;
@@ -22,13 +24,9 @@ export function resolveDisplayName(args: {
     return me?.profile?.displayName ?? "Me";
   }
 
-  const contactBook = me?.root?.contactBook;
-  if (contactBook) {
-    for (const c of Array.from(contactBook) as any[]) {
-      if (c?.contactAccountID === accountID && c?.displayNameLocal) {
-        return c.displayNameLocal as string;
-      }
-    }
+  const contactEntry = getContact(me, accountID);
+  if (contactEntry?.displayNameLocal) {
+    return contactEntry.displayNameLocal as string;
   }
 
   if (group?.getDirectMembers) {

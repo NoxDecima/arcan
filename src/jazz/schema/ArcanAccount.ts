@@ -1,11 +1,14 @@
 import { co, z, Group, Inbox } from "jazz-tools";
-import { ContactBook } from "./Contact";
+import { Contact, ContactBook } from "./Contact";
+import { OutgoingConnectionRequest } from "./OutgoingConnectionRequest";
+import { PendingNotification } from "./PendingNotification";
 import { DeviceRecord } from "./DeviceRecord";
 import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
 import { ConnectionRequest } from "./ConnectionRequest";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
+import { planContactMigration } from "../contact-migration";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
@@ -14,7 +17,7 @@ import { getCurrentSessionFingerprint } from "@/auth/session";
  * IMPORTANT DEVIATION FROM PLAN:
  * jazz-tools 0.20.18 `co.account()` accepts only `{ profile, root }` as
  * its shape (enforced by `BaseAccountShape`). The plan's top-level account
- * fields (`contactBook`, `devices`, `invitesIssued`) cannot be direct keys
+ * fields (`contactBook`, `devices`) cannot be direct keys
  * of the account — they must live inside the `root` CoMap instead.
  *
  * `profile` uses `co.profile()` (not `co.map()`) because the profile slot
@@ -32,7 +35,6 @@ import { getCurrentSessionFingerprint } from "@/auth/session";
 export const ArcanAccountRoot = co.map({
   contactBook: ContactBook,
   devices: co.list(DeviceRecord),
-  invitesIssued: co.list(Invitation),
   knownConversations: co.list(Conversation),
   // Slice 8 — per-conversation read cutoff (ms epoch). Keys are
   // Conversation IDs; absent keys mean "never opened" (all unread).
@@ -72,11 +74,33 @@ export const ArcanAccountRoot = co.map({
   // recipient's Inbox. jazz-tools Inbox.subscribe is one-shot+destructive (it
   // marks each message `processed` in a persisted stream after first delivery),
   // so surfacing requests via ephemeral component-local state lost them on the
-  // /connections/pending full reload. A single app-level subscription
-  // (useIncomingConnectionRequestInbox) drains the inbox into this list once;
-  // readers (the prompt + the pending route) read from here and survive reloads.
+  // /connections/pending full reload. A single app-level subscription (now
+  // useInboxDispatcher) drains the inbox into durable account state once;
+  // readers (the prompt + the pending route) read from there and survive
+  // reloads.
   // OPTIONAL for back-compat with pre-Unit-9 accounts (backfill below).
   incomingRequests: co.list(ConnectionRequest).optional(),
+  // ── Contact-robustness slice (2026-07-20) ──────────────────────────────
+  // Keyed-record replacements for the fragile CoLists (Jazz canon: duplicate-
+  // sensitive facts live in co.records — per-key LWW instead of concurrent-
+  // append duplication). NEW FIELD NAMES, not in-place list→record changes:
+  // the old fields' refs point at raw CoLists that a co.record schema cannot
+  // wrap. Old fields stay (write-frozen) for the migration backfill to read;
+  // removal is a later slice. All optional per the lastReadAt lesson above.
+  //
+  // contacts — THE contact book. Key: contact's account ID.
+  contacts: co.record(z.string(), Contact).optional(),
+  // incomingConnectionRequests — durable drain target. Key: request CoValue ID
+  // (same-key writes from racing drains converge instead of duplicating, FM2).
+  incomingConnectionRequests: co.record(z.string(), ConnectionRequest).optional(),
+  // outgoingRequests — durable outbound-request memory (FM1/FM3/FM4).
+  // Key: counterpart account ID.
+  outgoingRequests: co.record(z.string(), OutgoingConnectionRequest).optional(),
+  // dismissedRequests — replaces dismissedRequestIDs. Key: request CoValue ID.
+  dismissedRequests: co.record(z.string(), z.boolean()).optional(),
+  // pendingNotifications — outbound conversation/member-add notification retry
+  // state. Key: `${conversationID}:${targetAccountID}`.
+  pendingNotifications: co.record(z.string(), PendingNotification).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -127,7 +151,6 @@ export const ArcanAccount = co.account({
   if (!me.$jazz.has("root")) {
     const contactBook = ContactBook.create([], { owner: me });
     const devices = co.list(DeviceRecord).create([], { owner: me });
-    const invitesIssued = co.list(Invitation).create([], { owner: me });
     const knownConversations = co.list(Conversation).create([], { owner: me });
     const pendingPairings = co.list(EphemeralPairing).create([], { owner: me });
     const lastReadAt = co
@@ -158,6 +181,21 @@ export const ArcanAccount = co.account({
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
     const liveInvitations = co.list(Invitation).create([], { owner: me });
     const incomingRequests = co.list(ConnectionRequest).create([], { owner: me });
+    const contacts = co
+      .record(z.string(), Contact)
+      .create({}, { owner: me });
+    const incomingConnectionRequests = co
+      .record(z.string(), ConnectionRequest)
+      .create({}, { owner: me });
+    const outgoingRequests = co
+      .record(z.string(), OutgoingConnectionRequest)
+      .create({}, { owner: me });
+    const dismissedRequests = co
+      .record(z.string(), z.boolean())
+      .create({}, { owner: me });
+    const pendingNotifications = co
+      .record(z.string(), PendingNotification)
+      .create({}, { owner: me });
 
     me.$jazz.set(
       "root",
@@ -165,7 +203,6 @@ export const ArcanAccount = co.account({
         {
           contactBook,
           devices,
-          invitesIssued,
           knownConversations,
           pendingPairings,
           lastReadAt,
@@ -173,6 +210,11 @@ export const ArcanAccount = co.account({
           dismissedRequestIDs,
           liveInvitations,
           incomingRequests,
+          contacts,
+          incomingConnectionRequests,
+          outgoingRequests,
+          dismissedRequests,
+          pendingNotifications,
         },
         { owner: me },
       ),
@@ -322,6 +364,153 @@ export const ArcanAccount = co.account({
     (me.root as any).$jazz.set(
       "incomingRequests",
       co.list(ConnectionRequest).create([], { owner: me }),
+    );
+  }
+
+  // -- 2i. contacts (list → keyed record) backfill — contact-robustness slice.
+  // Guarded by field absence like every other backfill; ensureLoaded the
+  // source list first so NotLoaded proxies can't masquerade as empty data.
+  // On ANY failure we skip WITHOUT setting the field — the migration reruns
+  // on next startup and retries (same recovery contract as block 2g).
+  // Dedup policy lives in planContactMigration (unit-tested): latest entry
+  // wins per account ID, EXCEPT fingerprint conflicts where the OLDEST pin
+  // is kept (TOFU) and the conflict is flagged on the kept Contact.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).contacts
+  ) {
+    try {
+      const loaded = await me.$jazz.ensureLoaded({
+        resolve: { root: { contactBook: { $each: true } } },
+      });
+      const entries = Array.from(
+        (loaded.root as any).contactBook ?? [],
+      ) as any[];
+      const views = entries
+        .map((c, index) => ({
+          contactAccountID: c?.contactAccountID as string,
+          pinnedFingerprint: c?.pinnedFingerprint as string,
+          addedAtMs: (() => { const t = new Date(c.addedAt).getTime(); return c?.addedAt && Number.isFinite(t) ? t : 0; })(),
+          index,
+        }))
+        .filter(
+          (v) =>
+            typeof v.contactAccountID === "string" &&
+            typeof v.pinnedFingerprint === "string",
+        );
+      const plan = planContactMigration(views);
+      const record = co
+        .record(z.string(), Contact)
+        .create({}, { owner: me });
+      for (const [accountID, index] of Object.entries(
+        plan.keepIndexByAccountID,
+      )) {
+        const kept = entries[index];
+        const conflict = plan.conflictByAccountID[accountID];
+        if (conflict && typeof kept?.$jazz?.set === "function") {
+          kept.$jazz.set("fingerprintConflict", true);
+          kept.$jazz.set(
+            "conflictingFingerprint",
+            conflict.observedFingerprint,
+          );
+        }
+        record.$jazz.set(accountID, kept);
+      }
+      (me.root as any).$jazz.set("contacts", record);
+    } catch (e) {
+      console.warn("[migration] contacts backfill skipped (will retry):", e);
+    }
+  }
+
+  // -- 2j. incomingConnectionRequests (list → keyed record) backfill.
+  // Keyed by request CoValue ID — historical drain-race duplicates (FM2)
+  // collapse automatically because same-key sets converge.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).incomingConnectionRequests
+  ) {
+    try {
+      // $onError: "catch" (Task 7 review): one permanently-unavailable
+      // legacy request must otherwise wedge this backfill forever (the
+      // ensureLoaded rejects every session, the field stays absent, and the
+      // inbox drain never starts). Caught entries resolve to null and are
+      // filtered below — dropping an unavailable request is acceptable
+      // because requests expire in ≤7 days. Deliberate contrast with the 2i
+      // contacts backfill, which has NO $onError: TOFU fingerprint pins are
+      // security state and must never be silently dropped.
+      const loaded = await me.$jazz.ensureLoaded({
+        resolve: {
+          root: { incomingRequests: { $each: { $onError: "catch" } } },
+        },
+      });
+      const record = co
+        .record(z.string(), ConnectionRequest)
+        .create({}, { owner: me });
+      const entries = (
+        Array.from((loaded.root as any).incomingRequests ?? []) as any[]
+      ).filter((r) => typeof r?.$jazz?.id === "string"); // null-filter caught entries
+      for (const r of entries) {
+        record.$jazz.set(r.$jazz.id as string, r);
+      }
+      (me.root as any).$jazz.set("incomingConnectionRequests", record);
+    } catch (e) {
+      console.warn(
+        "[migration] incomingConnectionRequests backfill skipped (will retry):",
+        e,
+      );
+    }
+  }
+
+  // -- 2k. dismissedRequests (string list → keyed record) backfill.
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).dismissedRequests
+  ) {
+    try {
+      const loaded = await me.$jazz.ensureLoaded({
+        resolve: { root: { dismissedRequestIDs: true } },
+      });
+      const record = co
+        .record(z.string(), z.boolean())
+        .create({}, { owner: me });
+      for (const id of Array.from(
+        (loaded.root as any).dismissedRequestIDs ?? [],
+      ) as string[]) {
+        if (typeof id === "string") record.$jazz.set(id, true);
+      }
+      (me.root as any).$jazz.set("dismissedRequests", record);
+    } catch (e) {
+      console.warn(
+        "[migration] dismissedRequests backfill skipped (will retry):",
+        e,
+      );
+    }
+  }
+
+  // -- 2l. outgoingRequests + pendingNotifications init (no historical data
+  // exists for either — spec §5 accepts that pre-slice outbound requests are
+  // unrecoverable).
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).outgoingRequests
+  ) {
+    (me.root as any).$jazz.set(
+      "outgoingRequests",
+      co.record(z.string(), OutgoingConnectionRequest).create({}, { owner: me }),
+    );
+  }
+  if (
+    me.root &&
+    typeof (me.root as any).$jazz?.set === "function" &&
+    !(me.root as any).pendingNotifications
+  ) {
+    (me.root as any).$jazz.set(
+      "pendingNotifications",
+      co.record(z.string(), PendingNotification).create({}, { owner: me }),
     );
   }
 

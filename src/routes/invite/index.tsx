@@ -1,8 +1,9 @@
 /**
- * InviteRoute: requester confirmation screen.
+ * InviteRoute: requester confirmation screen — a pure VIEW of watcher-owned
+ * durable handshake state.
  *
  * Phases: loading → confirm (or expired / error) → signin-required
- *         → sending → sent → approved / expired
+ *         → sending → sent
  *
  * Auth-gate logic:
  * The route is mounted outside the auth gate in App.tsx so unauthenticated
@@ -14,16 +15,19 @@
  * TOFU pinning: the inviter's safety number is shown in a collapsible section
  * for out-of-band verification.
  *
- * ALL phase logic + the pending-invite-fragment sessionStorage stash +
- * openedChannel capture + the approval poll + writeInviterAsContact are
- * kept verbatim. Only the render tree swaps to kit presenters.
+ * The 3-second approval poll and the writeInviterAsContact helper are GONE
+ * (contact-robustness Task 8): the screen writes NOTHING contact-related.
+ * Connect goes through sendConnectionRequest (durable-intent-first, invitation
+ * re-validated at click time), and every post-send state — sending / delivered
+ * / failed-will-retry / approved / declined / expired — renders from the
+ * me.root.outgoingRequests entry that the app-level useOutgoingRequestWatcher
+ * owns and transitions. Local phase only marks that the action finished.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount, useIsAuthenticated } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import { SafetyNumber } from "@/components/safety-number";
 import { HAv } from "@/ui/kit/hav";
 import { useAccountAvatars } from "@/components/use-account-avatars";
@@ -31,42 +35,14 @@ import { useSharedGroups } from "@/hooks/use-shared-groups";
 import {
   parseInvitationURL,
   loadInvitationAsGuest,
-  createConnectionRequest,
   readInviteChannel,
 } from "@/jazz/invitations";
+import { sendConnectionRequest, getContact } from "@/jazz/handshake";
 import {
   ContactRequestScreen,
   InviteStatusScreen,
 } from "@/ui/screens";
 import type { ContactRequestVM } from "@/ui/screens/auth-types";
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-async function writeInviterAsContact(
-  me: any,
-  inv: {
-    inviterAccountID: string;
-    inviterFingerprint: string;
-    inviterDisplayName: string;
-  },
-): Promise<void> {
-  const { Contact } = await import("@/jazz/schema/Contact");
-  const contact = Contact.create(
-    {
-      contactAccountID: inv.inviterAccountID,
-      pinnedFingerprint: inv.inviterFingerprint,
-      displayNameLocal: inv.inviterDisplayName,
-      addedAt: new Date(),
-    },
-    { owner: me },
-  );
-  const cb = me.root?.contactBook;
-  if (cb && typeof cb.$jazz?.push === "function") {
-    cb.$jazz.push(contact);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,8 +54,6 @@ type Phase =
   | "confirm"
   | "sending"
   | "sent"
-  | "approved"
-  | "declined"
   | "expired"
   | "error";
 
@@ -93,14 +67,18 @@ export function InviteRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true } },
+      root: {
+        // $onError: "catch" at $each levels (Task 6 review amendment): one
+        // unavailable child must not stall the whole resolve.
+        contacts: { $each: { $onError: "catch" } },
+        outgoingRequests: { $each: { request: true, $onError: "catch" } },
+      },
     },
   });
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [err, setErr] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<any | null>(null);
-  const [request, setRequest] = useState<any | null>(null);
   // Captured at mount so it survives a sign-in round-trip: a QR-scanned
   // URL carries ?via=qr; a pasted/shared link does not. Drives the
   // ConnectionRequest channel (qr → live pop-up; link → silent pending).
@@ -119,6 +97,16 @@ export function InviteRoute() {
     me,
     invitation?.inviterAccountID ? [invitation.inviterAccountID] : [],
   );
+
+  // Durable handshake state (watcher-owned) — the screen is a VIEW of it.
+  const inviterID: string | undefined = invitation?.inviterAccountID;
+  const isContact =
+    me.$isLoaded && inviterID ? !!getContact(me, inviterID) : false;
+  const outEntry: any =
+    me.$isLoaded && inviterID
+      ? (me as any).root?.outgoingRequests?.[inviterID]
+      : undefined;
+  const connectBusyRef = useRef(false);
 
   // --- Load invitation on mount (works unauthenticated too) ---
   useEffect(() => {
@@ -174,66 +162,62 @@ export function InviteRoute() {
     }
   }, [isAuthenticated, phase, invitation]);
 
-  // Poll the ConnectionRequest for approval once sent
-  useEffect(() => {
-    if (phase !== "sent" || !request) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const reloaded = await ConnectionRequest.load(
-          (request as any).$jazz.id as any,
-          { resolve: {} },
-        );
-        if (!reloaded) return;
-        const r = reloaded as any;
-        if (r.approvedAt) {
-          clearInterval(interval);
-          await writeInviterAsContact(me as any, {
-            inviterAccountID: invitation.inviterAccountID,
-            inviterFingerprint: invitation.inviterFingerprint,
-            inviterDisplayName: invitation.inviterDisplayName,
-          });
-          setPhase("approved");
-        } else if (r.deniedAt) {
-          clearInterval(interval);
-          setPhase("declined");
-        } else if (r.expiresAt && new Date(r.expiresAt).getTime() < Date.now()) {
-          clearInterval(interval);
-          setPhase("expired");
-        }
-      } catch {
-        // keep polling
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [phase, request, invitation, me]);
-
   // --- Action ---
 
   const onConnect = async () => {
-    if (!me.$isLoaded || !invitation) return;
+    // In-flight guard (FM1): a double-tap must not mint twice.
+    if (!me.$isLoaded || !invitation || connectBusyRef.current) return;
+    connectBusyRef.current = true;
     setPhase("sending");
     try {
-      const req = await createConnectionRequest(
+      // Re-validate at Connect time — a parked confirm screen can outlive
+      // revocation/expiry (inventory §5); the mount-time check is not enough.
+      const fresh = (await loadInvitationAsGuest(invitation.$jazz.id)) as any;
+      if (fresh.revokedAt) {
+        setPhase("expired");
+        setErr("invite revoked");
+        return;
+      }
+      if (
+        fresh.expiresAt &&
+        new Date(fresh.expiresAt).getTime() < Date.now()
+      ) {
+        setPhase("expired");
+        return;
+      }
+
+      const result = await sendConnectionRequest(
         me as any,
-        invitation.inviterAccountID,
-        // Channel reflects how THIS recipient opened the invite (scanned QR
-        // vs pasted link), not how the invitation was minted — the same
-        // invitation is shared through both channels.
-        openedChannel,
         {
+          accountID: invitation.inviterAccountID,
+          fingerprint: invitation.inviterFingerprint,
+          displayName: invitation.inviterDisplayName,
+        },
+        {
+          channel: "invite",
+          // Channel reflects how THIS recipient opened the invite (scanned
+          // QR vs pasted link) — the same invitation serves both.
+          requestChannel: openedChannel,
           invitationID: invitation.$jazz?.id,
-          // Permanent invites (no expiresAt) still mint expiring requests so
-          // the pending-list timeout logic works. Fall back to 30 days.
-          expiresAt: invitation.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          invitationExpiresAt: invitation.expiresAt
+            ? new Date(invitation.expiresAt)
+            : undefined,
         },
       );
-      setRequest(req);
+      if (result.outcome === "unavailable") {
+        setPhase("error");
+        setErr("account not ready — try again");
+        return;
+      }
+      // "already-contact" renders from isContact; every send outcome
+      // ("sent" / "already-pending" / "send-failed") renders from the
+      // durable entry. Local phase only marks that we finished the action.
       setPhase("sent");
     } catch (e) {
       setPhase("error");
       setErr(String(e));
+    } finally {
+      connectBusyRef.current = false;
     }
   };
 
@@ -315,12 +299,60 @@ export function InviteRoute() {
       );
     }
 
-    if (phase === "sent") {
+    // ── Durable-entry-driven states (watcher-owned) ──────────────────────
+    const entryLive =
+      outEntry &&
+      !outEntry.archivedAt &&
+      (outEntry.status === "pending" || outEntry.status === "failed");
+
+    if (phase === "sent" || (phase === "confirm" && entryLive)) {
+      // Terminal states first — the watcher may have transitioned the entry
+      // while this screen sat open.
+      if (outEntry?.status === "approved" || (phase === "sent" && isContact)) {
+        return (
+          <InviteStatusScreen
+            markSize={48}
+            title="contact added"
+            rootTestId="invite-approved"
+            primary={{ label: "open Arcan", onClick: () => navigate("/") }}
+          />
+        );
+      }
+      if (outEntry?.status === "denied") {
+        return (
+          <InviteStatusScreen
+            markSize={48}
+            title="request declined"
+            sub="they declined your request."
+            rootTestId="invite-declined"
+            outline={{ label: "back to app", onClick: () => navigate("/") }}
+            outlineTestId="invite-declined-home-btn"
+          />
+        );
+      }
+      if (outEntry?.status === "expired") {
+        return (
+          <InviteStatusScreen
+            markSize={48}
+            title="this request has expired"
+            rootTestId="invite-expired"
+            outline={{ label: "go home", onClick: () => navigate("/") }}
+          />
+        );
+      }
+      // Honest delivery states (spec §6): delivered only after the Inbox
+      // end-to-end ack; failed announces the automatic retry.
+      const sub =
+        outEntry?.status === "failed"
+          ? "couldn't deliver yet — we'll retry automatically. you can close this tab."
+          : outEntry?.deliveredAt
+            ? "delivered. you can close this tab — the contact appears once they accept."
+            : "sending…";
       return (
         <InviteStatusScreen
           markSize={48}
           title="request sent — waiting for approval…"
-          sub="You can close this tab; you'll be notified when they accept."
+          sub={sub}
           rootTestId="invite-sent"
           outline={{ label: "back to app", onClick: () => navigate("/") }}
           outlineTestId="invite-sent-home-btn"
@@ -328,32 +360,15 @@ export function InviteRoute() {
       );
     }
 
-    if (phase === "approved") {
+    // Already connected (FM8): no silent re-mint from a parked/permanent link.
+    if (phase === "confirm" && isContact) {
       return (
         <InviteStatusScreen
           markSize={48}
-          title="contact added"
-          rootTestId="invite-approved"
-          primary={{
-            label: "open Arcan",
-            onClick: () => navigate("/"),
-          }}
-        />
-      );
-    }
-
-    if (phase === "declined") {
-      return (
-        <InviteStatusScreen
-          markSize={48}
-          title="request declined"
-          sub="they declined your request."
-          rootTestId="invite-declined"
-          outline={{
-            label: "back to app",
-            onClick: () => navigate("/"),
-          }}
-          outlineTestId="invite-declined-home-btn"
+          title="you're already contacts"
+          sub={invitation?.inviterDisplayName ?? undefined}
+          rootTestId="invite-already-contact"
+          primary={{ label: "open Arcan", onClick: () => navigate("/") }}
         />
       );
     }

@@ -1,13 +1,14 @@
 // src/jazz/avatarResolver.ts
 import { useCoState } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { getContact } from "@/jazz/handshake";
 
 /**
  * Resolve the FileBlob for an account's avatar, mirroring resolveDisplayName.
  *
  * Lookup chain:
  *   1. Self (me): me.profile.avatar
- *   2. contactBook entry: contact's referenced Account → profile.avatar
+ *   2. contacts-record entry: contact's referenced Account → profile.avatar
  *      (Note: Contact schema stores accountID as a plain string, not a ref,
  *       so this branch is currently a no-op — use useRemoteAvatar for
  *       contact-list surfaces.)
@@ -26,19 +27,15 @@ export function resolveAvatarFileBlob(args: {
     return (me as any)?.profile?.avatar ?? undefined;
   }
 
-  // Contact book
-  const contactBook = (me as any)?.root?.contactBook;
-  if (contactBook) {
-    for (const contact of contactBook as Iterable<any>) {
-      if (contact?.contactAccountID === accountID) {
-        // contact.$jazz.owner is a Group; the contact's Account is on the
-        // group's direct-members. Try the explicit ref path:
-        const accountRef = contact?.$jazz?.refs?.account;
-        if (accountRef && accountRef?.profile?.avatar) {
-          return accountRef.profile.avatar;
-        }
-        break;
-      }
+  // Contacts record (keyed by account ID; migration-pending fallback lives
+  // in getContact — see handshake.ts)
+  const contact = getContact(me, accountID);
+  if (contact) {
+    // contact.$jazz.owner is a Group; the contact's Account is on the
+    // group's direct-members. Try the explicit ref path:
+    const accountRef = contact?.$jazz?.refs?.account;
+    if (accountRef && accountRef?.profile?.avatar) {
+      return accountRef.profile.avatar;
     }
   }
 

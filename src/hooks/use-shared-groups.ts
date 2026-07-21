@@ -1,6 +1,7 @@
 import { useAccount } from "jazz-tools/react";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { dedupeConversationsByID } from "@/jazz/conversation";
+import { listContacts } from "@/jazz/handshake";
 
 export interface SharedGroup {
   id: string;
@@ -14,16 +15,16 @@ export interface SharedGroup {
  * field carries this hint, so it can't be forged. Each side computes from its own
  * me.root.knownConversations.
  *
- * Followup (b): 1:1 conversation names are derived from the contactBook entry
- * for the other member (displayNameLocal), not conv.title which is often null/
- * "Untitled" for direct messages. Same derivation as detail.tsx:357–392.
+ * Followup (b): 1:1 conversation names are derived from the contacts-record
+ * entry for the other member (displayNameLocal), not conv.title which is often
+ * null/"Untitled" for direct messages. Same derivation as detail.tsx:357–392.
  */
 export function useSharedGroups(otherAccountID: string): SharedGroup[] {
   const me = useAccount(ArcanAccount, {
     resolve: {
       root: {
         knownConversations: { $each: true },
-        contactBook: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
       },
     },
   });
@@ -31,7 +32,7 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
   const conversations = dedupeConversationsByID(
     Array.from((me.root.knownConversations as any) ?? []),
   );
-  const contactBook = Array.from((me.root.contactBook as any) ?? []);
+  const contacts = listContacts(me);
   const myID = (me as any).$jazz?.id as string | undefined;
   const out: SharedGroup[] = [];
   for (const conv of conversations) {
@@ -52,8 +53,8 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
       let title = (conv as any).title ?? "Untitled";
 
       // For 1:1 conversations (exactly 2 active members), derive the display
-      // name from the contactBook entry for the other member — conv.title is
-      // null/undefined for DMs and would show "Untitled" otherwise.
+      // name from the contacts-record entry for the other member — conv.title
+      // is null/undefined for DMs and would show "Untitled" otherwise.
       if (activeMembers.length === 2) {
         if (!myID) {
           // Can't identify counterpart without our own ID — keep fallback title.
@@ -66,7 +67,7 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
           if (other) {
             const otherID = other?.account?.$jazz?.id as string | undefined;
             if (otherID) {
-              const contactEntry = contactBook.find(
+              const contactEntry = contacts.find(
                 (c: any) => c?.contactAccountID === otherID,
               );
               const derivedName = (contactEntry as any)?.displayNameLocal as

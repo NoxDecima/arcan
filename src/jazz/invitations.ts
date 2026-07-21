@@ -20,7 +20,6 @@
 import { Group, Account, InboxSender } from "jazz-tools";
 import { Invitation } from "./schema/Invitation";
 import { ConnectionRequest } from "./schema/ConnectionRequest";
-import { Contact } from "./schema/Contact";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { getServerOrigin } from "@/platform/server-config";
 
@@ -245,25 +244,16 @@ export async function loadInvitationAsGuest(
 // ---------------------------------------------------------------------------
 
 /**
- * Mint a ConnectionRequest CoValue and deliver it to the recipient's Inbox.
- *
- * The request is wrapped in a fresh notification group (same pattern as
- * ConversationNotification in conversation.ts:151-166) so InboxSender can add
- * the recipient as "writer" without any prior role conflict.
- *
- * @param requester         - the account opening the connection
- * @param recipientAccountID - the inviter's account ID (from parseInvitationURL)
- * @param channel           - "qr" | "link" | "group"
- * @param opts.invitationID - the Invitation CoValue ID if channel !== "group"
- * @param opts.expiresAt    - when this request expires (caller sets based on channel TTL)
- * @returns the created ConnectionRequest CoValue
+ * Mint a ConnectionRequest CoValue locally (no network). Split from delivery
+ * (contact-robustness slice) so sendConnectionRequest can persist a durable
+ * outgoingRequests entry BEFORE any network attempt.
  */
-export async function createConnectionRequest(
+export function mintConnectionRequest(
   requester: Account,
   recipientAccountID: string,
   channel: "qr" | "link" | "group",
   opts: { invitationID?: string; expiresAt: Date },
-): Promise<ReturnType<typeof ConnectionRequest.create>> {
+): ReturnType<typeof ConnectionRequest.create> {
   const me = requester as Account & {
     profile?: { displayName?: string; name?: string };
     $jazz: { id: string };
@@ -276,7 +266,7 @@ export async function createConnectionRequest(
   // InboxSender.load() can add them as "writer" without conflict.
   const notificationGroup = Group.create({ owner: requester });
 
-  const request = ConnectionRequest.create(
+  return ConnectionRequest.create(
     {
       requesterAccountID: me.$jazz.id,
       requesterFingerprint: getAccountPubkeyHex(requester),
@@ -288,23 +278,84 @@ export async function createConnectionRequest(
       expiresAt: opts.expiresAt,
     },
     { owner: notificationGroup },
-  );
+  ) as ReturnType<typeof ConnectionRequest.create>;
+}
 
-  // Deliver via the recipient's Inbox
+/**
+ * Deliver a minted ConnectionRequest to the recipient's Inbox. Resolves on
+ * the Inbox's end-to-end ack (receiver durably marked it processed) — with
+ * NO upstream timeout; callers wrap it (handshake.ts REQUEST_ACK_TIMEOUT_MS).
+ * Safe to call again with the same request: the receiver drain dedups by
+ * request CoValue ID.
+ */
+export async function deliverConnectionRequest(
+  requester: Account,
+  recipientAccountID: string,
+  request: ReturnType<typeof ConnectionRequest.create>,
+): Promise<void> {
+  // NOTE: new inbox payload kinds MUST get a route + gating target in use-inbox-dispatcher.ts before any sender ships.
   const sender = await InboxSender.load<typeof request>(
     recipientAccountID as any,
     requester,
   );
   await sender.sendMessage(request);
-
-  return request as ReturnType<typeof ConnectionRequest.create>;
 }
 
 /**
- * Approve a ConnectionRequest: stamp approvedAt and write the requester as a
- * local Contact in the recipient's contactBook.
+ * FM1 group collapse (Task 7 review): the UI collapses pending rows PER
+ * REQUESTER (useIncomingConnectionRequests), but approve/deny receive only
+ * the single representative CoValue — without converging the rest of the
+ * group, the next-latest duplicate from the same person would immediately
+ * resurface them (pending rows, badge, modal re-open). Collect the OTHER
+ * live entries in me.root.incomingConnectionRequests from the same
+ * requester: not the acted-on ID, and skip entries already stamped
+ * approved/denied.
+ */
+function sameRequesterLiveDupes(recipient: Account, acted: any): any[] {
+  const record = (recipient as any).root?.incomingConnectionRequests;
+  const requesterID = acted?.requesterAccountID;
+  if (!record || typeof requesterID !== "string") return [];
+  const actedID = acted?.$jazz?.id;
+  const dupes: any[] = [];
+  for (const entry of Object.values(record as Record<string, any>)) {
+    const e = entry as any;
+    if (!e?.$jazz?.id || e.$jazz.id === actedID) continue;
+    if (e.requesterAccountID !== requesterID) continue;
+    if (e.approvedAt || e.deniedAt) continue; // already decided
+    dupes.push(e);
+  }
+  return dupes;
+}
+
+/**
+ * Approve outcome, for honest caller feedback:
+ * - "approved"    — contact write landed (created/unchanged/conflict) and
+ *                   approvedAt is stamped (or already was — idempotent).
+ * - "unavailable" — the approver's contacts record (or the existing keyed
+ *                   entry) isn't loaded yet; NOTHING was stamped. Retryable.
+ * - "malformed"   — foreign/garbage payload refused (FM4); NOTHING stamped.
+ *                   Never succeeds on retry.
+ */
+export type ApproveConnectionRequestOutcome =
+  | "approved"
+  | "unavailable"
+  | "malformed";
+
+/**
+ * Approve a ConnectionRequest: write the requester as a local Contact in the
+ * recipient's contacts record (via upsertContact), THEN stamp approvedAt.
  *
- * Idempotent: no-ops if approvedAt is already set.
+ * ORDER MATTERS (approver-side silent-loss fix, 2026-07-21): approvedAt is
+ * the signal the REQUESTER's watcher acts on — it hands the requester their
+ * contact and settles the request for good. If the approver's own contact
+ * write didn't land (contacts record unloaded at click → "unavailable"),
+ * stamping anyway would give the requester the connection while the approver
+ * silently gets nothing — and no approve-side retry exists. So on
+ * "unavailable" NOTHING is stamped (not the acted request, not the collapsed
+ * same-requester dupes) and the caller gets a retryable outcome; the request
+ * stays live on every pending surface.
+ *
+ * Idempotent: returns "approved" without re-stamping if approvedAt is set.
  *
  * @param recipient - the approving account (me from useAccount)
  * @param request   - the ConnectionRequest CoValue to approve
@@ -312,32 +363,65 @@ export async function createConnectionRequest(
 export async function approveConnectionRequest(
   recipient: Account,
   request: ReturnType<typeof ConnectionRequest.create>,
-): Promise<void> {
+): Promise<ApproveConnectionRequestOutcome> {
   const r = request as any;
-  if (r.approvedAt) return; // idempotent
+  if (r.approvedAt) return "approved"; // idempotent
+
+  // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe(Schema, …)
+  // does NOT filter by schema — every inbox message's payload reaches every
+  // subscription. A foreign payload (e.g. a ConversationNotification) read
+  // through the ConnectionRequest schema has all fields undefined; stamping
+  // approvedAt on it mutates an unrelated CoValue and the contact write
+  // below would create a garbage entry keyed `undefined`. The drain guard
+  // in use-incoming-connection-requests.ts keeps such payloads out of the
+  // record; this is defense in depth for any other call path.
+  if (
+    typeof r.requesterAccountID !== "string" ||
+    typeof r.requesterFingerprint !== "string"
+  ) {
+    console.warn(
+      "[handshake] refusing to approve malformed request:",
+      r?.$jazz?.id,
+    );
+    return "malformed";
+  }
+
+  // Contact write FIRST, through the single idempotent writer (FM7): keyed
+  // by account ID, TOFU-aware. Approving a duplicate request for an existing
+  // contact is a structural no-op ("unchanged"); "conflict" still counts as
+  // landed (the pin is kept, the conflict flag is set for the profile
+  // safety-number section).
+  //
+  // Dynamic import ON PURPOSE: handshake.ts statically imports from
+  // invitations.ts (mint/deliver, Task 5); a static import here would close
+  // an ES-module cycle. The function is already async — the lazy import
+  // keeps the dependency edge one-directional at module-init time.
+  const { upsertContact } = await import("./handshake");
+  const upsertResult = upsertContact(recipient, {
+    contactAccountID: r.requesterAccountID,
+    fingerprint: r.requesterFingerprint,
+    displayName: r.requesterDisplayName,
+  });
+  if (upsertResult === "unavailable") return "unavailable";
 
   r.$jazz.set("approvedAt", new Date());
 
-  // Write the requester as a local Contact in the recipient's contactBook
-  const contact = Contact.create(
-    {
-      contactAccountID: r.requesterAccountID,
-      pinnedFingerprint: r.requesterFingerprint,
-      displayNameLocal: r.requesterDisplayName,
-      addedAt: new Date(),
-    },
-    { owner: recipient },
-  );
-
-  const contactBook = (recipient as any).root?.contactBook;
-  if (contactBook) {
-    contactBook.$jazz.push(contact);
+  // Converge the whole collapsed same-requester group: stamp every other
+  // live duplicate approved too (idempotent — same person; the contact
+  // write stays the single upsert above).
+  for (const dupe of sameRequesterLiveDupes(recipient, r)) {
+    if (typeof dupe.$jazz?.set === "function") {
+      dupe.$jazz.set("approvedAt", new Date());
+    }
   }
+  return "approved";
 }
 
 /**
- * Dismiss a ConnectionRequest: add its CoValue ID to
- * me.root.dismissedRequestIDs. No shared CoValue is mutated.
+ * Dismiss a ConnectionRequest: record its CoValue ID in the keyed
+ * me.root.dismissedRequests record. No shared CoValue is mutated.
+ * Contact-robustness slice: storage moved to the keyed record — same-key
+ * sets converge, so dedup is structural.
  *
  * Dismissal is NOT a decision (user decision, 2026-07-08 walkthrough): it only
  * mutes the incoming-connection modal. The request stays on the pending
@@ -353,24 +437,18 @@ export async function dismissConnectionRequest(
   recipient: Account,
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
-  const root = (recipient as any).root;
-  const list = root?.dismissedRequestIDs;
-  if (!list) return;
-
-  const id = (request as any).$jazz.id as string;
-
-  // Deduplicate before pushing
-  const existing: string[] = Array.from(list as Iterable<string>);
-  if (!existing.includes(id)) {
-    list.$jazz.push(id);
-  }
+  const record = (recipient as any).root?.dismissedRequests;
+  if (!record || typeof record.$jazz?.set !== "function") return;
+  record.$jazz.set((request as any).$jazz.id as string, true);
 }
 
 /**
- * Deny a ConnectionRequest: the explicit "no" decision. Removes the request
- * from me.root.incomingRequests, so it leaves every pending surface for good.
+ * Deny a ConnectionRequest: the explicit "no" decision. Deletes the request
+ * key from me.root.incomingConnectionRequests, so it leaves every pending
+ * surface for good. Contact-robustness slice: storage moved to the keyed
+ * records (same-key delete/set converge across racing devices).
  *
- * Also records the ID in dismissedRequestIDs — if the same request ever
+ * Also records the ID in dismissedRequests — if the same request ever
  * reappears (e.g. a delivery race re-drains it), the modal stays muted.
  *
  * Feedback round 2: stamps `deniedAt` on the shared CoValue before doing the
@@ -388,26 +466,42 @@ export async function denyConnectionRequest(
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
   const r = request as any;
-  // Feedback round 2: propagate the decision — the requester's waiting
-  // screen watches deniedAt (recipient has writer access to the request
-  // CoValue, same mechanism approveConnectionRequest uses for approvedAt).
   if (!r.deniedAt && typeof r.$jazz?.set === "function") {
     r.$jazz.set("deniedAt", new Date());
   }
 
   const root = (recipient as any).root;
-  const id = (request as any).$jazz.id as string;
+  const id = r.$jazz.id as string;
 
-  const incoming = root?.incomingRequests;
-  if (incoming && typeof incoming.$jazz?.remove === "function") {
-    incoming.$jazz.remove((r: any) => r?.$jazz?.id === id);
+  const incoming = root?.incomingConnectionRequests;
+  const dismissed = root?.dismissedRequests;
+
+  // Collect BEFORE deleting the representative (the record iteration must
+  // still see a consistent snapshot); acted-on ID is skipped inside.
+  const dupes = sameRequesterLiveDupes(recipient, r);
+
+  if (incoming && typeof incoming.$jazz?.delete === "function") {
+    incoming.$jazz.delete(id);
   }
 
-  const dismissed = root?.dismissedRequestIDs;
-  if (dismissed) {
-    const existing: string[] = Array.from(dismissed as Iterable<string>);
-    if (!existing.includes(id)) {
-      dismissed.$jazz.push(id);
+  if (dismissed && typeof dismissed.$jazz?.set === "function") {
+    dismissed.$jazz.set(id, true);
+  }
+
+  // Converge the whole collapsed same-requester group: every other live
+  // duplicate gets the exact same treatment as the representative
+  // (deniedAt stamp, record delete, dismissed marker), so the next-latest
+  // dupe cannot resurface the requester.
+  for (const dupe of dupes) {
+    if (!dupe.deniedAt && typeof dupe.$jazz?.set === "function") {
+      dupe.$jazz.set("deniedAt", new Date());
+    }
+    const dupeID = dupe.$jazz.id as string;
+    if (incoming && typeof incoming.$jazz?.delete === "function") {
+      incoming.$jazz.delete(dupeID);
+    }
+    if (dismissed && typeof dismissed.$jazz?.set === "function") {
+      dismissed.$jazz.set(dupeID, true);
     }
   }
 }

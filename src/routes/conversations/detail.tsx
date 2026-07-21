@@ -20,12 +20,12 @@
  *   - Composer: ChatComposer with file-upload state (disabled when
  *     composerDisabled — only me remains in an active 1:1)
  *
- * Title derivation (1:1): finds the contact in me.root.contactBook whose
- * contactAccountID matches another member of the conversation's owning Group.
+ * Title derivation (1:1): looks up me.root.contacts (keyed by account ID) for
+ * the other member of the conversation's owning Group.
  * Falls back to conversation.title (groups) or "Conversation" while loading.
  *
  * Author derivation: getAuthorAccountIDFromMessage() reads the create-tx signer
- * (immutable, unforgeable). Display name resolved from contactBook.
+ * (immutable, unforgeable). Display name resolved from the contacts record.
  *
  * composerDisabled: true when the ConversationGroup's direct-admin list is
  * length 1 (only me remains) — the other party has left.
@@ -59,6 +59,7 @@ import {
   deleteMessage,
 } from "@/jazz/messages";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { getContact } from "@/jazz/handshake";
 import { isArchived, ensureMyWriteGroup, isLastAdmin, leaveConversation } from "@/jazz/conversation";
 import {
   findNewMarkIndex,
@@ -316,9 +317,9 @@ export function ConversationDetailRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      // Slice 8: lastReadAt is required for markRead to write the cutoff.
+      // Slice 8: lastReadAt is required to write the read-cutoff.
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
         knownConversations: true,
         lastReadAt: true,
       },
@@ -592,13 +593,8 @@ export function ConversationDetailRoute() {
           );
           if (!otherMember) return null;
           const otherID = otherMember.account?.$jazz?.id;
-          const contactBook = (me as any).root?.contactBook;
-          if (!contactBook || !otherID) return null;
-          return (
-            (Array.from(contactBook).find(
-              (ct: any) => ct?.contactAccountID === otherID,
-            ) as any) ?? null
-          );
+          if (!otherID) return null;
+          return getContact(me, otherID) ?? null;
         })()
       : null;
 
@@ -1332,6 +1328,24 @@ export function ConversationDetailRoute() {
             className="shrink-0 px-2 py-1 font-body text-ui-sub text-red rounded border border-hairline"
           >
             delete conversation
+          </button>
+        </div>
+      )}
+      {counterpartAccountID && !contact && (
+        <div
+          className="flex items-center justify-between gap-3 px-3 py-2 border-t border-hairline"
+          data-testid="not-a-contact-banner"
+        >
+          <span className="font-body text-ui-sub text-dim">
+            not in your contacts.
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate(`/profile/${counterpartAccountID}`)}
+            data-testid="not-a-contact-add-btn"
+            className="shrink-0 px-2 py-1 font-body text-ui-sub text-arcan-accent rounded border border-hairline"
+          >
+            view profile to add
           </button>
         </div>
       )}

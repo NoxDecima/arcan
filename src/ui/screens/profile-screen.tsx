@@ -26,6 +26,7 @@ export function ProfileScreen({
   safetyOpen,
   onToggleSafety,
   safetySlot,
+  secondarySlot,
   dangerZone,
   rootTestId,
   backTestId,
@@ -45,6 +46,10 @@ export function ProfileScreen({
   safetyOpen: boolean;                  // expandable "verify safety number"
   onToggleSafety: () => void;
   safetySlot?: ReactNode;               // Rung-4: container's <SafetyNumber> (expanded body)
+  // intent-fix: contact-robustness repair affordance (2026-07-20 spec §5) —
+  // no proto reference; renders container-provided secondary action under
+  // the message button.
+  secondarySlot?: ReactNode;
   /** Rung-4: app-only danger zone below the card (e.g. "remove contact" button). */
   dangerZone?: ReactNode;
   // testid carries
@@ -124,6 +129,9 @@ export function ProfileScreen({
               data-testid={messageTestId}
             />
           </div>
+          {secondarySlot && (
+            <div className="w-full max-w-[320px] mt-2">{secondarySlot}</div>
+          )}
 
           <PCard className="w-full max-w-[320px]">
             {/* Section order (user decision, 2026-07-05 walkthrough):

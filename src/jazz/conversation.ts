@@ -1,10 +1,19 @@
-import { useEffect } from "react";
-import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
+import { useEffect, useRef } from "react";
+import { Group, Account, co, InboxSender } from "jazz-tools";
 import { z } from "jazz-tools";
+import { useAccount } from "jazz-tools/react";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { SystemEvent } from "@/jazz/schema/SystemEvent";
-import { createConnectionRequest, GROUP_REQUEST_TTL_MS } from "@/jazz/invitations";
+import { PendingNotification } from "./schema/PendingNotification";
+import { ArcanAccount } from "./schema/ArcanAccount";
+import {
+  sendConnectionRequest,
+  withTimeout,
+  REQUEST_ACK_TIMEOUT_MS,
+  type SendConnectionRequestResult,
+} from "./handshake";
+import { getForeignAccountPubkeyHex } from "@/auth/pubkey";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -172,22 +181,7 @@ export async function findOrCreate1to1Conversation(
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.
-  const conversationID = (conversation as any).$jazz.id as string;
-  void (async () => {
-    try {
-      // Fresh notification group — the other account has no prior role here,
-      // so InboxSender's add-as-writer call won't conflict with admin role.
-      const notificationGroup = Group.create({ owner: me });
-      const notification = ConversationNotification.create(
-        { conversationID },
-        { owner: notificationGroup },
-      );
-      const sender = await InboxSender.load<typeof notification>(otherAccountID as any, me);
-      await sender.sendMessage(notification);
-    } catch (e) {
-      console.warn("[inbox] Failed to deliver conversation to other party's inbox:", e);
-    }
-  })();
+  void sendConversationNotification(me, conversation, otherAccountID, "conversation");
 
   return conversation;
 }
@@ -230,43 +224,51 @@ export async function createGroupConversation(
   // Push to my own knownConversations
   (me as any).root.knownConversations.$jazz.push(conversation);
 
-  // Notify each participant via Inbox (fire-and-forget, parallel)
-  const conversationID = (conversation as any).$jazz.id as string;
+  // Notify each participant via Inbox (background, durable retry state)
   for (const accountID of participantAccountIDs) {
-    void (async () => {
-      try {
-        const notificationGroup = Group.create({ owner: me });
-        const notification = ConversationNotification.create(
-          { conversationID },
-          { owner: notificationGroup },
-        );
-        const sender = await InboxSender.load<typeof notification>(
-          accountID as any,
-          me,
-        );
-        await sender.sendMessage(notification);
-      } catch (e) {
-        console.warn(
-          `[inbox] Failed to deliver group conversation to ${accountID}:`,
-          e,
-        );
-      }
-    })();
+    void sendConversationNotification(me, conversation, accountID, "conversation");
   }
 
   return conversation;
 }
 
 /**
- * Group-channel: request a connection from a co-member of a conversation. Delivers a
- * ConnectionRequest with channel='group', expiresAt = createdAt + 30d. 1:1 inbox delivery.
+ * Group-channel: request a connection from a co-member of a conversation.
+ * Routes through handshake.sendConnectionRequest — the single creation path —
+ * so the durable outgoingRequests entry exists and the approval watcher can
+ * write the contact on BOTH sides (FM4: previously the requester never got
+ * the approver as a contact).
  */
 export async function requestConnectionFromGroupMember(
   me: Account,
   targetAccountID: string,
-): Promise<void> {
-  const expiresAt = new Date(Date.now() + GROUP_REQUEST_TTL_MS);
-  await createConnectionRequest(me as any, targetAccountID, "group", { expiresAt });
+): Promise<SendConnectionRequestResult> {
+  const target = await loadAccountByID(me, targetAccountID);
+  if (!target) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  let fingerprint = "";
+  try {
+    // MUST be the foreign-account helper: getAccountPubkeyHex is node-derived
+    // and would snapshot MY fingerprint as the counterpart's TOFU pin (C1).
+    fingerprint = getForeignAccountPubkeyHex(target as any);
+  } catch {
+    // fall through to the guard below
+  }
+  if (!fingerprint) {
+    throw new Error(
+      `Cannot derive fingerprint for ${targetAccountID} — refusing unpinned request`,
+    );
+  }
+  const displayName =
+    (target as any).profile?.displayName ??
+    (target as any).profile?.name ??
+    "Unknown";
+  return sendConnectionRequest(
+    me,
+    { accountID: targetAccountID, fingerprint, displayName },
+    { channel: "group", requestChannel: "group" },
+  );
 }
 
 /**
@@ -389,11 +391,17 @@ export async function addMemberToConversation(
   conversation: any,
   newAccountID: string,
   role: "admin" | "writer" = "writer",
-): Promise<void> {
+): Promise<"added" | "already-member"> {
   const conversationGroup = conversation.$jazz?.owner as Group | undefined;
   if (!conversationGroup) {
     throw new Error("Conversation has no owning group");
   }
+
+  // Membership pre-check (spec §4): a concurrent admin add must not
+  // double-log "added" — and a silent role overwrite (addMember on an
+  // existing member re-assigns the role) is surfaced instead of swallowed.
+  const existingRole = conversationGroup.getRoleOf(newAccountID as any);
+  if (existingRole) return "already-member";
 
   const newAccount = await loadAccountByID(me, newAccountID);
   if (!newAccount) {
@@ -407,27 +415,8 @@ export async function addMemberToConversation(
 
   conversationGroup.addMember(newAccount, role);
 
-  // Notify the new member via their Inbox so their sidebar auto-discovers
-  const conversationID = conversation.$jazz.id as string;
-  void (async () => {
-    try {
-      const notificationGroup = Group.create({ owner: me });
-      const notification = ConversationNotification.create(
-        { conversationID },
-        { owner: notificationGroup },
-      );
-      const sender = await InboxSender.load<typeof notification>(
-        newAccountID as any,
-        me,
-      );
-      await sender.sendMessage(notification);
-    } catch (e) {
-      console.warn(
-        `[inbox] Failed to deliver group invite to ${newAccountID}:`,
-        e,
-      );
-    }
-  })();
+  void sendConversationNotification(me, conversation, newAccountID, "member-add");
+  return "added";
 }
 
 /**
@@ -748,91 +737,183 @@ function isMyDirectWriteGroup(group: Group, me: Account): boolean {
 }
 
 /**
- * React hook: subscribe to the current user's inbox and push incoming
- * Conversations to me.root.knownConversations for sidebar auto-discovery.
- *
- * Call this once in the authenticated branch of App.tsx. The inbox is
- * a persistent CoStream — messages that arrived before the current session
- * are replayed on subscribe, so Bob will discover conversations even if he
- * was offline when Alice created one.
- *
- * Replaces the Slice 3a behavior of setting contact.linkedConversation.
- * All conversation kinds (1:1 and group) use the same knownConversations path.
- *
- * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes
- * (i.e. on sign-in / account switch), not on every render.
+ * Send a conversation/member-add inbox notification with durable retry
+ * state (contact-robustness spec §4). The pendingNotifications entry is
+ * written BEFORE the network attempt and deleted only on the Inbox
+ * end-to-end ack; useNotificationRetry re-sends survivors on
+ * launch/reconnect. Re-delivery is safe: the receive side is the hardened
+ * three-layer knownConversations drain (raw-ID dedup).
  */
-export function useConversationInboxSubscription(me: any) {
+export async function sendConversationNotification(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+  kind: "conversation" | "member-add",
+): Promise<void> {
+  const conversationID = conversation.$jazz.id as string;
+  const pending = (me as any).root?.pendingNotifications;
+  const key = `${conversationID}:${targetAccountID}`;
+  if (pending && typeof pending.$jazz?.set === "function" && !pending[key]) {
+    pending.$jazz.set(
+      key,
+      PendingNotification.create(
+        {
+          conversation,
+          targetAccountID,
+          kind,
+          createdAt: new Date(),
+          attempts: 0,
+        },
+        { owner: me },
+      ),
+    );
+  }
+  await attemptNotificationDelivery(me, conversationID, targetAccountID);
+}
+
+/**
+ * One delivery attempt for a pending notification. Ack → entry deleted;
+ * failure/timeout → entry survives with bumped attempt bookkeeping.
+ */
+export async function attemptNotificationDelivery(
+  me: Account,
+  conversationID: string,
+  targetAccountID: string,
+): Promise<void> {
+  const pending = (me as any).root?.pendingNotifications;
+  const key = `${conversationID}:${targetAccountID}`;
+  const entry = pending?.[key];
+  try {
+    if (entry && typeof entry.$jazz?.set === "function") {
+      entry.$jazz.set("attempts", (entry.attempts ?? 0) + 1);
+      entry.$jazz.set("lastAttemptAt", new Date());
+    }
+    // Fresh notification group — the target has no prior role here, so
+    // InboxSender's add-as-writer call won't conflict with their role on
+    // the conversation group itself.
+    const notificationGroup = Group.create({ owner: me });
+    const notification = ConversationNotification.create(
+      { conversationID },
+      { owner: notificationGroup },
+    );
+    // NOTE: new inbox payload kinds MUST get a route + gating target in use-inbox-dispatcher.ts before any sender ships.
+    const sender = await InboxSender.load<typeof notification>(
+      targetAccountID as any,
+      me,
+    );
+    await withTimeout(sender.sendMessage(notification), REQUEST_ACK_TIMEOUT_MS);
+    // Post-await ack consumption is delete-by-key on the re-readable record —
+    // idempotent under a concurrent successful attempt (the key is simply
+    // already gone; no terminal state exists to clobber).
+    if (pending && typeof pending.$jazz?.delete === "function") {
+      pending.$jazz.delete(key);
+    }
+  } catch (e) {
+    console.warn(
+      `[inbox] notification to ${targetAccountID} failed (will retry):`,
+      e,
+    );
+  }
+}
+
+/**
+ * App-level retry for unacked conversation/member-add notifications —
+ * mounted once in App.tsx beside the other drains. Once per launch + on
+ * browser reconnect (same policy as the outgoing-request watcher).
+ */
+export function useNotificationRetry(): void {
+  // $onError: "catch" at the $each level (Task 6 review amendment): one
+  // unavailable/unauthorized entry CoValue must not stall me.$isLoaded for
+  // ALL pending notifications. Caught entries resolve to null — the
+  // `!entry?.targetAccountID` guard below skips them.
+  const me = useAccount(ArcanAccount, {
+    resolve: { root: { pendingNotifications: { $each: { $onError: "catch" } } } },
+  });
+  const retriedThisLaunch = useRef(false);
+
   useEffect(() => {
-    if (!me?.$isLoaded) return;
+    if (!me.$isLoaded) return;
 
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-
-    // Self-heal: remove any duplicate entries in knownConversations that
-    // may have been created by two devices each appending the same ID before
-    // CRDT sync merged their writes. Idempotent; silent; runs on every mount.
-    // Ordering contract: the heal MUST run synchronously here, before the
-    // async Inbox.load drain below opens — moving it into the async block
-    // could race the drain's own push.
-    selfHealKnownConversations(me);
-
-    (async () => {
-      try {
-        const inbox = await Inbox.load(me);
-        if (cancelled) return;
-        unsubscribe = inbox.subscribe(
-          ConversationNotification,
-          async (notification: any) => {
-            // Load the actual Conversation by ID from the notification payload
-            const conversationID = notification?.conversationID;
-            if (!conversationID) return;
-            try {
-              const conversation = await Conversation.load(conversationID, {
-                loadAs: me,
-                resolve: {},
-              });
-              if (!conversation) return;
-
-              // Dedup: only push if not already in knownConversations.
-              // Guard: known.$jazz.push may not be available if knownConversations
-              // is a NotLoaded proxy (not in the resolve query for this account
-              // load). Check typeof before calling to avoid runtime errors.
-              const known = me?.root?.knownConversations;
-              if (!known || typeof (known as any).$jazz?.push !== "function") return;
-
-              // Dedup by raw CoValue ID — reads cojson list entries directly,
-              // bypassing the Jazz proxy/subscription-scope machinery. This
-              // avoids any edge-case where proxy resolution in a non-reactive
-              // context (inbox callback is outside React) could yield an
-              // unexpected result. The raw list stores CoValue ID strings
-              // directly; `raw.get(i)` returns the ID or undefined for each
-              // index, which is safe to compare against conversationID.
-              const rawLen = (known as any).$jazz.raw.length() as number;
-              let alreadyKnown = false;
-              for (let i = 0; i < rawLen; i++) {
-                if ((known as any).$jazz.raw.get(i) === conversationID) {
-                  alreadyKnown = true;
-                  break;
-                }
-              }
-              if (alreadyKnown) return;
-
-              (known as any).$jazz.push(conversation);
-            } catch (e) {
-              console.warn("[inbox] Failed to push conversation to knownConversations:", e);
-            }
-          },
+    const retry = () => {
+      const pending = (me as any).root?.pendingNotifications;
+      if (!pending) return;
+      for (const [key, entry] of Object.entries(
+        pending as Record<string, any>,
+      )) {
+        if (!entry?.targetAccountID) continue;
+        const conversationID = key.split(":")[0];
+        void attemptNotificationDelivery(
+          me as any,
+          conversationID,
+          entry.targetAccountID,
         );
-      } catch (e) {
-        console.warn("[inbox] Failed to subscribe to inbox:", e);
       }
-    })();
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
     };
+
+    if (!retriedThisLaunch.current) {
+      retriedThisLaunch.current = true;
+      retry();
+    }
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.$isLoaded, (me as any)?.$jazz?.id]);
+  }, [me.$isLoaded]);
+}
+
+/**
+ * Conversation-notification drain handler: load the Conversation named by an
+ * inbox payload's `conversationID` and push it to me.root.knownConversations
+ * for sidebar auto-discovery.
+ *
+ * Routed to by useInboxDispatcher (src/jazz/use-inbox-dispatcher.ts) — the
+ * single app-wide inbox subscription. This used to be the callback body of a
+ * dedicated useConversationInboxSubscription hook; owning a second
+ * `inbox.subscribe` was the shared-processed-feed hazard (all subscriptions
+ * share ONE processed feed, so this drain could consume-and-mark-processed a
+ * ConnectionRequest during the other drain's mount gap — permanent loss).
+ *
+ * The inbox is a persistent CoStream — messages that arrived before the
+ * current session are replayed on subscribe, so Bob discovers conversations
+ * even if he was offline when Alice created one. All conversation kinds
+ * (1:1 and group) use this same knownConversations path.
+ */
+export async function handleConversationNotification(
+  me: any,
+  conversationID: string,
+): Promise<void> {
+  try {
+    const conversation = await Conversation.load(conversationID as any, {
+      loadAs: me,
+      resolve: {},
+    });
+    if (!conversation) return;
+
+    // Dedup: only push if not already in knownConversations.
+    // Guard: known.$jazz.push may not be available if knownConversations
+    // is a NotLoaded proxy (not in the resolve query for this account
+    // load). Check typeof before calling to avoid runtime errors.
+    const known = me?.root?.knownConversations;
+    if (!known || typeof (known as any).$jazz?.push !== "function") return;
+
+    // Dedup by raw CoValue ID — reads cojson list entries directly,
+    // bypassing the Jazz proxy/subscription-scope machinery. This
+    // avoids any edge-case where proxy resolution in a non-reactive
+    // context (inbox callback is outside React) could yield an
+    // unexpected result. The raw list stores CoValue ID strings
+    // directly; `raw.get(i)` returns the ID or undefined for each
+    // index, which is safe to compare against conversationID.
+    const rawLen = (known as any).$jazz.raw.length() as number;
+    let alreadyKnown = false;
+    for (let i = 0; i < rawLen; i++) {
+      if ((known as any).$jazz.raw.get(i) === conversationID) {
+        alreadyKnown = true;
+        break;
+      }
+    }
+    if (alreadyKnown) return;
+
+    (known as any).$jazz.push(conversation);
+  } catch (e) {
+    console.warn("[inbox] Failed to push conversation to knownConversations:", e);
+  }
 }

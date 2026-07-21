@@ -29,6 +29,7 @@ test("invite link opens onboarding then replays after sign-in", async ({ browser
     await createAccount(pageB, "Bob");
 
     await pageB.goto("/contacts/add");
+    await pageB.getByTestId("add-contact-reveal-btn").click();
     // qr-url-text is sr-only — wait for it to be attached, not visible.
     await pageB.getByTestId("qr-url-text").waitFor({ state: "attached", timeout: 10_000 });
     const inviteUrl = (await pageB.getByTestId("qr-url-text").textContent())!.trim();

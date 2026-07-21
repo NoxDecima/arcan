@@ -8,9 +8,10 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { getContact, getLegacyContact, upsertContact } from "@/jazz/handshake";
 import { setProfileAvatar, clearProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
-import { getAccountPubkeyHex } from "@/auth/pubkey";
+import { getAccountPubkeyHex, getForeignAccountPubkeyHex } from "@/auth/pubkey";
 import {
   findOrCreate1to1Conversation,
   find1to1Conversation,
@@ -42,7 +43,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     resolve: {
       profile: true,
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
         // Needed by find1to1Conversation (danger-zone "delete conversation",
         // user decision 2026-07-09). $onError catches revoked/broken entries.
         knownConversations: { $each: { $onError: "catch" } },
@@ -74,12 +75,17 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     { resolve: { profile: true } },
   );
 
-  // Find the contactBook entry (other-branch only).
-  const contact = me.$isLoaded
-    ? (me.root.contactBook as any)?.find(
-        (c: any) => c?.contactAccountID === accountID,
-      )
-    : undefined;
+  // Find the contacts-record entry (other-branch only).
+  const contact = me.$isLoaded ? getContact(me, accountID) : undefined;
+
+  // Migration-pending detection (spec §5 stuck-account net): me.root.contacts
+  // ABSENT means the keyed-record backfill hasn't completed on this account —
+  // upsertContact would return "unavailable", so the repair affordance renders
+  // a "still syncing" note instead of offering a write that would fail.
+  // (When the record is absent AND a legacy contactBook entry exists,
+  // getContact's fallback already reports the contact — no affordance at all.)
+  const contactsRecordAbsent =
+    me.$isLoaded && (me as any).root?.contacts == null;
 
   // ── own-profile avatar (item 6 fix) ─────────────────────────────────────────
   // Mirrors use-home-lists.ts's own-avatar effect: extract stream ID from the
@@ -194,7 +200,9 @@ export function ProfileView({ accountID }: ProfileViewProps) {
       fingerprintHex = pin;
     } else if (otherAccount) {
       try {
-        fingerprintHex = getAccountPubkeyHex(otherAccount as any);
+        // Foreign account → target-derived helper; the node-derived
+        // getAccountPubkeyHex would display MY fingerprint here (C1).
+        fingerprintHex = getForeignAccountPubkeyHex(otherAccount as any);
       } catch {
         fingerprintHex = "";
       }
@@ -280,6 +288,93 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     }
   }
 
+  // Visible repair (spec §5): a conversation exists but the counterpart is
+  // missing from contacts (pre-slice FM3/FM4 damage, or intentional stub
+  // messaging). The user explicitly re-adds — pinning the counterpart's
+  // CURRENT key after an explicit confirm. Silent auto-repair would re-TOFU
+  // without the user noticing (rejected in the design).
+  //
+  // Migration-review carry-over (2026-07-21): the two-device migration race
+  // can strand a contact in the legacy contactBook only (absent from the
+  // authoritative record). When such a stranded entry exists, copy ITS
+  // pinnedFingerprint — a legitimate pin, older than any re-derivation from
+  // the live account — instead of re-pinning the current key.
+  async function handleAddToContacts() {
+    if (isOwn || contact) return;
+    const legacy = getLegacyContact(me, accountID);
+    const legacyPin = (legacy as any)?.pinnedFingerprint as string | undefined;
+    const hasLegacyPin = !!legacyPin && legacyPin.length === 64;
+    if (!hasLegacyPin && (!fingerprintHex || fingerprintHex.length !== 64)) {
+      toast({
+        icon: "alert",
+        text: "can't read their identity key yet — try again shortly",
+        tone: "error",
+      });
+      return;
+    }
+    const ok = await confirmDialog({
+      title: "add to contacts",
+      body: hasLegacyPin
+        ? "this restores the identity key you had already pinned for them."
+        : "this pins their current identity key. compare security codes in person if you want to be certain it's really them.",
+      confirmLabel: "add contact",
+      testId: "confirm-add-to-contacts",
+    });
+    if (!ok) return;
+    const result = upsertContact(me as any, {
+      contactAccountID: accountID,
+      fingerprint: hasLegacyPin ? legacyPin : fingerprintHex,
+      displayName:
+        (hasLegacyPin
+          ? ((legacy as any)?.displayNameLocal as string | undefined)
+          : undefined) ??
+        remoteDisplayName ??
+        "unknown",
+    });
+    // Honest outcome mapping (I2 convention) — never silent on failure.
+    if (result === "created") {
+      // TOFU-surfacing: if we restored the legacy pin but the live-derived key
+      // differs, immediately flag the conflict on the new entry so the
+      // "identity key changed — verify" warning shows right away instead of
+      // waiting for the next handshake.
+      const liveDiffers =
+        hasLegacyPin &&
+        !!fingerprintHex &&
+        fingerprintHex.length === 64 &&
+        fingerprintHex !== legacyPin;
+      if (liveDiffers) {
+        const newEntry = (me as any).root?.contacts?.[accountID];
+        if (newEntry && typeof newEntry.$jazz?.set === "function") {
+          newEntry.$jazz.set("fingerprintConflict", true);
+          newEntry.$jazz.set("conflictingFingerprint", fingerprintHex);
+        }
+        toast({
+          icon: "alert",
+          text: "added — their current key differs from your old pin, verify the security code",
+          tone: "error",
+        });
+      } else {
+        toast({ icon: "check", text: "contact added", tone: "success" });
+      }
+    } else if (result === "unchanged") {
+      toast({ icon: "check", text: "already in your contacts", tone: "neutral" });
+    } else if (result === "conflict") {
+      toast({
+        icon: "alert",
+        text: "identity key changed — verify the security code before trusting",
+        tone: "error",
+      });
+    } else {
+      // "unavailable" — record still syncing/migrating (or the entry key
+      // exists but its CoValue hasn't loaded). Retry once synced.
+      toast({
+        icon: "alert",
+        text: "couldn't add — contacts still syncing, try again",
+        tone: "error",
+      });
+    }
+  }
+
   // Live 1:1 with this account, if any — drives the danger-zone "delete
   // conversation" action and the remove-contact dialog's checkbox (user
   // decision, 2026-07-09).
@@ -291,17 +386,16 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   // 1:1 conversation when the user opts in.
   async function handleRemoveContact(deleteConversation: boolean) {
     if (!contact) return;
-    const contactJazzId = (contact as any)?.$jazz?.id;
-    if (!contactJazzId) return;
     setRemoveDialog(false);
     setBusy(true);
     try {
       if (deleteConversation && convo1to1) {
         await leaveConversation(me as any, convo1to1);
       }
-      (me as any).root.contactBook.$jazz.remove(
-        (c: any) => c?.$jazz?.id === contactJazzId,
-      );
+      // Keyed delete on the contacts record (accountID is the component
+      // prop). Optional chaining guards the migration-pending case (record
+      // absent): removal no-ops — never writes to the frozen legacy list.
+      (me as any).root?.contacts?.$jazz?.delete(accountID);
     } finally {
       setBusy(false);
     }
@@ -473,16 +567,50 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           safetyOpen={showSafety}
           onToggleSafety={() => setShowSafety((s) => !s)}
           safetySlot={
-            fingerprintHex && fingerprintHex.length === 64 ? (
-              <SafetyNumber fingerprintHex={fingerprintHex} />
-            ) : (
-              <p className="text-xs text-dim">Security code not available.</p>
-            )
+            <>
+              {contact?.fingerprintConflict && (
+                <p
+                  className="mb-2 text-center text-xs text-red"
+                  data-testid="fingerprint-conflict-warning"
+                >
+                  identity key changed — verify in person before trusting this
+                  contact.
+                </p>
+              )}
+              {fingerprintHex && fingerprintHex.length === 64 ? (
+                <SafetyNumber fingerprintHex={fingerprintHex} />
+              ) : (
+                <p className="text-xs text-dim">Security code not available.</p>
+              )}
+            </>
+          }
+          secondarySlot={
+            !contact ? (
+              contactsRecordAbsent ? (
+                // Stuck-migration net: the record hasn't backfilled, so an
+                // upsert would fail with "unavailable" — say so instead of
+                // offering a dead button.
+                <p
+                  className="text-center font-body text-ui-sub text-dim"
+                  data-testid="profile-add-to-contacts-syncing"
+                >
+                  contacts still syncing — you can add them once it finishes.
+                </p>
+              ) : (
+                <PButton
+                  full
+                  label="add to contacts"
+                  onClick={() => void handleAddToContacts()}
+                  disabled={busy}
+                  data-testid="profile-add-to-contacts-btn"
+                />
+              )
+            ) : undefined
           }
           // Danger zone (user decision 2026-07-09): the profile page is the
           // 1:1's settings surface (members.tsx redirects here), so both
           // destructive actions live in this slot — "delete conversation"
-          // when a live 1:1 exists, "remove contact" when a contactBook
+          // when a live 1:1 exists, "remove contact" when a contacts-record
           // entry exists.
           dangerZone={
             contact || convo1to1 ? (

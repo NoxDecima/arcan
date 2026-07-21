@@ -17,6 +17,7 @@ test.describe("add-contact paste flow + invite-links row", () => {
     await createAccount(pasterPage, "Paster");
 
     await inviterPage.goto("/contacts/add");
+    await inviterPage.getByTestId("add-contact-reveal-btn").click();
     const copyUrl = inviterPage.getByTestId("copy-url-text");
     await copyUrl.waitFor({ state: "attached", timeout: 15_000 });
     const inviteUrl = (await copyUrl.textContent())!.trim();
@@ -43,7 +44,7 @@ test.describe("add-contact paste flow + invite-links row", () => {
   }) => {
     await createAccount(page, "Inv Row");
     await page.goto("/contacts/add");
-    // The page auto-creates one invitation on mount → "1 active".
+    // Invitations are minted lazily (FM10); count is "0 active" until revealed.
     await expect(page.getByTestId("manage-invites-link")).toContainText(
       "active",
     );

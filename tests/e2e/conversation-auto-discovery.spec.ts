@@ -19,8 +19,9 @@ import { createAccount, establishContact, openDirectChat } from "./helpers";
  * Bob's inbox subscription fires because:
  *   a) applyMigration (jazz framework) auto-creates inbox on account startup
  *   b) findOrCreate1to1Conversation sends a ConversationNotification via InboxSender
- *   c) useConversationInboxSubscription in App.tsx receives it, loads the
- *      Conversation by ID, and sets Contact.linkedConversation
+ *   c) useInboxDispatcher in App.tsx (the single inbox subscription) routes the
+ *      payload to handleConversationNotification, which loads the Conversation
+ *      by ID and pushes it to me.root.knownConversations
  */
 test("Bob's sidebar auto-discovers a conversation Alice created", async ({
   browser,

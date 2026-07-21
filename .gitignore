@@ -46,7 +46,7 @@ deploy/.env
 
 # Unit 8 reference design pack — extracted from ArcanUI.zip locally,
 # never committed. The zip itself stays in-repo for future re-extraction.
-design/
+design
 
 # Parity harness — generated artifacts (screenshots, diff images, esbuild output)
 tests/parity/report/

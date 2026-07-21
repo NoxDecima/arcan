@@ -11,7 +11,7 @@ import { useEffect, useRef } from "react";
  *     excludes own messages) → no fire. This matters when the same
  *     account has multiple tabs open: sending in tab A must not trigger
  *     a notification sound in tab B.
- *   - Opening the conversation runs markRead → cutoff advances → unread
+ *   - Opening the conversation advances the lastReadAt cutoff → unread
  *     drops → no fire (the unread > prev_unread guard).
  *   - A new foreign message arrives → unread grows → fire.
  *

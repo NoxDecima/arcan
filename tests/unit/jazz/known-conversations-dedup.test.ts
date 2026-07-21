@@ -3,7 +3,7 @@
  *
  * Root-cause investigation (see git commit message for confirmed cause):
  *
- * The inbox drain callback in useConversationInboxSubscription is:
+ * The inbox drain callback in useConversationInboxSubscription was (pre-fix):
  *
  *   const conversation = await Conversation.load(conversationID, { loadAs: me, resolve: {} });
  *   if (!conversation) return;
@@ -51,11 +51,18 @@ import { Group, co } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
-import { dedupeConversationsByID, selfHealKnownConversations } from "@/jazz/conversation";
+import {
+  dedupeConversationsByID,
+  selfHealKnownConversations,
+  handleConversationNotification,
+} from "@/jazz/conversation";
 
 // ---------------------------------------------------------------------------
-// Drain logic replicated verbatim from useConversationInboxSubscription
-// (PRE-FIX version — proxy-based dedup, under test)
+// Drain logic replicated verbatim from the pre-fix conversation inbox drain
+// (PRE-FIX version — proxy-based dedup, under test). The FIXED drain is no
+// longer replicated: since the inbox-dispatcher rework it is the exported
+// handleConversationNotification (routed to by useInboxDispatcher), tested
+// directly below against real Jazz test accounts.
 // ---------------------------------------------------------------------------
 async function drainConversationNotification_OLD(
   me: any,
@@ -72,36 +79,6 @@ async function drainConversationNotification_OLD(
   const alreadyKnown = Array.from(known as Iterable<any>).some(
     (c: any) => c?.$jazz?.id === conversationID,
   );
-  if (alreadyKnown) return;
-
-  (known as any).$jazz.push(conversation);
-}
-
-// ---------------------------------------------------------------------------
-// Drain logic with the FIX applied — raw-ID dedup, subscription-scope-free
-// ---------------------------------------------------------------------------
-async function drainConversationNotification_FIXED(
-  me: any,
-  conversationID: string,
-): Promise<void> {
-  const conversation = await Conversation.load(conversationID as any, {
-    loadAs: me,
-    resolve: {},
-  });
-  if (!conversation) return;
-
-  const known = me?.root?.knownConversations;
-  if (!known || typeof (known as any).$jazz?.push !== "function") return;
-
-  // Dedup by raw ID — reads cojson list entries directly, bypassing proxy.
-  const rawLength = (known as any).$jazz.raw.length();
-  let alreadyKnown = false;
-  for (let i = 0; i < rawLength; i++) {
-    if ((known as any).$jazz.raw.get(i) === conversationID) {
-      alreadyKnown = true;
-      break;
-    }
-  }
   if (alreadyKnown) return;
 
   (known as any).$jazz.push(conversation);
@@ -153,8 +130,8 @@ describe("knownConversations dedup — raw-ID guard (regression for group duplic
       // Simulate two sequential inbox notifications for the same conversation.
       // (e.g. createGroupConversation fired notification #1, addMemberToConversation
       // fired notification #2 for the same recipient on the same conversation.)
-      await drainConversationNotification_FIXED(bob, conversationID);
-      await drainConversationNotification_FIXED(bob, conversationID);
+      await handleConversationNotification(bob, conversationID);
+      await handleConversationNotification(bob, conversationID);
 
       const entries = Array.from(bob.root.knownConversations);
       expect(entries).toHaveLength(1);
@@ -183,8 +160,8 @@ describe("knownConversations dedup — raw-ID guard (regression for group duplic
       expect(Array.from(bob.root.knownConversations).length).toBe(0);
 
       await Promise.all([
-        drainConversationNotification_FIXED(bob, conversationID),
-        drainConversationNotification_FIXED(bob, conversationID),
+        handleConversationNotification(bob, conversationID),
+        handleConversationNotification(bob, conversationID),
       ]);
 
       const entries = Array.from(bob.root.knownConversations);

@@ -33,6 +33,7 @@ test("connection request survives navigation to /connections/pending", async ({
   try {
     await createAccount(bob, "Bob");
     await bob.goto("/contacts/add");
+    await bob.getByTestId("add-contact-reveal-btn").click();
     // Use the PLAIN copy/share URL (channel="link") for the negative control:
     // a link-channel request must NOT raise the live pop-up.
     await expect(bob.getByTestId("copy-url-text")).toBeAttached({ timeout: 15_000 });
@@ -103,6 +104,7 @@ test("qr-channel request raises the live prompt on the inviter's screen", async 
   try {
     await createAccount(host, "Hank");
     await host.goto("/contacts/add");
+    await host.getByTestId("add-contact-reveal-btn").click();
     // The QR-encoded URL carries ?via=qr.
     await expect(host.getByTestId("qr-url-text")).toBeAttached({ timeout: 15_000 });
     const qrUrl = (await host.getByTestId("qr-url-text").textContent())!.trim();
