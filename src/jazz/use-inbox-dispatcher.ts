@@ -61,7 +61,8 @@ function rawField(value: any, key: string): unknown {
   return typeof raw?.get === "function" ? raw.get(key) : undefined;
 }
 
-let warnedUnknownPayload = false;
+/** Track warned IDs per-payload so every unknown shape is logged exactly once. */
+const warnedUnknownPayloadIDs = new Set<string>();
 
 /**
  * Mount ONCE in the authenticated branch of App.tsx — the ONLY place that
@@ -111,12 +112,15 @@ export function useInboxDispatcher(me: any): void {
               );
             } else if (route === "connection") {
               await handleIncomingConnectionRequest(me, payload);
-            } else if (!warnedUnknownPayload) {
-              warnedUnknownPayload = true;
-              console.warn(
-                "[inbox] Ignoring inbox payload of unknown shape:",
-                payload?.$jazz?.id,
-              );
+            } else {
+              const pid = String(payload?.$jazz?.id ?? "unknown");
+              if (!warnedUnknownPayloadIDs.has(pid)) {
+                warnedUnknownPayloadIDs.add(pid);
+                console.warn(
+                  "[inbox] Ignoring inbox payload of unknown shape:",
+                  pid,
+                );
+              }
             }
           },
         );

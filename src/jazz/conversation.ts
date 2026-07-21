@@ -796,6 +796,7 @@ export async function attemptNotificationDelivery(
       { conversationID },
       { owner: notificationGroup },
     );
+    // NOTE: new inbox payload kinds MUST get a route + gating target in use-inbox-dispatcher.ts before any sender ships.
     const sender = await InboxSender.load<typeof notification>(
       targetAccountID as any,
       me,

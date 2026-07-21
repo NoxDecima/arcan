@@ -3,7 +3,7 @@
  *
  * Root-cause investigation (see git commit message for confirmed cause):
  *
- * The inbox drain callback in useConversationInboxSubscription is:
+ * The inbox drain callback in useConversationInboxSubscription was (pre-fix):
  *
  *   const conversation = await Conversation.load(conversationID, { loadAs: me, resolve: {} });
  *   if (!conversation) return;

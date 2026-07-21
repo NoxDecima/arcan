@@ -293,6 +293,7 @@ export async function deliverConnectionRequest(
   recipientAccountID: string,
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
+  // NOTE: new inbox payload kinds MUST get a route + gating target in use-inbox-dispatcher.ts before any sender ships.
   const sender = await InboxSender.load<typeof request>(
     recipientAccountID as any,
     requester,
