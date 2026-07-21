@@ -158,7 +158,7 @@ export const REQUEST_ACK_TIMEOUT_MS = 15_000;
 /** Request expiry floor: 7 days from send, decoupled from invitation TTL (FM9). */
 export const REQUEST_MIN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error(`timed out after ${ms}ms`)),

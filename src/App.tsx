@@ -19,7 +19,10 @@ import { PendingConnectionsRoute } from "@/routes/connections/pending";
 import { LiveInvitesRoute } from "@/routes/connections/live-invites";
 import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { useConversationInboxSubscription } from "@/jazz/conversation";
+import {
+  useConversationInboxSubscription,
+  useNotificationRetry,
+} from "@/jazz/conversation";
 import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
 import { useOutgoingRequestWatcher } from "@/jazz/handshake";
 import { NotificationManager } from "@/components/notification-manager";
@@ -123,6 +126,10 @@ function App() {
   // hook's state. Uses its own deep useAccount internally (App resolve stays
   // shallow by convention).
   useOutgoingRequestWatcher();
+
+  // Contact-robustness slice: re-send unacked conversation/member-add
+  // notifications (durable pendingNotifications entries) on launch/reconnect.
+  useNotificationRetry();
 
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {

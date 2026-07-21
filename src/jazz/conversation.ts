@@ -1,11 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
 import { z } from "jazz-tools";
+import { useAccount } from "jazz-tools/react";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { SystemEvent } from "@/jazz/schema/SystemEvent";
+import { PendingNotification } from "./schema/PendingNotification";
+import { ArcanAccount } from "./schema/ArcanAccount";
 import {
   sendConnectionRequest,
+  withTimeout,
+  REQUEST_ACK_TIMEOUT_MS,
   type SendConnectionRequestResult,
 } from "./handshake";
 import { getForeignAccountPubkeyHex } from "@/auth/pubkey";
@@ -176,22 +181,7 @@ export async function findOrCreate1to1Conversation(
 
   // Notify the other party via their inbox so their sidebar can auto-discover
   // the conversation without requiring them to navigate to an explicit URL.
-  const conversationID = (conversation as any).$jazz.id as string;
-  void (async () => {
-    try {
-      // Fresh notification group — the other account has no prior role here,
-      // so InboxSender's add-as-writer call won't conflict with admin role.
-      const notificationGroup = Group.create({ owner: me });
-      const notification = ConversationNotification.create(
-        { conversationID },
-        { owner: notificationGroup },
-      );
-      const sender = await InboxSender.load<typeof notification>(otherAccountID as any, me);
-      await sender.sendMessage(notification);
-    } catch (e) {
-      console.warn("[inbox] Failed to deliver conversation to other party's inbox:", e);
-    }
-  })();
+  void sendConversationNotification(me, conversation, otherAccountID, "conversation");
 
   return conversation;
 }
@@ -234,28 +224,9 @@ export async function createGroupConversation(
   // Push to my own knownConversations
   (me as any).root.knownConversations.$jazz.push(conversation);
 
-  // Notify each participant via Inbox (fire-and-forget, parallel)
-  const conversationID = (conversation as any).$jazz.id as string;
+  // Notify each participant via Inbox (background, durable retry state)
   for (const accountID of participantAccountIDs) {
-    void (async () => {
-      try {
-        const notificationGroup = Group.create({ owner: me });
-        const notification = ConversationNotification.create(
-          { conversationID },
-          { owner: notificationGroup },
-        );
-        const sender = await InboxSender.load<typeof notification>(
-          accountID as any,
-          me,
-        );
-        await sender.sendMessage(notification);
-      } catch (e) {
-        console.warn(
-          `[inbox] Failed to deliver group conversation to ${accountID}:`,
-          e,
-        );
-      }
-    })();
+    void sendConversationNotification(me, conversation, accountID, "conversation");
   }
 
   return conversation;
@@ -420,11 +391,17 @@ export async function addMemberToConversation(
   conversation: any,
   newAccountID: string,
   role: "admin" | "writer" = "writer",
-): Promise<void> {
+): Promise<"added" | "already-member"> {
   const conversationGroup = conversation.$jazz?.owner as Group | undefined;
   if (!conversationGroup) {
     throw new Error("Conversation has no owning group");
   }
+
+  // Membership pre-check (spec §4): a concurrent admin add must not
+  // double-log "added" — and a silent role overwrite (addMember on an
+  // existing member re-assigns the role) is surfaced instead of swallowed.
+  const existingRole = conversationGroup.getRoleOf(newAccountID as any);
+  if (existingRole) return "already-member";
 
   const newAccount = await loadAccountByID(me, newAccountID);
   if (!newAccount) {
@@ -438,27 +415,8 @@ export async function addMemberToConversation(
 
   conversationGroup.addMember(newAccount, role);
 
-  // Notify the new member via their Inbox so their sidebar auto-discovers
-  const conversationID = conversation.$jazz.id as string;
-  void (async () => {
-    try {
-      const notificationGroup = Group.create({ owner: me });
-      const notification = ConversationNotification.create(
-        { conversationID },
-        { owner: notificationGroup },
-      );
-      const sender = await InboxSender.load<typeof notification>(
-        newAccountID as any,
-        me,
-      );
-      await sender.sendMessage(notification);
-    } catch (e) {
-      console.warn(
-        `[inbox] Failed to deliver group invite to ${newAccountID}:`,
-        e,
-      );
-    }
-  })();
+  void sendConversationNotification(me, conversation, newAccountID, "member-add");
+  return "added";
 }
 
 /**
@@ -776,6 +734,129 @@ function isMyDirectWriteGroup(group: Group, me: Account): boolean {
     directAdmins.length === 1 &&
     directAdmins[0].id === (me as any).$jazz.id
   );
+}
+
+/**
+ * Send a conversation/member-add inbox notification with durable retry
+ * state (contact-robustness spec §4). The pendingNotifications entry is
+ * written BEFORE the network attempt and deleted only on the Inbox
+ * end-to-end ack; useNotificationRetry re-sends survivors on
+ * launch/reconnect. Re-delivery is safe: the receive side is the hardened
+ * three-layer knownConversations drain (raw-ID dedup).
+ */
+export async function sendConversationNotification(
+  me: Account,
+  conversation: any,
+  targetAccountID: string,
+  kind: "conversation" | "member-add",
+): Promise<void> {
+  const conversationID = conversation.$jazz.id as string;
+  const pending = (me as any).root?.pendingNotifications;
+  const key = `${conversationID}:${targetAccountID}`;
+  if (pending && typeof pending.$jazz?.set === "function" && !pending[key]) {
+    pending.$jazz.set(
+      key,
+      PendingNotification.create(
+        {
+          conversation,
+          targetAccountID,
+          kind,
+          createdAt: new Date(),
+          attempts: 0,
+        },
+        { owner: me },
+      ),
+    );
+  }
+  await attemptNotificationDelivery(me, conversationID, targetAccountID);
+}
+
+/**
+ * One delivery attempt for a pending notification. Ack → entry deleted;
+ * failure/timeout → entry survives with bumped attempt bookkeeping.
+ */
+export async function attemptNotificationDelivery(
+  me: Account,
+  conversationID: string,
+  targetAccountID: string,
+): Promise<void> {
+  const pending = (me as any).root?.pendingNotifications;
+  const key = `${conversationID}:${targetAccountID}`;
+  const entry = pending?.[key];
+  try {
+    if (entry && typeof entry.$jazz?.set === "function") {
+      entry.$jazz.set("attempts", (entry.attempts ?? 0) + 1);
+      entry.$jazz.set("lastAttemptAt", new Date());
+    }
+    // Fresh notification group — the target has no prior role here, so
+    // InboxSender's add-as-writer call won't conflict with their role on
+    // the conversation group itself.
+    const notificationGroup = Group.create({ owner: me });
+    const notification = ConversationNotification.create(
+      { conversationID },
+      { owner: notificationGroup },
+    );
+    const sender = await InboxSender.load<typeof notification>(
+      targetAccountID as any,
+      me,
+    );
+    await withTimeout(sender.sendMessage(notification), REQUEST_ACK_TIMEOUT_MS);
+    // Post-await ack consumption is delete-by-key on the re-readable record —
+    // idempotent under a concurrent successful attempt (the key is simply
+    // already gone; no terminal state exists to clobber).
+    if (pending && typeof pending.$jazz?.delete === "function") {
+      pending.$jazz.delete(key);
+    }
+  } catch (e) {
+    console.warn(
+      `[inbox] notification to ${targetAccountID} failed (will retry):`,
+      e,
+    );
+  }
+}
+
+/**
+ * App-level retry for unacked conversation/member-add notifications —
+ * mounted once in App.tsx beside the other drains. Once per launch + on
+ * browser reconnect (same policy as the outgoing-request watcher).
+ */
+export function useNotificationRetry(): void {
+  // $onError: "catch" at the $each level (Task 6 review amendment): one
+  // unavailable/unauthorized entry CoValue must not stall me.$isLoaded for
+  // ALL pending notifications. Caught entries resolve to null — the
+  // `!entry?.targetAccountID` guard below skips them.
+  const me = useAccount(ArcanAccount, {
+    resolve: { root: { pendingNotifications: { $each: { $onError: "catch" } } } },
+  });
+  const retriedThisLaunch = useRef(false);
+
+  useEffect(() => {
+    if (!me.$isLoaded) return;
+
+    const retry = () => {
+      const pending = (me as any).root?.pendingNotifications;
+      if (!pending) return;
+      for (const [key, entry] of Object.entries(
+        pending as Record<string, any>,
+      )) {
+        if (!entry?.targetAccountID) continue;
+        const conversationID = key.split(":")[0];
+        void attemptNotificationDelivery(
+          me as any,
+          conversationID,
+          entry.targetAccountID,
+        );
+      }
+    };
+
+    if (!retriedThisLaunch.current) {
+      retriedThisLaunch.current = true;
+      retry();
+    }
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me.$isLoaded]);
 }
 
 /**

@@ -301,12 +301,19 @@ export function MembersRoute() {
     setActionInProgress(true);
     try {
       for (const contact of contacts) {
-        await addMemberToConversation(
+        const result = await addMemberToConversation(
           me as any,
           conversation,
           contact.contactAccountID as string,
           "writer",
         );
+        if (result === "already-member") {
+          toast({
+            icon: "check",
+            text: `${contact.displayNameLocal ?? "that person"} is already a member`,
+            tone: "neutral",
+          });
+        }
       }
     } finally {
       setActionInProgress(false);
