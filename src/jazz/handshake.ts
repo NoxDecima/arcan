@@ -11,7 +11,9 @@
  *    approvedAt/deniedAt stamps into durable contact/status state — replacing
  *    the tab-lifetime poll in /invite (FM3/FM4).
  */
+import { useEffect, useRef } from "react";
 import { Account } from "jazz-tools";
+import { useAccount } from "jazz-tools/react";
 import { Contact } from "./schema/Contact";
 import {
   mintConnectionRequest,
@@ -19,6 +21,7 @@ import {
   GROUP_REQUEST_TTL_MS,
 } from "./invitations";
 import { OutgoingConnectionRequest } from "./schema/OutgoingConnectionRequest";
+import { ArcanAccount } from "./schema/ArcanAccount";
 
 export type UpsertContactResult =
   | "created"
@@ -288,4 +291,165 @@ export async function sendConnectionRequest(
     (entry as any).$jazz.set("status", "failed");
     return { outcome: "send-failed", entry };
   }
+}
+
+export interface OutgoingEntryStamps {
+  status: "pending" | "approved" | "denied" | "failed" | "expired";
+  archivedAtMs?: number;
+  approvedAtMs?: number;
+  deniedAtMs?: number;
+  expiresAtMs?: number;
+}
+
+export type OutgoingAction = "approve" | "deny" | "expire" | "none";
+
+/**
+ * Pure state machine for a durable outgoing entry. Priority:
+ * archived → inert; approval stamp → approve (wins over denial + expiry,
+ * mirroring pairing's approve-wins rule); denial stamp → deny; past request
+ * expiry → expire. "failed" is NOT handled here — re-sends run on
+ * launch/reconnect, never as a reactive transition (no hot retry loops).
+ */
+export function computeOutgoingAction(
+  entry: OutgoingEntryStamps,
+  nowMs: number,
+): OutgoingAction {
+  if (entry.archivedAtMs !== undefined) return "none";
+  if (entry.status !== "pending") return "none";
+  if (entry.approvedAtMs !== undefined) return "approve";
+  if (entry.deniedAtMs !== undefined) return "deny";
+  if (entry.expiresAtMs !== undefined && entry.expiresAtMs <= nowMs) {
+    return "expire";
+  }
+  return "none";
+}
+
+/**
+ * App-level approval watcher — mounted ONCE in App.tsx beside the inbox
+ * drains. Replaces the /invite route's 3-second component-lifetime poll
+ * (FM3) and gives the group channel its missing requester-side contact
+ * write (FM4). Subscribes via its own useAccount (App.tsx's resolve stays
+ * shallow by convention — see the comment above App's useAccount).
+ *
+ * The contact write pins entry.counterpartFingerprint as snapshotted at
+ * send time by sendConnectionRequest — for the group channel that snapshot
+ * comes from getForeignAccountPubkeyHex (target-derived; see the 2026-07-21
+ * C1 amendment). The watcher never re-derives fingerprints itself.
+ *
+ * Transitions are idempotent: computeOutgoingAction returns "none" once the
+ * status/archivedAt writes land, so the render-reactive effect settles.
+ */
+export function useOutgoingRequestWatcher(): void {
+  const me = useAccount(ArcanAccount, {
+    resolve: {
+      root: {
+        contacts: { $each: true },
+        outgoingRequests: { $each: { request: true } },
+      },
+    },
+  });
+  const retriedThisLaunch = useRef(false);
+
+  // 1. Reactive transitions (approve/deny/expire) — runs on every render of
+  // the resolved graph; cheap and settles to no-ops.
+  useEffect(() => {
+    if (!me.$isLoaded) return;
+    const outgoing = (me as any).root?.outgoingRequests;
+    if (!outgoing) return;
+    const nowMs = Date.now();
+    for (const entry of Object.values(outgoing as Record<string, any>)) {
+      if (!entry || typeof entry.$jazz?.set !== "function") continue;
+      const req = entry.request;
+      const action = computeOutgoingAction(
+        {
+          status: entry.status,
+          archivedAtMs: entry.archivedAt
+            ? new Date(entry.archivedAt).getTime()
+            : undefined,
+          approvedAtMs: req?.approvedAt
+            ? new Date(req.approvedAt).getTime()
+            : undefined,
+          deniedAtMs: req?.deniedAt
+            ? new Date(req.deniedAt).getTime()
+            : undefined,
+          expiresAtMs: req?.expiresAt
+            ? new Date(req.expiresAt).getTime()
+            : undefined,
+        },
+        nowMs,
+      );
+      if (action === "none") continue;
+      if (action === "approve") {
+        const result = upsertContact(me as any, {
+          contactAccountID: entry.counterpartAccountID,
+          fingerprint: entry.counterpartFingerprint,
+          displayName: entry.counterpartDisplayName,
+        });
+        // DEVIATION from the plan snippet (which archived unconditionally):
+        // "unavailable" means the contacts record or the existing keyed entry
+        // hasn't synced yet — NOTHING was written. Archiving now would mark
+        // the approval consumed without a contact ever existing (exactly the
+        // silent loss this slice exists to kill). Leave the entry pending;
+        // this effect re-runs on the next render/sync tick and retries.
+        // created/unchanged/conflict all mean the contact fact is durably
+        // recorded (conflict keeps the old pin + sets the flag), so those
+        // proceed to archive.
+        if (result === "unavailable") continue;
+        entry.$jazz.set("status", "approved");
+      } else if (action === "deny") {
+        entry.$jazz.set("status", "denied");
+      } else {
+        entry.$jazz.set("status", "expired");
+      }
+      entry.$jazz.set("archivedAt", new Date());
+    }
+  });
+
+  // 2. Failed-send retry — once per launch + on browser reconnect (spec §2).
+  useEffect(() => {
+    if (!me.$isLoaded) return;
+
+    const retryFailed = () => {
+      const outgoing = (me as any).root?.outgoingRequests;
+      if (!outgoing) return;
+      for (const entry of Object.values(outgoing as Record<string, any>)) {
+        if (!entry || entry.archivedAt) continue;
+        const undelivered =
+          entry.status === "failed" ||
+          (entry.status === "pending" && !entry.deliveredAt);
+        if (!undelivered) continue;
+        const req = entry.request;
+        if (!req?.$jazz?.id) continue;
+        const expMs = req.expiresAt
+          ? new Date(req.expiresAt).getTime()
+          : Number.POSITIVE_INFINITY;
+        if (expMs <= Date.now()) continue; // expiry transition handles it
+        void (async () => {
+          try {
+            await withTimeout(
+              deliverConnectionRequest(
+                me as any,
+                entry.counterpartAccountID,
+                req,
+              ),
+              REQUEST_ACK_TIMEOUT_MS,
+            );
+            entry.$jazz.set("deliveredAt", new Date());
+            entry.$jazz.set("status", "pending");
+          } catch (e) {
+            console.warn("[handshake] retry delivery failed:", e);
+            entry.$jazz.set("status", "failed");
+          }
+        })();
+      }
+    };
+
+    if (!retriedThisLaunch.current) {
+      retriedThisLaunch.current = true;
+      retryFailed();
+    }
+    window.addEventListener("online", retryFailed);
+    return () => window.removeEventListener("online", retryFailed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me.$isLoaded]);
 }

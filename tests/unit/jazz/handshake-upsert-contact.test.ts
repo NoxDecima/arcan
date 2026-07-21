@@ -10,6 +10,12 @@ vi.mock("@/jazz/schema/Contact", () => ({
   ContactBook: {},
 }));
 
+// Task 6: handshake.ts statically imports ArcanAccount (useOutgoingRequestWatcher
+// passes it to useAccount). The REAL schema module would re-import the mocked
+// Contact above and feed the `ContactBook: {}` stub to co.map → throw. This
+// test never mounts the hook, so an empty schema stub suffices.
+vi.mock("@/jazz/schema/ArcanAccount", () => ({ ArcanAccount: {} }));
+
 import { upsertContact } from "@/jazz/handshake";
 
 function makeMe(existing: Record<string, any> = {}) {

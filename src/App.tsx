@@ -21,6 +21,7 @@ import { IncomingConnectionPrompt } from "@/components/incoming-connection-promp
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useConversationInboxSubscription } from "@/jazz/conversation";
 import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
+import { useOutgoingRequestWatcher } from "@/jazz/handshake";
 import { NotificationManager } from "@/components/notification-manager";
 import { DeepLinkBridge } from "@/components/deep-link-bridge";
 import { TrustedDevicePrompt } from "@/components/trusted-device-prompt";
@@ -112,6 +113,13 @@ function App() {
   // route read from that list (via useIncomingConnectionRequests) and must NOT
   // each open their own destructive inbox subscription.
   useIncomingConnectionRequestInbox(me);
+
+  // Contact-robustness slice: durable outgoing-request watcher (approval,
+  // denial, expiry, failed-send retry). Owns the requester-side contact
+  // write for BOTH channels — the /invite screen is now a pure view of this
+  // hook's state. Uses its own deep useAccount internally (App resolve stays
+  // shallow by convention).
+  useOutgoingRequestWatcher();
 
   // Allow /pair regardless of auth state — the responder starts unauthenticated
   if (location.pathname === "/pair") {
