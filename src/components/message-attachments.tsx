@@ -10,8 +10,11 @@
 // the last cell (N = count − 4 hidden). Clicking the "+N" scrim EXPANDS the
 // grid to show ALL images (2-column rows; odd remainder gets a full-width 2:1
 // cell). When expanded every cell opens the lightbox at its own image.
-// Messages with 0–1 images keep the original flex-wrap tile path untouched
-// (round-4 single-image sizing preserved).
+// Messages with 0–1 images keep the flex-wrap tile path; a LONE image
+// additionally caps its wrapper at min(280, gridWidth) so the bubble hugs the
+// image instead of showing a dead veil strip on desktop (item #28, 2026-07-21
+// — see the comment on the wrapper). The round-4 img sizing itself
+// (attachment-tile.tsx) is untouched.
 import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
 import {
@@ -27,7 +30,8 @@ interface MessageAttachmentsProps {
   me: any;
   /** Bubble attachment content width (bubbleWidth − 2·6px padding). The
    * multi-image grid is sized to exactly this, so no bubble background shows
-   * around it. Single-image/file rendering ignores it. */
+   * around it. A lone image caps its wrapper at min(280, gridWidth) so the
+   * bubble hugs the image (item #28). File-only rendering ignores it. */
   gridWidth: number;
 }
 
@@ -208,10 +212,23 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
     );
   }
 
+  // Lone image (no files): cap the wrapper at min(280, gridWidth) with
+  // DEFINITE pixels so the shrink-to-fit bubble hugs the image (item #28).
+  // The round-4 img cap min(280px, 100%) contains a percentage, and
+  // percentage-bearing caps are discarded during intrinsic (max-content)
+  // sizing — a large photo's natural width ballooned the bubble to full
+  // width while the img laid out at ≤280px, leaving a dead veil strip on
+  // desktop. The definite wrapper cap bounds the intrinsic contribution;
+  // the img's own 100% belt (attachment-tile.tsx, round 4 — sacred) still
+  // shrinks it at layout time when the real bubble content box is narrower
+  // than gridWidth (mobile / border-box arithmetic), so no overflow.
+  const loneImage = attachments.length === 1 && images.length === 1;
+
   return (
     <>
       <div
         className={`mt-1 flex flex-wrap gap-2 ${isMine ? "justify-end" : "justify-start"}`}
+        style={loneImage ? { maxWidth: Math.min(280, gridWidth) } : undefined}
         data-testid="message-attachments"
       >
         {attachments.map((att: any, i: number) => (
