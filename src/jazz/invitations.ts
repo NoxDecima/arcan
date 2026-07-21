@@ -244,25 +244,16 @@ export async function loadInvitationAsGuest(
 // ---------------------------------------------------------------------------
 
 /**
- * Mint a ConnectionRequest CoValue and deliver it to the recipient's Inbox.
- *
- * The request is wrapped in a fresh notification group (same pattern as
- * ConversationNotification in conversation.ts:151-166) so InboxSender can add
- * the recipient as "writer" without any prior role conflict.
- *
- * @param requester         - the account opening the connection
- * @param recipientAccountID - the inviter's account ID (from parseInvitationURL)
- * @param channel           - "qr" | "link" | "group"
- * @param opts.invitationID - the Invitation CoValue ID if channel !== "group"
- * @param opts.expiresAt    - when this request expires (caller sets based on channel TTL)
- * @returns the created ConnectionRequest CoValue
+ * Mint a ConnectionRequest CoValue locally (no network). Split from delivery
+ * (contact-robustness slice) so sendConnectionRequest can persist a durable
+ * outgoingRequests entry BEFORE any network attempt.
  */
-export async function createConnectionRequest(
+export function mintConnectionRequest(
   requester: Account,
   recipientAccountID: string,
   channel: "qr" | "link" | "group",
   opts: { invitationID?: string; expiresAt: Date },
-): Promise<ReturnType<typeof ConnectionRequest.create>> {
+): ReturnType<typeof ConnectionRequest.create> {
   const me = requester as Account & {
     profile?: { displayName?: string; name?: string };
     $jazz: { id: string };
@@ -275,7 +266,7 @@ export async function createConnectionRequest(
   // InboxSender.load() can add them as "writer" without conflict.
   const notificationGroup = Group.create({ owner: requester });
 
-  const request = ConnectionRequest.create(
+  return ConnectionRequest.create(
     {
       requesterAccountID: me.$jazz.id,
       requesterFingerprint: getAccountPubkeyHex(requester),
@@ -287,16 +278,26 @@ export async function createConnectionRequest(
       expiresAt: opts.expiresAt,
     },
     { owner: notificationGroup },
-  );
+  ) as ReturnType<typeof ConnectionRequest.create>;
+}
 
-  // Deliver via the recipient's Inbox
+/**
+ * Deliver a minted ConnectionRequest to the recipient's Inbox. Resolves on
+ * the Inbox's end-to-end ack (receiver durably marked it processed) — with
+ * NO upstream timeout; callers wrap it (handshake.ts REQUEST_ACK_TIMEOUT_MS).
+ * Safe to call again with the same request: the receiver drain dedups by
+ * request CoValue ID.
+ */
+export async function deliverConnectionRequest(
+  requester: Account,
+  recipientAccountID: string,
+  request: ReturnType<typeof ConnectionRequest.create>,
+): Promise<void> {
   const sender = await InboxSender.load<typeof request>(
     recipientAccountID as any,
     requester,
   );
   await sender.sendMessage(request);
-
-  return request as ReturnType<typeof ConnectionRequest.create>;
 }
 
 /**

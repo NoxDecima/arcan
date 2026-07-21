@@ -31,7 +31,8 @@ import { useSharedGroups } from "@/hooks/use-shared-groups";
 import {
   parseInvitationURL,
   loadInvitationAsGuest,
-  createConnectionRequest,
+  mintConnectionRequest,
+  deliverConnectionRequest,
   readInviteChannel,
 } from "@/jazz/invitations";
 import {
@@ -207,20 +208,16 @@ export function InviteRoute() {
     if (!me.$isLoaded || !invitation) return;
     setPhase("sending");
     try {
-      const req = await createConnectionRequest(
+      const req = mintConnectionRequest(
         me as any,
         invitation.inviterAccountID,
-        // Channel reflects how THIS recipient opened the invite (scanned QR
-        // vs pasted link), not how the invitation was minted — the same
-        // invitation is shared through both channels.
         openedChannel,
         {
           invitationID: invitation.$jazz?.id,
-          // Permanent invites (no expiresAt) still mint expiring requests so
-          // the pending-list timeout logic works. Fall back to 30 days.
           expiresAt: invitation.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       );
+      await deliverConnectionRequest(me as any, invitation.inviterAccountID, req);
       setRequest(req);
       setPhase("sent");
     } catch (e) {

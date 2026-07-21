@@ -362,8 +362,16 @@ export function MembersRoute() {
 
   async function handleRequestConnection(accountID: string) {
     try {
-      await requestConnectionFromGroupMember(me as any, accountID);
-      toast({ icon: "check", text: "request sent", tone: "accent" });
+      const result = await requestConnectionFromGroupMember(me as any, accountID);
+      if (result.outcome === "already-pending") {
+        toast({ icon: "check", text: "request already pending", tone: "neutral" });
+      } else if (result.outcome === "already-contact") {
+        toast({ icon: "check", text: "already a contact", tone: "neutral" });
+      } else if (result.outcome === "send-failed") {
+        toast({ icon: "alert", text: "couldn't send — will retry", tone: "error" });
+      } else {
+        toast({ icon: "check", text: "request sent", tone: "accent" });
+      }
     } catch {
       toast({ icon: "alert", text: "couldn't send request", tone: "error" });
     }

@@ -4,7 +4,11 @@ import { z } from "jazz-tools";
 import { Conversation } from "@/jazz/schema/Conversation";
 import { Message } from "@/jazz/schema/Message";
 import { SystemEvent } from "@/jazz/schema/SystemEvent";
-import { createConnectionRequest, GROUP_REQUEST_TTL_MS } from "@/jazz/invitations";
+import {
+  sendConnectionRequest,
+  type SendConnectionRequestResult,
+} from "./handshake";
+import { getAccountPubkeyHex } from "@/auth/pubkey";
 
 /**
  * Thin notification wrapper sent through the Inbox.
@@ -258,15 +262,40 @@ export async function createGroupConversation(
 }
 
 /**
- * Group-channel: request a connection from a co-member of a conversation. Delivers a
- * ConnectionRequest with channel='group', expiresAt = createdAt + 30d. 1:1 inbox delivery.
+ * Group-channel: request a connection from a co-member of a conversation.
+ * Routes through handshake.sendConnectionRequest — the single creation path —
+ * so the durable outgoingRequests entry exists and the approval watcher can
+ * write the contact on BOTH sides (FM4: previously the requester never got
+ * the approver as a contact).
  */
 export async function requestConnectionFromGroupMember(
   me: Account,
   targetAccountID: string,
-): Promise<void> {
-  const expiresAt = new Date(Date.now() + GROUP_REQUEST_TTL_MS);
-  await createConnectionRequest(me as any, targetAccountID, "group", { expiresAt });
+): Promise<SendConnectionRequestResult> {
+  const target = await loadAccountByID(me, targetAccountID);
+  if (!target) {
+    throw new Error(`Cannot load account ${targetAccountID}`);
+  }
+  let fingerprint = "";
+  try {
+    fingerprint = getAccountPubkeyHex(target as any);
+  } catch {
+    // fall through to the guard below
+  }
+  if (!fingerprint) {
+    throw new Error(
+      `Cannot derive fingerprint for ${targetAccountID} — refusing unpinned request`,
+    );
+  }
+  const displayName =
+    (target as any).profile?.displayName ??
+    (target as any).profile?.name ??
+    "Unknown";
+  return sendConnectionRequest(
+    me,
+    { accountID: targetAccountID, fingerprint, displayName },
+    { channel: "group", requestChannel: "group" },
+  );
 }
 
 /**
