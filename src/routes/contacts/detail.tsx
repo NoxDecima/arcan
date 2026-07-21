@@ -28,7 +28,7 @@ export function ContactDetailRoute() {
 
   const me = useAccount(ArcanAccount, {
     resolve: {
-      root: { contacts: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: { $onError: "catch" } }, knownConversations: true },
     },
   });
 

@@ -14,7 +14,7 @@ interface ContactPickerProps {
 
 export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactPickerProps) {
   const me = useAccount(ArcanAccount, {
-    resolve: { root: { contacts: { $each: true } } },
+    resolve: { root: { contacts: { $each: { $onError: "catch" } } } },
   });
   const [selected, setSelected] = useState<Set<number>>(new Set());
 

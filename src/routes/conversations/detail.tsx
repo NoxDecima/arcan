@@ -319,7 +319,7 @@ export function ConversationDetailRoute() {
       profile: true,
       // Slice 8: lastReadAt is required for markRead to write the cutoff.
       root: {
-        contacts: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
         knownConversations: true,
         lastReadAt: true,
       },

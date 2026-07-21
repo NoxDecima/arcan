@@ -173,7 +173,7 @@ export function MembersRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contacts: { $each: true }, outgoingRequests: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: { $onError: "catch" } }, outgoingRequests: { $each: { $onError: "catch" } }, knownConversations: true },
     },
   });
 

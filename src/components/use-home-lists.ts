@@ -146,7 +146,7 @@ export function useHomeLists(): HomeListsResult {
     resolve: {
       profile: true,
       root: {
-        contacts: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
         // $onError: "catch" ensures the sidebar loads even when some
         // conversations become inaccessible (e.g. after the user is kicked
         // and Jazz revokes their read access to the ConversationGroup).

@@ -25,7 +25,7 @@ export function NewConversationRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contacts: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: { $onError: "catch" } }, knownConversations: true },
     },
   });
   const navigate = useNavigate();

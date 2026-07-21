@@ -43,7 +43,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     resolve: {
       profile: true,
       root: {
-        contacts: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
         // Needed by find1to1Conversation (danger-zone "delete conversation",
         // user decision 2026-07-09). $onError catches revoked/broken entries.
         knownConversations: { $each: { $onError: "catch" } },

@@ -24,7 +24,7 @@ export function useSharedGroups(otherAccountID: string): SharedGroup[] {
     resolve: {
       root: {
         knownConversations: { $each: true },
-        contacts: { $each: true },
+        contacts: { $each: { $onError: "catch" } },
       },
     },
   });
