@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { computeOutgoingAction } from "@/jazz/handshake";
+import { computeOutgoingAction, resolveApproveOutcome } from "@/jazz/handshake";
 
 const NOW = 1_800_000_000_000;
 
@@ -66,5 +66,22 @@ describe("computeOutgoingAction", () => {
         NOW,
       ),
     ).toBe("none");
+  });
+});
+
+// Pins the sanctioned deviation from the plan snippet (which archived
+// unconditionally on approve). "unavailable" → "retry" prevents archiving an
+// approval whose contact write didn't happen — exactly the FM3 silent loss this
+// slice exists to kill. All other upsert results mean the contact is durably
+// recorded (conflict keeps the old TOFU pin + sets the flag), so they archive.
+describe("resolveApproveOutcome", () => {
+  test("unavailable → retry (contact not yet written; must not archive)", () => {
+    expect(resolveApproveOutcome("unavailable")).toBe("retry");
+  });
+
+  test("created / unchanged / conflict → archive (contact durably recorded)", () => {
+    expect(resolveApproveOutcome("created")).toBe("archive");
+    expect(resolveApproveOutcome("unchanged")).toBe("archive");
+    expect(resolveApproveOutcome("conflict")).toBe("archive");
   });
 });

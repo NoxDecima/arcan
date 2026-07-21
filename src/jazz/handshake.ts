@@ -304,6 +304,28 @@ export interface OutgoingEntryStamps {
 export type OutgoingAction = "approve" | "deny" | "expire" | "none";
 
 /**
+ * Resolve what to do after a successful upsertContact during an approve
+ * transition (sanctioned deviation from the plan snippet, which archived
+ * unconditionally — see the DEVIATION comment in useOutgoingRequestWatcher).
+ *
+ * "unavailable" → "retry": the contacts record or the keyed entry hasn't
+ *   synced yet, so nothing was written. Leave the entry pending; the reactive
+ *   effect re-runs on the next render/sync tick and retries.
+ * "created" | "unchanged" | "conflict" → "archive": the contact fact is
+ *   durably recorded (conflict keeps the old TOFU pin + sets the flag), so
+ *   the approval is fully consumed and the entry can be archived.
+ *
+ * Exported for test-pinning — this is the only place "unavailable" prevents
+ * archival; a caller that ignores it creates a silent FM3 loss.
+ */
+export function resolveApproveOutcome(
+  upsertResult: UpsertContactResult,
+): "archive" | "retry" {
+  if (upsertResult === "unavailable") return "retry";
+  return "archive";
+}
+
+/**
  * Pure state machine for a durable outgoing entry. Priority:
  * archived → inert; approval stamp → approve (wins over denial + expiry,
  * mirroring pairing's approve-wins rule); denial stamp → deny; past request
@@ -340,11 +362,17 @@ export function computeOutgoingAction(
  * status/archivedAt writes land, so the render-reactive effect settles.
  */
 export function useOutgoingRequestWatcher(): void {
+  // $onError: "catch" at $each levels: one unavailable/unauthorized child
+  // CoValue must not stall me.$isLoaded for ALL entries. The precedent is
+  // use-home-lists.ts knownConversations resolve (same syntax). Caught entries
+  // resolve to null — existing null guards in both effects cover this shape:
+  // effect 1 checks `!entry || typeof entry.$jazz?.set !== "function"`;
+  // effect 2 checks `!entry || entry.archivedAt` + `!req?.$jazz?.id`.
   const me = useAccount(ArcanAccount, {
     resolve: {
       root: {
-        contacts: { $each: true },
-        outgoingRequests: { $each: { request: true } },
+        contacts: { $each: { $onError: "catch" } },
+        outgoingRequests: { $each: { request: true, $onError: "catch" } },
       },
     },
   });
@@ -380,21 +408,16 @@ export function useOutgoingRequestWatcher(): void {
       );
       if (action === "none") continue;
       if (action === "approve") {
-        const result = upsertContact(me as any, {
+        const upsertResult = upsertContact(me as any, {
           contactAccountID: entry.counterpartAccountID,
           fingerprint: entry.counterpartFingerprint,
           displayName: entry.counterpartDisplayName,
         });
-        // DEVIATION from the plan snippet (which archived unconditionally):
-        // "unavailable" means the contacts record or the existing keyed entry
-        // hasn't synced yet — NOTHING was written. Archiving now would mark
-        // the approval consumed without a contact ever existing (exactly the
-        // silent loss this slice exists to kill). Leave the entry pending;
-        // this effect re-runs on the next render/sync tick and retries.
-        // created/unchanged/conflict all mean the contact fact is durably
-        // recorded (conflict keeps the old pin + sets the flag), so those
-        // proceed to archive.
-        if (result === "unavailable") continue;
+        // resolveApproveOutcome encodes the sanctioned DEVIATION from the plan
+        // snippet (which archived unconditionally): "unavailable" → retry so we
+        // never archive an approval whose contact write didn't happen (FM3 loss).
+        // created/unchanged/conflict → archive (contact is durably recorded).
+        if (resolveApproveOutcome(upsertResult) === "retry") continue;
         entry.$jazz.set("status", "approved");
       } else if (action === "deny") {
         entry.$jazz.set("status", "denied");
@@ -434,8 +457,15 @@ export function useOutgoingRequestWatcher(): void {
               ),
               REQUEST_ACK_TIMEOUT_MS,
             );
+            // Re-check archivedAt after the await: effect 1 may have archived
+            // this entry (approval landed mid-flight). Writing status "pending"
+            // over a terminal status would clobber the label — skip it.
+            // deliveredAt is still safe to write (informational; doesn't affect
+            // the state machine).
             entry.$jazz.set("deliveredAt", new Date());
-            entry.$jazz.set("status", "pending");
+            if (!entry.archivedAt) {
+              entry.$jazz.set("status", "pending");
+            }
           } catch (e) {
             console.warn("[handshake] retry delivery failed:", e);
             entry.$jazz.set("status", "failed");
