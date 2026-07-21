@@ -35,6 +35,15 @@ export interface ContactData {
  * - Present, DIFFERENT fingerprint → keep the old pin, set
  *   fingerprintConflict + conflictingFingerprint for the profile safety-number
  *   section to surface. NEVER overwrites pinnedFingerprint (threat model §6).
+ * - Present but entry not yet loaded → "unavailable" (caller should retry
+ *   once the CoValue syncs). The TOFU pin is NEVER replaced; the invariant
+ *   holds intrinsically regardless of caller resolve discipline.
+ *
+ * Key-presence check: `contacts.$jazz.has(key)` (CoMapJazzApi.has, verified
+ * against node_modules/jazz-tools/dist/tools/coValues/coMap.d.ts line 257 and
+ * chunk-MIPBSAS7.js line 826). It checks the raw CoMap entry without loading
+ * the referenced CoValue — returns true when the key is set and not deleted,
+ * even when the entry value is null/unloaded.
  */
 export function upsertContact(
   me: Account,
@@ -45,8 +54,16 @@ export function upsertContact(
     return "unavailable";
   }
 
-  const existing = contacts[data.contactAccountID];
-  if (existing) {
+  // Guard: key present in the record but entry CoValue not yet loaded.
+  // contacts[key] is null/undefined while unloaded (proxy returns raw value),
+  // but contacts.$jazz.has(key) is true — creating here would silently
+  // re-point the key at a new Contact, breaking the TOFU pin.
+  if (contacts.$jazz.has(data.contactAccountID)) {
+    const existing = contacts[data.contactAccountID];
+    if (!existing) {
+      // Entry key is present but the Contact CoValue isn't loaded yet.
+      return "unavailable";
+    }
     if (existing.pinnedFingerprint === data.fingerprint) return "unchanged";
     if (typeof existing.$jazz?.set === "function") {
       existing.$jazz.set("fingerprintConflict", true);

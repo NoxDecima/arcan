@@ -15,7 +15,33 @@ import { upsertContact } from "@/jazz/handshake";
 function makeMe(existing: Record<string, any> = {}) {
   const setSpy = vi.fn();
   const contacts: any = { ...existing };
-  contacts.$jazz = { set: setSpy };
+  contacts.$jazz = { set: setSpy, has: (k: string) => k in existing };
+  const me = { $jazz: { id: "me-acc" }, root: { contacts } };
+  return { me, setSpy, contacts };
+}
+
+/**
+ * Builds a contacts mock where `key` is present in the record (has() → true)
+ * but the entry CoValue is not yet loaded (property access → null).
+ * Mirrors the real jazz-tools proxy: CoMapJazzApi.has() checks the raw entry
+ * independent of CoValue load state, while the get-trap returns null for an
+ * unloaded ref.
+ */
+function makeUnloadedEntry(key: string) {
+  const setSpy = vi.fn();
+  // Track which keys are "in" the record (present but unloaded)
+  const presentKeys = new Set([key]);
+  const contacts: any = {};
+  // Property access returns null (unloaded CoValue ref)
+  Object.defineProperty(contacts, key, {
+    get: () => null,
+    enumerable: true,
+    configurable: true,
+  });
+  contacts.$jazz = {
+    set: setSpy,
+    has: (k: string) => presentKeys.has(k),
+  };
   const me = { $jazz: { id: "me-acc" }, root: { contacts } };
   return { me, setSpy, contacts };
 }
@@ -82,5 +108,16 @@ describe("upsertContact", () => {
   test("returns 'unavailable' when the contacts record is not loaded", () => {
     const me = { $jazz: { id: "me-acc" }, root: {} };
     expect(upsertContact(me as any, data)).toBe("unavailable");
+  });
+
+  test("TOFU: key present but entry unloaded → 'unavailable', record set() never called", () => {
+    // Regression: before the fix, contacts[key] === null (falsy) caused the
+    // create branch to execute, silently re-pointing the pinned key at a new
+    // Contact with the incoming fingerprint — a TOFU violation.
+    const { me, setSpy } = makeUnloadedEntry("acc-x");
+    const result = upsertContact(me as any, data);
+    expect(result).toBe("unavailable");
+    // The record-level set() must NEVER be called — that would re-point the pin.
+    expect(setSpy).not.toHaveBeenCalled();
   });
 });
