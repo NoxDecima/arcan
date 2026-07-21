@@ -16,6 +16,13 @@ export const Contact = co.map({
   displayNameLocal: z.string(),
   addedAt: z.date(),
   notes: z.string().optional(),
+  // Contact-robustness slice: set (never cleared automatically) when an
+  // upsert or the list→record migration observed a fingerprint that differs
+  // from pinnedFingerprint. The OLD pin is always kept (TOFU, threat model
+  // §6); the profile safety-number section surfaces "identity key changed —
+  // verify". conflictingFingerprint records the most recent differing value.
+  fingerprintConflict: z.boolean().optional(),
+  conflictingFingerprint: z.string().optional(),
   // linkedConversation REMOVED — discovery now uses
   // me.root.knownConversations (Slice 3b spec §5).
 });

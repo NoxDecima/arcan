@@ -1,5 +1,7 @@
 import { co, z, Group, Inbox } from "jazz-tools";
-import { ContactBook } from "./Contact";
+import { Contact, ContactBook } from "./Contact";
+import { OutgoingConnectionRequest } from "./OutgoingConnectionRequest";
+import { PendingNotification } from "./PendingNotification";
 import { DeviceRecord } from "./DeviceRecord";
 import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
@@ -32,7 +34,6 @@ import { getCurrentSessionFingerprint } from "@/auth/session";
 export const ArcanAccountRoot = co.map({
   contactBook: ContactBook,
   devices: co.list(DeviceRecord),
-  invitesIssued: co.list(Invitation),
   knownConversations: co.list(Conversation),
   // Slice 8 — per-conversation read cutoff (ms epoch). Keys are
   // Conversation IDs; absent keys mean "never opened" (all unread).
@@ -77,6 +78,27 @@ export const ArcanAccountRoot = co.map({
   // readers (the prompt + the pending route) read from here and survive reloads.
   // OPTIONAL for back-compat with pre-Unit-9 accounts (backfill below).
   incomingRequests: co.list(ConnectionRequest).optional(),
+  // ── Contact-robustness slice (2026-07-20) ──────────────────────────────
+  // Keyed-record replacements for the fragile CoLists (Jazz canon: duplicate-
+  // sensitive facts live in co.records — per-key LWW instead of concurrent-
+  // append duplication). NEW FIELD NAMES, not in-place list→record changes:
+  // the old fields' refs point at raw CoLists that a co.record schema cannot
+  // wrap. Old fields stay (write-frozen) for the migration backfill to read;
+  // removal is a later slice. All optional per the lastReadAt lesson above.
+  //
+  // contacts — THE contact book. Key: contact's account ID.
+  contacts: co.record(z.string(), Contact).optional(),
+  // incomingConnectionRequests — durable drain target. Key: request CoValue ID
+  // (same-key writes from racing drains converge instead of duplicating, FM2).
+  incomingConnectionRequests: co.record(z.string(), ConnectionRequest).optional(),
+  // outgoingRequests — durable outbound-request memory (FM1/FM3/FM4).
+  // Key: counterpart account ID.
+  outgoingRequests: co.record(z.string(), OutgoingConnectionRequest).optional(),
+  // dismissedRequests — replaces dismissedRequestIDs. Key: request CoValue ID.
+  dismissedRequests: co.record(z.string(), z.boolean()).optional(),
+  // pendingNotifications — outbound conversation/member-add notification retry
+  // state. Key: `${conversationID}:${targetAccountID}`.
+  pendingNotifications: co.record(z.string(), PendingNotification).optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -127,7 +149,6 @@ export const ArcanAccount = co.account({
   if (!me.$jazz.has("root")) {
     const contactBook = ContactBook.create([], { owner: me });
     const devices = co.list(DeviceRecord).create([], { owner: me });
-    const invitesIssued = co.list(Invitation).create([], { owner: me });
     const knownConversations = co.list(Conversation).create([], { owner: me });
     const pendingPairings = co.list(EphemeralPairing).create([], { owner: me });
     const lastReadAt = co
@@ -158,6 +179,21 @@ export const ArcanAccount = co.account({
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
     const liveInvitations = co.list(Invitation).create([], { owner: me });
     const incomingRequests = co.list(ConnectionRequest).create([], { owner: me });
+    const contacts = co
+      .record(z.string(), Contact)
+      .create({}, { owner: me });
+    const incomingConnectionRequests = co
+      .record(z.string(), ConnectionRequest)
+      .create({}, { owner: me });
+    const outgoingRequests = co
+      .record(z.string(), OutgoingConnectionRequest)
+      .create({}, { owner: me });
+    const dismissedRequests = co
+      .record(z.string(), z.boolean())
+      .create({}, { owner: me });
+    const pendingNotifications = co
+      .record(z.string(), PendingNotification)
+      .create({}, { owner: me });
 
     me.$jazz.set(
       "root",
@@ -165,7 +201,6 @@ export const ArcanAccount = co.account({
         {
           contactBook,
           devices,
-          invitesIssued,
           knownConversations,
           pendingPairings,
           lastReadAt,
@@ -173,6 +208,11 @@ export const ArcanAccount = co.account({
           dismissedRequestIDs,
           liveInvitations,
           incomingRequests,
+          contacts,
+          incomingConnectionRequests,
+          outgoingRequests,
+          dismissedRequests,
+          pendingNotifications,
         },
         { owner: me },
       ),
