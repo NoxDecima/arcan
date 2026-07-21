@@ -28,6 +28,7 @@ test("declined connection request reaches the requester's waiting screen", async
   try {
     await createAccount(bob, "Bob");
     await bob.goto("/contacts/add");
+    await bob.getByTestId("add-contact-reveal-btn").click();
 
     // copy-url-text is sr-only — wait for attachment, not visibility.
     await expect(bob.getByTestId("copy-url-text")).toBeAttached({ timeout: 15_000 });

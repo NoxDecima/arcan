@@ -195,6 +195,8 @@ export async function establishContact(
   inviterName: string,
 ): Promise<void> {
   await inviterPage.goto("/contacts/add");
+  // Invitations are minted lazily (contact-robustness FM10): reveal first.
+  await inviterPage.getByTestId("add-contact-reveal-btn").click();
   // copy-url-text is sr-only — wait for attachment, not visibility.
   const copyUrl = inviterPage.getByTestId("copy-url-text");
   await copyUrl.waitFor({ state: "attached", timeout: 15_000 });
