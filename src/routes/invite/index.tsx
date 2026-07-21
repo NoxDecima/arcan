@@ -410,6 +410,15 @@ export function InviteRoute() {
         safetySlot={safetySlot}
         onAccept={onConnect}
         onDecline={() => navigate("/")}
+        // Gate the CTA on the account graph being loaded. The confirm screen
+        // renders from the GUEST invitation load and can appear before `me`
+        // resolves (contacts + outgoingRequests deep resolve — slower once the
+        // account has prior handshakes); onConnect silently no-ops on an
+        // unloaded account, so an enabled button here would EAT the tap and
+        // strand the user (and the e2e helper) on a confirm screen that never
+        // advances. Disabled-until-loaded makes the early tap impossible
+        // instead of silently dropped.
+        acceptDisabled={!me.$isLoaded}
         acceptLabel="request to become contacts"
         declineLabel="cancel"
         rootTestId="invite-confirm"

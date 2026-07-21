@@ -156,9 +156,21 @@ function dayLabel(
  *   - Escape,
  *   - any scroll outside the popover (capture catches the timeline),
  *   - selecting an item (the item handlers close it — unchanged).
+ *
+ * Accessibility (follow-up #27):
+ *   - role="menu" on the container; role="menuitem" on items (added at the
+ *     call-site in JSX, not via cloneElement — keeps the API explicit).
+ *   - ArrowDown/ArrowUp/Home/End cycle focus among [role=menuitem] buttons.
+ *   - Tab closes the menu (standard ARIA menu behavior) and skips the
+ *     trigger-focus restore so focus advances naturally past the trigger.
+ *   - Escape restores focus to the trigger (keyboard-initiated close).
+ *   - Pointer-initiated closes (pointerdown outside, scroll, resize) do NOT
+ *     restore focus to the trigger — the user tapped elsewhere and restoring
+ *     would steal focus from whatever they tapped.
  */
 function AnchoredMessageMenu({
   anchor,
+  triggerEl,
   onClose,
   children,
 }: {
@@ -168,11 +180,25 @@ function AnchoredMessageMenu({
    * its rect edges so a flipped menu clears the button instead of covering
    * it (covering would swallow the toggle-close click). */
   anchor: { x: number; top: number; bottom: number };
+  /** The ⋮ trigger element — focus is restored to it on keyboard-initiated
+   * closes (Escape, item via keyboard). Pointer closes skip restore. */
+  triggerEl: HTMLElement | null;
   onClose: () => void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Helpers — collect focusable menu items, get the currently-focused index.
+  const getItems = () =>
+    Array.from(
+      ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+    );
+
+  // Restore focus to the trigger; used only for keyboard-initiated closes.
+  const restoreToTrigger = useCallback(() => {
+    triggerEl?.focus({ preventScroll: true });
+  }, [triggerEl]);
 
   // Measure after first paintless render, then clamp into the viewport.
   useLayoutEffect(() => {
@@ -194,8 +220,15 @@ function AnchoredMessageMenu({
 
   // Focus the first item on open (keyboard reachability — the portal lives at
   // the end of <body>, so natural Tab order from the ⋮ button won't reach it).
+  // The timeout defers past the triggering keyup event (Enter on the ⋮ button)
+  // so the browser doesn't re-focus the trigger after we move focus here.
   useEffect(() => {
-    ref.current?.querySelector("button")?.focus({ preventScroll: true });
+    const id = setTimeout(() => {
+      ref.current
+        ?.querySelector<HTMLElement>('[role="menuitem"]')
+        ?.focus({ preventScroll: true });
+    }, 0);
+    return () => clearTimeout(id);
   }, []);
 
   useEffect(() => {
@@ -211,17 +244,65 @@ function AnchoredMessageMenu({
       ) {
         return;
       }
+      // Pointer-initiated close — no focus restore (user tapped elsewhere).
       onClose();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      const items = getItems();
+      const focused = document.activeElement;
+      const idx = items.indexOf(focused as HTMLElement);
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Keyboard close — restore focus to the trigger.
+        onClose();
+        restoreToTrigger();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        // Standard ARIA menu: Tab closes the menu and lets focus move naturally
+        // past the trigger. Do NOT restore focus here — let the browser handle
+        // the Tab naturally after we call onClose (the trigger is restored only
+        // for keyboard-Escape, not Tab).
+        onClose();
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = items[(idx + 1) % items.length];
+        next?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = items[(idx - 1 + items.length) % items.length];
+        prev?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (e.key === "Home") {
+        e.preventDefault();
+        items[0]?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (e.key === "End") {
+        e.preventDefault();
+        items[items.length - 1]?.focus({ preventScroll: true });
+        return;
+      }
     };
     const onScroll = (e: Event) => {
       const t = e.target as Node | null;
       if (ref.current && t && ref.current.contains(t)) return;
+      // Pointer-initiated close — no focus restore.
       onClose();
     };
     const onResize = () => {
+      // Pointer-initiated close — no focus restore.
       onClose();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
@@ -234,11 +315,12 @@ function AnchoredMessageMenu({
       document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [onClose]);
+  }, [onClose, restoreToTrigger]);
 
   return createPortal(
     <div
       ref={ref}
+      role="menu"
       data-testid="message-menu"
       // position/coords are geometry, not paint — inline style is sanctioned.
       style={
@@ -301,12 +383,14 @@ export function ConversationDetailRoute() {
   const [editText, setEditText] = useState("");
   // Per-message actions menu: which message it's open for + the anchor it's
   // attached to (viewport coords; see AnchoredMessageMenu). R2+R3: pointer-
-  // anchored portal.
+  // anchored portal. `triggerEl` is the ⋮ button that opened the menu — used
+  // to restore focus on keyboard-initiated closes (Escape / item via keyboard).
   const [menuState, setMenuState] = useState<{
     id: string;
     x: number;
     top: number;
     bottom: number;
+    triggerEl: HTMLElement | null;
   } | null>(null);
   const closeMenu = useCallback(() => setMenuState(null), []);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -1097,6 +1181,7 @@ export function ConversationDetailRoute() {
                     x: r.left,
                     top: r.top,
                     bottom: r.bottom,
+                    triggerEl: e.currentTarget,
                   });
                 }
               }}
@@ -1119,6 +1204,8 @@ export function ConversationDetailRoute() {
               data-testid="message-menu-btn"
               data-message-menu-trigger
               aria-label="Message actions"
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
             >
               ⋮
             </button>
@@ -1129,10 +1216,12 @@ export function ConversationDetailRoute() {
                   top: menuState.top,
                   bottom: menuState.bottom,
                 }}
+                triggerEl={menuState.triggerEl}
                 onClose={closeMenu}
               >
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     closeMenu();
                     setEditingMessageId(msgId);
@@ -1145,6 +1234,7 @@ export function ConversationDetailRoute() {
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     closeMenu();
                     void handleDeleteMessage(message);
@@ -1193,7 +1283,7 @@ export function ConversationDetailRoute() {
         onContext:
           isMine && !isDeleted && !malformed && !isEditing
             ? (at: { x: number; y: number }) =>
-                setMenuState({ id: msgId, x: at.x, top: at.y, bottom: at.y })
+                setMenuState({ id: msgId, x: at.x, top: at.y, bottom: at.y, triggerEl: null })
             : undefined,
         bodyOverride,
         entering: motion.enter.has(item.key),
@@ -1263,12 +1353,12 @@ export function ConversationDetailRoute() {
             type="button"
             aria-hidden
             tabIndex={-1}
-            className="fixed inset-0 z-10 cursor-default"
+            className="fixed inset-0 z-30 cursor-default"
             onClick={() => setHeaderMenuOpen(false)}
           />
           <div
             data-testid="conversation-menu"
-            className="absolute right-0 top-full mt-1 z-20 min-w-[200px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-40 min-w-[200px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
           >
             <button
               type="button"
