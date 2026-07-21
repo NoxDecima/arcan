@@ -15,7 +15,8 @@ import { reconcileLegacyContacts } from "@/jazz/handshake";
  * backfill (ArcanAccount block 2i) now tolerates unloadable legacy entries
  * ($onError: "catch") — this pass is the safety net that makes that tolerance
  * safe: any legacy contactBook entry that LOADS on a later launch but has no
- * key in the contacts record gets upserted with its original TOFU pin.
+ * key in the contacts record gets set directly into the record with its
+ * original TOFU pin (and all metadata) intact.
  */
 
 /**
@@ -46,32 +47,53 @@ const legacyAda = {
 };
 
 describe("reconcileLegacyContacts", () => {
-  test("loaded legacy entry missing from the record → upserted with the legacy pin verbatim + displayNameLocal preserved", () => {
+  test("loaded legacy entry missing from the record → set directly with legacy CoValue (preserves pin/addedAt/displayNameLocal)", () => {
     const { me, setSpy } = makeMe({}, [legacyAda]);
     reconcileLegacyContacts(me);
     expect(setSpy).toHaveBeenCalledTimes(1);
     const [key, value] = setSpy.mock.calls[0];
     expect(key).toBe("acc-ada");
-    expect(value).toMatchObject({
-      contactAccountID: "acc-ada",
-      pinnedFingerprint: "fp-ada-legacy",
-      displayNameLocal: "Ada",
-    });
+    // The legacy entry itself must be set — not a new Contact — so object
+    // identity matches (same reference, all fields intact).
+    expect(value).toBe(legacyAda);
   });
 
-  test("entry already in the record → untouched (no record write, no conflict re-flag even when the legacy pin differs)", () => {
+  test("entry present with differing pin, not yet flagged → flagged once (fingerprintConflict set, pinnedFingerprint untouched)", () => {
     const entrySet = vi.fn();
+    const existingEntry = {
+      contactAccountID: "acc-ada",
+      pinnedFingerprint: "fp-ada-record",
+      displayNameLocal: "Ada",
+      fingerprintConflict: false,
+      $jazz: { set: entrySet },
+    };
     const { me, setSpy } = makeMe(
-      {
-        "acc-ada": {
-          contactAccountID: "acc-ada",
-          pinnedFingerprint: "fp-ada-record",
-          displayNameLocal: "Ada",
-          $jazz: { set: entrySet },
-        },
-      },
-      // Stale legacy dup with a DIFFERENT fingerprint: the record is
-      // authoritative; the reconcile must not re-flag a conflict every launch.
+      { "acc-ada": existingEntry },
+      // Stale legacy dup with a DIFFERENT fingerprint.
+      [{ ...legacyAda, pinnedFingerprint: "fp-ada-older" }],
+    );
+    reconcileLegacyContacts(me);
+    // No record-level set (key already present).
+    expect(setSpy).not.toHaveBeenCalled();
+    // Entry-level: conflict flagged once.
+    expect(entrySet).toHaveBeenCalledWith("fingerprintConflict", true);
+    expect(entrySet).toHaveBeenCalledWith("conflictingFingerprint", "fp-ada-older");
+    // pinnedFingerprint itself must NOT be touched.
+    expect(entrySet).not.toHaveBeenCalledWith("pinnedFingerprint", expect.anything());
+  });
+
+  test("entry present, already flagged with differing pin → no further writes on second pass", () => {
+    const entrySet = vi.fn();
+    const existingEntry = {
+      contactAccountID: "acc-ada",
+      pinnedFingerprint: "fp-ada-record",
+      displayNameLocal: "Ada",
+      fingerprintConflict: true, // already flagged from a previous launch
+      conflictingFingerprint: "fp-ada-older",
+      $jazz: { set: entrySet },
+    };
+    const { me, setSpy } = makeMe(
+      { "acc-ada": existingEntry },
       [{ ...legacyAda, pinnedFingerprint: "fp-ada-older" }],
     );
     reconcileLegacyContacts(me);
@@ -92,11 +114,12 @@ describe("reconcileLegacyContacts", () => {
     expect(setSpy).not.toHaveBeenCalled();
   });
 
-  test("mixed list: valid entries upserted, unloaded neighbors skipped", () => {
+  test("mixed list: valid entries set, unloaded neighbors skipped", () => {
     const { me, setSpy } = makeMe({}, [null, legacyAda]);
     reconcileLegacyContacts(me);
     expect(setSpy).toHaveBeenCalledTimes(1);
     expect(setSpy.mock.calls[0][0]).toBe("acc-ada");
+    expect(setSpy.mock.calls[0][1]).toBe(legacyAda);
   });
 
   test("contacts record absent (migration still pending) → no-op", () => {

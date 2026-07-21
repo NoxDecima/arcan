@@ -4,7 +4,10 @@
  *
  * Owns the account-level handshake facts:
  *  - the contact book (me.root.contacts, keyed by account ID) via
- *    upsertContact — the ONLY place a Contact is written;
+ *    upsertContact — the ONLY NORMAL place a Contact is written;
+ *    two sanctioned non-upsert record writers also exist for metadata
+ *    preservation: the migration keep path (ArcanAccount.ts block 2i) and
+ *    the startup reconcile heal path (reconcileLegacyContacts below);
  *  - outbound connection requests (me.root.outgoingRequests) via
  *    sendConnectionRequest — the ONLY request-creation path (both channels);
  *  - the app-level approval watcher (useOutgoingRequestWatcher) that turns
@@ -202,12 +205,29 @@ export function getLegacyContact(me: any, accountID: string): any | undefined {
  *   pinnedFingerprint are considered — an unloaded/null entry has an
  *   unreadable pin and is skipped; it heals here on a later launch once it
  *   loads. (Reads the legacy list only — the write-freeze on it holds.)
- * - Key already in the record → untouched. The record is authoritative;
- *   re-upserting a stale legacy dup would re-flag a fingerprint conflict the
- *   migration planner already resolved (oldest-pin TOFU) on every launch.
- * - Missing key → upsertContact with the legacy pin verbatim +
- *   displayNameLocal preserved (same data mapping as the migration planner's
- *   keep path). upsertContact never overwrites pins by construction.
+ * - Key present in the record AND existing entry loaded AND pins differ AND
+ *   not yet flagged → set fingerprintConflict: true + conflictingFingerprint
+ *   on the existing entry (NEVER touching pinnedFingerprint), then continue.
+ *   Notes:
+ *   (a) Once flagged, the second pass sees fingerprintConflict already true
+ *       and skips — no churn. Planner-resolved conflicts arrive pre-flagged
+ *       and their kept entry's own pin trivially matches the legacy entry for
+ *       the kept index, so they also skip.
+ *   (b) Semantic wrinkle: conflictingFingerprint here carries the OLDER value
+ *       (the schema doc says "most recent differing" — the field is a
+ *       surfacing vehicle either way; the important invariant is that
+ *       pinnedFingerprint, the TOFU anchor, is never overwritten).
+ *   (c) Why this matters: entry availability timing is server-influenceable —
+ *       a withheld legacy entry + re-add must not silently launder a key
+ *       change. Flag-once here closes that gap for the reconcile path.
+ * - Key present but entry CoValue not yet loaded → skip (defers to a later
+ *   launch once it syncs).
+ * - Key absent from the record → set the LEGACY CoValue itself directly into
+ *   the record (contacts.$jazz.set(id, legacyEntry)), preserving the
+ *   original pinnedFingerprint/addedAt/notes/displayNameLocal wholesale.
+ *   This is the third sanctioned non-upsert record writer (migration keep
+ *   path, this reconcile — both justified by metadata preservation); the pin
+ *   invariant holds because the entry IS the original pinned data.
  */
 export function reconcileLegacyContacts(me: any): void {
   const contacts = me?.root?.contacts;
@@ -220,15 +240,28 @@ export function reconcileLegacyContacts(me: any): void {
     ) {
       continue; // unloaded/malformed — pin unreadable; heals once it loads
     }
-    if (contacts.$jazz.has?.(legacy.contactAccountID)) continue;
-    upsertContact(me, {
-      contactAccountID: legacy.contactAccountID,
-      fingerprint: legacy.pinnedFingerprint,
-      displayName:
-        typeof legacy.displayNameLocal === "string"
-          ? legacy.displayNameLocal
-          : "",
-    });
+    const id = legacy.contactAccountID;
+    if (contacts.$jazz.has?.(id)) {
+      // Key present — run a flag-once pin conflict check, then move on.
+      const existing = contacts[id];
+      if (!existing) {
+        // Entry CoValue not yet loaded — skip, defer to a later launch.
+        continue;
+      }
+      if (
+        typeof existing.pinnedFingerprint === "string" &&
+        existing.pinnedFingerprint !== legacy.pinnedFingerprint &&
+        !existing.fingerprintConflict &&
+        typeof existing.$jazz?.set === "function"
+      ) {
+        existing.$jazz.set("fingerprintConflict", true);
+        existing.$jazz.set("conflictingFingerprint", legacy.pinnedFingerprint);
+      }
+      continue;
+    }
+    // Key absent — set the legacy CoValue itself to preserve all metadata
+    // (pinnedFingerprint, addedAt, displayNameLocal, etc.) intact.
+    contacts.$jazz.set(id, legacy);
   }
 }
 
@@ -607,7 +640,11 @@ export function useOutgoingRequestWatcher(): void {
         contacts: { $each: { $onError: "catch" } },
         // Legacy list resolved for reconcileLegacyContacts (stuck-account
         // fix): entries that fail to load are caught → null → skipped there.
-        contactBook: { $each: { $onError: "catch" } },
+        // List-level $onError: "catch" prevents an unavailable list CoValue
+        // itself from stalling the whole watcher resolve (entry-level catch
+        // alone only catches child failures — the list being unreachable stalls
+        // the parent). `legacyContactBookEntries` tolerates the resulting null.
+        contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
         outgoingRequests: { $each: { request: true, $onError: "catch" } },
         incomingConnectionRequests: { $each: { $onError: "catch" } },
         dismissedRequests: true,
