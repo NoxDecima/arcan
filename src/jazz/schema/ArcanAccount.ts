@@ -74,9 +74,10 @@ export const ArcanAccountRoot = co.map({
   // recipient's Inbox. jazz-tools Inbox.subscribe is one-shot+destructive (it
   // marks each message `processed` in a persisted stream after first delivery),
   // so surfacing requests via ephemeral component-local state lost them on the
-  // /connections/pending full reload. A single app-level subscription
-  // (useIncomingConnectionRequestInbox) drains the inbox into this list once;
-  // readers (the prompt + the pending route) read from here and survive reloads.
+  // /connections/pending full reload. A single app-level subscription (now
+  // useInboxDispatcher) drains the inbox into durable account state once;
+  // readers (the prompt + the pending route) read from there and survive
+  // reloads.
   // OPTIONAL for back-compat with pre-Unit-9 accounts (backfill below).
   incomingRequests: co.list(ConnectionRequest).optional(),
   // ── Contact-robustness slice (2026-07-20) ──────────────────────────────

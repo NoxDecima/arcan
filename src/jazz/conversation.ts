@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Group, Account, co, InboxSender, Inbox } from "jazz-tools";
+import { Group, Account, co, InboxSender } from "jazz-tools";
 import { z } from "jazz-tools";
 import { useAccount } from "jazz-tools/react";
 import { Conversation } from "@/jazz/schema/Conversation";
@@ -860,91 +860,59 @@ export function useNotificationRetry(): void {
 }
 
 /**
- * React hook: subscribe to the current user's inbox and push incoming
- * Conversations to me.root.knownConversations for sidebar auto-discovery.
+ * Conversation-notification drain handler: load the Conversation named by an
+ * inbox payload's `conversationID` and push it to me.root.knownConversations
+ * for sidebar auto-discovery.
  *
- * Call this once in the authenticated branch of App.tsx. The inbox is
- * a persistent CoStream — messages that arrived before the current session
- * are replayed on subscribe, so Bob will discover conversations even if he
- * was offline when Alice created one.
+ * Routed to by useInboxDispatcher (src/jazz/use-inbox-dispatcher.ts) — the
+ * single app-wide inbox subscription. This used to be the callback body of a
+ * dedicated useConversationInboxSubscription hook; owning a second
+ * `inbox.subscribe` was the shared-processed-feed hazard (all subscriptions
+ * share ONE processed feed, so this drain could consume-and-mark-processed a
+ * ConnectionRequest during the other drain's mount gap — permanent loss).
  *
- * Replaces the Slice 3a behavior of setting contact.linkedConversation.
- * All conversation kinds (1:1 and group) use the same knownConversations path.
- *
- * The effect re-runs only when `me.$isLoaded` or `me.$jazz.id` changes
- * (i.e. on sign-in / account switch), not on every render.
+ * The inbox is a persistent CoStream — messages that arrived before the
+ * current session are replayed on subscribe, so Bob discovers conversations
+ * even if he was offline when Alice created one. All conversation kinds
+ * (1:1 and group) use this same knownConversations path.
  */
-export function useConversationInboxSubscription(me: any) {
-  useEffect(() => {
-    if (!me?.$isLoaded) return;
+export async function handleConversationNotification(
+  me: any,
+  conversationID: string,
+): Promise<void> {
+  try {
+    const conversation = await Conversation.load(conversationID as any, {
+      loadAs: me,
+      resolve: {},
+    });
+    if (!conversation) return;
 
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
+    // Dedup: only push if not already in knownConversations.
+    // Guard: known.$jazz.push may not be available if knownConversations
+    // is a NotLoaded proxy (not in the resolve query for this account
+    // load). Check typeof before calling to avoid runtime errors.
+    const known = me?.root?.knownConversations;
+    if (!known || typeof (known as any).$jazz?.push !== "function") return;
 
-    // Self-heal: remove any duplicate entries in knownConversations that
-    // may have been created by two devices each appending the same ID before
-    // CRDT sync merged their writes. Idempotent; silent; runs on every mount.
-    // Ordering contract: the heal MUST run synchronously here, before the
-    // async Inbox.load drain below opens — moving it into the async block
-    // could race the drain's own push.
-    selfHealKnownConversations(me);
-
-    (async () => {
-      try {
-        const inbox = await Inbox.load(me);
-        if (cancelled) return;
-        unsubscribe = inbox.subscribe(
-          ConversationNotification,
-          async (notification: any) => {
-            // Load the actual Conversation by ID from the notification payload
-            const conversationID = notification?.conversationID;
-            if (!conversationID) return;
-            try {
-              const conversation = await Conversation.load(conversationID, {
-                loadAs: me,
-                resolve: {},
-              });
-              if (!conversation) return;
-
-              // Dedup: only push if not already in knownConversations.
-              // Guard: known.$jazz.push may not be available if knownConversations
-              // is a NotLoaded proxy (not in the resolve query for this account
-              // load). Check typeof before calling to avoid runtime errors.
-              const known = me?.root?.knownConversations;
-              if (!known || typeof (known as any).$jazz?.push !== "function") return;
-
-              // Dedup by raw CoValue ID — reads cojson list entries directly,
-              // bypassing the Jazz proxy/subscription-scope machinery. This
-              // avoids any edge-case where proxy resolution in a non-reactive
-              // context (inbox callback is outside React) could yield an
-              // unexpected result. The raw list stores CoValue ID strings
-              // directly; `raw.get(i)` returns the ID or undefined for each
-              // index, which is safe to compare against conversationID.
-              const rawLen = (known as any).$jazz.raw.length() as number;
-              let alreadyKnown = false;
-              for (let i = 0; i < rawLen; i++) {
-                if ((known as any).$jazz.raw.get(i) === conversationID) {
-                  alreadyKnown = true;
-                  break;
-                }
-              }
-              if (alreadyKnown) return;
-
-              (known as any).$jazz.push(conversation);
-            } catch (e) {
-              console.warn("[inbox] Failed to push conversation to knownConversations:", e);
-            }
-          },
-        );
-      } catch (e) {
-        console.warn("[inbox] Failed to subscribe to inbox:", e);
+    // Dedup by raw CoValue ID — reads cojson list entries directly,
+    // bypassing the Jazz proxy/subscription-scope machinery. This
+    // avoids any edge-case where proxy resolution in a non-reactive
+    // context (inbox callback is outside React) could yield an
+    // unexpected result. The raw list stores CoValue ID strings
+    // directly; `raw.get(i)` returns the ID or undefined for each
+    // index, which is safe to compare against conversationID.
+    const rawLen = (known as any).$jazz.raw.length() as number;
+    let alreadyKnown = false;
+    for (let i = 0; i < rawLen; i++) {
+      if ((known as any).$jazz.raw.get(i) === conversationID) {
+        alreadyKnown = true;
+        break;
       }
-    })();
+    }
+    if (alreadyKnown) return;
 
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.$isLoaded, (me as any)?.$jazz?.id]);
+    (known as any).$jazz.push(conversation);
+  } catch (e) {
+    console.warn("[inbox] Failed to push conversation to knownConversations:", e);
+  }
 }

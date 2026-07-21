@@ -1,8 +1,5 @@
-import { useEffect } from "react";
 import { useAccount } from "jazz-tools/react";
-import { Inbox } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 
 export interface PendingRequest {
   request: any;
@@ -10,84 +7,57 @@ export interface PendingRequest {
 }
 
 /**
- * App-level inbox subscription — the ONLY place that calls
- * `inbox.subscribe(ConnectionRequest, …)` (Unit 9-0 one-shot semantics; see
- * git history for the full diagnosis).
- *
- * Contact-robustness slice: the drain target moved from the legacy incoming
- * CoList to the incomingConnectionRequests co.record, KEYED BY REQUEST
- * COVALUE ID. Two sessions racing the drain now issue same-key sets that
+ * Connection-request drain handler: persist an arriving ConnectionRequest
+ * into the durable me.root.incomingConnectionRequests co.record, KEYED BY
+ * REQUEST COVALUE ID. Two sessions racing the drain issue same-key sets that
  * converge by LWW instead of concurrent list appends that both survive
- * (FM2) — the three-layer dedup the CoList needed is structural here.
+ * (FM2) — the three-layer dedup the legacy CoList needed is structural here.
+ *
+ * Routed to by useInboxDispatcher (src/jazz/use-inbox-dispatcher.ts) — the
+ * single app-wide inbox subscription (Unit 9-0 one-shot semantics; see git
+ * history for the full diagnosis). This used to be the callback body of a
+ * dedicated useIncomingConnectionRequestInbox hook; owning a second
+ * `inbox.subscribe` was the shared-processed-feed hazard (the conversation
+ * drain could consume-and-mark-processed a ConnectionRequest during this
+ * drain's mount/record-wait gap — the sender got its end-to-end ack while
+ * the request was never persisted, permanent silent loss).
  */
-export function useIncomingConnectionRequestInbox(me: any): void {
-  // Do NOT subscribe until the persistence target exists (Task 7 review).
-  // jazz-tools marks an inbox message processed the moment the subscribe
-  // callback runs — consuming without persisting is the loss mode: on a
-  // migration-stuck account (incomingConnectionRequests still absent) an
-  // early-returning callback would destroy the request unpersisted, forever.
-  // Unprocessed messages are durable in the Inbox and replay on eventual
-  // subscribe, so waiting for the record is safe.
-  const recordID = me?.root?.incomingConnectionRequests?.$jazz?.id;
+export async function handleIncomingConnectionRequest(
+  me: any,
+  request: any,
+): Promise<void> {
+  try {
+    const id = request?.$jazz?.id;
+    if (!id) return;
 
-  useEffect(() => {
-    if (!me?.$isLoaded) return;
-    if (!recordID) return; // record absent → leave the inbox untouched
+    // Guard: $jazz.set is only available when the record is a fully-loaded
+    // CoMap (it is, per the resolve in App.tsx — and the dispatcher refuses
+    // to subscribe at all while the record is absent).
+    const record = me?.root?.incomingConnectionRequests;
+    if (!record || typeof (record as any).$jazz?.set !== "function") {
+      return;
+    }
+    // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe does NOT
+    // filter by schema — EVERY inbox message's payload is loaded under the
+    // subscribed schema, including ConversationNotification payloads
+    // (verified against jazz-tools src/tools/coValues/inbox.ts
+    // processMessage). A foreign payload read through the ConnectionRequest
+    // schema has all fields undefined; persisting it creates a phantom
+    // pending row whose approve stamps an unrelated CoValue. The dispatcher
+    // routes by raw payload shape, so foreign payloads should never reach
+    // this handler — kept as defense in depth for any other call path.
+    if (typeof (request as any)?.requesterAccountID !== "string") {
+      return;
+    }
 
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const inbox = await Inbox.load(me);
-        if (cancelled) return;
-        unsubscribe = inbox.subscribe(
-          ConnectionRequest,
-          async (request: any) => {
-            try {
-              const id = request?.$jazz?.id;
-              if (!id) return;
-
-              // Guard: $jazz.set is only available when the record is a
-              // fully-loaded CoMap (it is, per the resolve in App.tsx).
-              const record = me?.root?.incomingConnectionRequests;
-              if (!record || typeof (record as any).$jazz?.set !== "function") {
-                return;
-              }
-              // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe
-              // does NOT filter by schema — EVERY inbox message's payload is
-              // loaded as ConnectionRequest and lands here, including
-              // ConversationNotification payloads (verified against
-              // jazz-tools src/tools/coValues/inbox.ts processMessage). A
-              // foreign payload read through this schema has all fields
-              // undefined; persisting it creates a phantom pending row whose
-              // approve stamps an unrelated CoValue. Mirror the conversation
-              // drain's `if (!conversationID) return` guard.
-              if (typeof (request as any)?.requesterAccountID !== "string") {
-                return;
-              }
-
-              if ((record as any)[id]) return; // cheap same-session skip
-              (record as any).$jazz.set(id, request);
-            } catch (e) {
-              console.warn(
-                "[connection-requests] Failed to persist incoming request:",
-                e,
-              );
-            }
-          },
-        );
-      } catch (e) {
-        console.warn("[connection-requests] inbox subscribe failed:", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.$isLoaded, (me as any)?.$jazz?.id, recordID]);
+    if ((record as any)[id]) return; // cheap same-session skip
+    (record as any).$jazz.set(id, request);
+  } catch (e) {
+    console.warn(
+      "[connection-requests] Failed to persist incoming request:",
+      e,
+    );
+  }
 }
 
 /**

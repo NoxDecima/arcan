@@ -1,25 +1,14 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { describe, test, expect, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 import {
   useIncomingConnectionRequests,
-  useIncomingConnectionRequestInbox,
+  handleIncomingConnectionRequest,
 } from "@/jazz/use-incoming-connection-requests";
 
 const accountMock = vi.fn();
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => accountMock(),
 }));
-
-// Partial mock: only Inbox is stubbed — the schema modules need the real
-// co/z exports at import time.
-const inboxLoadMock = vi.fn();
-vi.mock("jazz-tools", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("jazz-tools")>();
-  return {
-    ...actual,
-    Inbox: { load: (...args: unknown[]) => inboxLoadMock(...args) },
-  };
-});
 
 const FUTURE = new Date(Date.now() + 60_000);
 const PAST = new Date(Date.now() - 60_000);
@@ -49,82 +38,64 @@ function withRoot(incoming: any[], dismissedIDs: string[] = []) {
   });
 }
 
-describe("useIncomingConnectionRequestInbox (drain)", () => {
-  beforeEach(() => {
-    inboxLoadMock.mockReset();
-  });
-
-  test("record absent → does NOT subscribe (inbox untouched; Task 7 review)", async () => {
-    // Migration-stuck account: incomingConnectionRequests never backfilled.
-    // Subscribing would mark inbox messages processed with nowhere to
-    // persist them — permanent loss. The drain must leave the inbox alone.
-    const me = { $isLoaded: true, $jazz: { id: "me-account" }, root: {} };
-    renderHook(() => useIncomingConnectionRequestInbox(me));
-    await act(async () => {});
-    expect(inboxLoadMock).not.toHaveBeenCalled();
-  });
-
-  test("record present → subscribes and persists arriving requests by ID", async () => {
-    const setSpy = vi.fn();
-    const record: Record<string, unknown> = {};
-    (record as any).$jazz = { id: "record-1", set: setSpy };
-    const me = {
+// The drain's SUBSCRIPTION lifecycle (single Inbox.load, record-absent
+// no-subscribe gating — Task 7 pin, unmount unsubscribe) is pinned in
+// tests/unit/jazz/use-inbox-dispatcher.test.ts: the shared-processed-feed
+// hazard moved the subscribe into the single app-wide dispatcher. This file
+// pins the persistence HANDLER the dispatcher routes connection payloads to.
+describe("handleIncomingConnectionRequest (drain handler)", () => {
+  function makeMe(record: unknown) {
+    return {
       $isLoaded: true,
       $jazz: { id: "me-account" },
       root: { incomingConnectionRequests: record },
     };
+  }
 
-    let drain: ((request: unknown) => Promise<void>) | undefined;
-    const unsubscribe = vi.fn();
-    inboxLoadMock.mockResolvedValue({
-      subscribe: (_schema: unknown, cb: (request: unknown) => Promise<void>) => {
-        drain = cb;
-        return unsubscribe;
-      },
-    });
+  function makeRecord() {
+    const setSpy = vi.fn();
+    const record: Record<string, unknown> = {};
+    (record as any).$jazz = { id: "record-1", set: setSpy };
+    return { record, setSpy };
+  }
 
-    const { unmount } = renderHook(() =>
-      useIncomingConnectionRequestInbox(me),
-    );
-    await act(async () => {});
-    expect(inboxLoadMock).toHaveBeenCalledTimes(1);
-    expect(drain).toBeDefined();
-
+  test("persists arriving requests by CoValue ID", async () => {
+    const { record, setSpy } = makeRecord();
     const request = { $jazz: { id: "req-1" }, requesterAccountID: "bob" };
-    await drain!(request);
+    await handleIncomingConnectionRequest(makeMe(record), request);
     expect(setSpy).toHaveBeenCalledWith("req-1", request);
+  });
 
-    unmount();
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  test("record absent → persists nothing, does not throw (defense in depth)", async () => {
+    // The dispatcher must not even subscribe in this state (pinned in
+    // use-inbox-dispatcher.test.ts); the handler additionally refuses to
+    // act should it ever be reached with the record missing.
+    const request = { $jazz: { id: "req-1" }, requesterAccountID: "bob" };
+    await expect(
+      handleIncomingConnectionRequest(makeMe(undefined), request),
+    ).resolves.toBeUndefined();
   });
 
   test("foreign inbox payload (no requesterAccountID) is NOT persisted (FM4 shape guard)", async () => {
     // Inbox.subscribe does not filter by schema: ConversationNotification
     // payloads reach this drain too, with every ConnectionRequest field
     // undefined. Persisting one creates a phantom approvable pending row.
-    const setSpy = vi.fn();
-    const record: Record<string, unknown> = {};
-    (record as any).$jazz = { id: "record-1", set: setSpy };
-    const me = {
-      $isLoaded: true,
-      $jazz: { id: "me-account" },
-      root: { incomingConnectionRequests: record },
-    };
-
-    let drain: ((request: unknown) => Promise<void>) | undefined;
-    inboxLoadMock.mockResolvedValue({
-      subscribe: (_schema: unknown, cb: (request: unknown) => Promise<void>) => {
-        drain = cb;
-        return vi.fn();
-      },
-    });
-
-    renderHook(() => useIncomingConnectionRequestInbox(me));
-    await act(async () => {});
-    expect(drain).toBeDefined();
-
+    // The dispatcher routes such payloads away; the handler keeps its own
+    // guard for any other call path.
+    const { record, setSpy } = makeRecord();
     // A ConversationNotification read through the ConnectionRequest schema.
-    await drain!({ $jazz: { id: "notif-1" }, conversationID: "co_zConvo" });
+    await handleIncomingConnectionRequest(makeMe(record), {
+      $jazz: { id: "notif-1" },
+      conversationID: "co_zConvo",
+    });
+    expect(setSpy).not.toHaveBeenCalled();
+  });
+
+  test("already-persisted ID → same-session skip (no second set)", async () => {
+    const { record, setSpy } = makeRecord();
+    const request = { $jazz: { id: "req-1" }, requesterAccountID: "bob" };
+    (record as any)["req-1"] = request;
+    await handleIncomingConnectionRequest(makeMe(record), request);
     expect(setSpy).not.toHaveBeenCalled();
   });
 });

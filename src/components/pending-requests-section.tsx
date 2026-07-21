@@ -18,7 +18,7 @@ import { useToast } from "@/components/toast";
  *
  * Reads the durable, read-only `useIncomingConnectionRequests()` hook (Unit
  * 9-0) — it does NOT open an inbox subscription (that lives once in App.tsx via
- * useIncomingConnectionRequestInbox). Approve/deny call the shared helpers in
+ * useInboxDispatcher). Approve/deny call the shared helpers in
  * src/jazz/invitations.ts so this surface and the full /connections/pending
  * route never diverge.
  *

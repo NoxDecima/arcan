@@ -19,11 +19,8 @@ import { PendingConnectionsRoute } from "@/routes/connections/pending";
 import { LiveInvitesRoute } from "@/routes/connections/live-invites";
 import { IncomingConnectionPrompt } from "@/components/incoming-connection-prompt";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
-import {
-  useConversationInboxSubscription,
-  useNotificationRetry,
-} from "@/jazz/conversation";
-import { useIncomingConnectionRequestInbox } from "@/jazz/use-incoming-connection-requests";
+import { useNotificationRetry } from "@/jazz/conversation";
+import { useInboxDispatcher } from "@/jazz/use-inbox-dispatcher";
 import { useOutgoingRequestWatcher } from "@/jazz/handshake";
 import { NotificationManager } from "@/components/notification-manager";
 import { DeepLinkBridge } from "@/components/deep-link-bridge";
@@ -96,29 +93,31 @@ function App() {
   // Lifting it here was observed to remount /auth/recovery after the
   // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
   // would reset back to "enter-code" mid-flow.
-  // incomingConnectionRequests is resolved here so the single app-level
-  // connection-request inbox subscription (useIncomingConnectionRequestInbox)
-  // can $jazz.set on the loaded record. profile: true is required so
-  // Inbox.load(me) can read me.profile.inbox.
+  // incomingConnectionRequests is resolved here so the inbox dispatcher's
+  // connection route can $jazz.set on the loaded record. profile: true is
+  // required so Inbox.load(me) can read me.profile.inbox.
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: {
         // $onError: "catch" (Task 7 review, precedent use-home-lists.ts):
         // one unavailable contact child must not keep the whole app shell's
-        // `me` unloaded — that would also unmount both inbox drains.
+        // `me` unloaded — that would also unmount the inbox dispatcher.
         contacts: { $each: { $onError: "catch" } },
         knownConversations: true,
         incomingConnectionRequests: true,
       },
     },
   });
-  useConversationInboxSubscription(me);
-  // Unit 9-0: drain the connection-request inbox into the durable
-  // me.root.incomingConnectionRequests record exactly once, app-wide. The prompt + pending
-  // route read from that record (via useIncomingConnectionRequests) and must NOT
-  // each open their own destructive inbox subscription.
-  useIncomingConnectionRequestInbox(me);
+  // THE single inbox subscription (Unit 9-0 one-shot semantics + the
+  // shared-processed-feed hazard): one destructive `inbox.subscribe`,
+  // routing conversation notifications to knownConversations and
+  // ConnectionRequests to the durable incomingConnectionRequests record.
+  // It refuses to subscribe until BOTH targets are ready — consuming marks
+  // a message processed for every payload kind at once. The prompt +
+  // pending route read from the record (via useIncomingConnectionRequests)
+  // and must NOT open their own inbox subscription.
+  useInboxDispatcher(me);
 
   // Contact-robustness slice: durable outgoing-request watcher (approval,
   // denial, expiry, failed-send retry). Owns the requester-side contact
