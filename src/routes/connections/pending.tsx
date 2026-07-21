@@ -102,8 +102,26 @@ function PendingCard({
             aria-label="approve request"
             className={`${tapClass} w-9 h-9 shrink-0 justify-center rounded-r-3 border border-hairline text-arcan-accent`}
             onClick={async () => {
-              await approveConnectionRequest(me, request);
-              toast({ icon: "check", text: "contact added", tone: "success" });
+              const outcome = await approveConnectionRequest(me, request);
+              if (outcome === "approved") {
+                toast({ icon: "check", text: "contact added", tone: "success" });
+              } else if (outcome === "unavailable") {
+                // Contacts record not loaded yet — nothing was stamped; the
+                // request stays pending. Honest retry toast, never a false
+                // "contact added" (approver-side silent-loss fix).
+                toast({
+                  icon: "alert",
+                  text: "couldn't add contact — still syncing, try again",
+                  tone: "error",
+                });
+              } else {
+                // "malformed" or any future outcome: never claim success.
+                toast({
+                  icon: "alert",
+                  text: "couldn't approve this request",
+                  tone: "error",
+                });
+              }
             }}
             data-testid="approve"
           >

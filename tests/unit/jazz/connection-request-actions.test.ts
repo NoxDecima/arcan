@@ -60,7 +60,12 @@ function makeGroupRecipient(entries: any[]) {
 }
 
 describe("approveConnectionRequest — same-requester group", () => {
-  beforeEach(() => upsertContactMock.mockClear());
+  beforeEach(() => {
+    upsertContactMock.mockReset();
+    // Default: contact write succeeds (the real upsertContact returns one of
+    // "created" | "unchanged" | "conflict" | "unavailable").
+    upsertContactMock.mockReturnValue("created");
+  });
 
   test("stamps approvedAt on every live same-requester dupe (single contact upsert)", async () => {
     const acted = makeLiveRequest("req-a", "bob");
@@ -68,8 +73,9 @@ describe("approveConnectionRequest — same-requester group", () => {
     const other = makeLiveRequest("req-c", "carol");
     const { recipient } = makeGroupRecipient([acted, dupe, other]);
 
-    await approveConnectionRequest(recipient as any, acted);
+    const outcome = await approveConnectionRequest(recipient as any, acted);
 
+    expect(outcome).toBe("approved");
     expect(acted.$jazz.set).toHaveBeenCalledWith("approvedAt", expect.any(Date));
     expect(dupe.$jazz.set).toHaveBeenCalledWith("approvedAt", expect.any(Date));
     // Other requesters are untouched; the contact write stays one upsert.
@@ -97,9 +103,63 @@ describe("approveConnectionRequest — same-requester group", () => {
     bogus.$jazz = { id: "notif-1", set: vi.fn() };
     const { recipient } = makeGroupRecipient([bogus]);
 
-    await approveConnectionRequest(recipient as any, bogus);
+    const outcome = await approveConnectionRequest(recipient as any, bogus);
 
+    expect(outcome).toBe("malformed");
     expect(bogus.$jazz.set).not.toHaveBeenCalled();
+    expect(upsertContactMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("approveConnectionRequest — upsert-first ordering (approver-side loss fix)", () => {
+  beforeEach(() => {
+    upsertContactMock.mockReset();
+    upsertContactMock.mockReturnValue("created");
+  });
+
+  test("upsert 'unavailable' → NO approvedAt stamp, dupes untouched, outcome 'unavailable'", async () => {
+    // The hazard: contacts unloaded at click. Stamping approvedAt anyway
+    // hands the requester THEIR contact via the watcher while the approver
+    // silently gets nothing (no approver-side retry exists). The stamp must
+    // wait until the contact write actually landed.
+    upsertContactMock.mockReturnValue("unavailable");
+    const acted = makeLiveRequest("req-a", "bob");
+    const dupe = makeLiveRequest("req-b", "bob");
+    const { recipient } = makeGroupRecipient([acted, dupe]);
+
+    const outcome = await approveConnectionRequest(recipient as any, acted);
+
+    expect(outcome).toBe("unavailable");
+    expect(acted.$jazz.set).not.toHaveBeenCalled();
+    expect(dupe.$jazz.set).not.toHaveBeenCalled();
+  });
+
+  test.each(["created", "unchanged", "conflict"] as const)(
+    "upsert '%s' → approvedAt stamped, outcome 'approved'",
+    async (upsertResult) => {
+      upsertContactMock.mockReturnValue(upsertResult);
+      const acted = makeLiveRequest("req-a", "bob");
+      const { recipient } = makeGroupRecipient([acted]);
+
+      const outcome = await approveConnectionRequest(recipient as any, acted);
+
+      expect(outcome).toBe("approved");
+      expect(acted.$jazz.set).toHaveBeenCalledWith(
+        "approvedAt",
+        expect.any(Date),
+      );
+    },
+  );
+
+  test("already-approved request → idempotent no-op with outcome 'approved'", async () => {
+    const acted = makeLiveRequest("req-a", "bob");
+    acted.approvedAt = new Date();
+    const { recipient } = makeGroupRecipient([acted]);
+
+    const outcome = await approveConnectionRequest(recipient as any, acted);
+
+    expect(outcome).toBe("approved");
+    expect(acted.$jazz.set).not.toHaveBeenCalled();
     expect(upsertContactMock).not.toHaveBeenCalled();
   });
 });

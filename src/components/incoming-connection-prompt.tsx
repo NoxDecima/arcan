@@ -43,8 +43,26 @@ function Body({ me, request }: { me: any; request: any }) {
   const toast = useToast();
 
   const onApprove = async () => {
-    await approveConnectionRequest(me, request);
-    toast({ icon: "check", text: "contact added", tone: "success" });
+    const outcome = await approveConnectionRequest(me, request);
+    if (outcome === "approved") {
+      toast({ icon: "check", text: "contact added", tone: "success" });
+    } else if (outcome === "unavailable") {
+      // Contacts record not loaded yet — nothing was stamped; the request
+      // stays pending (and this modal stays up for the retry). Honest retry
+      // toast, never a false "contact added" (approver-side silent-loss fix).
+      toast({
+        icon: "alert",
+        text: "couldn't add contact — still syncing, try again",
+        tone: "error",
+      });
+    } else {
+      // "malformed" or any future outcome: never claim success.
+      toast({
+        icon: "alert",
+        text: "couldn't approve this request",
+        tone: "error",
+      });
+    }
   };
   const onDismiss = async () => {
     await dismissConnectionRequest(me, request);

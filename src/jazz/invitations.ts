@@ -327,10 +327,34 @@ function sameRequesterLiveDupes(recipient: Account, acted: any): any[] {
 }
 
 /**
- * Approve a ConnectionRequest: stamp approvedAt and write the requester as a
- * local Contact in the recipient's contacts record (via upsertContact).
+ * Approve outcome, for honest caller feedback:
+ * - "approved"    — contact write landed (created/unchanged/conflict) and
+ *                   approvedAt is stamped (or already was — idempotent).
+ * - "unavailable" — the approver's contacts record (or the existing keyed
+ *                   entry) isn't loaded yet; NOTHING was stamped. Retryable.
+ * - "malformed"   — foreign/garbage payload refused (FM4); NOTHING stamped.
+ *                   Never succeeds on retry.
+ */
+export type ApproveConnectionRequestOutcome =
+  | "approved"
+  | "unavailable"
+  | "malformed";
+
+/**
+ * Approve a ConnectionRequest: write the requester as a local Contact in the
+ * recipient's contacts record (via upsertContact), THEN stamp approvedAt.
  *
- * Idempotent: no-ops if approvedAt is already set.
+ * ORDER MATTERS (approver-side silent-loss fix, 2026-07-21): approvedAt is
+ * the signal the REQUESTER's watcher acts on — it hands the requester their
+ * contact and settles the request for good. If the approver's own contact
+ * write didn't land (contacts record unloaded at click → "unavailable"),
+ * stamping anyway would give the requester the connection while the approver
+ * silently gets nothing — and no approve-side retry exists. So on
+ * "unavailable" NOTHING is stamped (not the acted request, not the collapsed
+ * same-requester dupes) and the caller gets a retryable outcome; the request
+ * stays live on every pending surface.
+ *
+ * Idempotent: returns "approved" without re-stamping if approvedAt is set.
  *
  * @param recipient - the approving account (me from useAccount)
  * @param request   - the ConnectionRequest CoValue to approve
@@ -338,9 +362,9 @@ function sameRequesterLiveDupes(recipient: Account, acted: any): any[] {
 export async function approveConnectionRequest(
   recipient: Account,
   request: ReturnType<typeof ConnectionRequest.create>,
-): Promise<void> {
+): Promise<ApproveConnectionRequestOutcome> {
   const r = request as any;
-  if (r.approvedAt) return; // idempotent
+  if (r.approvedAt) return "approved"; // idempotent
 
   // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe(Schema, …)
   // does NOT filter by schema — every inbox message's payload reaches every
@@ -358,25 +382,28 @@ export async function approveConnectionRequest(
       "[handshake] refusing to approve malformed request:",
       r?.$jazz?.id,
     );
-    return;
+    return "malformed";
   }
 
-  r.$jazz.set("approvedAt", new Date());
-
-  // Contact write goes through the single idempotent writer (FM7): keyed by
-  // account ID, TOFU-aware. Approving a duplicate request for an existing
-  // contact is now a structural no-op.
+  // Contact write FIRST, through the single idempotent writer (FM7): keyed
+  // by account ID, TOFU-aware. Approving a duplicate request for an existing
+  // contact is a structural no-op ("unchanged"); "conflict" still counts as
+  // landed (the pin is kept, the conflict flag is set for the profile
+  // safety-number section).
   //
   // Dynamic import ON PURPOSE: handshake.ts statically imports from
   // invitations.ts (mint/deliver, Task 5); a static import here would close
   // an ES-module cycle. The function is already async — the lazy import
   // keeps the dependency edge one-directional at module-init time.
   const { upsertContact } = await import("./handshake");
-  upsertContact(recipient, {
+  const upsertResult = upsertContact(recipient, {
     contactAccountID: r.requesterAccountID,
     fingerprint: r.requesterFingerprint,
     displayName: r.requesterDisplayName,
   });
+  if (upsertResult === "unavailable") return "unavailable";
+
+  r.$jazz.set("approvedAt", new Date());
 
   // Converge the whole collapsed same-requester group: stamp every other
   // live duplicate approved too (idempotent — same person; the contact
@@ -386,6 +413,7 @@ export async function approveConnectionRequest(
       dupe.$jazz.set("approvedAt", new Date());
     }
   }
+  return "approved";
 }
 
 /**
