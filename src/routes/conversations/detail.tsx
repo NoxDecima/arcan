@@ -20,12 +20,12 @@
  *   - Composer: ChatComposer with file-upload state (disabled when
  *     composerDisabled — only me remains in an active 1:1)
  *
- * Title derivation (1:1): finds the contact in me.root.contactBook whose
- * contactAccountID matches another member of the conversation's owning Group.
+ * Title derivation (1:1): looks up me.root.contacts (keyed by account ID) for
+ * the other member of the conversation's owning Group.
  * Falls back to conversation.title (groups) or "Conversation" while loading.
  *
  * Author derivation: getAuthorAccountIDFromMessage() reads the create-tx signer
- * (immutable, unforgeable). Display name resolved from contactBook.
+ * (immutable, unforgeable). Display name resolved from the contacts record.
  *
  * composerDisabled: true when the ConversationGroup's direct-admin list is
  * length 1 (only me remains) — the other party has left.
@@ -59,6 +59,7 @@ import {
   deleteMessage,
 } from "@/jazz/messages";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { getContact } from "@/jazz/handshake";
 import { isArchived, ensureMyWriteGroup, isLastAdmin, leaveConversation } from "@/jazz/conversation";
 import {
   findNewMarkIndex,
@@ -318,7 +319,7 @@ export function ConversationDetailRoute() {
       profile: true,
       // Slice 8: lastReadAt is required for markRead to write the cutoff.
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: true },
         knownConversations: true,
         lastReadAt: true,
       },
@@ -592,13 +593,8 @@ export function ConversationDetailRoute() {
           );
           if (!otherMember) return null;
           const otherID = otherMember.account?.$jazz?.id;
-          const contactBook = (me as any).root?.contactBook;
-          if (!contactBook || !otherID) return null;
-          return (
-            (Array.from(contactBook).find(
-              (ct: any) => ct?.contactAccountID === otherID,
-            ) as any) ?? null
-          );
+          if (!otherID) return null;
+          return getContact(me, otherID) ?? null;
         })()
       : null;
 

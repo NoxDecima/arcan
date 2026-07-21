@@ -8,6 +8,7 @@ import {
   createGroupConversation,
 } from "@/jazz/conversation";
 import { setConversationIcon } from "@/jazz/avatar";
+import { listContacts } from "@/jazz/handshake";
 import { NewConvoScreen } from "@/ui/screens/new-convo-screen";
 import { Icon, PButton } from "@/ui/kit";
 import type { PickItem } from "@/ui/screens/picker-types";
@@ -24,7 +25,7 @@ export function NewConversationRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: true }, knownConversations: true },
     },
   });
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export function NewConversationRoute() {
     );
   }
 
-  const rawContacts = Array.from((me.root.contactBook as any) ?? []);
+  const rawContacts = listContacts(me);
   const contacts: PickItem[] = rawContacts
     .filter((c: any) => !!c?.contactAccountID)
     .map((c: any) => ({

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MobileBottomSheet, ModalFooter } from "@/components/modal-shell";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
+import { listContacts } from "@/jazz/handshake";
 
 interface ContactPickerProps {
   onSelect: (contacts: any[]) => void;
@@ -13,13 +14,13 @@ interface ContactPickerProps {
 
 export function ContactPicker({ onSelect, onClose, excludeAccountIDs }: ContactPickerProps) {
   const me = useAccount(ArcanAccount, {
-    resolve: { root: { contactBook: { $each: true } } },
+    resolve: { root: { contacts: { $each: true } } },
   });
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   if (!me.$isLoaded) return null;
 
-  const allContacts = Array.from(me.root?.contactBook ?? []);
+  const allContacts = listContacts(me);
   const contacts = excludeAccountIDs && excludeAccountIDs.length > 0
     ? allContacts.filter((c: any) => !excludeAccountIDs.includes(c?.contactAccountID))
     : allContacts;

@@ -6,6 +6,7 @@ import { isArchived, dedupeConversationsByID } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
 import { getUnreadCount, getLastMessagePreview } from "@/jazz/notifications";
 import { resolveAvatarFileBlob } from "@/jazz/avatarResolver";
+import { listContacts } from "@/jazz/handshake";
 import { useAccountAvatars } from "@/components/use-account-avatars";
 import type { ConvoItem, ContactItem, HomeProfile } from "@/ui/screens/home-types";
 
@@ -145,7 +146,7 @@ export function useHomeLists(): HomeListsResult {
     resolve: {
       profile: true,
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: true },
         // $onError: "catch" ensures the sidebar loads even when some
         // conversations become inaccessible (e.g. after the user is kicked
         // and Jazz revokes their read access to the ConversationGroup).
@@ -211,7 +212,7 @@ export function useHomeLists(): HomeListsResult {
         .join(",")
     : "";
   const contactsDep = me.$isLoaded
-    ? Array.from(me.root?.contactBook ?? [])
+    ? listContacts(me)
         .filter((c: any) => c?.contactAccountID)
         .map((c: any) => c.contactAccountID as string)
         .join(",")
@@ -248,7 +249,7 @@ export function useHomeLists(): HomeListsResult {
       // Contacts: resolveAvatarFileBlob is a documented no-op for contacts
       // (Contact stores contactAccountID as a plain string; no ref to walk).
       // Live contact photos are now handled by the remoteAvatarMap effect below.
-      for (const c of Array.from(me.root?.contactBook ?? []) as any[]) {
+      for (const c of listContacts(me) as any[]) {
         if (!c?.contactAccountID) continue;
         const accountID = c.contactAccountID as string;
         const fileBlob = resolveAvatarFileBlob({ accountID, me });
@@ -293,7 +294,7 @@ export function useHomeLists(): HomeListsResult {
     const myID = (me as any).$jazz?.id ?? "";
     const ids = new Set<string>();
     // Contacts
-    for (const c of Array.from(me.root?.contactBook ?? []) as any[]) {
+    for (const c of listContacts(me) as any[]) {
       if (c?.contactAccountID) ids.add(c.contactAccountID as string);
     }
     // 1:1 conversation counterparts (exactly one other non-self member)
@@ -432,7 +433,7 @@ export function useHomeLists(): HomeListsResult {
   // --- contacts ---
   // contactAccountID is the account ID string on each Contact entry.
   // ContactItem.id = accountID so onOpenContact(id) → navigate('/profile/${id}').
-  const rawContacts = Array.from(me.root?.contactBook ?? []);
+  const rawContacts = listContacts(me);
   const contacts: ContactItem[] = rawContacts
     .filter((c: any) => c != null && c.contactAccountID)
     .map((c: any) => {

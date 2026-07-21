@@ -17,6 +17,7 @@ import { SafetyNumber } from "@/components/safety-number";
 import { Button } from "@/components/ui/button";
 import { findOrCreate1to1Conversation } from "@/jazz/conversation";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { listContacts } from "@/jazz/handshake";
 import { Skel } from "@/components/skeleton";
 import { ProfileScreen } from "@/ui/screens/profile-screen";
 
@@ -27,12 +28,12 @@ export function ContactDetailRoute() {
 
   const me = useAccount(ArcanAccount, {
     resolve: {
-      root: { contactBook: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: true }, knownConversations: true },
     },
   });
 
   const contact = me.$isLoaded
-    ? me.root.contactBook.find((c) => (c as any).$jazz?.id === contactID)
+    ? listContacts(me).find((c: any) => c?.$jazz?.id === contactID)
     : undefined;
 
   // Sync resolver (covers self / group member); remote-load hook fills in the
@@ -91,9 +92,14 @@ export function ContactDetailRoute() {
   }
 
   function handleRemove() {
-    (me as any).root.contactBook.$jazz.remove(
-      (c: any) => c.$jazz?.id === contactID,
-    );
+    // Keyed delete — $jazz.delete(key) is verified for record-like CoMaps
+    // (jazz-tools 0.20.18 coMap.d.ts:273-280). Optional chaining guards the
+    // migration-pending case (contacts record absent): removal no-ops rather
+    // than crashing, and NEVER falls back to writing the frozen legacy list.
+    const removeAccountID = (contact as any)?.contactAccountID;
+    if (removeAccountID) {
+      (me as any).root?.contacts?.$jazz?.delete(removeAccountID);
+    }
     navigate("/");
   }
 

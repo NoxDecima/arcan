@@ -31,6 +31,7 @@ import {
   requestConnectionFromGroupMember,
 } from "@/jazz/conversation";
 import { resolveDisplayName } from "@/jazz/displayName";
+import { listContacts } from "@/jazz/handshake";
 import { ConversationAvatar } from "@/components/conversation-avatar";
 import { useToast } from "@/components/toast";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -170,7 +171,7 @@ export function MembersRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: true }, knownConversations: true },
     },
   });
 
@@ -275,7 +276,7 @@ export function MembersRoute() {
 
   // Build the set of contact account IDs for "request connection" affordance.
   const knownContactIDs = new Set(
-    Array.from(((me as any).root?.contactBook as Iterable<any>) ?? [])
+    listContacts(me)
       .map((c: any) => c?.contactAccountID)
       .filter(Boolean),
   );

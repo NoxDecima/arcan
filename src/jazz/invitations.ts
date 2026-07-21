@@ -20,7 +20,6 @@
 import { Group, Account, InboxSender } from "jazz-tools";
 import { Invitation } from "./schema/Invitation";
 import { ConnectionRequest } from "./schema/ConnectionRequest";
-import { Contact } from "./schema/Contact";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
 import { getServerOrigin } from "@/platform/server-config";
 
@@ -302,7 +301,7 @@ export async function createConnectionRequest(
 
 /**
  * Approve a ConnectionRequest: stamp approvedAt and write the requester as a
- * local Contact in the recipient's contactBook.
+ * local Contact in the recipient's contacts record (via upsertContact).
  *
  * Idempotent: no-ops if approvedAt is already set.
  *
@@ -318,21 +317,20 @@ export async function approveConnectionRequest(
 
   r.$jazz.set("approvedAt", new Date());
 
-  // Write the requester as a local Contact in the recipient's contactBook
-  const contact = Contact.create(
-    {
-      contactAccountID: r.requesterAccountID,
-      pinnedFingerprint: r.requesterFingerprint,
-      displayNameLocal: r.requesterDisplayName,
-      addedAt: new Date(),
-    },
-    { owner: recipient },
-  );
-
-  const contactBook = (recipient as any).root?.contactBook;
-  if (contactBook) {
-    contactBook.$jazz.push(contact);
-  }
+  // Contact write goes through the single idempotent writer (FM7): keyed by
+  // account ID, TOFU-aware. Approving a duplicate request for an existing
+  // contact is now a structural no-op.
+  //
+  // Dynamic import ON PURPOSE: handshake.ts statically imports from
+  // invitations.ts (mint/deliver, Task 5); a static import here would close
+  // an ES-module cycle. The function is already async — the lazy import
+  // keeps the dependency edge one-directional at module-init time.
+  const { upsertContact } = await import("./handshake");
+  upsertContact(recipient, {
+    contactAccountID: r.requesterAccountID,
+    fingerprint: r.requesterFingerprint,
+    displayName: r.requesterDisplayName,
+  });
 }
 
 /**

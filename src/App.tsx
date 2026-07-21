@@ -100,7 +100,7 @@ function App() {
     resolve: {
       profile: true,
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: true },
         knownConversations: true,
         incomingRequests: true,
       },

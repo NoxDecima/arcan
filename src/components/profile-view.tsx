@@ -8,6 +8,7 @@ import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useSharedGroups } from "@/hooks/use-shared-groups";
 import { SafetyNumber } from "@/components/safety-number";
 import { resolveAvatarFileBlob, useRemoteAvatar } from "@/jazz/avatarResolver";
+import { getContact } from "@/jazz/handshake";
 import { setProfileAvatar, clearProfileAvatar, resizeImageToSquare } from "@/jazz/avatar";
 import { AttachmentTooLargeError, MAX_ATTACHMENT_BYTES } from "@/jazz/attachments";
 import { getAccountPubkeyHex } from "@/auth/pubkey";
@@ -42,7 +43,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     resolve: {
       profile: true,
       root: {
-        contactBook: { $each: true },
+        contacts: { $each: true },
         // Needed by find1to1Conversation (danger-zone "delete conversation",
         // user decision 2026-07-09). $onError catches revoked/broken entries.
         knownConversations: { $each: { $onError: "catch" } },
@@ -74,12 +75,8 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     { resolve: { profile: true } },
   );
 
-  // Find the contactBook entry (other-branch only).
-  const contact = me.$isLoaded
-    ? (me.root.contactBook as any)?.find(
-        (c: any) => c?.contactAccountID === accountID,
-      )
-    : undefined;
+  // Find the contacts-record entry (other-branch only).
+  const contact = me.$isLoaded ? getContact(me, accountID) : undefined;
 
   // ── own-profile avatar (item 6 fix) ─────────────────────────────────────────
   // Mirrors use-home-lists.ts's own-avatar effect: extract stream ID from the
@@ -291,17 +288,16 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   // 1:1 conversation when the user opts in.
   async function handleRemoveContact(deleteConversation: boolean) {
     if (!contact) return;
-    const contactJazzId = (contact as any)?.$jazz?.id;
-    if (!contactJazzId) return;
     setRemoveDialog(false);
     setBusy(true);
     try {
       if (deleteConversation && convo1to1) {
         await leaveConversation(me as any, convo1to1);
       }
-      (me as any).root.contactBook.$jazz.remove(
-        (c: any) => c?.$jazz?.id === contactJazzId,
-      );
+      // Keyed delete on the contacts record (accountID is the component
+      // prop). Optional chaining guards the migration-pending case (record
+      // absent): removal no-ops — never writes to the frozen legacy list.
+      (me as any).root?.contacts?.$jazz?.delete(accountID);
     } finally {
       setBusy(false);
     }
@@ -482,7 +478,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           // Danger zone (user decision 2026-07-09): the profile page is the
           // 1:1's settings surface (members.tsx redirects here), so both
           // destructive actions live in this slot — "delete conversation"
-          // when a live 1:1 exists, "remove contact" when a contactBook
+          // when a live 1:1 exists, "remove contact" when a contacts-record
           // entry exists.
           dangerZone={
             contact || convo1to1 ? (

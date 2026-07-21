@@ -52,20 +52,12 @@ async function writeInviterAsContact(
     inviterDisplayName: string;
   },
 ): Promise<void> {
-  const { Contact } = await import("@/jazz/schema/Contact");
-  const contact = Contact.create(
-    {
-      contactAccountID: inv.inviterAccountID,
-      pinnedFingerprint: inv.inviterFingerprint,
-      displayNameLocal: inv.inviterDisplayName,
-      addedAt: new Date(),
-    },
-    { owner: me },
-  );
-  const cb = me.root?.contactBook;
-  if (cb && typeof cb.$jazz?.push === "function") {
-    cb.$jazz.push(contact);
-  }
+  const { upsertContact } = await import("@/jazz/handshake");
+  upsertContact(me, {
+    contactAccountID: inv.inviterAccountID,
+    fingerprint: inv.inviterFingerprint,
+    displayName: inv.inviterDisplayName,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +85,7 @@ export function InviteRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contactBook: { $each: true } },
+      root: { contacts: { $each: true } },
     },
   });
 
