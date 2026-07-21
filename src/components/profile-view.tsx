@@ -333,7 +333,29 @@ export function ProfileView({ accountID }: ProfileViewProps) {
     });
     // Honest outcome mapping (I2 convention) — never silent on failure.
     if (result === "created") {
-      toast({ icon: "check", text: "contact added", tone: "success" });
+      // TOFU-surfacing: if we restored the legacy pin but the live-derived key
+      // differs, immediately flag the conflict on the new entry so the
+      // "identity key changed — verify" warning shows right away instead of
+      // waiting for the next handshake.
+      const liveDiffers =
+        hasLegacyPin &&
+        !!fingerprintHex &&
+        fingerprintHex.length === 64 &&
+        fingerprintHex !== legacyPin;
+      if (liveDiffers) {
+        const newEntry = (me as any).root?.contacts?.[accountID];
+        if (newEntry && typeof newEntry.$jazz?.set === "function") {
+          newEntry.$jazz.set("fingerprintConflict", true);
+          newEntry.$jazz.set("conflictingFingerprint", fingerprintHex);
+        }
+        toast({
+          icon: "alert",
+          text: "added — their current key differs from your old pin, verify the security code",
+          tone: "error",
+        });
+      } else {
+        toast({ icon: "check", text: "contact added", tone: "success" });
+      }
     } else if (result === "unchanged") {
       toast({ icon: "check", text: "already in your contacts", tone: "neutral" });
     } else if (result === "conflict") {
