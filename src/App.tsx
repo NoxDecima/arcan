@@ -93,23 +93,23 @@ function App() {
   // Lifting it here was observed to remount /auth/recovery after the
   // post-recovery auth-state flip — the RecoveryRoute's `stage` useState
   // would reset back to "enter-code" mid-flow.
-  // incomingRequests is resolved here so the single app-level connection-request
-  // inbox subscription (useIncomingConnectionRequestInbox) can $jazz.push onto
-  // the loaded CoList. profile: true is required so Inbox.load(me) can read
-  // me.profile.inbox.
+  // incomingConnectionRequests is resolved here so the single app-level
+  // connection-request inbox subscription (useIncomingConnectionRequestInbox)
+  // can $jazz.set on the loaded record. profile: true is required so
+  // Inbox.load(me) can read me.profile.inbox.
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
       root: {
         contacts: { $each: true },
         knownConversations: true,
-        incomingRequests: true,
+        incomingConnectionRequests: true,
       },
     },
   });
   useConversationInboxSubscription(me);
   // Unit 9-0: drain the connection-request inbox into the durable
-  // me.root.incomingRequests list exactly once, app-wide. The prompt + pending
+  // me.root.incomingConnectionRequests record exactly once, app-wide. The prompt + pending
   // route read from that list (via useIncomingConnectionRequests) and must NOT
   // each open their own destructive inbox subscription.
   useIncomingConnectionRequestInbox(me);

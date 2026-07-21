@@ -15,17 +15,22 @@ function makeRequest(id: string, overrides: Record<string, unknown> = {}) {
     $jazz: { id },
     requesterDisplayName: "Bob",
     requesterAccountID: "bob-account",
+    createdAt: new Date(Date.now() - 10_000),
     expiresAt: FUTURE,
     ...overrides,
   };
 }
 
-function withRoot(incoming: unknown[], dismissedIDs: string[] = []) {
+function withRoot(incoming: any[], dismissedIDs: string[] = []) {
+  const record: Record<string, any> = {};
+  for (const r of incoming) record[r.$jazz.id] = r;
+  const dismissed: Record<string, boolean> = {};
+  for (const id of dismissedIDs) dismissed[id] = true;
   accountMock.mockReturnValue({
     $isLoaded: true,
     root: {
-      incomingRequests: incoming,
-      dismissedRequestIDs: dismissedIDs,
+      incomingConnectionRequests: record,
+      dismissedRequests: dismissed,
     },
   });
 }
@@ -39,25 +44,38 @@ describe("useIncomingConnectionRequests", () => {
   });
 
   test("locally-dismissed requests STAY in the list, flagged dismissedLocally", () => {
-    // Walkthrough fix (2026-07-08): dismissing the incoming-connection modal
-    // must not remove the request from the pending surfaces — only an explicit
-    // approve/deny decision does. The hook reports the flag; the modal filters
-    // on it, the pending list does not.
     withRoot([makeRequest("req-1")], ["req-1"]);
     const { result } = renderHook(() => useIncomingConnectionRequests());
     expect(result.current).toHaveLength(1);
     expect(result.current[0].dismissedLocally).toBe(true);
   });
 
-  test("approved and expired requests are filtered out", () => {
+  test("approved, denied, and expired requests are filtered out", () => {
     withRoot([
       makeRequest("req-approved", { approvedAt: new Date() }),
+      makeRequest("req-denied", { deniedAt: new Date() }),
       makeRequest("req-expired", { expiresAt: PAST }),
       makeRequest("req-live"),
     ]);
     const { result } = renderHook(() => useIncomingConnectionRequests());
     expect(result.current.map((p) => (p.request as any).$jazz.id)).toEqual([
       "req-live",
+    ]);
+  });
+
+  test("collapses duplicate requests per requester — latest createdAt wins (FM1 belt)", () => {
+    withRoot([
+      makeRequest("req-old", { createdAt: new Date(Date.now() - 60_000) }),
+      makeRequest("req-new", { createdAt: new Date(Date.now() - 1_000) }),
+      makeRequest("req-other", {
+        requesterAccountID: "carol-account",
+        createdAt: new Date(Date.now() - 30_000),
+      }),
+    ]);
+    const { result } = renderHook(() => useIncomingConnectionRequests());
+    expect(result.current.map((p) => (p.request as any).$jazz.id)).toEqual([
+      "req-other",
+      "req-new",
     ]);
   });
 });

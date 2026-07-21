@@ -335,8 +335,10 @@ export async function approveConnectionRequest(
 }
 
 /**
- * Dismiss a ConnectionRequest: add its CoValue ID to
- * me.root.dismissedRequestIDs. No shared CoValue is mutated.
+ * Dismiss a ConnectionRequest: record its CoValue ID in the keyed
+ * me.root.dismissedRequests record. No shared CoValue is mutated.
+ * Contact-robustness slice: storage moved to the keyed record — same-key
+ * sets converge, so dedup is structural.
  *
  * Dismissal is NOT a decision (user decision, 2026-07-08 walkthrough): it only
  * mutes the incoming-connection modal. The request stays on the pending
@@ -352,24 +354,18 @@ export async function dismissConnectionRequest(
   recipient: Account,
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
-  const root = (recipient as any).root;
-  const list = root?.dismissedRequestIDs;
-  if (!list) return;
-
-  const id = (request as any).$jazz.id as string;
-
-  // Deduplicate before pushing
-  const existing: string[] = Array.from(list as Iterable<string>);
-  if (!existing.includes(id)) {
-    list.$jazz.push(id);
-  }
+  const record = (recipient as any).root?.dismissedRequests;
+  if (!record || typeof record.$jazz?.set !== "function") return;
+  record.$jazz.set((request as any).$jazz.id as string, true);
 }
 
 /**
- * Deny a ConnectionRequest: the explicit "no" decision. Removes the request
- * from me.root.incomingRequests, so it leaves every pending surface for good.
+ * Deny a ConnectionRequest: the explicit "no" decision. Deletes the request
+ * key from me.root.incomingConnectionRequests, so it leaves every pending
+ * surface for good. Contact-robustness slice: storage moved to the keyed
+ * records (same-key delete/set converge across racing devices).
  *
- * Also records the ID in dismissedRequestIDs — if the same request ever
+ * Also records the ID in dismissedRequests — if the same request ever
  * reappears (e.g. a delivery race re-drains it), the modal stays muted.
  *
  * Feedback round 2: stamps `deniedAt` on the shared CoValue before doing the
@@ -387,26 +383,20 @@ export async function denyConnectionRequest(
   request: ReturnType<typeof ConnectionRequest.create>,
 ): Promise<void> {
   const r = request as any;
-  // Feedback round 2: propagate the decision — the requester's waiting
-  // screen watches deniedAt (recipient has writer access to the request
-  // CoValue, same mechanism approveConnectionRequest uses for approvedAt).
   if (!r.deniedAt && typeof r.$jazz?.set === "function") {
     r.$jazz.set("deniedAt", new Date());
   }
 
   const root = (recipient as any).root;
-  const id = (request as any).$jazz.id as string;
+  const id = r.$jazz.id as string;
 
-  const incoming = root?.incomingRequests;
-  if (incoming && typeof incoming.$jazz?.remove === "function") {
-    incoming.$jazz.remove((r: any) => r?.$jazz?.id === id);
+  const incoming = root?.incomingConnectionRequests;
+  if (incoming && typeof incoming.$jazz?.delete === "function") {
+    incoming.$jazz.delete(id);
   }
 
-  const dismissed = root?.dismissedRequestIDs;
-  if (dismissed) {
-    const existing: string[] = Array.from(dismissed as Iterable<string>);
-    if (!existing.includes(id)) {
-      dismissed.$jazz.push(id);
-    }
+  const dismissed = root?.dismissedRequests;
+  if (dismissed && typeof dismissed.$jazz?.set === "function") {
+    dismissed.$jazz.set(id, true);
   }
 }

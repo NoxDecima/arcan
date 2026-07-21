@@ -5,77 +5,68 @@ import {
 } from "@/jazz/invitations";
 
 function makeRecipient(incomingIDs: string[], dismissedIDs: string[] = []) {
-  const removeSpy = vi.fn();
-  const pushDismissedSpy = vi.fn();
-  const incoming = incomingIDs.map((id) => ({ $jazz: { id } }));
-  const dismissed: string[] & { $jazz?: unknown } = [...dismissedIDs];
-  (dismissed as any).$jazz = { push: pushDismissedSpy };
+  const deleteSpy = vi.fn();
+  const setDismissedSpy = vi.fn();
+  const incoming: Record<string, any> = {};
+  for (const id of incomingIDs) incoming[id] = { $jazz: { id } };
+  (incoming as any).$jazz = { delete: deleteSpy };
+  const dismissed: Record<string, any> = {};
+  for (const id of dismissedIDs) dismissed[id] = true;
+  (dismissed as any).$jazz = { set: setDismissedSpy };
   const recipient = {
     root: {
-      incomingRequests: Object.assign(incoming, {
-        $jazz: { remove: removeSpy },
-      }),
-      dismissedRequestIDs: dismissed,
+      incomingConnectionRequests: incoming,
+      dismissedRequests: dismissed,
     },
   };
-  return { recipient, removeSpy, pushDismissedSpy };
+  return { recipient, deleteSpy, setDismissedSpy };
 }
 
 describe("denyConnectionRequest", () => {
-  test("removes the request from incomingRequests by $jazz.id", async () => {
-    const { recipient, removeSpy } = makeRecipient(["req-1", "req-2"]);
+  test("deletes the request key from incomingConnectionRequests", async () => {
+    const { recipient, deleteSpy } = makeRecipient(["req-1", "req-2"]);
     await denyConnectionRequest(recipient as any, {
       $jazz: { id: "req-1", set: vi.fn() },
     } as any);
-    expect(removeSpy).toHaveBeenCalledTimes(1);
-    const predicate = removeSpy.mock.calls[0][0];
-    expect(predicate({ $jazz: { id: "req-1" } })).toBe(true);
-    expect(predicate({ $jazz: { id: "req-2" } })).toBe(false);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+    expect(deleteSpy).toHaveBeenCalledWith("req-1");
   });
 
-  test("also records the ID in dismissedRequestIDs (modal stays muted)", async () => {
-    const { recipient, pushDismissedSpy } = makeRecipient(["req-1"]);
+  test("records the ID in dismissedRequests (modal stays muted)", async () => {
+    const { recipient, setDismissedSpy } = makeRecipient(["req-1"]);
     await denyConnectionRequest(recipient as any, {
       $jazz: { id: "req-1", set: vi.fn() },
     } as any);
-    expect(pushDismissedSpy).toHaveBeenCalledWith("req-1");
-  });
-
-  test("does not duplicate an already-recorded dismissed ID", async () => {
-    const { recipient, pushDismissedSpy } = makeRecipient(["req-1"], ["req-1"]);
-    await denyConnectionRequest(recipient as any, {
-      $jazz: { id: "req-1", set: vi.fn() },
-    } as any);
-    expect(pushDismissedSpy).not.toHaveBeenCalled();
+    expect(setDismissedSpy).toHaveBeenCalledWith("req-1", true);
   });
 
   test("stamps deniedAt on the shared request", async () => {
     const { recipient } = makeRecipient(["req-1"]);
     const setSpy = vi.fn();
-    const request = { $jazz: { id: "req-1", set: setSpy } } as any;
-    await denyConnectionRequest(recipient as any, request);
+    await denyConnectionRequest(recipient as any, {
+      $jazz: { id: "req-1", set: setSpy },
+    } as any);
     expect(setSpy).toHaveBeenCalledWith("deniedAt", expect.any(Date));
   });
 
   test("does not re-stamp deniedAt when already set", async () => {
     const { recipient } = makeRecipient(["req-1"]);
     const setSpy = vi.fn();
-    const request = {
+    await denyConnectionRequest(recipient as any, {
       deniedAt: new Date(),
       $jazz: { id: "req-1", set: setSpy },
-    } as any;
-    await denyConnectionRequest(recipient as any, request);
+    } as any);
     expect(setSpy).not.toHaveBeenCalled();
   });
 });
 
 describe("dismissConnectionRequest", () => {
-  test("only records the ID — does NOT touch incomingRequests", async () => {
-    const { recipient, removeSpy, pushDismissedSpy } = makeRecipient(["req-1"]);
+  test("only records the ID — does NOT touch incomingConnectionRequests", async () => {
+    const { recipient, deleteSpy, setDismissedSpy } = makeRecipient(["req-1"]);
     await dismissConnectionRequest(recipient as any, {
       $jazz: { id: "req-1" },
     } as any);
-    expect(pushDismissedSpy).toHaveBeenCalledWith("req-1");
-    expect(removeSpy).not.toHaveBeenCalled();
+    expect(setDismissedSpy).toHaveBeenCalledWith("req-1", true);
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
