@@ -372,6 +372,16 @@ export const ArcanAccount = co.account({
   // source list first so NotLoaded proxies can't masquerade as empty data.
   // On ANY failure we skip WITHOUT setting the field — the migration reruns
   // on next startup and retries (same recovery contract as block 2g).
+  // $onError: "catch" (stuck-account fix, 2026-07-21): one permanently-
+  // unavailable legacy Contact must otherwise wedge this backfill forever —
+  // the ensureLoaded rejects on EVERY startup, `contacts` never gets created,
+  // and the account is stuck migration-pending for good (live-account bug).
+  // The original strictness meant to protect TOFU pins, but an unloadable
+  // entry's pin is unreadable anyway (the reader fallback filters it too) —
+  // it protected nothing. Caught entries resolve to null and are filtered
+  // below: loadable entries migrate now; unloadable ones are skipped, and the
+  // startup reconcile pass (reconcileLegacyContacts in handshake.ts) heals
+  // any entry that loads on a later launch, pin copied verbatim.
   // Dedup policy lives in planContactMigration (unit-tested): latest entry
   // wins per account ID, EXCEPT fingerprint conflicts where the OLDEST pin
   // is kept (TOFU) and the conflict is flagged on the kept Contact.
@@ -382,11 +392,14 @@ export const ArcanAccount = co.account({
   ) {
     try {
       const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { contactBook: { $each: true } } },
+        resolve: { root: { contactBook: { $each: { $onError: "catch" } } } },
       });
-      const entries = Array.from(
-        (loaded.root as any).contactBook ?? [],
-      ) as any[];
+      const entries = (
+        Array.from((loaded.root as any).contactBook ?? []) as any[]
+      ).filter((c) => c != null); // null-filter caught/unloaded entries — the
+      // planner's views mapping below drops the rest of the malformed shapes
+      // (non-string IDs/pins); plan indexes stay consistent because they are
+      // taken over THIS filtered array.
       const views = entries
         .map((c, index) => ({
           contactAccountID: c?.contactAccountID as string,
@@ -437,9 +450,11 @@ export const ArcanAccount = co.account({
       // ensureLoaded rejects every session, the field stays absent, and the
       // inbox drain never starts). Caught entries resolve to null and are
       // filtered below — dropping an unavailable request is acceptable
-      // because requests expire in ≤7 days. Deliberate contrast with the 2i
-      // contacts backfill, which has NO $onError: TOFU fingerprint pins are
-      // security state and must never be silently dropped.
+      // because requests expire in ≤7 days. Block 2i now uses the same
+      // tolerance (2026-07-21 stuck-account fix) — but because TOFU pins are
+      // security state, 2i is additionally backed by the startup reconcile
+      // pass (reconcileLegacyContacts) that heals late-loading entries;
+      // requests need no such net.
       const loaded = await me.$jazz.ensureLoaded({
         resolve: {
           root: { incomingRequests: { $each: { $onError: "catch" } } },

@@ -81,7 +81,7 @@ export function ProfileView({ accountID }: ProfileViewProps) {
   // Migration-pending detection (spec §5 stuck-account net): me.root.contacts
   // ABSENT means the keyed-record backfill hasn't completed on this account —
   // upsertContact would return "unavailable", so the repair affordance renders
-  // a "still syncing" note instead of offering a write that would fail.
+  // a "still being prepared" note instead of offering a write that would fail.
   // (When the record is absent AND a legacy contactBook entry exists,
   // getContact's fallback already reports the contact — no affordance at all.)
   const contactsRecordAbsent =
@@ -587,14 +587,17 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           secondarySlot={
             !contact ? (
               contactsRecordAbsent ? (
-                // Stuck-migration net: the record hasn't backfilled, so an
+                // Migration-pending net: the record hasn't backfilled, so an
                 // upsert would fail with "unavailable" — say so instead of
-                // offering a dead button.
+                // offering a dead button. Since the backfill tolerates
+                // unloadable legacy entries (2026-07-21 fix), this state is a
+                // rare transient: the backfill retries on the next launch.
                 <p
                   className="text-center font-body text-ui-sub text-dim"
                   data-testid="profile-add-to-contacts-syncing"
                 >
-                  contacts still syncing — you can add them once it finishes.
+                  contacts are still being prepared — this finishes on a future
+                  launch.
                 </p>
               ) : (
                 <PButton
