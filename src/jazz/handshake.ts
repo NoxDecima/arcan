@@ -346,6 +346,109 @@ export function computeOutgoingAction(
   return "none";
 }
 
+/** Retention for settled/expired incoming requests and stale notifications (spec §5). */
+export const SETTLED_REQUEST_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function shouldPruneIncomingRequest(
+  req: { approvedAtMs?: number; deniedAtMs?: number; expiresAtMs?: number },
+  nowMs: number,
+): boolean {
+  const settledAtMs = req.approvedAtMs ?? req.deniedAtMs;
+  if (settledAtMs !== undefined) {
+    return nowMs - settledAtMs > SETTLED_REQUEST_RETENTION_MS;
+  }
+  if (req.expiresAtMs !== undefined && req.expiresAtMs <= nowMs) {
+    return nowMs - req.expiresAtMs > SETTLED_REQUEST_RETENTION_MS;
+  }
+  return false;
+}
+
+/**
+ * Prune predicate for pendingNotifications entries (carried review item 1).
+ * Entries older than 30 days are permanently-undeliverable bookkeeping — any
+ * counterpart whose notification we couldn't deliver in 30 days has long
+ * drifted away. Same retention constant as settled requests.
+ */
+export function shouldPrunePendingNotification(
+  notification: { createdAtMs: number },
+  nowMs: number,
+): boolean {
+  return nowMs - notification.createdAtMs > SETTLED_REQUEST_RETENTION_MS;
+}
+
+/**
+ * Startup pruning (spec §5): settled incoming requests past retention,
+ * expired pairing ceremonies, revoked/expired invitations, and stale
+ * pendingNotifications entries (carried review item 1 — permanently-
+ * undeliverable after 30 days). All single-writer state — no cross-device
+ * coordination needed.
+ */
+export function pruneHandshakeState(me: any): void {
+  const nowMs = Date.now();
+
+  const incoming = me?.root?.incomingConnectionRequests;
+  if (incoming && typeof incoming.$jazz?.delete === "function") {
+    for (const [id, r] of Object.entries(incoming as Record<string, any>)) {
+      if (id === "$jazz" || !r) continue;
+      const prune = shouldPruneIncomingRequest(
+        {
+          approvedAtMs: r.approvedAt
+            ? new Date(r.approvedAt).getTime()
+            : undefined,
+          deniedAtMs: r.deniedAt ? new Date(r.deniedAt).getTime() : undefined,
+          expiresAtMs: r.expiresAt
+            ? new Date(r.expiresAt).getTime()
+            : undefined,
+        },
+        nowMs,
+      );
+      if (!prune) continue;
+      incoming.$jazz.delete(id);
+      const dismissed = me?.root?.dismissedRequests;
+      if (
+        dismissed?.[id] &&
+        typeof dismissed.$jazz?.delete === "function"
+      ) {
+        dismissed.$jazz.delete(id);
+      }
+    }
+  }
+
+  const pairings = me?.root?.pendingPairings;
+  if (pairings && typeof pairings.$jazz?.remove === "function") {
+    pairings.$jazz.remove(
+      (p: any) => p?.expiresAt && new Date(p.expiresAt).getTime() < nowMs,
+    );
+  }
+
+  const invites = me?.root?.liveInvitations;
+  if (invites && typeof invites.$jazz?.remove === "function") {
+    invites.$jazz.remove(
+      (i: any) =>
+        !!i?.revokedAt ||
+        (i?.expiresAt && new Date(i.expiresAt).getTime() < nowMs),
+    );
+  }
+
+  const notifications = me?.root?.pendingNotifications;
+  if (notifications && typeof notifications.$jazz?.delete === "function") {
+    for (const [key, n] of Object.entries(
+      notifications as Record<string, any>,
+    )) {
+      if (key === "$jazz" || !n) continue;
+      const createdAtMs = n.createdAt
+        ? new Date(n.createdAt).getTime()
+        : undefined;
+      if (
+        createdAtMs !== undefined &&
+        shouldPrunePendingNotification({ createdAtMs }, nowMs)
+      ) {
+        notifications.$jazz.delete(key);
+      }
+    }
+  }
+}
+
 /**
  * App-level approval watcher — mounted ONCE in App.tsx beside the inbox
  * drains. Replaces the /invite route's 3-second component-lifetime poll
@@ -373,6 +476,11 @@ export function useOutgoingRequestWatcher(): void {
       root: {
         contacts: { $each: { $onError: "catch" } },
         outgoingRequests: { $each: { request: true, $onError: "catch" } },
+        incomingConnectionRequests: { $each: { $onError: "catch" } },
+        dismissedRequests: true,
+        pendingPairings: { $each: { $onError: "catch" } },
+        liveInvitations: { $each: { $onError: "catch" } },
+        pendingNotifications: { $each: { $onError: "catch" } },
       },
     },
   });
@@ -477,6 +585,7 @@ export function useOutgoingRequestWatcher(): void {
     if (!retriedThisLaunch.current) {
       retriedThisLaunch.current = true;
       retryFailed();
+      pruneHandshakeState(me);
     }
     window.addEventListener("online", retryFailed);
     return () => window.removeEventListener("online", retryFailed);

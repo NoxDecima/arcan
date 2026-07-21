@@ -1,4 +1,3 @@
-import { co, z } from "jazz-tools";
 import { getAuthorAccountIDFromMessage } from "@/jazz/messages";
 
 /**
@@ -44,46 +43,6 @@ export function getUnreadCount(
   return count;
 }
 
-/**
- * Mark a conversation as read, advancing the user's lastReadAt cutoff
- * past anything currently visible in the conversation.
- *
- * Clock-skew defense: writes `max(Date.now(), latestSeenMessageSentAt + 1)`.
- * Without the max, a slow local clock could leave items marked unread.
- * Without the latestSeenMessageSentAt + 1 floor, a fast local clock would
- * still mark older messages as read (acceptable behavior actually, but the
- * floor makes the invariant explicit).
- */
-export function markRead(me: any, conversationID: string): void {
-  if (!me?.root?.$jazz?.set) return;
-  const conv = (me.root.knownConversations ?? []).find(
-    (c: any) => c?.$jazz?.id === conversationID,
-  );
-  let latestSentAt = 0;
-  if (conv?.messages?.length) {
-    for (const m of conv.messages) {
-      const t = m?.sentAt;
-      const ts = t instanceof Date ? t.getTime() : new Date(t ?? 0).getTime();
-      if (ts > latestSentAt) latestSentAt = ts;
-    }
-  }
-  const cutoff = Math.max(Date.now(), latestSentAt + 1);
-
-  // Self-heal: if me.root.lastReadAt is missing (migration race or
-  // never-ran), create the record inline with this entry rather than
-  // silently no-op'ing. Otherwise the user opens a conversation, sees
-  // the badge persist, and concludes the feature is broken.
-  if (!me.root.lastReadAt?.$jazz?.set) {
-    me.root.$jazz.set(
-      "lastReadAt",
-      co
-        .record(z.string(), z.number())
-        .create({ [conversationID]: cutoff }, { owner: me }),
-    );
-    return;
-  }
-  me.root.lastReadAt.$jazz.set(conversationID, cutoff);
-}
 
 /**
  * Derive a one-line preview for a conversation's most recent message

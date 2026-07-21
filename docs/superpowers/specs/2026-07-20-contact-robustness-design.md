@@ -82,8 +82,9 @@ contact-graph knowledge — threat-model regression.
 - Conversation-creation + member-add notifications: write
   `pendingNotifications` entry before send; clear on ack; watcher retries.
   (Receive side is already the hardened three-layer knownConversations drain.)
-- System-event `"added"`: membership pre-check before writing, so concurrent
-  admin adds cannot double-log (and the silent role overwrite is surfaced).
+- System-event `"added"`: membership pre-check before writing, which closes
+  sequential/UI double-adds; a CRDT-concurrent window between unsynced admins
+  remains (inherent, accepted, low-harm).
 
 ## 5. Migration + repair (the risk center)
 

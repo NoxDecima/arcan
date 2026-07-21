@@ -12,7 +12,6 @@ vi.mock("jazz-tools/react", () => ({
     profile: { displayName: "decima", avatar: null },
     root: {
       devices: [],
-      invitesIssued: [],
       settings: {
         appearance: { theme: "dark", accent: "tokyo", $jazz: { set: vi.fn() } },
         notifications: { sound: false, browser: false, $jazz: { set: vi.fn() } },

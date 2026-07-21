@@ -317,7 +317,7 @@ export function ConversationDetailRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      // Slice 8: lastReadAt is required for markRead to write the cutoff.
+      // Slice 8: lastReadAt is required to write the read-cutoff.
       root: {
         contacts: { $each: { $onError: "catch" } },
         knownConversations: true,
