@@ -51,6 +51,7 @@ function MemberKebabMenu({
   canPromote,
   canRemove,
   canRequest,
+  requestPending,
   actionInProgress,
   onPromote,
   onRemove,
@@ -60,6 +61,7 @@ function MemberKebabMenu({
   canPromote: boolean;
   canRemove: boolean;
   canRequest: boolean;
+  requestPending: boolean;
   actionInProgress: boolean;
   onPromote: () => void;
   onRemove: () => void;
@@ -116,11 +118,11 @@ function MemberKebabMenu({
                 setMenuOpen(false);
                 onRequestConnection();
               }}
-              disabled={actionInProgress}
+              disabled={actionInProgress || requestPending}
               data-testid={`request-connection-${member.accountID}`}
-              className="w-full rounded-r-2 px-[10px] py-2 text-left text-[11.5px] text-text hover:bg-panel-2"
+              className="w-full rounded-r-2 px-[10px] py-2 text-left text-[11.5px] text-text hover:bg-panel-2 disabled:opacity-50 disabled:cursor-default"
             >
-              request connection
+              {requestPending ? "request pending" : "request connection"}
             </button>
           )}
           {canRemove && (
@@ -171,7 +173,7 @@ export function MembersRoute() {
   const me = useAccount(ArcanAccount, {
     resolve: {
       profile: true,
-      root: { contacts: { $each: true }, knownConversations: true },
+      root: { contacts: { $each: true }, outgoingRequests: { $each: true }, knownConversations: true },
     },
   });
 
@@ -279,6 +281,16 @@ export function MembersRoute() {
     listContacts(me)
       .map((c: any) => c?.contactAccountID)
       .filter(Boolean),
+  );
+
+  // Contact-robustness: live pending outgoing requests, keyed by counterpart
+  // account ID — drives the disabled "request pending" state (spec §6).
+  const pendingOutgoingIDs = new Set(
+    Object.values(
+      ((me as any).root?.outgoingRequests as Record<string, any>) ?? {},
+    )
+      .filter((e: any) => e && e.status === "pending" && !e.archivedAt)
+      .map((e: any) => e.counterpartAccountID as string),
   );
 
   // ── handlers ─────────────────────────────────────────────────────────────
@@ -575,6 +587,7 @@ export function MembersRoute() {
               canPromote={canPromote}
               canRemove={canRemove}
               canRequest={canRequest}
+              requestPending={pendingOutgoingIDs.has(m.accountID)}
               actionInProgress={actionInProgress}
               onPromote={() => void handlePromote(m.accountID)}
               onRemove={() => void handleRemove(m.accountID)}
