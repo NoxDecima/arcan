@@ -21,8 +21,18 @@ export interface PendingRequest {
  * (FM2) — the three-layer dedup the CoList needed is structural here.
  */
 export function useIncomingConnectionRequestInbox(me: any): void {
+  // Do NOT subscribe until the persistence target exists (Task 7 review).
+  // jazz-tools marks an inbox message processed the moment the subscribe
+  // callback runs — consuming without persisting is the loss mode: on a
+  // migration-stuck account (incomingConnectionRequests still absent) an
+  // early-returning callback would destroy the request unpersisted, forever.
+  // Unprocessed messages are durable in the Inbox and replay on eventual
+  // subscribe, so waiting for the record is safe.
+  const recordID = me?.root?.incomingConnectionRequests?.$jazz?.id;
+
   useEffect(() => {
     if (!me?.$isLoaded) return;
+    if (!recordID) return; // record absent → leave the inbox untouched
 
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
@@ -64,7 +74,7 @@ export function useIncomingConnectionRequestInbox(me: any): void {
       unsubscribe?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.$isLoaded, (me as any)?.$jazz?.id]);
+  }, [me?.$isLoaded, (me as any)?.$jazz?.id, recordID]);
 }
 
 /**

@@ -1,11 +1,25 @@
-import { describe, test, expect, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { useIncomingConnectionRequests } from "@/jazz/use-incoming-connection-requests";
+import { describe, test, expect, vi, beforeEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import {
+  useIncomingConnectionRequests,
+  useIncomingConnectionRequestInbox,
+} from "@/jazz/use-incoming-connection-requests";
 
 const accountMock = vi.fn();
 vi.mock("jazz-tools/react", () => ({
   useAccount: () => accountMock(),
 }));
+
+// Partial mock: only Inbox is stubbed — the schema modules need the real
+// co/z exports at import time.
+const inboxLoadMock = vi.fn();
+vi.mock("jazz-tools", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jazz-tools")>();
+  return {
+    ...actual,
+    Inbox: { load: (...args: unknown[]) => inboxLoadMock(...args) },
+  };
+});
 
 const FUTURE = new Date(Date.now() + 60_000);
 const PAST = new Date(Date.now() - 60_000);
@@ -34,6 +48,56 @@ function withRoot(incoming: any[], dismissedIDs: string[] = []) {
     },
   });
 }
+
+describe("useIncomingConnectionRequestInbox (drain)", () => {
+  beforeEach(() => {
+    inboxLoadMock.mockReset();
+  });
+
+  test("record absent → does NOT subscribe (inbox untouched; Task 7 review)", async () => {
+    // Migration-stuck account: incomingConnectionRequests never backfilled.
+    // Subscribing would mark inbox messages processed with nowhere to
+    // persist them — permanent loss. The drain must leave the inbox alone.
+    const me = { $isLoaded: true, $jazz: { id: "me-account" }, root: {} };
+    renderHook(() => useIncomingConnectionRequestInbox(me));
+    await act(async () => {});
+    expect(inboxLoadMock).not.toHaveBeenCalled();
+  });
+
+  test("record present → subscribes and persists arriving requests by ID", async () => {
+    const setSpy = vi.fn();
+    const record: Record<string, unknown> = {};
+    (record as any).$jazz = { id: "record-1", set: setSpy };
+    const me = {
+      $isLoaded: true,
+      $jazz: { id: "me-account" },
+      root: { incomingConnectionRequests: record },
+    };
+
+    let drain: ((request: unknown) => Promise<void>) | undefined;
+    const unsubscribe = vi.fn();
+    inboxLoadMock.mockResolvedValue({
+      subscribe: (_schema: unknown, cb: (request: unknown) => Promise<void>) => {
+        drain = cb;
+        return unsubscribe;
+      },
+    });
+
+    const { unmount } = renderHook(() =>
+      useIncomingConnectionRequestInbox(me),
+    );
+    await act(async () => {});
+    expect(inboxLoadMock).toHaveBeenCalledTimes(1);
+    expect(drain).toBeDefined();
+
+    const request = { $jazz: { id: "req-1" } };
+    await drain!(request);
+    expect(setSpy).toHaveBeenCalledWith("req-1", request);
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("useIncomingConnectionRequests", () => {
   test("returns a pending request with dismissedLocally=false", () => {

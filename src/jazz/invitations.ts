@@ -301,6 +301,32 @@ export async function deliverConnectionRequest(
 }
 
 /**
+ * FM1 group collapse (Task 7 review): the UI collapses pending rows PER
+ * REQUESTER (useIncomingConnectionRequests), but approve/deny receive only
+ * the single representative CoValue — without converging the rest of the
+ * group, the next-latest duplicate from the same person would immediately
+ * resurface them (pending rows, badge, modal re-open). Collect the OTHER
+ * live entries in me.root.incomingConnectionRequests from the same
+ * requester: not the acted-on ID, and skip entries already stamped
+ * approved/denied.
+ */
+function sameRequesterLiveDupes(recipient: Account, acted: any): any[] {
+  const record = (recipient as any).root?.incomingConnectionRequests;
+  const requesterID = acted?.requesterAccountID;
+  if (!record || typeof requesterID !== "string") return [];
+  const actedID = acted?.$jazz?.id;
+  const dupes: any[] = [];
+  for (const entry of Object.values(record as Record<string, any>)) {
+    const e = entry as any;
+    if (!e?.$jazz?.id || e.$jazz.id === actedID) continue;
+    if (e.requesterAccountID !== requesterID) continue;
+    if (e.approvedAt || e.deniedAt) continue; // already decided
+    dupes.push(e);
+  }
+  return dupes;
+}
+
+/**
  * Approve a ConnectionRequest: stamp approvedAt and write the requester as a
  * local Contact in the recipient's contacts record (via upsertContact).
  *
@@ -332,6 +358,15 @@ export async function approveConnectionRequest(
     fingerprint: r.requesterFingerprint,
     displayName: r.requesterDisplayName,
   });
+
+  // Converge the whole collapsed same-requester group: stamp every other
+  // live duplicate approved too (idempotent — same person; the contact
+  // write stays the single upsert above).
+  for (const dupe of sameRequesterLiveDupes(recipient, r)) {
+    if (typeof dupe.$jazz?.set === "function") {
+      dupe.$jazz.set("approvedAt", new Date());
+    }
+  }
 }
 
 /**
@@ -391,12 +426,34 @@ export async function denyConnectionRequest(
   const id = r.$jazz.id as string;
 
   const incoming = root?.incomingConnectionRequests;
+  const dismissed = root?.dismissedRequests;
+
+  // Collect BEFORE deleting the representative (the record iteration must
+  // still see a consistent snapshot); acted-on ID is skipped inside.
+  const dupes = sameRequesterLiveDupes(recipient, r);
+
   if (incoming && typeof incoming.$jazz?.delete === "function") {
     incoming.$jazz.delete(id);
   }
 
-  const dismissed = root?.dismissedRequests;
   if (dismissed && typeof dismissed.$jazz?.set === "function") {
     dismissed.$jazz.set(id, true);
+  }
+
+  // Converge the whole collapsed same-requester group: every other live
+  // duplicate gets the exact same treatment as the representative
+  // (deniedAt stamp, record delete, dismissed marker), so the next-latest
+  // dupe cannot resurface the requester.
+  for (const dupe of dupes) {
+    if (!dupe.deniedAt && typeof dupe.$jazz?.set === "function") {
+      dupe.$jazz.set("deniedAt", new Date());
+    }
+    const dupeID = dupe.$jazz.id as string;
+    if (incoming && typeof incoming.$jazz?.delete === "function") {
+      incoming.$jazz.delete(dupeID);
+    }
+    if (dismissed && typeof dismissed.$jazz?.set === "function") {
+      dismissed.$jazz.set(dupeID, true);
+    }
   }
 }

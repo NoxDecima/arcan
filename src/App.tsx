@@ -101,7 +101,10 @@ function App() {
     resolve: {
       profile: true,
       root: {
-        contacts: { $each: true },
+        // $onError: "catch" (Task 7 review, precedent use-home-lists.ts):
+        // one unavailable contact child must not keep the whole app shell's
+        // `me` unloaded — that would also unmount both inbox drains.
+        contacts: { $each: { $onError: "catch" } },
         knownConversations: true,
         incomingConnectionRequests: true,
       },
@@ -110,7 +113,7 @@ function App() {
   useConversationInboxSubscription(me);
   // Unit 9-0: drain the connection-request inbox into the durable
   // me.root.incomingConnectionRequests record exactly once, app-wide. The prompt + pending
-  // route read from that list (via useIncomingConnectionRequests) and must NOT
+  // route read from that record (via useIncomingConnectionRequests) and must NOT
   // each open their own destructive inbox subscription.
   useIncomingConnectionRequestInbox(me);
 

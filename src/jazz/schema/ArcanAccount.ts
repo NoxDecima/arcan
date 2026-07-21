@@ -431,17 +431,27 @@ export const ArcanAccount = co.account({
     !(me.root as any).incomingConnectionRequests
   ) {
     try {
+      // $onError: "catch" (Task 7 review): one permanently-unavailable
+      // legacy request must otherwise wedge this backfill forever (the
+      // ensureLoaded rejects every session, the field stays absent, and the
+      // inbox drain never starts). Caught entries resolve to null and are
+      // filtered below — dropping an unavailable request is acceptable
+      // because requests expire in ≤7 days. Deliberate contrast with the 2i
+      // contacts backfill, which has NO $onError: TOFU fingerprint pins are
+      // security state and must never be silently dropped.
       const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { incomingRequests: { $each: true } } },
+        resolve: {
+          root: { incomingRequests: { $each: { $onError: "catch" } } },
+        },
       });
       const record = co
         .record(z.string(), ConnectionRequest)
         .create({}, { owner: me });
-      for (const r of Array.from(
-        (loaded.root as any).incomingRequests ?? [],
-      ) as any[]) {
-        const id = r?.$jazz?.id;
-        if (typeof id === "string") record.$jazz.set(id, r);
+      const entries = (
+        Array.from((loaded.root as any).incomingRequests ?? []) as any[]
+      ).filter((r) => typeof r?.$jazz?.id === "string"); // null-filter caught entries
+      for (const r of entries) {
+        record.$jazz.set(r.$jazz.id as string, r);
       }
       (me.root as any).$jazz.set("incomingConnectionRequests", record);
     } catch (e) {
