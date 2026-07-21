@@ -8,7 +8,7 @@ set -euo pipefail
 # Note: bg-black/N opacity-suffixed overlays are intentionally allowed —
 # semi-transparent black scrims behind modals/lightboxes are theme-agnostic
 # by design. Solid bg-white is still rejected.
-PATTERNS='bg-(white|blue-[0-9]+|gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|neutral-[0-9]+)|text-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|green-[0-9]+|blue-[0-9]+)|border-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|blue-[0-9]+)'
+PATTERNS='bg-(white|blue-[0-9]+|gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|neutral-[0-9]+|yellow-[0-9]+|amber-[0-9]+|orange-[0-9]+)|text-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|green-[0-9]+|blue-[0-9]+|yellow-[0-9]+|amber-[0-9]+|orange-[0-9]+)|border-(gray-[0-9]+|slate-[0-9]+|zinc-[0-9]+|blue-[0-9]+|yellow-[0-9]+|amber-[0-9]+|orange-[0-9]+)'
 
 hits=$(grep -rnE "$PATTERNS" src --include="*.tsx" --include="*.ts" 2>/dev/null || true)
 
