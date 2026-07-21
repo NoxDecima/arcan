@@ -342,6 +342,25 @@ export async function approveConnectionRequest(
   const r = request as any;
   if (r.approvedAt) return; // idempotent
 
+  // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe(Schema, …)
+  // does NOT filter by schema — every inbox message's payload reaches every
+  // subscription. A foreign payload (e.g. a ConversationNotification) read
+  // through the ConnectionRequest schema has all fields undefined; stamping
+  // approvedAt on it mutates an unrelated CoValue and the contact write
+  // below would create a garbage entry keyed `undefined`. The drain guard
+  // in use-incoming-connection-requests.ts keeps such payloads out of the
+  // record; this is defense in depth for any other call path.
+  if (
+    typeof r.requesterAccountID !== "string" ||
+    typeof r.requesterFingerprint !== "string"
+  ) {
+    console.warn(
+      "[handshake] refusing to approve malformed request:",
+      r?.$jazz?.id,
+    );
+    return;
+  }
+
   r.$jazz.set("approvedAt", new Date());
 
   // Contact write goes through the single idempotent writer (FM7): keyed by

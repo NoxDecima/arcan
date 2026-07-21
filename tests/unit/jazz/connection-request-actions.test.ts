@@ -34,7 +34,13 @@ function makeRecipient(incomingIDs: string[], dismissedIDs: string[] = []) {
 // collapsed same-requester group, not just the representative CoValue.
 
 function makeLiveRequest(id: string, requesterAccountID: string) {
-  const req: any = { requesterAccountID };
+  // Realistic ConnectionRequest shape: the approve path's malformed-payload
+  // guard requires requesterAccountID + requesterFingerprint strings.
+  const req: any = {
+    requesterAccountID,
+    requesterFingerprint: `fp-${requesterAccountID}`,
+    requesterDisplayName: requesterAccountID,
+  };
   req.$jazz = { id, set: vi.fn() };
   return req;
 }
@@ -80,6 +86,21 @@ describe("approveConnectionRequest — same-requester group", () => {
     await approveConnectionRequest(recipient as any, acted);
 
     expect(decided.$jazz.set).not.toHaveBeenCalled();
+  });
+
+  test("refuses a malformed payload — nothing stamped, no contact upsert (FM4)", async () => {
+    // A foreign inbox payload (e.g. ConversationNotification) read through
+    // the ConnectionRequest schema: all requester fields undefined. Approving
+    // it would stamp approvedAt on an unrelated CoValue and upsert a garbage
+    // contact keyed `undefined`.
+    const bogus: any = { conversationID: "co_zConvo" };
+    bogus.$jazz = { id: "notif-1", set: vi.fn() };
+    const { recipient } = makeGroupRecipient([bogus]);
+
+    await approveConnectionRequest(recipient as any, bogus);
+
+    expect(bogus.$jazz.set).not.toHaveBeenCalled();
+    expect(upsertContactMock).not.toHaveBeenCalled();
   });
 });
 

@@ -90,12 +90,42 @@ describe("useIncomingConnectionRequestInbox (drain)", () => {
     expect(inboxLoadMock).toHaveBeenCalledTimes(1);
     expect(drain).toBeDefined();
 
-    const request = { $jazz: { id: "req-1" } };
+    const request = { $jazz: { id: "req-1" }, requesterAccountID: "bob" };
     await drain!(request);
     expect(setSpy).toHaveBeenCalledWith("req-1", request);
 
     unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  test("foreign inbox payload (no requesterAccountID) is NOT persisted (FM4 shape guard)", async () => {
+    // Inbox.subscribe does not filter by schema: ConversationNotification
+    // payloads reach this drain too, with every ConnectionRequest field
+    // undefined. Persisting one creates a phantom approvable pending row.
+    const setSpy = vi.fn();
+    const record: Record<string, unknown> = {};
+    (record as any).$jazz = { id: "record-1", set: setSpy };
+    const me = {
+      $isLoaded: true,
+      $jazz: { id: "me-account" },
+      root: { incomingConnectionRequests: record },
+    };
+
+    let drain: ((request: unknown) => Promise<void>) | undefined;
+    inboxLoadMock.mockResolvedValue({
+      subscribe: (_schema: unknown, cb: (request: unknown) => Promise<void>) => {
+        drain = cb;
+        return vi.fn();
+      },
+    });
+
+    renderHook(() => useIncomingConnectionRequestInbox(me));
+    await act(async () => {});
+    expect(drain).toBeDefined();
+
+    // A ConversationNotification read through the ConnectionRequest schema.
+    await drain!({ $jazz: { id: "notif-1" }, conversationID: "co_zConvo" });
+    expect(setSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -119,6 +149,20 @@ describe("useIncomingConnectionRequests", () => {
       makeRequest("req-approved", { approvedAt: new Date() }),
       makeRequest("req-denied", { deniedAt: new Date() }),
       makeRequest("req-expired", { expiresAt: PAST }),
+      makeRequest("req-live"),
+    ]);
+    const { result } = renderHook(() => useIncomingConnectionRequests());
+    expect(result.current.map((p) => (p.request as any).$jazz.id)).toEqual([
+      "req-live",
+    ]);
+  });
+
+  test("malformed entries (no requesterAccountID) never render (FM4 shape filter)", () => {
+    // Records polluted before the drain shape guard existed can hold foreign
+    // payloads — all ConnectionRequest fields undefined. They must not
+    // surface as blank approvable rows.
+    withRoot([
+      { $jazz: { id: "notif-1" }, conversationID: "co_zConvo" },
       makeRequest("req-live"),
     ]);
     const { result } = renderHook(() => useIncomingConnectionRequests());

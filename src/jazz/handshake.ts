@@ -58,6 +58,18 @@ export function upsertContact(
   me: Account,
   data: ContactData,
 ): UpsertContactResult {
+  // Input guard (FM4 e2e finding, 2026-07-21): a malformed caller snapshot
+  // (e.g. fields read off a foreign CoValue through the ConnectionRequest
+  // schema — all undefined) must never mint a Contact keyed `undefined`.
+  // Nothing is written, so "unavailable" (caller may retry) is honest.
+  if (
+    typeof data.contactAccountID !== "string" ||
+    data.contactAccountID.length === 0 ||
+    typeof data.fingerprint !== "string" ||
+    data.fingerprint.length === 0
+  ) {
+    return "unavailable";
+  }
   const contacts = (me as any).root?.contacts;
   if (!contacts || typeof contacts.$jazz?.set !== "function") {
     return "unavailable";

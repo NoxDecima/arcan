@@ -54,6 +54,19 @@ export function useIncomingConnectionRequestInbox(me: any): void {
               if (!record || typeof (record as any).$jazz?.set !== "function") {
                 return;
               }
+              // Shape guard (FM4 e2e finding, 2026-07-21): Inbox.subscribe
+              // does NOT filter by schema — EVERY inbox message's payload is
+              // loaded as ConnectionRequest and lands here, including
+              // ConversationNotification payloads (verified against
+              // jazz-tools src/tools/coValues/inbox.ts processMessage). A
+              // foreign payload read through this schema has all fields
+              // undefined; persisting it creates a phantom pending row whose
+              // approve stamps an unrelated CoValue. Mirror the conversation
+              // drain's `if (!conversationID) return` guard.
+              if (typeof (request as any)?.requesterAccountID !== "string") {
+                return;
+              }
+
               if ((record as any)[id]) return; // cheap same-session skip
               (record as any).$jazz.set(id, request);
             } catch (e) {
@@ -153,6 +166,10 @@ export function useIncomingConnectionRequests(): PendingRequest[] {
   const live = incoming.filter(
     (r: any) =>
       r &&
+      // Shape filter (FM4 e2e finding): records polluted before the drain's
+      // shape guard existed can hold foreign payloads (all fields undefined
+      // through this schema). Never render them as approvable rows.
+      typeof r.requesterAccountID === "string" &&
       !r.approvedAt &&
       !r.deniedAt &&
       (!r.expiresAt || new Date(r.expiresAt).getTime() > Date.now()),
