@@ -1263,12 +1263,12 @@ export function ConversationDetailRoute() {
             type="button"
             aria-hidden
             tabIndex={-1}
-            className="fixed inset-0 z-10 cursor-default"
+            className="fixed inset-0 z-30 cursor-default"
             onClick={() => setHeaderMenuOpen(false)}
           />
           <div
             data-testid="conversation-menu"
-            className="absolute right-0 top-full mt-1 z-20 min-w-[200px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-40 min-w-[200px] flex flex-col rounded-r-4 border border-hairline bg-panel shadow-bubble overflow-hidden"
           >
             <button
               type="button"
