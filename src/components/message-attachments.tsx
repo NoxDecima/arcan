@@ -1,7 +1,9 @@
 // src/components/message-attachments.tsx — container-side attachment renderer.
 // Extracted from message-bubble.tsx (Task 3, Unit 10 Wave B) so attachment
 // content can be passed as attSlot into ChatScreen's ChatTimelineItem.msg.
-// Preserves blob-URL resolution + lightbox behavior from the original.
+// The lightbox (item #29) receives the message's full image list + the
+// clicked index and navigates within it (arrows / arrow keys / swipe); blob
+// URLs are resolved inside ImageLightbox via useAttachmentImageUrl.
 //
 // Multi-image layout (user report R1, 2026-07-20): a message with 2+ image
 // attachments renders a tight cover-cropped grid that fills the bubble's
@@ -15,8 +17,7 @@
 // image instead of showing a dead veil strip on desktop (item #28, 2026-07-21
 // — see the comment on the wrapper). The round-4 img sizing itself
 // (attachment-tile.tsx) is untouched.
-import { useEffect, useState } from "react";
-import { co } from "jazz-tools";
+import { useState } from "react";
 import {
   AttachmentTile,
   isImageAttachment,
@@ -105,36 +106,28 @@ function expandedCellClass(totalCount: number, index: number): string {
 }
 
 export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAttachmentsProps) {
-  const [lightbox, setLightbox] = useState<{ src: string; filename?: string } | null>(null);
+  // Lightbox (item #29): index into `images` to open at, or null when closed.
+  // The lightbox resolves blob URLs itself and navigates within `images`.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // Per-message expanded state: reset on unmount (fine per spec).
   const [expanded, setExpanded] = useState(false);
-
-  // Revoke the lightbox blob URL on unmount and whenever it changes.
-  useEffect(() => {
-    return () => {
-      if (lightbox) URL.revokeObjectURL(lightbox.src);
-    };
-  }, [lightbox]);
 
   const attachments = Array.from((message as any).attachments ?? []);
   if (attachments.length === 0) return null;
 
-  async function openLightbox(att: any) {
-    const id = att?.data?.$jazz?.id;
-    if (!id) return;
-    const blob = await co.fileStream().loadAsBlob(id, { loadAs: me });
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    setLightbox({ src: url, filename: att?.filename });
-  }
-
-  function closeLightbox() {
-    setLightbox(null);
-  }
-
   const images = attachments.filter((att: any) =>
     isImageAttachment(att?.mimeType ?? ""),
   );
+
+  const lightbox =
+    lightboxIndex != null ? (
+      <ImageLightbox
+        images={images}
+        startIndex={lightboxIndex}
+        loadAs={me}
+        onClose={() => setLightboxIndex(null)}
+      />
+    ) : null;
 
   // Multi-image path: 2+ images → tight grid; non-image attachments (if any)
   // keep their file tiles in a row below the grid.
@@ -184,7 +177,9 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
                   onOpen={
                     isScrimCell
                       ? () => setExpanded(true)
-                      : () => void openLightbox(att)
+                      : // i indexes `images` directly in both modes (collapsed
+                        // shows images.slice(0, 4), expanded shows all).
+                        () => setLightboxIndex(i)
                   }
                 />
               );
@@ -205,9 +200,7 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
             </div>
           )}
         </div>
-        {lightbox && (
-          <ImageLightbox src={lightbox.src} filename={lightbox.filename} onClose={closeLightbox} />
-        )}
+        {lightbox}
       </>
     );
   }
@@ -237,13 +230,12 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
             attachment={att}
             mode="sent"
             loadAs={me}
-            onImageClick={() => void openLightbox(att)}
+            // ≤1 image in this path, so an image tile is always images[0].
+            onImageClick={() => setLightboxIndex(0)}
           />
         ))}
       </div>
-      {lightbox && (
-        <ImageLightbox src={lightbox.src} filename={lightbox.filename} onClose={closeLightbox} />
-      )}
+      {lightbox}
     </>
   );
 }
