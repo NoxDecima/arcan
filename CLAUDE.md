@@ -49,6 +49,16 @@ original feature slices above, a separate track).
   `duration-[...]` literals. Note: `animate-arcan-rise/pop` use `backwards`
   fill (a held identity transform from `both` breaks popover hit-testing).
   Spec: `docs/superpowers/specs/2026-07-18-ui-motion-design.md`.
+- Contact & connection robustness (2026-07-20) — implemented + merged (`--no-ff`). Jazz-canon
+  alignment: duplicate-sensitive root state moved to keyed co.records under NEW field names
+  (`contacts` / `incomingConnectionRequests` / `outgoingRequests` / `dismissedRequests` /
+  `pendingNotifications`) with a TOFU-aware migration backfill — in-place list→record is
+  unsafe in jazz-tools 0.20.18, so the legacy CoList fields remain in the schema
+  write-frozen (removal is a follow-up slice). Single send path `sendConnectionRequest`
+  (durable-intent-first, acked, both channels) + app-level `useOutgoingRequestWatcher`
+  replaced the /invite 3-second poll; notification sends carry durable retry records;
+  invitations mint lazily; repair is a visible add-to-contacts affordance (never silent
+  re-TOFU). Spec: `docs/superpowers/specs/2026-07-20-contact-robustness-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
