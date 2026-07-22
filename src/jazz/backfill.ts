@@ -147,10 +147,30 @@ async function runKeyedRecordBackfill(
       typeof root[spec.counterKey] === "number" ? root[spec.counterKey] : 0;
     const usable = await probeRecordUsable(me, spec);
     if (usable) {
+      // Successful probe resets a nonzero phantom streak (slow record that
+      // finally synced — NOT a phantom; never re-point it).
+      if (counter > 0) rootJazz.set(spec.counterKey, 0);
       return "already-exists";
     }
-    void opts;
-    return `skipped-phantom-probe:${counter}`;
+    if (!opts.phantomProbe) {
+      // Non-counting caller (migration): report the standing streak only —
+      // incrementing here too would double-count a launch.
+      return `skipped-phantom-probe:${counter}`;
+    }
+    const attempts = counter + 1;
+    if (attempts >= PHANTOM_REBUILD_THRESHOLD) {
+      // 3rd consecutive failed launch: re-point the key (LWW) at a fresh
+      // EMPTY record and reset the streak. For contacts the startup
+      // reconcile pass repopulates from the write-frozen legacy list (pins/
+      // addedAt preserved); requests re-arrive via the inbox drain (they
+      // expire in ≤7 days).
+      rootJazz.set(spec.key, spec.createEmpty(me));
+      rootJazz.set(spec.counterKey, 0);
+      console.warn(spec.rebuildWarning);
+      return "created";
+    }
+    rootJazz.set(spec.counterKey, attempts);
+    return `skipped-phantom-probe:${attempts}`;
   } catch (e) {
     console.warn(`[backfill] ${spec.key} phantom probe failed:`, e);
     return `failed:${errorMessage(e)}`;

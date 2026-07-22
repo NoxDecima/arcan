@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { co, z } from "jazz-tools";
 import { createJazzTestAccount } from "jazz-tools/testing";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
@@ -229,6 +229,140 @@ const WATCHER_RESOLVE = {
     pendingNotifications: { $each: { $onError: "catch" } },
   },
 } as any;
+
+describe("phantom probe (counter + 3rd-launch rebuild)", () => {
+  it("phantom contacts: 3 consecutive probed launches -> counter 1, 2, then rebuild (re-point, counter reset, ONE [recovery] warn) and reconcile refills from legacy", async () => {
+    const { reconcileLegacyContacts } = await import("@/jazz/handshake");
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomStreak" },
+      isCurrentActiveAccount: true,
+    });
+    pushLegacyContact(me, "acc-good-1", "fp-1", "Good One", new Date("2026-01-01T00:00:00Z"));
+    pushLegacyContact(me, "acc-good-2", "fp-2", "Good Two", new Date("2026-01-02T00:00:00Z"));
+    const legacyIDs = [
+      me.root.contactBook[0].$jazz.id,
+      me.root.contactBook[1].$jazz.id,
+    ];
+    const foreignId = await makePhantomKey(me, "contacts");
+
+    const warnSpy = vi.spyOn(console, "warn");
+    const recoveryWarns = () =>
+      warnSpy.mock.calls.filter(
+        (c) => typeof c[0] === "string" && c[0].includes("[recovery]"),
+      );
+
+    // Launch 1 + 2: counted skips — no rebuild, no re-point, no warn.
+    expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
+      "skipped-phantom-probe:1",
+    );
+    expect(me.root.contactsRecoveryAttempts).toBe(1);
+    expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
+      "skipped-phantom-probe:2",
+    );
+    expect(me.root.contactsRecoveryAttempts).toBe(2);
+    expect(me.root.$jazz.raw.get("contacts")).toBe(foreignId);
+    expect(recoveryWarns()).toHaveLength(0);
+
+    // Launch 3: rebuild — fresh empty record, key re-pointed (LWW), counter
+    // reset, exactly ONE clear [recovery] warn.
+    expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
+      "created",
+    );
+    expect(me.root.contactsRecoveryAttempts).toBe(0);
+    expect(me.root.$jazz.raw.get("contacts")).not.toBe(foreignId);
+    expect(recoveryWarns()).toHaveLength(1);
+    expect(recoveryWarns()[0][0]).toBe(
+      "[recovery] contacts record unreachable — rebuilt; legacy contacts will re-import",
+    );
+    warnSpy.mockRestore();
+
+    // The startup reconcile pass then repopulates: legacy CoValues set
+    // DIRECTLY (identity preserved), pins/addedAt intact.
+    reconcileLegacyContacts(me);
+    const contacts = await loadContacts(me);
+    expect(recordKeys(contacts).sort()).toEqual(["acc-good-1", "acc-good-2"]);
+    expect(contacts["acc-good-1"]?.pinnedFingerprint).toBe("fp-1");
+    expect(contacts["acc-good-1"]?.$jazz.id).toBe(legacyIDs[0]);
+    expect(contacts["acc-good-2"]?.$jazz.id).toBe(legacyIDs[1]);
+  });
+
+  it("slow record that finally loads: nonzero counter resets to 0, NO re-point", async () => {
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "SlowRecord" },
+      isCurrentActiveAccount: true,
+    });
+    // Two earlier launches failed the probe; this launch the (healthy) record
+    // is reachable again.
+    me.root.$jazz.set("contactsRecoveryAttempts", 2);
+    const recordId = me.root.$jazz.raw.get("contacts");
+
+    expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
+      "already-exists",
+    );
+    expect(me.root.contactsRecoveryAttempts).toBe(0);
+    expect(me.root.$jazz.raw.get("contacts")).toBe(recordId);
+  });
+
+  it("non-counting caller (migration, default opts): phantom -> reported skip, counter NOT incremented", async () => {
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomMigration" },
+      isCurrentActiveAccount: true,
+    });
+    await makePhantomKey(me, "contacts");
+
+    // The migration-side call must never count a launch (the watcher call in
+    // the same launch would double it) — report-only skip.
+    expect(await runContactsBackfill(me)).toBe("skipped-phantom-probe:0");
+    expect(me.root.contactsRecoveryAttempts ?? 0).toBe(0);
+    expect(await runContactsBackfill(me)).toBe("skipped-phantom-probe:0");
+  });
+
+  it("phantom incomingConnectionRequests: own counter increments; 3rd launch rebuilds empty with its own [recovery] warn", async () => {
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomRequests" },
+      isCurrentActiveAccount: true,
+    });
+    const foreignId = await makePhantomKey(me, "incomingConnectionRequests");
+
+    const warnSpy = vi.spyOn(console, "warn");
+    expect(await runIncomingRequestsBackfill(me, { phantomProbe: true })).toBe(
+      "skipped-phantom-probe:1",
+    );
+    expect(me.root.incomingRequestsRecoveryAttempts).toBe(1);
+    // The contacts counter is untouched — the streaks are per record.
+    expect(me.root.contactsRecoveryAttempts ?? 0).toBe(0);
+    expect(await runIncomingRequestsBackfill(me, { phantomProbe: true })).toBe(
+      "skipped-phantom-probe:2",
+    );
+    expect(await runIncomingRequestsBackfill(me, { phantomProbe: true })).toBe(
+      "created",
+    );
+    expect(me.root.incomingRequestsRecoveryAttempts).toBe(0);
+    expect(me.root.$jazz.raw.get("incomingConnectionRequests")).not.toBe(
+      foreignId,
+    );
+    const recoveryWarns = warnSpy.mock.calls.filter(
+      (c) => typeof c[0] === "string" && c[0].includes("[recovery]"),
+    );
+    expect(recoveryWarns).toHaveLength(1);
+    warnSpy.mockRestore();
+
+    // The rebuilt record is empty and usable (requests re-arrive via the
+    // inbox drain; they expire in <=7 days — no reconcile net needed).
+    const loaded = await me.$jazz.ensureLoaded({
+      resolve: {
+        root: { incomingConnectionRequests: { $each: { $onError: "catch" } } },
+      },
+    });
+    expect(recordKeys((loaded.root as any).incomingConnectionRequests)).toEqual(
+      [],
+    );
+  });
+});
 
 describe("watcher second chance (runHandshakeStartupTasks + field-level $onError)", () => {
   it("heals the live account: record keys absent after a migration guard-skip -> both records created from legacy state", async () => {

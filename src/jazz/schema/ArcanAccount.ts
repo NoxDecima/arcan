@@ -104,6 +104,14 @@ export const ArcanAccountRoot = co.map({
   // pendingNotifications — outbound conversation/member-add notification retry
   // state. Key: `${conversationID}:${targetAccountID}`.
   pendingNotifications: co.record(z.string(), PendingNotification).optional(),
+  // ── Phantom-record recovery counters (phase 4) ─────────────────────────
+  // Consecutive launches on which the keyed record above was present but
+  // failed a bounded load (phantom-key wedge). At 3 the record is rebuilt
+  // (see src/jazz/backfill.ts). Plain inline numbers, deliberately NOT
+  // CoValue refs — the recovery state must not itself be able to become
+  // unloadable. Optional: absent means 0.
+  contactsRecoveryAttempts: z.number().optional(),
+  incomingRequestsRecoveryAttempts: z.number().optional(),
 });
 
 export const ArcanAccount = co.account({
