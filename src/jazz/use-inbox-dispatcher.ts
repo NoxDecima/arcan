@@ -25,11 +25,24 @@ import { handleIncomingConnectionRequest } from "@/jazz/use-incoming-connection-
  *
  * GATING (Task 7 amendment pattern, now covering BOTH targets): consuming a
  * message marks it processed for both payload kinds, so the dispatcher must
- * not subscribe until EVERY persistence target is available —
+ * not subscribe until EVERY persistence target is GENUINELY USABLE —
  * me.root.knownConversations (conversation route) AND
- * me.root.incomingConnectionRequests (connection route). Unprocessed
- * messages are durable in the Inbox and replay on eventual subscribe, so
- * waiting is safe; consuming early is the loss mode.
+ * me.root.incomingConnectionRequests (connection route), each with
+ * `$isLoaded === true`. Presence of `$jazz.id` alone is NOT enough: in the
+ * phantom-record wedge (key present, record CoValue unavailable) the field
+ * reads as a truthy unloaded STUB `{ $jazz: { id, loadingState }, $isLoaded:
+ * false }` — subscribing then lets the handlers early-return on the stub
+ * while jazz marks each message processed and acks the sender: permanent
+ * silent loss. The delivered shapes and their gate outcomes (pinned in
+ * backfill-recovery.test.ts "dispatcher gate shapes"):
+ *   (a) absent key → undefined/null read → gate (absent branch);
+ *   (b) loading, unavailable, or FIELD-CAUGHT phantom → truthy stub with
+ *       $isLoaded false → gate (empirical: field-level $onError: "catch"
+ *       settles the resolve but the field reads the STUB, not null — unlike
+ *       caught $each entries);
+ *   (c) loaded-usable → $isLoaded === true → subscribe.
+ * Unprocessed messages are durable in the Inbox and replay on eventual
+ * subscribe, so waiting is safe; consuming early is the loss mode.
  *
  * ROUTING: by raw payload fields. Schema proxies hide undeclared foreign
  * fields (a ConversationNotification read through the ConnectionRequest
@@ -75,12 +88,20 @@ const warnedUnknownPayloadIDs = new Set<string>();
  * account switch) or when either persistence target appears.
  */
 export function useInboxDispatcher(me: any): void {
-  const recordID = me?.root?.incomingConnectionRequests?.$jazz?.id;
-  const knownID = me?.root?.knownConversations?.$jazz?.id;
+  // Usable-record gate (see GATING above): the ID is only taken when the
+  // record read is a LOADED CoValue ($isLoaded === true) — an unloaded
+  // phantom/loading stub or a field-caught null yields undefined and gates.
+  // The IDs stay in the effect deps so the loading→loaded transition (or a
+  // phantom rebuild re-pointing the key) re-runs the effect and subscribes.
+  const record = me?.root?.incomingConnectionRequests;
+  const recordID = record?.$isLoaded === true ? record?.$jazz?.id : undefined;
+  const known = me?.root?.knownConversations;
+  const knownID = known?.$isLoaded === true ? known?.$jazz?.id : undefined;
 
   useEffect(() => {
     if (!me?.$isLoaded) return;
-    // Either target absent → leave the inbox untouched (see GATING above).
+    // Either target absent or not loaded-usable → leave the inbox untouched
+    // (see GATING above): unconsumed messages stay durable and replay later.
     if (!recordID || !knownID) return;
 
     let unsubscribe: (() => void) | undefined;

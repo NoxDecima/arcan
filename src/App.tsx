@@ -103,9 +103,19 @@ function App() {
         // $onError: "catch" (Task 7 review, precedent use-home-lists.ts):
         // one unavailable contact child must not keep the whole app shell's
         // `me` unloaded — that would also unmount the inbox dispatcher.
-        contacts: { $each: { $onError: "catch" } },
-        knownConversations: true,
-        incomingConnectionRequests: true,
+        //
+        // FIELD-level $onError on all three refs (phantom-wedge fix,
+        // 2026-07-22): a plain `true` resolve REJECTS outright when the
+        // record/list CoValue itself is unavailable (phantom key — pinned in
+        // backfill-recovery.test.ts "dispatcher gate shapes"), which would
+        // keep `me` unloaded forever and silently disable the dispatcher.
+        // With the catch the resolve settles and the wedged field reads as
+        // an unloaded STUB ($isLoaded false — NOT null; empirical pin ibid.),
+        // which the dispatcher's usable-record gate refuses to subscribe on —
+        // inbox messages stay durable until the record heals or is rebuilt.
+        contacts: { $each: { $onError: "catch" }, $onError: "catch" },
+        knownConversations: { $onError: "catch" },
+        incomingConnectionRequests: { $onError: "catch" },
       },
     },
   });

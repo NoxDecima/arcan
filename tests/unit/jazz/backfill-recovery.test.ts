@@ -365,6 +365,95 @@ describe("phantom probe (counter + 3rd-launch rebuild)", () => {
   });
 });
 
+/**
+ * Real-runtime pins for the dispatcher gate's three delivered shapes
+ * (use-inbox-dispatcher.ts GATING doc): the mock stubs in
+ * use-inbox-dispatcher.test.ts must match what jazz-tools 0.20.18 actually
+ * delivers, and App.tsx's me resolve must actually SETTLE during a phantom
+ * wedge so the gate (not a wedged resolve) is what protects the inbox.
+ */
+describe("dispatcher gate shapes (App.tsx me resolve) — absent / phantom / loaded", () => {
+  /** The record fields of App.tsx's me resolve (field-level catch fix). */
+  const APP_RESOLVE = {
+    root: {
+      contacts: { $each: { $onError: "catch" }, $onError: "catch" },
+      knownConversations: { $onError: "catch" },
+      incomingConnectionRequests: { $onError: "catch" },
+    },
+  } as any;
+
+  it("(a) absent key -> resolve settles, field reads undefined/null (gate blocks via absent branch)", async () => {
+    const me = await makeLegacyAccount(); // record keys deleted
+    const loaded = await me.$jazz.ensureLoaded({ resolve: APP_RESOLVE });
+    expect(loaded.$isLoaded).toBe(true);
+    expect((loaded.root as any).incomingConnectionRequests ?? null).toBeNull();
+  });
+
+  it("(b) phantom record, read WITHOUT the field resolved -> truthy STUB with $jazz.id and $isLoaded !== true (the gate hole shape)", async () => {
+    // This is the shape a bare `$jazz.id` gate accepted: truthy, id present,
+    // NOT usable. Pinned so the dispatcher mock's stub matches reality.
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "StubShape" },
+      isCurrentActiveAccount: true,
+    });
+    const foreignId = await makePhantomKey(me, "incomingConnectionRequests");
+    const shallow = await me.$jazz.ensureLoaded({ resolve: { root: true } });
+    const stub = (shallow.root as any).incomingConnectionRequests;
+    expect(stub).toBeTruthy();
+    expect(stub.$jazz?.id).toBe(foreignId);
+    expect(stub.$isLoaded).not.toBe(true);
+  });
+
+  it("(b') phantom record under the PRE-fix App resolve (field: true) -> resolve REJECTS (why the field-level catch is required)", async () => {
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomAppOldResolve" },
+      isCurrentActiveAccount: true,
+    });
+    await makePhantomKey(me, "incomingConnectionRequests");
+    let rejected = false;
+    try {
+      await me.$jazz.ensureLoaded({
+        resolve: { root: { incomingConnectionRequests: true } } as any,
+      });
+    } catch {
+      rejected = true;
+    }
+    expect(rejected).toBe(true);
+  });
+
+  it("(c) phantom record, field-caught -> resolve SETTLES but the field reads the STUB, not null ($isLoaded is the only safe gate); loaded record -> $isLoaded === true (gate opens)", async () => {
+    // Empirical (2026-07-22): field-level $onError: "catch" on an unavailable
+    // record makes the RESOLVE settle, but the field does NOT read null the
+    // way caught $each ENTRIES do — it reads the same truthy unloaded stub
+    // as an unresolved field. So during a wedge, me becomes $isLoaded with
+    // the record as a stub — precisely the shape the old `$jazz.id` gate
+    // accepted and subscribed on. Only `$isLoaded === true` discriminates.
+    const foreignMe: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomAppResolve" },
+      isCurrentActiveAccount: true,
+    });
+    const foreignId = await makePhantomKey(
+      foreignMe,
+      "incomingConnectionRequests",
+    );
+    const loaded = await foreignMe.$jazz.ensureLoaded({
+      resolve: APP_RESOLVE,
+    });
+    expect(loaded.$isLoaded).toBe(true);
+    const caught = (loaded.root as any).incomingConnectionRequests;
+    expect(caught).toBeTruthy();
+    expect(caught.$jazz?.id).toBe(foreignId);
+    expect(caught.$isLoaded).not.toBe(true);
+    // The healthy sibling record is loaded-usable: gate opens on this shape.
+    const known = (loaded.root as any).knownConversations;
+    expect(known?.$isLoaded).toBe(true);
+    expect(typeof known?.$jazz?.id).toBe("string");
+  });
+});
+
 describe("watcher second chance (runHandshakeStartupTasks + field-level $onError)", () => {
   it("heals the live account: record keys absent after a migration guard-skip -> both records created from legacy state", async () => {
     // Models the live account: migration ran against a partial root, so the
