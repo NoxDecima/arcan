@@ -368,20 +368,32 @@ export const ArcanAccount = co.account({
   }
 
   // -- 2i. contacts (list → keyed record) backfill — contact-robustness slice.
-  // Guarded by field absence like every other backfill; ensureLoaded the
-  // source list first so NotLoaded proxies can't masquerade as empty data.
-  // On ANY failure we skip WITHOUT setting the field — the migration reruns
-  // on next startup and retries (same recovery contract as block 2g).
-  // $onError: "catch" (stuck-account fix, 2026-07-21): one permanently-
-  // unavailable legacy Contact must otherwise wedge this backfill forever —
-  // the ensureLoaded rejects on EVERY startup, `contacts` never gets created,
-  // and the account is stuck migration-pending for good (live-account bug).
-  // The original strictness meant to protect TOFU pins, but an unloadable
-  // entry's pin is unreadable anyway (the reader fallback filters it too) —
-  // it protected nothing. Caught entries resolve to null and are filtered
-  // below: loadable entries migrate now; unloadable ones are skipped, and the
-  // startup reconcile pass (reconcileLegacyContacts in handshake.ts) heals
-  // any entry that loads on a later launch, pin copied verbatim.
+  // Guarded by field absence like every other backfill. On ANY failure we
+  // skip WITHOUT setting the field — the migration reruns on next startup
+  // and retries (same recovery contract as block 2g).
+  //
+  // RAW-SCAN MECHANISM (falsy-entry fix, 2026-07-22) — do NOT "simplify"
+  // this back to a deep ensureLoaded of the list: a falsy (null) raw entry
+  // in the legacy CoList makes `contactBook: { $each: { $onError: "catch" } }`
+  // REJECT in jazz-tools 0.20.18. SubscriptionScope.loadCoListKey
+  // (node_modules/jazz-tools/src/tools/subscribe/SubscriptionScope.ts:1117-1129)
+  // files an index-keyed "ref on position N is required but missing"
+  // validation error that $onError: "catch" CANNOT suppress — unlike
+  // loadCoMapKey (:1047-1055), which pre-adds caught keys to skipInvalidKeys,
+  // loadCoListKey never adds index keys. One raw null therefore wedged this
+  // backfill on EVERY startup: `contacts` never got created and the account
+  // stayed migration-pending forever (live-account bug). $onError only ever
+  // suppressed entries that DID resolve but errored (unavailable children) —
+  // it never covered falsy raw entries.
+  //
+  // Mechanism: shallow-load the list CoValue only, filter its raw id array
+  // to ref-shaped strings (drops null/bogus poisons), then load each entry
+  // individually with Contact.load — which SETTLES (never throws); a
+  // never-synced/unavailable entry comes back not-loaded and is dropped by
+  // the $isLoaded filter (note: dropped entries are stubs/not-loaded values,
+  // NOT nulls). Skipped entries heal on a later launch via the startup
+  // reconcile pass (reconcileLegacyContacts in handshake.ts), pin copied
+  // verbatim.
   // Dedup policy lives in planContactMigration (unit-tested): latest entry
   // wins per account ID, EXCEPT fingerprint conflicts where the OLDEST pin
   // is kept (TOFU) and the conflict is flagged on the kept Contact.
@@ -392,14 +404,22 @@ export const ArcanAccount = co.account({
   ) {
     try {
       const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { contactBook: { $each: { $onError: "catch" } } } },
+        resolve: { root: { contactBook: true } },
       });
+      const rawIDs = (
+        ((loaded.root as any).contactBook?.$jazz.raw.asArray() ??
+          []) as unknown[]
+      ).filter(
+        (v): v is string => typeof v === "string" && v.startsWith("co_"),
+      );
       const entries = (
-        Array.from((loaded.root as any).contactBook ?? []) as any[]
-      ).filter((c) => c != null); // null-filter caught/unloaded entries — the
-      // planner's views mapping below drops the rest of the malformed shapes
-      // (non-string IDs/pins); plan indexes stay consistent because they are
-      // taken over THIS filtered array.
+        await Promise.all(
+          rawIDs.map((id) => Contact.load(id, { loadAs: me })),
+        )
+      ).filter((c: any) => c?.$isLoaded === true) as any[];
+      // The planner's views mapping below drops any remaining malformed
+      // shapes (non-string IDs/pins); plan indexes stay consistent because
+      // they are taken over THIS loaded-and-filtered array.
       const views = entries
         .map((c, index) => ({
           contactAccountID: c?.contactAccountID as string,
@@ -445,27 +465,33 @@ export const ArcanAccount = co.account({
     !(me.root as any).incomingConnectionRequests
   ) {
     try {
-      // $onError: "catch" (Task 7 review): one permanently-unavailable
-      // legacy request must otherwise wedge this backfill forever (the
-      // ensureLoaded rejects every session, the field stays absent, and the
-      // inbox drain never starts). Caught entries resolve to null and are
-      // filtered below — dropping an unavailable request is acceptable
-      // because requests expire in ≤7 days. Block 2i now uses the same
-      // tolerance (2026-07-21 stuck-account fix) — but because TOFU pins are
-      // security state, 2i is additionally backed by the startup reconcile
-      // pass (reconcileLegacyContacts) that heals late-loading entries;
-      // requests need no such net.
+      // RAW-SCAN MECHANISM — same falsy-entry fix as block 2i (2026-07-22),
+      // see the full rationale there: a null raw entry in the legacy CoList
+      // makes a deep `$each: { $onError: "catch" }` resolve REJECT
+      // (loadCoListKey files an uncatchable index-keyed validation error),
+      // wedging this backfill forever — the field stays absent and the inbox
+      // drain never starts. Shallow-load the list, filter raw ids, load each
+      // request individually (settles, never throws), keep loaded ones.
+      // Dropping an unloadable request is acceptable because requests expire
+      // in ≤7 days; unlike 2i (TOFU pins = security state, healed later by
+      // reconcileLegacyContacts), requests need no reconcile net.
       const loaded = await me.$jazz.ensureLoaded({
-        resolve: {
-          root: { incomingRequests: { $each: { $onError: "catch" } } },
-        },
+        resolve: { root: { incomingRequests: true } },
       });
+      const rawIDs = (
+        ((loaded.root as any).incomingRequests?.$jazz.raw.asArray() ??
+          []) as unknown[]
+      ).filter(
+        (v): v is string => typeof v === "string" && v.startsWith("co_"),
+      );
+      const entries = (
+        await Promise.all(
+          rawIDs.map((id) => ConnectionRequest.load(id, { loadAs: me })),
+        )
+      ).filter((r: any) => r?.$isLoaded === true) as any[];
       const record = co
         .record(z.string(), ConnectionRequest)
         .create({}, { owner: me });
-      const entries = (
-        Array.from((loaded.root as any).incomingRequests ?? []) as any[]
-      ).filter((r) => typeof r?.$jazz?.id === "string"); // null-filter caught entries
       for (const r of entries) {
         record.$jazz.set(r.$jazz.id as string, r);
       }
