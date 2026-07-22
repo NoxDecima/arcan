@@ -31,17 +31,21 @@
  * in a plain inline number on root (contactsRecoveryAttempts /
  * incomingRequestsRecoveryAttempts — deliberately NOT a CoValue ref, so the
  * recovery state cannot itself become unloadable). On the 3rd consecutive
- * failed launch the key is re-pointed (LWW) at a fresh EMPTY record and the
- * counter reset; the startup reconcile pass (reconcileLegacyContacts) then
+ * failed launch the key is re-pointed (LWW) at a fresh EMPTY record (the old
+ * record's co-ID is stashed in a root salvage field first) and the counter
+ * reset; the startup reconcile pass (reconcileLegacyContacts) then
  * repopulates contacts from the write-frozen legacy list with pins/addedAt
  * preserved. Increment discipline: ONLY the caller that passes
- * `phantomProbe: true` (the watcher's once-per-launch branch) increments —
- * the migration calls with the default (false) so one launch can never
- * double-count.
+ * `phantomProbe: true` (the watcher's once-per-launch branch) increments a
+ * FAILED probe — the migration calls with the default (false) so one launch
+ * can never double-count a failure. (Resetting is not so restricted: any
+ * caller zeroes a stale streak on a successful probe or a fresh create.)
  */
-import { co, z } from "jazz-tools";
-import { Contact } from "./schema/Contact";
-import { ConnectionRequest } from "./schema/ConnectionRequest";
+import { Contact, ContactsRecord } from "./schema/Contact";
+import {
+  ConnectionRequest,
+  IncomingConnectionRequestsRecord,
+} from "./schema/ConnectionRequest";
 import { planContactMigration } from "./contact-migration";
 
 export type BackfillOutcome =
@@ -82,14 +86,38 @@ export interface HandshakeReportEntry {
 
 const handshakeReport: Record<string, HandshakeReportEntry> = {};
 
+/**
+ * Account the current report entries belong to. The report is module state,
+ * so a sign-out/sign-in within one session would otherwise leak the previous
+ * account's outcomes into the new account's report. The runners (the first
+ * report writers on any account) clear stale entries when they see a
+ * DIFFERENT account id — in place, so the window mirror keeps pointing at
+ * the live object.
+ */
+let reportAccountID: string | undefined;
+
+function resetReportForAccount(accountID: unknown): void {
+  if (typeof accountID !== "string" || accountID === reportAccountID) return;
+  reportAccountID = accountID;
+  for (const step of Object.keys(handshakeReport)) {
+    delete handshakeReport[step];
+  }
+}
+
 export function recordHandshakeOutcome<T extends string>(
   step: string,
   outcome: T,
 ): T {
   handshakeReport[step] = { outcome, at: new Date().toISOString() };
-  if (typeof window !== "undefined") {
-    (window as unknown as Record<string, unknown>).__arcanHandshakeReport =
-      handshakeReport;
+  try {
+    if (typeof window !== "undefined") {
+      (window as unknown as Record<string, unknown>).__arcanHandshakeReport =
+        handshakeReport;
+    }
+  } catch {
+    // The mirror is diagnostic best-effort only — a locked-down window
+    // (frozen global, exotic embedder) must not break the runners'
+    // never-rejects contract.
   }
   return outcome;
 }
@@ -97,9 +125,6 @@ export function recordHandshakeOutcome<T extends string>(
 export function getHandshakeReport(): Record<string, HandshakeReportEntry> {
   return handshakeReport;
 }
-
-const ContactsRecord = co.record(z.string(), Contact);
-const IncomingRequestsRecord = co.record(z.string(), ConnectionRequest);
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -129,13 +154,19 @@ async function boundedLoad<T>(load: Promise<T>, ms: number): Promise<T | null> {
 interface KeyedRecordBackfillSpec {
   key: "contacts" | "incomingConnectionRequests";
   counterKey: "contactsRecoveryAttempts" | "incomingRequestsRecoveryAttempts";
+  /**
+   * Root field stashing the co-ID of the record a phantom rebuild re-pointed
+   * away from (salvage path — see the rebuild branch).
+   */
+  preRebuildRefKey: "contactsPreRebuildRef" | "incomingRequestsPreRebuildRef";
   /** Step name in the startup diagnostic report. */
   reportKey: "contactsBackfill" | "incomingRequestsBackfill";
   /** Builds AND fills the record from the write-frozen legacy list. */
   buildFromLegacy: (me: any) => Promise<any>;
   createEmpty: (me: any) => any;
   loadRecord: (id: string, me: any) => Promise<any>;
-  rebuildWarning: string;
+  /** The single [recovery] warn on rebuild — names the old record's co-ID. */
+  rebuildWarning: (previousRecordID: string) => string;
 }
 
 /** Recording wrapper — every runner outcome lands in the startup report. */
@@ -144,6 +175,9 @@ async function runKeyedRecordBackfill(
   spec: KeyedRecordBackfillSpec,
   opts: BackfillOpts,
 ): Promise<BackfillOutcome> {
+  // The runners are the first report writers for any account — clear stale
+  // entries left by a previously signed-in account (module state).
+  resetReportForAccount(me?.$jazz?.id);
   const outcome = await runKeyedRecordBackfillInner(me, spec, opts);
   return recordHandshakeOutcome(spec.reportKey, outcome);
 }
@@ -204,14 +238,29 @@ async function runKeyedRecordBackfillInner(
     }
     const attempts = counter + 1;
     if (attempts >= PHANTOM_REBUILD_THRESHOLD) {
-      // 3rd consecutive failed launch: re-point the key (LWW) at a fresh
-      // EMPTY record and reset the streak. For contacts the startup
-      // reconcile pass repopulates from the write-frozen legacy list (pins/
-      // addedAt preserved); requests re-arrive via the inbox drain (they
-      // expire in ≤7 days).
+      // 3rd consecutive failed launch: stash the old record's co-ID (a
+      // future salvage path can re-import its entries if the record ever
+      // becomes loadable again), then re-point the key (LWW) at a fresh
+      // EMPTY record and reset the streak. What each side actually gets
+      // back: for contacts the startup reconcile pass repopulates from the
+      // write-frozen legacy list (pins/addedAt preserved) — contacts added
+      // AFTER the list was frozen on other devices live only in the old
+      // record and may need re-adding. For requests, entries already
+      // persisted in the old record are NOT recovered here; what IS safe:
+      // the inbox dispatcher refuses to consume messages while its target
+      // record is unusable, so undelivered requests stay durable in the
+      // inbox and process once this rebuilt record is usable.
+      const previousID = rootJazz.raw?.get?.(spec.key);
+      if (typeof previousID === "string") {
+        rootJazz.set(spec.preRebuildRefKey, previousID);
+      }
       rootJazz.set(spec.key, spec.createEmpty(me));
       rootJazz.set(spec.counterKey, 0);
-      console.warn(spec.rebuildWarning);
+      console.warn(
+        spec.rebuildWarning(
+          typeof previousID === "string" ? previousID : "unknown",
+        ),
+      );
       return "created";
     }
     rootJazz.set(spec.counterKey, attempts);
@@ -336,7 +385,7 @@ async function buildIncomingRequestsRecordFromLegacy(me: any): Promise<any> {
       rawIDs.map((id) => ConnectionRequest.load(id, { loadAs: me })),
     )
   ).filter((r: any) => r?.$isLoaded === true) as any[];
-  const record = IncomingRequestsRecord.create({}, { owner: me });
+  const record = IncomingConnectionRequestsRecord.create({}, { owner: me });
   for (const r of entries) {
     record.$jazz.set(r.$jazz.id as string, r);
   }
@@ -346,25 +395,28 @@ async function buildIncomingRequestsRecordFromLegacy(me: any): Promise<any> {
 const CONTACTS_SPEC: KeyedRecordBackfillSpec = {
   key: "contacts",
   counterKey: "contactsRecoveryAttempts",
+  preRebuildRefKey: "contactsPreRebuildRef",
   reportKey: "contactsBackfill",
   buildFromLegacy: buildContactsRecordFromLegacy,
   createEmpty: (me: any) => ContactsRecord.create({}, { owner: me }),
   loadRecord: (id: string, me: any) =>
     ContactsRecord.load(id as any, { loadAs: me }),
-  rebuildWarning:
-    "[recovery] contacts record unreachable — rebuilt; legacy contacts will re-import",
+  rebuildWarning: (previousRecordID: string) =>
+    `[recovery] contacts record unreachable — rebuilt; contacts from your original list re-import automatically; contacts added after the robustness update on other devices may need re-adding (previous record: ${previousRecordID})`,
 };
 
 const INCOMING_REQUESTS_SPEC: KeyedRecordBackfillSpec = {
   key: "incomingConnectionRequests",
   counterKey: "incomingRequestsRecoveryAttempts",
+  preRebuildRefKey: "incomingRequestsPreRebuildRef",
   reportKey: "incomingRequestsBackfill",
   buildFromLegacy: buildIncomingRequestsRecordFromLegacy,
-  createEmpty: (me: any) => IncomingRequestsRecord.create({}, { owner: me }),
+  createEmpty: (me: any) =>
+    IncomingConnectionRequestsRecord.create({}, { owner: me }),
   loadRecord: (id: string, me: any) =>
-    IncomingRequestsRecord.load(id as any, { loadAs: me }),
-  rebuildWarning:
-    "[recovery] incomingConnectionRequests record unreachable — rebuilt; live requests will re-arrive via the inbox drain",
+    IncomingConnectionRequestsRecord.load(id as any, { loadAs: me }),
+  rebuildWarning: (previousRecordID: string) =>
+    `[recovery] incomingConnectionRequests record unreachable — rebuilt; pending requests preserved in the inbox will process once the record is usable (previous record: ${previousRecordID})`,
 };
 
 export async function runContactsBackfill(

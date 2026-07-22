@@ -17,3 +17,16 @@ export const ConnectionRequest = co.map({
   approvedAt: z.date().optional(),
   deniedAt: z.date().optional(),
 });
+
+/**
+ * IncomingConnectionRequestsRecord: the durable inbox-drain target
+ * (contact-robustness slice) — keyed by request CoValue ID so racing drains
+ * converge by LWW (FM2). Single schema instance shared by ArcanAccountRoot's
+ * `incomingConnectionRequests` field and the backfill/recovery runners —
+ * defined HERE for the same cycle-freedom reason as Contact.ts's
+ * ContactsRecord (backfill.ts may not import ArcanAccount).
+ */
+export const IncomingConnectionRequestsRecord = co.record(
+  z.string(),
+  ConnectionRequest,
+);

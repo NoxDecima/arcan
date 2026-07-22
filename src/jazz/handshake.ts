@@ -653,7 +653,35 @@ export async function runHandshakeStartupTasks(me: any): Promise<void> {
     // Heal contacts whose legacy entry loaded after the migration backfill
     // skipped it (block 2i's tolerance), and refill a phantom-rebuilt record
     // — see reconcileLegacyContacts' doc.
-    reconcileLegacyContacts(me);
+    //
+    // Same-launch freshness (final review, 2026-07-22): the `me` handle here
+    // may be a stale React useAccount SNAPSHOT whose root.contacts still
+    // reads the pre-rebuild phantom stub even after the backfill above
+    // re-pointed the key — reconcile's guards would silently no-op and the
+    // refill would wait a whole launch. Re-read through a direct
+    // ensureLoaded (field-level $onError so a still-wedged record settles
+    // as a stub rather than rejecting) so the reconcile sees the record
+    // created/re-pointed THIS session. Falls back to the passed handle when
+    // the fresh load isn't possible (worst case = the old next-launch heal).
+    let reconcileMe = me;
+    if (typeof me?.$jazz?.ensureLoaded === "function") {
+      try {
+        reconcileMe = await me.$jazz.ensureLoaded({
+          resolve: {
+            root: {
+              contacts: { $each: { $onError: "catch" }, $onError: "catch" },
+              contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
+            },
+          },
+        });
+      } catch (e) {
+        console.warn(
+          "[handshake] reconcile fresh load failed — using passed handle:",
+          e,
+        );
+      }
+    }
+    reconcileLegacyContacts(reconcileMe);
     recordHandshakeOutcome("reconcile", "ok");
   } catch (e) {
     console.warn("[handshake] startup reconcile failed:", e);

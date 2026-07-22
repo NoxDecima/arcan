@@ -8,6 +8,8 @@ import {
   runContactsBackfill,
   runIncomingRequestsBackfill,
   getHandshakeReport,
+  recordHandshakeOutcome,
+  PHANTOM_REBUILD_THRESHOLD,
 } from "@/jazz/backfill";
 import { runHandshakeStartupTasks } from "@/jazz/handshake";
 
@@ -253,7 +255,8 @@ describe("phantom probe (counter + 3rd-launch rebuild)", () => {
         (c) => typeof c[0] === "string" && c[0].includes("[recovery]"),
       );
 
-    // Launch 1 + 2: counted skips — no rebuild, no re-point, no warn.
+    // Launch 1 + 2: counted skips — no rebuild, no re-point, no warn, no
+    // pre-rebuild ref stash.
     expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
       "skipped-phantom-probe:1",
     );
@@ -263,18 +266,21 @@ describe("phantom probe (counter + 3rd-launch rebuild)", () => {
     );
     expect(me.root.contactsRecoveryAttempts).toBe(2);
     expect(me.root.$jazz.raw.get("contacts")).toBe(foreignId);
+    expect(me.root.contactsPreRebuildRef ?? null).toBeNull();
     expect(recoveryWarns()).toHaveLength(0);
 
-    // Launch 3: rebuild — fresh empty record, key re-pointed (LWW), counter
-    // reset, exactly ONE clear [recovery] warn.
+    // Launch 3: rebuild — the OLD record's co-ID is stashed first (future
+    // salvage path), then fresh empty record, key re-pointed (LWW), counter
+    // reset, exactly ONE clear [recovery] warn naming the old record.
     expect(await runContactsBackfill(me, { phantomProbe: true })).toBe(
       "created",
     );
     expect(me.root.contactsRecoveryAttempts).toBe(0);
     expect(me.root.$jazz.raw.get("contacts")).not.toBe(foreignId);
+    expect(me.root.contactsPreRebuildRef).toBe(foreignId);
     expect(recoveryWarns()).toHaveLength(1);
     expect(recoveryWarns()[0][0]).toBe(
-      "[recovery] contacts record unreachable — rebuilt; legacy contacts will re-import",
+      `[recovery] contacts record unreachable — rebuilt; contacts from your original list re-import automatically; contacts added after the robustness update on other devices may need re-adding (previous record: ${foreignId})`,
     );
     warnSpy.mockRestore();
 
@@ -346,14 +352,22 @@ describe("phantom probe (counter + 3rd-launch rebuild)", () => {
     expect(me.root.$jazz.raw.get("incomingConnectionRequests")).not.toBe(
       foreignId,
     );
+    expect(me.root.incomingRequestsPreRebuildRef).toBe(foreignId);
     const recoveryWarns = warnSpy.mock.calls.filter(
       (c) => typeof c[0] === "string" && c[0].includes("[recovery]"),
     );
     expect(recoveryWarns).toHaveLength(1);
+    // Honest text: no claim that wedge-consumed messages re-arrive — with
+    // the usable-record dispatcher gate, undelivered messages stay durable
+    // in the inbox and process once the rebuilt record is usable.
+    expect(recoveryWarns[0][0]).toBe(
+      `[recovery] incomingConnectionRequests record unreachable — rebuilt; pending requests preserved in the inbox will process once the record is usable (previous record: ${foreignId})`,
+    );
     warnSpy.mockRestore();
 
-    // The rebuilt record is empty and usable (requests re-arrive via the
-    // inbox drain; they expire in <=7 days — no reconcile net needed).
+    // The rebuilt record is empty and usable (no reconcile net for requests:
+    // undelivered inbox messages stay durable behind the dispatcher gate and
+    // process once the record is usable).
     const loaded = await me.$jazz.ensureLoaded({
       resolve: {
         root: { incomingConnectionRequests: { $each: { $onError: "catch" } } },
@@ -362,6 +376,188 @@ describe("phantom probe (counter + 3rd-launch rebuild)", () => {
     expect(recordKeys((loaded.root as any).incomingConnectionRequests)).toEqual(
       [],
     );
+  });
+
+  it("migration caller at counter=threshold-1: performs NO root writes (streak reported, never advanced; rebuild never triggered)", async () => {
+    // The cusp pin: even one launch away from the rebuild threshold, the
+    // non-counting migration caller must be strictly read-only — a write
+    // here (increment OR rebuild) would let migration+watcher double-count
+    // a single launch or fire the rebuild without the watcher's consent.
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "PhantomCusp" },
+      isCurrentActiveAccount: true,
+    });
+    const foreignId = await makePhantomKey(me, "contacts");
+    me.root.$jazz.set(
+      "contactsRecoveryAttempts",
+      PHANTOM_REBUILD_THRESHOLD - 1,
+    );
+
+    const { instrumented, setCalls } = withInstrumentedRootSet(me);
+    expect(await runContactsBackfill(instrumented)).toBe(
+      `skipped-phantom-probe:${PHANTOM_REBUILD_THRESHOLD - 1}`,
+    );
+    expect(setCalls).toEqual([]);
+    expect(me.root.contactsRecoveryAttempts).toBe(
+      PHANTOM_REBUILD_THRESHOLD - 1,
+    );
+    expect(me.root.$jazz.raw.get("contacts")).toBe(foreignId);
+    expect(me.root.contactsPreRebuildRef ?? null).toBeNull();
+  });
+});
+
+/**
+ * Pass-through wrapper that records every `me.root.$jazz.set(...)` call —
+ * the runners' only root write surface. Reads delegate to the real account.
+ */
+function withInstrumentedRootSet(me: any): {
+  instrumented: any;
+  setCalls: unknown[][];
+} {
+  const setCalls: unknown[][] = [];
+  const realRoot = me.root;
+  const realJazz = realRoot.$jazz;
+  const jazzProxy = new Proxy(realJazz, {
+    get(target, prop) {
+      if (prop === "set") {
+        return (...args: unknown[]) => {
+          setCalls.push(args);
+          return (target as any).set(...args);
+        };
+      }
+      const v = Reflect.get(target, prop);
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  });
+  const rootProxy = new Proxy(realRoot, {
+    get(target, prop) {
+      if (prop === "$jazz") return jazzProxy;
+      return Reflect.get(target, prop);
+    },
+  });
+  const instrumented = new Proxy(me, {
+    get(target, prop) {
+      if (prop === "root") return rootProxy;
+      return Reflect.get(target, prop);
+    },
+  });
+  return { instrumented, setCalls };
+}
+
+/**
+ * Models the production staleness hazard for the same-launch reconcile: a
+ * React useAccount SNAPSHOT whose `root.<key>` read is frozen at the
+ * pre-rebuild phantom STUB even after the backfill re-points the key. All
+ * other reads (and $jazz, so writes + ensureLoaded) hit the real account.
+ */
+function makeStaleSnapshot(me: any, key: string): any {
+  const staleStub = {
+    $jazz: { id: me.root.$jazz.raw.get(key), loadingState: "unavailable" },
+    $isLoaded: false,
+  };
+  const realRoot = me.root;
+  const staleRoot = new Proxy(realRoot, {
+    get(target, prop) {
+      if (prop === key) return staleStub;
+      return Reflect.get(target, prop);
+    },
+  });
+  return new Proxy(me, {
+    get(target, prop) {
+      if (prop === "root") return staleRoot;
+      return Reflect.get(target, prop);
+    },
+  });
+}
+
+describe("same-launch reconcile after a rebuild (stale-snapshot hazard)", () => {
+  it("rebuild + reconcile in ONE runHandshakeStartupTasks call refills the record even when the passed handle's contacts read is a stale stub", async () => {
+    const { reconcileLegacyContacts } = await import("@/jazz/handshake");
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "StaleSnapshot" },
+      isCurrentActiveAccount: true,
+    });
+    pushLegacyContact(me, "acc-good-1", "fp-1", "Good One", new Date("2026-01-01T00:00:00Z"));
+    pushLegacyContact(me, "acc-good-2", "fp-2", "Good Two", new Date("2026-01-02T00:00:00Z"));
+    const foreignId = await makePhantomKey(me, "contacts");
+    // One launch from the rebuild threshold — this launch rebuilds.
+    me.root.$jazz.set(
+      "contactsRecoveryAttempts",
+      PHANTOM_REBUILD_THRESHOLD - 1,
+    );
+    const staleMe = makeStaleSnapshot(me, "contacts");
+
+    // Control: on the stale snapshot alone, reconcile is a guard-skip no-op
+    // (the stub has no $jazz.set) — without a fresh re-read, the refill
+    // would silently wait a whole launch.
+    reconcileLegacyContacts(staleMe);
+
+    await runHandshakeStartupTasks(staleMe);
+
+    // The rebuild happened (writes go through the real $jazz)…
+    expect(me.root.$jazz.raw.get("contacts")).not.toBe(foreignId);
+    expect(me.root.contactsPreRebuildRef).toBe(foreignId);
+    // …and the reconcile refilled the NEW record THIS session (via a direct
+    // fresh load), despite the stale snapshot's frozen stub read.
+    const contacts = await loadContacts(me);
+    expect(recordKeys(contacts).sort()).toEqual(["acc-good-1", "acc-good-2"]);
+    expect(contacts["acc-good-1"]?.pinnedFingerprint).toBe("fp-1");
+  });
+});
+
+describe("startup report hardening (never-throw mirror + per-account keying)", () => {
+  it("recordHandshakeOutcome survives a throwing window mirror (runners' never-rejects claim holds)", () => {
+    const desc = Object.getOwnPropertyDescriptor(
+      window,
+      "__arcanHandshakeReport",
+    );
+    Object.defineProperty(window, "__arcanHandshakeReport", {
+      configurable: true,
+      get() {
+        return undefined;
+      },
+      set() {
+        throw new Error("window is locked down");
+      },
+    });
+    try {
+      expect(() => recordHandshakeOutcome("prune", "ok")).not.toThrow();
+      // The module report still records — only the mirror is best-effort.
+      expect(getHandshakeReport().prune?.outcome).toBe("ok");
+    } finally {
+      if (desc) {
+        Object.defineProperty(window, "__arcanHandshakeReport", desc);
+      } else {
+        delete (window as any).__arcanHandshakeReport;
+      }
+    }
+  });
+
+  it("report is keyed by account: a runner call for a DIFFERENT account clears the previous account's steps (mirror object identity kept)", async () => {
+    const meA = await makeLegacyAccount("ReportAccountA");
+    await runHandshakeStartupTasks(meA);
+    expect(getHandshakeReport().prune?.outcome).toBe("ok");
+    expect(getHandshakeReport().reconcile?.outcome).toBe("ok");
+
+    const meB: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "ReportAccountB" },
+      isCurrentActiveAccount: true,
+    });
+    expect(await runContactsBackfill(meB)).toBe("already-exists");
+
+    // Account B's report holds ONLY what ran for B — no stale A outcomes.
+    // (createJazzTestAccount ran B's migration, so BOTH backfill steps are
+    // legitimately B's own; prune/reconcile ran only for A and must be gone.)
+    const report = getHandshakeReport();
+    expect(report.contactsBackfill?.outcome).toBe("already-exists");
+    expect(report.incomingRequestsBackfill?.outcome).toBe("already-exists");
+    expect(report.prune).toBeUndefined();
+    expect(report.reconcile).toBeUndefined();
+    // Cleared IN PLACE: the window mirror keeps pointing at the live object.
+    expect((window as any).__arcanHandshakeReport).toBe(report);
   });
 });
 

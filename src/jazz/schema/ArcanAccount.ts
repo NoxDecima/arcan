@@ -1,11 +1,14 @@
 import { co, z, Group, Inbox } from "jazz-tools";
-import { Contact, ContactBook } from "./Contact";
+import { ContactBook, ContactsRecord } from "./Contact";
 import { OutgoingConnectionRequest } from "./OutgoingConnectionRequest";
 import { PendingNotification } from "./PendingNotification";
 import { DeviceRecord } from "./DeviceRecord";
 import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
-import { ConnectionRequest } from "./ConnectionRequest";
+import {
+  ConnectionRequest,
+  IncomingConnectionRequestsRecord,
+} from "./ConnectionRequest";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
 import {
@@ -91,11 +94,12 @@ export const ArcanAccountRoot = co.map({
   // wrap. Old fields stay (write-frozen) for the migration backfill to read;
   // removal is a later slice. All optional per the lastReadAt lesson above.
   //
-  // contacts — THE contact book. Key: contact's account ID.
-  contacts: co.record(z.string(), Contact).optional(),
+  // contacts — THE contact book. Key: contact's account ID. (Schema instance
+  // shared with the backfill runners — see Contact.ts ContactsRecord.)
+  contacts: ContactsRecord.optional(),
   // incomingConnectionRequests — durable drain target. Key: request CoValue ID
   // (same-key writes from racing drains converge instead of duplicating, FM2).
-  incomingConnectionRequests: co.record(z.string(), ConnectionRequest).optional(),
+  incomingConnectionRequests: IncomingConnectionRequestsRecord.optional(),
   // outgoingRequests — durable outbound-request memory (FM1/FM3/FM4).
   // Key: counterpart account ID.
   outgoingRequests: co.record(z.string(), OutgoingConnectionRequest).optional(),
@@ -112,6 +116,14 @@ export const ArcanAccountRoot = co.map({
   // unloadable. Optional: absent means 0.
   contactsRecoveryAttempts: z.number().optional(),
   incomingRequestsRecoveryAttempts: z.number().optional(),
+  // ── Phantom-rebuild salvage refs (final review, 2026-07-22) ────────────
+  // Raw co-ID of the record a phantom rebuild re-pointed AWAY from — stashed
+  // just before the re-point so a future salvage path can re-import its
+  // entries if the old record ever becomes loadable again. Plain strings
+  // (deliberately NOT CoValue refs, same reasoning as the counters above)
+  // and optional per the lastReadAt lesson.
+  contactsPreRebuildRef: z.string().optional(),
+  incomingRequestsPreRebuildRef: z.string().optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -192,12 +204,11 @@ export const ArcanAccount = co.account({
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
     const liveInvitations = co.list(Invitation).create([], { owner: me });
     const incomingRequests = co.list(ConnectionRequest).create([], { owner: me });
-    const contacts = co
-      .record(z.string(), Contact)
-      .create({}, { owner: me });
-    const incomingConnectionRequests = co
-      .record(z.string(), ConnectionRequest)
-      .create({}, { owner: me });
+    const contacts = ContactsRecord.create({}, { owner: me });
+    const incomingConnectionRequests = IncomingConnectionRequestsRecord.create(
+      {},
+      { owner: me },
+    );
     const outgoingRequests = co
       .record(z.string(), OutgoingConnectionRequest)
       .create({}, { owner: me });
