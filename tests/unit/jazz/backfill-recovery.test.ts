@@ -7,6 +7,7 @@ import { ConnectionRequest } from "@/jazz/schema/ConnectionRequest";
 import {
   runContactsBackfill,
   runIncomingRequestsBackfill,
+  getHandshakeReport,
 } from "@/jazz/backfill";
 import { runHandshakeStartupTasks } from "@/jazz/handshake";
 
@@ -404,6 +405,51 @@ describe("watcher second chance (runHandshakeStartupTasks + field-level $onError
     const loaded = await me.$jazz.ensureLoaded({ resolve: WATCHER_RESOLVE });
     expect(loaded.$isLoaded).toBe(true);
     expect(loaded.root).toBeTruthy();
+  });
+
+  it("records a startup report (outcome + timestamp per step, nothing else) and emits ONE console.info", async () => {
+    const me = await makeLegacyAccount();
+    pushLegacyContact(me, "acc-good-1", "fp-1", "Good One", new Date("2026-01-01T00:00:00Z"));
+
+    const infoSpy = vi.spyOn(console, "info");
+    await runHandshakeStartupTasks(me);
+
+    const report = getHandshakeReport();
+    expect(report.contactsBackfill?.outcome).toBe("created");
+    expect(report.incomingRequestsBackfill?.outcome).toBe("created");
+    expect(report.prune?.outcome).toBe("ok");
+    expect(report.reconcile?.outcome).toBe("ok");
+    for (const step of [
+      "contactsBackfill",
+      "incomingRequestsBackfill",
+      "prune",
+      "reconcile",
+    ]) {
+      // Tiny by contract: outcome string + timestamp — no CoValue dumps.
+      expect(Object.keys(report[step]!).sort()).toEqual(["at", "outcome"]);
+      expect(Number.isFinite(new Date(report[step]!.at).getTime())).toBe(true);
+    }
+    // Exposed for in-field diagnosis (guarded typeof window !== "undefined").
+    expect((window as any).__arcanHandshakeReport).toBe(report);
+
+    const infos = infoSpy.mock.calls.filter(
+      (c) => c[0] === "[handshake] startup report",
+    );
+    expect(infos).toHaveLength(1);
+    expect(infos[0][1]).toBe(report);
+    infoSpy.mockRestore();
+  });
+
+  it("direct runner calls record their outcome too (migration-side visibility; last write wins)", async () => {
+    const me: any = await createJazzTestAccount({
+      AccountSchema: ArcanAccount,
+      creationProps: { name: "ReportRunner" },
+      isCurrentActiveAccount: true,
+    });
+    expect(await runContactsBackfill(me)).toBe("already-exists");
+    expect(getHandshakeReport().contactsBackfill?.outcome).toBe(
+      "already-exists",
+    );
   });
 
   it("pins WHY the field-level catch is required: $each-level catch alone REJECTS on a phantom record CoValue", async () => {

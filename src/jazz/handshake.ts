@@ -28,6 +28,8 @@ import { ArcanAccount } from "./schema/ArcanAccount";
 import {
   runContactsBackfill,
   runIncomingRequestsBackfill,
+  recordHandshakeOutcome,
+  getHandshakeReport,
 } from "./backfill";
 
 export type UpsertContactResult =
@@ -634,21 +636,35 @@ export function pruneHandshakeState(me: any): void {
  * (the hook fires this as void).
  */
 export async function runHandshakeStartupTasks(me: any): Promise<void> {
+  // The runners record their own outcomes into the startup report.
   await runContactsBackfill(me, { phantomProbe: true });
   await runIncomingRequestsBackfill(me, { phantomProbe: true });
   try {
     pruneHandshakeState(me);
+    recordHandshakeOutcome("prune", "ok");
   } catch (e) {
     console.warn("[handshake] startup prune failed:", e);
+    recordHandshakeOutcome(
+      "prune",
+      `failed:${e instanceof Error ? e.message : String(e)}`,
+    );
   }
   try {
     // Heal contacts whose legacy entry loaded after the migration backfill
     // skipped it (block 2i's tolerance), and refill a phantom-rebuilt record
     // — see reconcileLegacyContacts' doc.
     reconcileLegacyContacts(me);
+    recordHandshakeOutcome("reconcile", "ok");
   } catch (e) {
     console.warn("[handshake] startup reconcile failed:", e);
+    recordHandshakeOutcome(
+      "reconcile",
+      `failed:${e instanceof Error ? e.message : String(e)}`,
+    );
   }
+  // ONE line per launch — outcome strings + timestamps only (privacy), also
+  // mirrored to window.__arcanHandshakeReport for in-field inspection.
+  console.info("[handshake] startup report", getHandshakeReport());
 }
 
 /**

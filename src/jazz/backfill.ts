@@ -65,6 +65,39 @@ export const PHANTOM_REBUILD_THRESHOLD = 3;
 /** Bound on the phantom probe's record load (sync-server round-trip cap). */
 export const PHANTOM_PROBE_TIMEOUT_MS = 10_000;
 
+/**
+ * Startup diagnostic report (phase 4): each backfill runner + the watcher's
+ * prune/reconcile record their latest outcome here. Deliberately TINY —
+ * outcome strings + timestamps only, never CoValue contents (privacy).
+ * Mirrored to window.__arcanHandshakeReport for in-field inspection; the
+ * watcher logs it once per launch via console.info after the once-per-launch
+ * block completes. Last write wins per step (a migration-side runner outcome
+ * is superseded by the watcher-side rerun — the later one reflects the
+ * account's actual final state).
+ */
+export interface HandshakeReportEntry {
+  outcome: string;
+  at: string;
+}
+
+const handshakeReport: Record<string, HandshakeReportEntry> = {};
+
+export function recordHandshakeOutcome<T extends string>(
+  step: string,
+  outcome: T,
+): T {
+  handshakeReport[step] = { outcome, at: new Date().toISOString() };
+  if (typeof window !== "undefined") {
+    (window as unknown as Record<string, unknown>).__arcanHandshakeReport =
+      handshakeReport;
+  }
+  return outcome;
+}
+
+export function getHandshakeReport(): Record<string, HandshakeReportEntry> {
+  return handshakeReport;
+}
+
 const ContactsRecord = co.record(z.string(), Contact);
 const IncomingRequestsRecord = co.record(z.string(), ConnectionRequest);
 
@@ -96,6 +129,8 @@ async function boundedLoad<T>(load: Promise<T>, ms: number): Promise<T | null> {
 interface KeyedRecordBackfillSpec {
   key: "contacts" | "incomingConnectionRequests";
   counterKey: "contactsRecoveryAttempts" | "incomingRequestsRecoveryAttempts";
+  /** Step name in the startup diagnostic report. */
+  reportKey: "contactsBackfill" | "incomingRequestsBackfill";
   /** Builds AND fills the record from the write-frozen legacy list. */
   buildFromLegacy: (me: any) => Promise<any>;
   createEmpty: (me: any) => any;
@@ -103,11 +138,21 @@ interface KeyedRecordBackfillSpec {
   rebuildWarning: string;
 }
 
+/** Recording wrapper — every runner outcome lands in the startup report. */
+async function runKeyedRecordBackfill(
+  me: any,
+  spec: KeyedRecordBackfillSpec,
+  opts: BackfillOpts,
+): Promise<BackfillOutcome> {
+  const outcome = await runKeyedRecordBackfillInner(me, spec, opts);
+  return recordHandshakeOutcome(spec.reportKey, outcome);
+}
+
 /**
  * Shared runner skeleton: root-ready guard → has()-keyed idempotency →
  * create-and-fill (set-last) when absent → phantom probe when present.
  */
-async function runKeyedRecordBackfill(
+async function runKeyedRecordBackfillInner(
   me: any,
   spec: KeyedRecordBackfillSpec,
   opts: BackfillOpts,
@@ -301,6 +346,7 @@ async function buildIncomingRequestsRecordFromLegacy(me: any): Promise<any> {
 const CONTACTS_SPEC: KeyedRecordBackfillSpec = {
   key: "contacts",
   counterKey: "contactsRecoveryAttempts",
+  reportKey: "contactsBackfill",
   buildFromLegacy: buildContactsRecordFromLegacy,
   createEmpty: (me: any) => ContactsRecord.create({}, { owner: me }),
   loadRecord: (id: string, me: any) =>
@@ -312,6 +358,7 @@ const CONTACTS_SPEC: KeyedRecordBackfillSpec = {
 const INCOMING_REQUESTS_SPEC: KeyedRecordBackfillSpec = {
   key: "incomingConnectionRequests",
   counterKey: "incomingRequestsRecoveryAttempts",
+  reportKey: "incomingRequestsBackfill",
   buildFromLegacy: buildIncomingRequestsRecordFromLegacy,
   createEmpty: (me: any) => IncomingRequestsRecord.create({}, { owner: me }),
   loadRecord: (id: string, me: any) =>
