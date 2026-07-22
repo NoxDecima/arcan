@@ -8,7 +8,10 @@ import { Invitation } from "./Invitation";
 import { ConnectionRequest } from "./ConnectionRequest";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
-import { planContactMigration } from "../contact-migration";
+import {
+  runContactsBackfill,
+  runIncomingRequestsBackfill,
+} from "../backfill";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
@@ -368,141 +371,22 @@ export const ArcanAccount = co.account({
   }
 
   // -- 2i. contacts (list → keyed record) backfill — contact-robustness slice.
-  // Guarded by field absence like every other backfill. On ANY failure we
-  // skip WITHOUT setting the field — the migration reruns on next startup
-  // and retries (same recovery contract as block 2g).
-  //
-  // RAW-SCAN MECHANISM (falsy-entry fix, 2026-07-22) — do NOT "simplify"
-  // this back to a deep ensureLoaded of the list: a falsy (null) raw entry
-  // in the legacy CoList makes `contactBook: { $each: { $onError: "catch" } }`
-  // REJECT in jazz-tools 0.20.18. SubscriptionScope.loadCoListKey
-  // (node_modules/jazz-tools/src/tools/subscribe/SubscriptionScope.ts:1117-1129)
-  // files an index-keyed "ref on position N is required but missing"
-  // validation error that $onError: "catch" CANNOT suppress — unlike
-  // loadCoMapKey (:1047-1055), which pre-adds caught keys to skipInvalidKeys,
-  // loadCoListKey never adds index keys. One raw null therefore wedged this
-  // backfill on EVERY startup: `contacts` never got created and the account
-  // stayed migration-pending forever (live-account bug). $onError only ever
-  // suppressed entries that DID resolve but errored (unavailable children) —
-  // it never covered falsy raw entries.
-  //
-  // Mechanism: shallow-load the list CoValue only, filter its raw id array
-  // to ref-shaped strings (drops null/bogus poisons), then load each entry
-  // individually with Contact.load — which SETTLES (never throws); a
-  // never-synced/unavailable entry comes back not-loaded and is dropped by
-  // the $isLoaded filter (note: dropped entries are stubs/not-loaded values,
-  // NOT nulls). Skipped entries heal on a later launch via the startup
-  // reconcile pass (reconcileLegacyContacts in handshake.ts), pin copied
-  // verbatim.
-  // Dedup policy lives in planContactMigration (unit-tested): latest entry
-  // wins per account ID, EXCEPT fingerprint conflicts where the OLDEST pin
-  // is kept (TOFU) and the conflict is flagged on the kept Contact.
-  if (
-    me.root &&
-    typeof (me.root as any).$jazz?.set === "function" &&
-    !(me.root as any).contacts
-  ) {
-    try {
-      const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { contactBook: true } },
-      });
-      const rawIDs = (
-        ((loaded.root as any).contactBook?.$jazz.raw.asArray() ??
-          []) as unknown[]
-      ).filter(
-        (v): v is string => typeof v === "string" && v.startsWith("co_"),
-      );
-      const entries = (
-        await Promise.all(
-          rawIDs.map((id) => Contact.load(id, { loadAs: me })),
-        )
-      ).filter((c: any) => c?.$isLoaded === true) as any[];
-      // The planner's views mapping below drops any remaining malformed
-      // shapes (non-string IDs/pins); plan indexes stay consistent because
-      // they are taken over THIS loaded-and-filtered array.
-      const views = entries
-        .map((c, index) => ({
-          contactAccountID: c?.contactAccountID as string,
-          pinnedFingerprint: c?.pinnedFingerprint as string,
-          addedAtMs: (() => { const t = new Date(c.addedAt).getTime(); return c?.addedAt && Number.isFinite(t) ? t : 0; })(),
-          index,
-        }))
-        .filter(
-          (v) =>
-            typeof v.contactAccountID === "string" &&
-            typeof v.pinnedFingerprint === "string",
-        );
-      const plan = planContactMigration(views);
-      const record = co
-        .record(z.string(), Contact)
-        .create({}, { owner: me });
-      for (const [accountID, index] of Object.entries(
-        plan.keepIndexByAccountID,
-      )) {
-        const kept = entries[index];
-        const conflict = plan.conflictByAccountID[accountID];
-        if (conflict && typeof kept?.$jazz?.set === "function") {
-          kept.$jazz.set("fingerprintConflict", true);
-          kept.$jazz.set(
-            "conflictingFingerprint",
-            conflict.observedFingerprint,
-          );
-        }
-        record.$jazz.set(accountID, kept);
-      }
-      (me.root as any).$jazz.set("contacts", record);
-    } catch (e) {
-      console.warn("[migration] contacts backfill skipped (will retry):", e);
-    }
-  }
+  // Extracted to runContactsBackfill (src/jazz/backfill.ts, phase 4): same
+  // raw-scan + planner + conflict-flag + set-last logic verbatim, with the
+  // idempotency guard (root-ready + $jazz.has key check) INSIDE the runner.
+  // On failure the runner skips WITHOUT setting the field — the migration
+  // reruns on next startup AND the watcher's once-per-launch branch
+  // (runHandshakeStartupTasks) retries on a fully-loaded root, so a
+  // partial-root guard-skip here no longer wedges the account forever.
+  // phantomProbe stays false here: only the watcher call may count a launch
+  // toward the phantom-record rebuild (see backfill.ts docblock).
+  await runContactsBackfill(me);
 
   // -- 2j. incomingConnectionRequests (list → keyed record) backfill.
-  // Keyed by request CoValue ID — historical drain-race duplicates (FM2)
-  // collapse automatically because same-key sets converge.
-  if (
-    me.root &&
-    typeof (me.root as any).$jazz?.set === "function" &&
-    !(me.root as any).incomingConnectionRequests
-  ) {
-    try {
-      // RAW-SCAN MECHANISM — same falsy-entry fix as block 2i (2026-07-22),
-      // see the full rationale there: a null raw entry in the legacy CoList
-      // makes a deep `$each: { $onError: "catch" }` resolve REJECT
-      // (loadCoListKey files an uncatchable index-keyed validation error),
-      // wedging this backfill forever — the field stays absent and the inbox
-      // drain never starts. Shallow-load the list, filter raw ids, load each
-      // request individually (settles, never throws), keep loaded ones.
-      // Dropping an unloadable request is acceptable because requests expire
-      // in ≤7 days; unlike 2i (TOFU pins = security state, healed later by
-      // reconcileLegacyContacts), requests need no reconcile net.
-      const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { incomingRequests: true } },
-      });
-      const rawIDs = (
-        ((loaded.root as any).incomingRequests?.$jazz.raw.asArray() ??
-          []) as unknown[]
-      ).filter(
-        (v): v is string => typeof v === "string" && v.startsWith("co_"),
-      );
-      const entries = (
-        await Promise.all(
-          rawIDs.map((id) => ConnectionRequest.load(id, { loadAs: me })),
-        )
-      ).filter((r: any) => r?.$isLoaded === true) as any[];
-      const record = co
-        .record(z.string(), ConnectionRequest)
-        .create({}, { owner: me });
-      for (const r of entries) {
-        record.$jazz.set(r.$jazz.id as string, r);
-      }
-      (me.root as any).$jazz.set("incomingConnectionRequests", record);
-    } catch (e) {
-      console.warn(
-        "[migration] incomingConnectionRequests backfill skipped (will retry):",
-        e,
-      );
-    }
-  }
+  // Extracted to runIncomingRequestsBackfill (src/jazz/backfill.ts) — keyed
+  // by request CoValue ID so historical drain-race duplicates (FM2) collapse
+  // via same-key set convergence. Same thin-caller contract as 2i above.
+  await runIncomingRequestsBackfill(me);
 
   // -- 2k. dismissedRequests (string list → keyed record) backfill.
   if (
