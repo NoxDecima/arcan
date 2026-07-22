@@ -159,10 +159,13 @@ describe("migration backfill vs poisoned legacy lists (blocks 2i/2j)", () => {
     const loaded = await me.$jazz.ensureLoaded({
       resolve: {
         root: {
-          contacts: { $each: { $onError: "catch" } },
+          contacts: { $each: { $onError: "catch" }, $onError: "catch" },
           contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
           outgoingRequests: { $each: { request: true, $onError: "catch" } },
-          incomingConnectionRequests: { $each: { $onError: "catch" } },
+          incomingConnectionRequests: {
+            $each: { $onError: "catch" },
+            $onError: "catch",
+          },
           dismissedRequests: true,
           pendingPairings: { $each: { $onError: "catch" } },
           liveInvitations: { $each: { $onError: "catch" } },

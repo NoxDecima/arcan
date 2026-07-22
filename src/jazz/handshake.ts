@@ -25,6 +25,10 @@ import {
 } from "./invitations";
 import { OutgoingConnectionRequest } from "./schema/OutgoingConnectionRequest";
 import { ArcanAccount } from "./schema/ArcanAccount";
+import {
+  runContactsBackfill,
+  runIncomingRequestsBackfill,
+} from "./backfill";
 
 export type UpsertContactResult =
   | "created"
@@ -613,6 +617,41 @@ export function pruneHandshakeState(me: any): void {
 }
 
 /**
+ * Once-per-launch startup sequence (contact-robustness phase 4) — the body
+ * of the watcher's once-per-launch branch, extracted so the heal path is
+ * directly testable without React.
+ *
+ * Order matters: the backfill runners go FIRST so a record they create (or
+ * rebuild after a phantom streak) exists before the reconcile pass refills
+ * it from the write-frozen legacy list. This is the watcher-side SECOND
+ * CHANCE for the migration blocks 2i/2j: here the root is fully loaded, so
+ * a partial-root guard-skip at migration time (the live-account bug) heals
+ * on the next launch instead of wedging forever. `phantomProbe: true` — this
+ * is the ONE caller allowed to count a failed record probe toward the
+ * 3-launch phantom rebuild (see backfill.ts).
+ *
+ * Never rejects: the runners catch internally; prune/reconcile are wrapped
+ * (the hook fires this as void).
+ */
+export async function runHandshakeStartupTasks(me: any): Promise<void> {
+  await runContactsBackfill(me, { phantomProbe: true });
+  await runIncomingRequestsBackfill(me, { phantomProbe: true });
+  try {
+    pruneHandshakeState(me);
+  } catch (e) {
+    console.warn("[handshake] startup prune failed:", e);
+  }
+  try {
+    // Heal contacts whose legacy entry loaded after the migration backfill
+    // skipped it (block 2i's tolerance), and refill a phantom-rebuilt record
+    // — see reconcileLegacyContacts' doc.
+    reconcileLegacyContacts(me);
+  } catch (e) {
+    console.warn("[handshake] startup reconcile failed:", e);
+  }
+}
+
+/**
  * App-level approval watcher — mounted ONCE in App.tsx beside the inbox
  * drains. Replaces the /invite route's 3-second component-lifetime poll
  * (FM3) and gives the group channel its missing requester-side contact
@@ -637,7 +676,14 @@ export function useOutgoingRequestWatcher(): void {
   const me = useAccount(ArcanAccount, {
     resolve: {
       root: {
-        contacts: { $each: { $onError: "catch" } },
+        // FIELD-level $onError on the two keyed records (phase 4, runtime-
+        // proven necessary): in the phantom-key state (key present, record
+        // CoValue unavailable) the $each-level catch does NOT cover the
+        // record itself and the whole resolve REJECTS — the watcher would
+        // never reach $isLoaded, so the phantom probe/rebuild could never
+        // run. The field-level catch resolves the field to null instead;
+        // every consumer already null-guards.
+        contacts: { $each: { $onError: "catch" }, $onError: "catch" },
         // Legacy list resolved for reconcileLegacyContacts (stuck-account
         // fix): entries that fail to load are caught → null → skipped there.
         // List-level $onError: "catch" prevents an unavailable list CoValue
@@ -646,7 +692,10 @@ export function useOutgoingRequestWatcher(): void {
         // the parent). `legacyContactBookEntries` tolerates the resulting null.
         contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
         outgoingRequests: { $each: { request: true, $onError: "catch" } },
-        incomingConnectionRequests: { $each: { $onError: "catch" } },
+        incomingConnectionRequests: {
+          $each: { $onError: "catch" },
+          $onError: "catch",
+        },
         dismissedRequests: true,
         pendingPairings: { $each: { $onError: "catch" } },
         liveInvitations: { $each: { $onError: "catch" } },
@@ -755,10 +804,9 @@ export function useOutgoingRequestWatcher(): void {
     if (!retriedThisLaunch.current) {
       retriedThisLaunch.current = true;
       retryFailed();
-      pruneHandshakeState(me);
-      // Heal contacts whose legacy entry loaded after the migration backfill
-      // skipped it (block 2i's $onError tolerance) — see the function's doc.
-      reconcileLegacyContacts(me);
+      // Backfill second chance + phantom probe + prune + reconcile — the
+      // extracted once-per-launch body (never rejects; see its doc).
+      void runHandshakeStartupTasks(me);
     }
     window.addEventListener("online", retryFailed);
     return () => window.removeEventListener("online", retryFailed);
