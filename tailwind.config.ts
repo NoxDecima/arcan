@@ -51,6 +51,7 @@ export default {
         panel: 'var(--color-panel)',
         'panel-2': 'var(--color-panel-2)',
         rail: 'var(--color-rail)',
+        chrome: 'var(--color-chrome)',
         hairline: 'var(--color-border)',
         text: 'var(--color-text)',
         'text-2': 'var(--color-text-2)',
