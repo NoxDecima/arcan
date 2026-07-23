@@ -97,7 +97,7 @@ The message menu (`AnchoredMessageMenu`, `src/routes/conversations/detail.tsx`) 
 **Files:**
 - Create (then DELETE in this task): `tests/e2e/zoom-probe.spec.ts`
 
-- [ ] **Step 1: Write the probe spec** — full setup mirrors `messaging-1to1.spec.ts` (two accounts, contact, one message) because the ⋮ menu only exists on messages:
+- [x] **Step 1: Write the probe spec** — full setup mirrors `messaging-1to1.spec.ts` (two accounts, contact, one message) because the ⋮ menu only exists on messages:
 
 ```ts
 // tests/e2e/zoom-probe.spec.ts — THROWAWAY (appearance-iteration Task 1).
@@ -168,27 +168,28 @@ test("probe: menu anchoring under css zoom 1.3", async ({ browser }) => {
 });
 ```
 
-- [ ] **Step 2: Run the probe** (sync server + vite are auto-started by the Playwright webServer config):
+- [x] **Step 2: Run the probe** (sync server + vite are auto-started by the Playwright webServer config):
 
 Run: `nix-shell --run 'npx playwright test tests/e2e/zoom-probe.spec.ts --reporter=line'`
 Expected: PASS, with two `PROBE …` console lines in the output.
 
-- [ ] **Step 3: Record the decision** by editing the Decision box below in THIS plan file (fill every blank; later tasks reference it):
+- [x] **Step 3: Record the decision** by editing the Decision box below in THIS plan file (fill every blank; later tasks reference it):
 
-> **DECISION BOX (filled by Task 1):**
-> - Zoom target: `html` / `#root` → ______ (expected: `html`, because probe B shows the portal menu font stays ~unscaled under `#root` zoom)
-> - `dxFromTrigger` / `dyFromTriggerBottom` at 1.3 under `html` zoom: ______ / ______
-> - Division needed: YES / NO → ______ (YES if the drift is ≈ 0.3 × the trigger's distance from the viewport origin — i.e. the menu lands down-right of the trigger by ~30% of its coords; NO if drift ≈ the normal 4px gap)
-> - `menuFontPx` under `html` zoom: ______ (≈ 1.3 × the 100% value confirms portal scaling)
+> **DECISION BOX (filled by Task 1, probe run 2026-07-23, chromium + firefox projects, 1280×720):**
+> - Zoom target: `html` / `#root` → **`html`** (`document.documentElement.style.zoom`). Probe B evidence: under `#root` zoom 1.3 the body-portal menu keeps its baseline geometry (width **120** / height **68.2**, identical to zoom 1, both engines) — the portal escapes `#root` zoom entirely; disqualified. Probe A evidence: under `html` zoom the same menu measures **156 × 87.75** visual px = 1.3 × its `min-w-[120px]` — the portal scales. CAVEAT (honest deviation from the plan's expectation): the planned `menuFontPx` discriminator was NON-discriminating — under standardized CSS zoom `getComputedStyle` reports font-size in CSS px unaffected by ancestor zoom (**10.5** in BOTH probe A and probe B, both engines). The boundingBox width supplied the discrimination instead.
+> - `dxFromTrigger` / `dyFromTriggerBottom` at 1.3 under `html` zoom: **Chromium +332.03 / +49.69** (trigger.x 1106.78, trigger.bottom 148.31; dx = 0.3 × trigger.x within 0.01 px, dy = 0.3 × trigger.bottom + 5.2 (the 4-px gap × 1.3) within 0.01 px; menu landed at x = **1438.8**, fully outside the 1280-px viewport). **Firefox +323.95 / +49.23** (trigger.x 1091.18, trigger.bottom 148.38; same ≈0.3× law — menu.x/1.3 = 1088.56 vs Playwright's trigger.x 1091.18, ~2.6 px of box-rounding slack; menu at x = **1415.1**, also off-screen).
+> - Division needed: YES / NO → **YES — in BOTH Chromium and Firefox** (identical standardized-zoom semantics: `getBoundingClientRect` of zoomed content returns coordinates in the UNzoomed/visual viewport space, while `left`/`top` on the `position:fixed` body portal inside the zoomed root are CSS px multiplied by zoom at render).
+> - `menuFontPx` under `html` zoom: **10.5 px (both engines) — NOT ≈1.3× the 100% value**; see the caveat in the first bullet. Portal scaling was instead confirmed by boundingBox width 156 = 120 × 1.3 (and height 87.75 ≈ 67.5 × 1.3).
+> - Extra findings for Task 5: (a) `window.innerWidth` and `document.documentElement.clientWidth` stay **1280** (unzoomed) under `html` zoom in both engines — so ALL clamp inputs in `AnchoredMessageMenu` (anchor rect, self-measured menu rect, vw/vh) already live in one consistent visual/unzoomed space; the clamp arithmetic itself is space-consistent and only the FINAL `left`/`top` assignment needs the ÷zoom (no per-term correction). (b) No scrollbar/layout anomalies observed at 1280×720; View-Transition snapshots were not exercised by this probe (covered by the Task 7 VT smoke instead).
 
-- [ ] **Step 4: Delete the probe and verify a clean tree apart from the plan:**
+- [x] **Step 4: Delete the probe and verify a clean tree apart from the plan:**
 
 ```bash
 rm tests/e2e/zoom-probe.spec.ts
 git status --short   # expect: only docs/superpowers/plans/2026-07-23-appearance-iteration.md modified
 ```
 
-- [ ] **Step 5: Commit the recorded decision:**
+- [x] **Step 5: Commit the recorded decision:**
 
 ```bash
 git add docs/superpowers/plans/2026-07-23-appearance-iteration.md
