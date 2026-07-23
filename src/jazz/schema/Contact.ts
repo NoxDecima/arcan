@@ -34,3 +34,14 @@ export const Contact = co.map({
  * `class ContactBook extends CoList.of(co.ref(Contact))`.
  */
 export const ContactBook = co.list(Contact);
+
+/**
+ * ContactsRecord: THE contact book (contact-robustness slice) — keyed by the
+ * contact's account ID (per-key LWW instead of concurrent-append
+ * duplication). Single schema instance shared by ArcanAccountRoot's
+ * `contacts` field and the backfill/recovery runners (src/jazz/backfill.ts) —
+ * defined HERE, not in ArcanAccount.ts, because backfill.ts may not import
+ * ArcanAccount (ArcanAccount's migration imports backfill: a cycle). Schema
+ * files import nothing from the jazz modules, so this stays cycle-free.
+ */
+export const ContactsRecord = co.record(z.string(), Contact);

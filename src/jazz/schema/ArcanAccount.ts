@@ -1,14 +1,20 @@
 import { co, z, Group, Inbox } from "jazz-tools";
-import { Contact, ContactBook } from "./Contact";
+import { ContactBook, ContactsRecord } from "./Contact";
 import { OutgoingConnectionRequest } from "./OutgoingConnectionRequest";
 import { PendingNotification } from "./PendingNotification";
 import { DeviceRecord } from "./DeviceRecord";
 import { EphemeralPairing } from "./EphemeralPairing";
 import { Invitation } from "./Invitation";
-import { ConnectionRequest } from "./ConnectionRequest";
+import {
+  ConnectionRequest,
+  IncomingConnectionRequestsRecord,
+} from "./ConnectionRequest";
 import { Conversation } from "./Conversation";
 import { FileBlob } from "./FileBlob";
-import { planContactMigration } from "../contact-migration";
+import {
+  runContactsBackfill,
+  runIncomingRequestsBackfill,
+} from "../backfill";
 import { getCurrentSessionFingerprint } from "@/auth/session";
 
 /**
@@ -88,11 +94,12 @@ export const ArcanAccountRoot = co.map({
   // wrap. Old fields stay (write-frozen) for the migration backfill to read;
   // removal is a later slice. All optional per the lastReadAt lesson above.
   //
-  // contacts — THE contact book. Key: contact's account ID.
-  contacts: co.record(z.string(), Contact).optional(),
+  // contacts — THE contact book. Key: contact's account ID. (Schema instance
+  // shared with the backfill runners — see Contact.ts ContactsRecord.)
+  contacts: ContactsRecord.optional(),
   // incomingConnectionRequests — durable drain target. Key: request CoValue ID
   // (same-key writes from racing drains converge instead of duplicating, FM2).
-  incomingConnectionRequests: co.record(z.string(), ConnectionRequest).optional(),
+  incomingConnectionRequests: IncomingConnectionRequestsRecord.optional(),
   // outgoingRequests — durable outbound-request memory (FM1/FM3/FM4).
   // Key: counterpart account ID.
   outgoingRequests: co.record(z.string(), OutgoingConnectionRequest).optional(),
@@ -101,6 +108,22 @@ export const ArcanAccountRoot = co.map({
   // pendingNotifications — outbound conversation/member-add notification retry
   // state. Key: `${conversationID}:${targetAccountID}`.
   pendingNotifications: co.record(z.string(), PendingNotification).optional(),
+  // ── Phantom-record recovery counters (phase 4) ─────────────────────────
+  // Consecutive launches on which the keyed record above was present but
+  // failed a bounded load (phantom-key wedge). At 3 the record is rebuilt
+  // (see src/jazz/backfill.ts). Plain inline numbers, deliberately NOT
+  // CoValue refs — the recovery state must not itself be able to become
+  // unloadable. Optional: absent means 0.
+  contactsRecoveryAttempts: z.number().optional(),
+  incomingRequestsRecoveryAttempts: z.number().optional(),
+  // ── Phantom-rebuild salvage refs (final review, 2026-07-22) ────────────
+  // Raw co-ID of the record a phantom rebuild re-pointed AWAY from — stashed
+  // just before the re-point so a future salvage path can re-import its
+  // entries if the old record ever becomes loadable again. Plain strings
+  // (deliberately NOT CoValue refs, same reasoning as the counters above)
+  // and optional per the lastReadAt lesson.
+  contactsPreRebuildRef: z.string().optional(),
+  incomingRequestsPreRebuildRef: z.string().optional(),
 });
 
 export const ArcanAccount = co.account({
@@ -181,12 +204,11 @@ export const ArcanAccount = co.account({
     const dismissedRequestIDs = co.list(z.string()).create([], { owner: me });
     const liveInvitations = co.list(Invitation).create([], { owner: me });
     const incomingRequests = co.list(ConnectionRequest).create([], { owner: me });
-    const contacts = co
-      .record(z.string(), Contact)
-      .create({}, { owner: me });
-    const incomingConnectionRequests = co
-      .record(z.string(), ConnectionRequest)
-      .create({}, { owner: me });
+    const contacts = ContactsRecord.create({}, { owner: me });
+    const incomingConnectionRequests = IncomingConnectionRequestsRecord.create(
+      {},
+      { owner: me },
+    );
     const outgoingRequests = co
       .record(z.string(), OutgoingConnectionRequest)
       .create({}, { owner: me });
@@ -368,115 +390,22 @@ export const ArcanAccount = co.account({
   }
 
   // -- 2i. contacts (list → keyed record) backfill — contact-robustness slice.
-  // Guarded by field absence like every other backfill; ensureLoaded the
-  // source list first so NotLoaded proxies can't masquerade as empty data.
-  // On ANY failure we skip WITHOUT setting the field — the migration reruns
-  // on next startup and retries (same recovery contract as block 2g).
-  // $onError: "catch" (stuck-account fix, 2026-07-21): one permanently-
-  // unavailable legacy Contact must otherwise wedge this backfill forever —
-  // the ensureLoaded rejects on EVERY startup, `contacts` never gets created,
-  // and the account is stuck migration-pending for good (live-account bug).
-  // The original strictness meant to protect TOFU pins, but an unloadable
-  // entry's pin is unreadable anyway (the reader fallback filters it too) —
-  // it protected nothing. Caught entries resolve to null and are filtered
-  // below: loadable entries migrate now; unloadable ones are skipped, and the
-  // startup reconcile pass (reconcileLegacyContacts in handshake.ts) heals
-  // any entry that loads on a later launch, pin copied verbatim.
-  // Dedup policy lives in planContactMigration (unit-tested): latest entry
-  // wins per account ID, EXCEPT fingerprint conflicts where the OLDEST pin
-  // is kept (TOFU) and the conflict is flagged on the kept Contact.
-  if (
-    me.root &&
-    typeof (me.root as any).$jazz?.set === "function" &&
-    !(me.root as any).contacts
-  ) {
-    try {
-      const loaded = await me.$jazz.ensureLoaded({
-        resolve: { root: { contactBook: { $each: { $onError: "catch" } } } },
-      });
-      const entries = (
-        Array.from((loaded.root as any).contactBook ?? []) as any[]
-      ).filter((c) => c != null); // null-filter caught/unloaded entries — the
-      // planner's views mapping below drops the rest of the malformed shapes
-      // (non-string IDs/pins); plan indexes stay consistent because they are
-      // taken over THIS filtered array.
-      const views = entries
-        .map((c, index) => ({
-          contactAccountID: c?.contactAccountID as string,
-          pinnedFingerprint: c?.pinnedFingerprint as string,
-          addedAtMs: (() => { const t = new Date(c.addedAt).getTime(); return c?.addedAt && Number.isFinite(t) ? t : 0; })(),
-          index,
-        }))
-        .filter(
-          (v) =>
-            typeof v.contactAccountID === "string" &&
-            typeof v.pinnedFingerprint === "string",
-        );
-      const plan = planContactMigration(views);
-      const record = co
-        .record(z.string(), Contact)
-        .create({}, { owner: me });
-      for (const [accountID, index] of Object.entries(
-        plan.keepIndexByAccountID,
-      )) {
-        const kept = entries[index];
-        const conflict = plan.conflictByAccountID[accountID];
-        if (conflict && typeof kept?.$jazz?.set === "function") {
-          kept.$jazz.set("fingerprintConflict", true);
-          kept.$jazz.set(
-            "conflictingFingerprint",
-            conflict.observedFingerprint,
-          );
-        }
-        record.$jazz.set(accountID, kept);
-      }
-      (me.root as any).$jazz.set("contacts", record);
-    } catch (e) {
-      console.warn("[migration] contacts backfill skipped (will retry):", e);
-    }
-  }
+  // Extracted to runContactsBackfill (src/jazz/backfill.ts, phase 4): same
+  // raw-scan + planner + conflict-flag + set-last logic verbatim, with the
+  // idempotency guard (root-ready + $jazz.has key check) INSIDE the runner.
+  // On failure the runner skips WITHOUT setting the field — the migration
+  // reruns on next startup AND the watcher's once-per-launch branch
+  // (runHandshakeStartupTasks) retries on a fully-loaded root, so a
+  // partial-root guard-skip here no longer wedges the account forever.
+  // phantomProbe stays false here: only the watcher call may count a launch
+  // toward the phantom-record rebuild (see backfill.ts docblock).
+  await runContactsBackfill(me);
 
   // -- 2j. incomingConnectionRequests (list → keyed record) backfill.
-  // Keyed by request CoValue ID — historical drain-race duplicates (FM2)
-  // collapse automatically because same-key sets converge.
-  if (
-    me.root &&
-    typeof (me.root as any).$jazz?.set === "function" &&
-    !(me.root as any).incomingConnectionRequests
-  ) {
-    try {
-      // $onError: "catch" (Task 7 review): one permanently-unavailable
-      // legacy request must otherwise wedge this backfill forever (the
-      // ensureLoaded rejects every session, the field stays absent, and the
-      // inbox drain never starts). Caught entries resolve to null and are
-      // filtered below — dropping an unavailable request is acceptable
-      // because requests expire in ≤7 days. Block 2i now uses the same
-      // tolerance (2026-07-21 stuck-account fix) — but because TOFU pins are
-      // security state, 2i is additionally backed by the startup reconcile
-      // pass (reconcileLegacyContacts) that heals late-loading entries;
-      // requests need no such net.
-      const loaded = await me.$jazz.ensureLoaded({
-        resolve: {
-          root: { incomingRequests: { $each: { $onError: "catch" } } },
-        },
-      });
-      const record = co
-        .record(z.string(), ConnectionRequest)
-        .create({}, { owner: me });
-      const entries = (
-        Array.from((loaded.root as any).incomingRequests ?? []) as any[]
-      ).filter((r) => typeof r?.$jazz?.id === "string"); // null-filter caught entries
-      for (const r of entries) {
-        record.$jazz.set(r.$jazz.id as string, r);
-      }
-      (me.root as any).$jazz.set("incomingConnectionRequests", record);
-    } catch (e) {
-      console.warn(
-        "[migration] incomingConnectionRequests backfill skipped (will retry):",
-        e,
-      );
-    }
-  }
+  // Extracted to runIncomingRequestsBackfill (src/jazz/backfill.ts) — keyed
+  // by request CoValue ID so historical drain-race duplicates (FM2) collapse
+  // via same-key set convergence. Same thin-caller contract as 2i above.
+  await runIncomingRequestsBackfill(me);
 
   // -- 2k. dismissedRequests (string list → keyed record) backfill.
   if (

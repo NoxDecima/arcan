@@ -50,9 +50,14 @@ function makePayload(id: string, fields: Record<string, unknown>) {
 
 function makeMe(overrides: { record?: unknown; known?: unknown } = {}) {
   const setSpy = vi.fn();
+  // Genuinely usable records carry $isLoaded: true (jazz-tools 0.20.18 sets
+  // it at construction for every loaded CoValue — see the shape notes in
+  // handshake.ts isPrunableForeignIncomingEntry). The gate must require it.
   const record: Record<string, unknown> = {};
+  (record as any).$isLoaded = true;
   (record as any).$jazz = { id: "record-1", set: setSpy };
   const known: Record<string, unknown> = {};
+  (known as any).$isLoaded = true;
   (known as any).$jazz = { id: "known-1", push: vi.fn() };
   const me = {
     $isLoaded: true,
@@ -64,6 +69,18 @@ function makeMe(overrides: { record?: unknown; known?: unknown } = {}) {
     },
   };
   return { me, setSpy };
+}
+
+/**
+ * The phantom/loading STUB shape: what a set-but-unusable record field reads
+ * as off a subscription proxy — truthy, `$jazz.id` present, `$isLoaded:
+ * false` (createUnloadedCoValue for UNAVAILABLE/UNAUTHORIZED/DELETED/LOADING;
+ * pinned against the real runtime in backfill-recovery.test.ts "dispatcher
+ * gate shapes"). Gating on `$jazz.id` alone accepted this — the wedge that
+ * let the dispatcher consume inbox messages with nowhere to persist them.
+ */
+function makeStub(id: string) {
+  return { $jazz: { id, loadingState: "unavailable" }, $isLoaded: false };
 }
 
 describe("routeInboxPayload (pure)", () => {
@@ -131,6 +148,35 @@ describe("useInboxDispatcher — gating (Task 7 pin, now covering BOTH targets)"
 
   test("me not loaded → does NOT subscribe", async () => {
     renderHook(() => useInboxDispatcher({ $isLoaded: false }));
+    await act(async () => {});
+    expect(inboxLoadMock).not.toHaveBeenCalled();
+  });
+
+  test("phantom STUB incomingConnectionRequests ($isLoaded false, $jazz.id present) → does NOT subscribe", async () => {
+    // The phantom-wedge loss mode: a stub satisfies a bare `$jazz.id` gate,
+    // the dispatcher subscribes, the handler early-returns on the unusable
+    // record, jazz marks the message processed, the sender gets its ack —
+    // the request is permanently lost. The gate must require a genuinely
+    // USABLE record ($isLoaded === true); unconsumed messages stay durable.
+    const { me } = makeMe({ record: makeStub("co_zPhantomRecord") });
+    renderHook(() => useInboxDispatcher(me));
+    await act(async () => {});
+    expect(inboxLoadMock).not.toHaveBeenCalled();
+  });
+
+  test("phantom STUB knownConversations → does NOT subscribe (same hole, conversation side)", async () => {
+    const { me } = makeMe({ known: makeStub("co_zPhantomKnown") });
+    renderHook(() => useInboxDispatcher(me));
+    await act(async () => {});
+    expect(inboxLoadMock).not.toHaveBeenCalled();
+  });
+
+  test("null record read → does NOT subscribe (absent branch)", async () => {
+    // Defensive shape: a field-caught phantom actually reads as the STUB
+    // (empirical pin in backfill-recovery.test.ts), but null reads must
+    // gate too — the absent branch covers them.
+    const { me } = makeMe({ record: null });
+    renderHook(() => useInboxDispatcher(me));
     await act(async () => {});
     expect(inboxLoadMock).not.toHaveBeenCalled();
   });

@@ -25,6 +25,12 @@ import {
 } from "./invitations";
 import { OutgoingConnectionRequest } from "./schema/OutgoingConnectionRequest";
 import { ArcanAccount } from "./schema/ArcanAccount";
+import {
+  runContactsBackfill,
+  runIncomingRequestsBackfill,
+  recordHandshakeOutcome,
+  getHandshakeReport,
+} from "./backfill";
 
 export type UpsertContactResult =
   | "created"
@@ -613,6 +619,83 @@ export function pruneHandshakeState(me: any): void {
 }
 
 /**
+ * Once-per-launch startup sequence (contact-robustness phase 4) — the body
+ * of the watcher's once-per-launch branch, extracted so the heal path is
+ * directly testable without React.
+ *
+ * Order matters: the backfill runners go FIRST so a record they create (or
+ * rebuild after a phantom streak) exists before the reconcile pass refills
+ * it from the write-frozen legacy list. This is the watcher-side SECOND
+ * CHANCE for the migration blocks 2i/2j: here the root is fully loaded, so
+ * a partial-root guard-skip at migration time (the live-account bug) heals
+ * on the next launch instead of wedging forever. `phantomProbe: true` — this
+ * is the ONE caller allowed to count a failed record probe toward the
+ * 3-launch phantom rebuild (see backfill.ts).
+ *
+ * Never rejects: the runners catch internally; prune/reconcile are wrapped
+ * (the hook fires this as void).
+ */
+export async function runHandshakeStartupTasks(me: any): Promise<void> {
+  // The runners record their own outcomes into the startup report.
+  await runContactsBackfill(me, { phantomProbe: true });
+  await runIncomingRequestsBackfill(me, { phantomProbe: true });
+  try {
+    pruneHandshakeState(me);
+    recordHandshakeOutcome("prune", "ok");
+  } catch (e) {
+    console.warn("[handshake] startup prune failed:", e);
+    recordHandshakeOutcome(
+      "prune",
+      `failed:${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  try {
+    // Heal contacts whose legacy entry loaded after the migration backfill
+    // skipped it (block 2i's tolerance), and refill a phantom-rebuilt record
+    // — see reconcileLegacyContacts' doc.
+    //
+    // Same-launch freshness (final review, 2026-07-22): the `me` handle here
+    // may be a stale React useAccount SNAPSHOT whose root.contacts still
+    // reads the pre-rebuild phantom stub even after the backfill above
+    // re-pointed the key — reconcile's guards would silently no-op and the
+    // refill would wait a whole launch. Re-read through a direct
+    // ensureLoaded (field-level $onError so a still-wedged record settles
+    // as a stub rather than rejecting) so the reconcile sees the record
+    // created/re-pointed THIS session. Falls back to the passed handle when
+    // the fresh load isn't possible (worst case = the old next-launch heal).
+    let reconcileMe = me;
+    if (typeof me?.$jazz?.ensureLoaded === "function") {
+      try {
+        reconcileMe = await me.$jazz.ensureLoaded({
+          resolve: {
+            root: {
+              contacts: { $each: { $onError: "catch" }, $onError: "catch" },
+              contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
+            },
+          },
+        });
+      } catch (e) {
+        console.warn(
+          "[handshake] reconcile fresh load failed — using passed handle:",
+          e,
+        );
+      }
+    }
+    reconcileLegacyContacts(reconcileMe);
+    recordHandshakeOutcome("reconcile", "ok");
+  } catch (e) {
+    console.warn("[handshake] startup reconcile failed:", e);
+    recordHandshakeOutcome(
+      "reconcile",
+      `failed:${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  // ONE line per launch — outcome strings + timestamps only (privacy), also
+  // mirrored to window.__arcanHandshakeReport for in-field inspection.
+  console.info("[handshake] startup report", getHandshakeReport());
+}
+
+/**
  * App-level approval watcher — mounted ONCE in App.tsx beside the inbox
  * drains. Replaces the /invite route's 3-second component-lifetime poll
  * (FM3) and gives the group channel its missing requester-side contact
@@ -637,7 +720,14 @@ export function useOutgoingRequestWatcher(): void {
   const me = useAccount(ArcanAccount, {
     resolve: {
       root: {
-        contacts: { $each: { $onError: "catch" } },
+        // FIELD-level $onError on the two keyed records (phase 4, runtime-
+        // proven necessary): in the phantom-key state (key present, record
+        // CoValue unavailable) the $each-level catch does NOT cover the
+        // record itself and the whole resolve REJECTS — the watcher would
+        // never reach $isLoaded, so the phantom probe/rebuild could never
+        // run. The field-level catch resolves the field to null instead;
+        // every consumer already null-guards.
+        contacts: { $each: { $onError: "catch" }, $onError: "catch" },
         // Legacy list resolved for reconcileLegacyContacts (stuck-account
         // fix): entries that fail to load are caught → null → skipped there.
         // List-level $onError: "catch" prevents an unavailable list CoValue
@@ -646,7 +736,10 @@ export function useOutgoingRequestWatcher(): void {
         // the parent). `legacyContactBookEntries` tolerates the resulting null.
         contactBook: { $each: { $onError: "catch" }, $onError: "catch" },
         outgoingRequests: { $each: { request: true, $onError: "catch" } },
-        incomingConnectionRequests: { $each: { $onError: "catch" } },
+        incomingConnectionRequests: {
+          $each: { $onError: "catch" },
+          $onError: "catch",
+        },
         dismissedRequests: true,
         pendingPairings: { $each: { $onError: "catch" } },
         liveInvitations: { $each: { $onError: "catch" } },
@@ -755,10 +848,9 @@ export function useOutgoingRequestWatcher(): void {
     if (!retriedThisLaunch.current) {
       retriedThisLaunch.current = true;
       retryFailed();
-      pruneHandshakeState(me);
-      // Heal contacts whose legacy entry loaded after the migration backfill
-      // skipped it (block 2i's $onError tolerance) — see the function's doc.
-      reconcileLegacyContacts(me);
+      // Backfill second chance + phantom probe + prune + reconcile — the
+      // extracted once-per-launch body (never rejects; see its doc).
+      void runHandshakeStartupTasks(me);
     }
     window.addEventListener("online", retryFailed);
     return () => window.removeEventListener("online", retryFailed);
