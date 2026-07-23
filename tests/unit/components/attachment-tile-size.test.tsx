@@ -11,7 +11,7 @@ vi.mock("jazz-tools", () => ({
 }));
 
 vi.mock("@/platform/files", () => ({
-  saveBlobNative: vi.fn(async () => null),
+  downloadBlob: vi.fn(async () => {}),
 }));
 
 describe("sent image tile sizing (feedback round 4)", () => {

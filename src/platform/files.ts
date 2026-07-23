@@ -167,3 +167,24 @@ export async function saveBlobNative(
   await writeFile(path, bytes);
   return true;
 }
+
+/**
+ * Download/save a blob with full platform dispatch (#58): native save dialog
+ * in the shell — where `<a download>` on blob: URLs silently does nothing
+ * (wry limitation) — programmatic anchor download on the web. Every download
+ * call site should route through this rather than building its own anchor.
+ *
+ * Errors from the native path propagate (see module contract above): callers
+ * wrap in try/catch and surface via their existing error affordance.
+ */
+export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+  if (await saveBlobNative(blob, filename)) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

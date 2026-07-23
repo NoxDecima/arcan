@@ -44,6 +44,17 @@ test("image attachment: Alice sends a PNG, Bob sees it + lightbox opens", async 
     // Open lightbox in Bob's view
     await pageB.getByTestId("attachment-tile-sent-image").first().click();
     await expect(pageB.getByTestId("image-lightbox")).toBeVisible();
+
+    // Download button triggers a real browser download with the original
+    // filename (#58: routed through the platform capability — web path is the
+    // programmatic anchor; the shell path is device-checklist territory).
+    const downloadPromise = pageB.waitForEvent("download");
+    await pageB.getByTestId("image-lightbox-download").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("tiny.png");
+    // The download click must not close the lightbox.
+    await expect(pageB.getByTestId("image-lightbox")).toBeVisible();
+
     await pageB.getByTestId("image-lightbox-close").click();
     await expect(pageB.getByTestId("image-lightbox")).not.toBeVisible();
   } finally {

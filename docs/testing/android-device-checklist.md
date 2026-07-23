@@ -43,6 +43,13 @@ Record date + device + result per line.
 - [ ] Feedback submit succeeds against a token-configured server; shows
       "feedback isn't set up on this server" against an unconfigured one
 
+## Lightbox image download (#58, 2026-07-23)
+- [ ] Open a received image in the lightbox → tap the download button (top
+      left) → native save dialog appears; file lands where chosen and opens
+      as a valid image (previously the tap silently did nothing — blob-URL
+      anchor downloads are broken in the Android WebView; now routed through
+      the dialog+fs plugins). Verify from the multi-image lightbox too.
+
 ## Feedback round 4 (2026-07-17)
 - [ ] Timestamps render below bubbles (right-aligned own, left-aligned theirs);
       edited messages show "HH:MM · edited"
