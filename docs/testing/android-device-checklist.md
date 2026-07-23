@@ -43,6 +43,31 @@ Record date + device + result per line.
 - [ ] Feedback submit succeeds against a token-configured server; shows
       "feedback isn't set up on this server" against an unconfigured one
 
+## Appearance iteration — UI scale + Tokyo Night ladder (2026-07-23)
+
+### UI scale
+- [ ] Settings → Appearance → Scale pill shows 4 steps (90 / 100 / 115 / 130%).
+      On a fresh install the shell should default to **115%** (Android `defaultUiScale`).
+- [ ] Select 130% → content zooms visibly; no horizontal scroll bar / content
+      clipped at viewport edge on a real phone screen.
+- [ ] Select 90% → nothing clips in the Settings → Appearance card.
+- [ ] Change scale → reload / background + foreground app → scale persists at the
+      chosen value (localStorage `arcan-ui-scale` survives app lifecycle).
+- [ ] Per-message menu (⋮ popover) anchors correctly when scale ≠ 100%: opening it
+      at each scale step (90/100/115/130) should position the popover visually
+      adjacent to the ⋮ icon, not displaced to a corner.
+
+### Tokyo Night surface ladder
+- [ ] Dark theme × any non-default accent: three visually distinct surface levels
+      are legible — background (darkest), panel/raised (mid), chrome (lightest /
+      header + tab bar). No two adjacent rungs appear identical.
+- [ ] Light theme × any non-default accent: same three-rung distinction holds.
+- [ ] Own-bubble tint and accent washes look unchanged from before this release
+      (no inadvertent re-color from the surface remap).
+- [ ] Nav column (left sidebar on tablet/desktop) and tab bar are on the `chrome`
+      rung; the conversation list sits on the `panel`/`bg` rung — they look
+      visually separated.
+
 ## Lightbox image download (#58, 2026-07-23)
 - [ ] Open a received image in the lightbox → tap the download button (top
       left) → native save dialog appears; file lands where chosen and opens

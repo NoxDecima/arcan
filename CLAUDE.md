@@ -59,6 +59,17 @@ original feature slices above, a separate track).
   replaced the /invite 3-second poll; notification sends carry durable retry records;
   invitations mint lazily; repair is a visible add-to-contacts affordance (never silent
   re-TOFU). Spec: `docs/superpowers/specs/2026-07-20-contact-robustness-design.md`.
+- Appearance iteration (2026-07-23) — implemented + merged (`--no-ff`). Tokyo Night
+  surface ladder both themes: new `--color-chrome` rung + surface remap in tokens.css;
+  8-callsite chrome/raised split (headers, tab bar, composer bar, nav column/sidebar,
+  new-convo footer, DesktopWindow title bar — structural chrome was `bg-bg`, NOT
+  `bg-panel` as the spec guessed); parity proto side follows via the committed
+  `ladderSkin()` intent-fix in proto-cells.jsx (proto consumes skin() hexes, not CSS
+  vars) — 142/142. Per-device UI scale 90/100/115/130% as CSS zoom on <html>
+  (`src/styles/ui-scale.ts`, localStorage `arcan-ui-scale`, Android shell defaults
+  115%), applied pre-paint in main.tsx; fixed-portal coords (message menu, divider
+  scroll) divide by `getUiZoom()`. Android device checklist scale+ladder section is a
+  post-merge pass. Spec: `docs/superpowers/specs/2026-07-23-appearance-iteration-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
