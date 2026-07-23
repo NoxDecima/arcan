@@ -57,8 +57,11 @@ export function PTabBar({
     );
   };
 
+  // intent-fix (2026-07-23 surface ladder): proto paints tab bar c.bg; the
+  // ladder splits structural chrome from canvas — tab bar is chrome.
+  // Mirrored in tests/parity/proto-cells.jsx (patched PTabBar copy).
   return (
-    <div className="h-[54px] shrink-0 flex items-stretch border-t border-hairline bg-bg">
+    <div className="h-[54px] shrink-0 flex items-stretch border-t border-hairline bg-chrome">
       {tab("chats", "chat", "chats")}
       {tab("contacts", "people", "contacts")}
     </div>

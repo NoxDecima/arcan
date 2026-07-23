@@ -22,7 +22,7 @@ export function QRDisplay({ url, size = 300, showText = false }: QRDisplayProps)
       ? getComputedStyle(document.documentElement)
       : null;
   const fg = root?.getPropertyValue("--color-text").trim() || "#c8d1f0";
-  const bg = root?.getPropertyValue("--color-panel").trim() || "#12141f";
+  const bg = root?.getPropertyValue("--color-panel").trim() || "#292e42";
 
   return (
     <div className="flex flex-col items-center gap-3" data-testid="qr-display">

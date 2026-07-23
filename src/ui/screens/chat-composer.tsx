@@ -60,7 +60,7 @@ export function ChatComposer({
       {/* Rung 4: error slot */}
       {errorSlot}
       {/* Composer bar cluster — proto:189 */}
-      <div className="shrink-0 border-t border-hairline p-2.5 flex items-center gap-[9px] bg-bg">
+      <div className="shrink-0 border-t border-hairline p-2.5 flex items-center gap-[9px] bg-chrome">
         {/* Attach button — proto:190, v5 soft → plusc 22 */}
         <button
           className={`${tapClass} group`}

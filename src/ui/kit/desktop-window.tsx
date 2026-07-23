@@ -24,7 +24,7 @@ export function DesktopWindow({
       style={{ width: w, height: h }}
     >
       {/* title bar */}
-      <div className="h-[38px] shrink-0 flex items-center gap-2 px-3.5 border-b border-hairline bg-panel">
+      <div className="h-[38px] shrink-0 flex items-center gap-2 px-3.5 border-b border-hairline bg-chrome">
         {/* traffic lights — decorative hex constants per mapping table */}
         <div className="flex gap-[7px]">
           {TRAFFIC.map((col) => (

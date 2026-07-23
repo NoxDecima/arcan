@@ -30,7 +30,7 @@ export function HomeScreenHeader({
     testScope ? `${testScope}-${name}` : name;
 
   return (
-    <div className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg">
+    <div className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-chrome">
       <button
         type="button"
         data-testid={tid("sidebar-header-profile")}

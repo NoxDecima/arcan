@@ -168,7 +168,7 @@ export function NewConvoScreen({
         </Body>
 
         {/* Footer — proto:391–393 */}
-        <div className="shrink-0 p-3 border-t border-hairline bg-bg">
+        <div className="shrink-0 p-3 border-t border-hairline bg-chrome">
           {errorSlot && (
             <div
               className="mb-2"
