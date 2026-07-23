@@ -45,6 +45,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { getUiZoom } from "@/styles/ui-scale";
 import { pickFilesNative } from "@/platform/files";
 import { useParams, useNavigate } from "react-router-dom";
 import { useUpNavigation } from "@/nav/use-up-navigation";
@@ -323,15 +324,18 @@ function AnchoredMessageMenu({
       role="menu"
       data-testid="message-menu"
       // position/coords are geometry, not paint — inline style is sanctioned.
+      // Coordinates are computed in (unzoomed) viewport px from rects, but
+      // fixed left/top inside the zoomed <html> are multiplied by the UI-scale
+      // zoom at render — divide before applying (Task-1 probe, 2026-07-23).
       style={
         pos
-          ? { position: "fixed", left: pos.left, top: pos.top }
+          ? { position: "fixed", left: pos.left / getUiZoom(), top: pos.top / getUiZoom() }
           : {
               // Pre-measure render: park at the anchor, invisible, so the
               // first paint never flashes an unclamped menu.
               position: "fixed",
-              left: anchor.x,
-              top: anchor.bottom,
+              left: anchor.x / getUiZoom(),
+              top: anchor.bottom / getUiZoom(),
               visibility: "hidden",
             }
       }
@@ -535,8 +539,9 @@ export function ConversationDetailRoute() {
       ) as HTMLElement | null;
       if (divider) {
         const target =
-          divider.getBoundingClientRect().top -
-          el.getBoundingClientRect().top +
+          (divider.getBoundingClientRect().top -
+            el.getBoundingClientRect().top) /
+            getUiZoom() +
           el.scrollTop -
           8; // breathing room above the divider
         el.scrollTop = Math.max(0, target);

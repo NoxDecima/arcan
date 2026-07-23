@@ -16,10 +16,18 @@ import "@fontsource/jetbrains-mono/700.css";
 
 // Design tokens
 import "@/styles/tokens.css";
+import { applyStoredUiScale } from "@/styles/ui-scale";
+import { isTauriAndroid } from "@/platform/is-tauri";
 
 import App from './App.tsx'
 import { MessangerProvider } from './jazz/provider.tsx'
 import { DiagRoute } from './routes/diag.tsx'
+
+// Per-device UI scale (spec 2026-07-23): applied before createRoot so the
+// first paint is already scaled — no scale flash. The parity gallery boots
+// via parity.html → tests/parity/app-gallery/main.tsx and never executes
+// this module, so the harness structurally pins 100%.
+applyStoredUiScale(isTauriAndroid());
 
 // /diag is intentionally mounted ABOVE MessangerProvider (JazzReactProvider).
 // MessangerProvider has a blocking "Loading…" fallback that prevents rendering
