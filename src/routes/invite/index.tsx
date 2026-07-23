@@ -37,7 +37,7 @@ import {
   loadInvitationAsGuest,
   readInviteChannel,
 } from "@/jazz/invitations";
-import { sendConnectionRequest, getContact } from "@/jazz/handshake";
+import { sendConnectionRequest, getContact, withTimeout, REQUEST_ACK_TIMEOUT_MS } from "@/jazz/handshake";
 import {
   ContactRequestScreen,
   InviteStatusScreen,
@@ -172,7 +172,12 @@ export function InviteRoute() {
     try {
       // Re-validate at Connect time — a parked confirm screen can outlive
       // revocation/expiry (inventory §5); the mount-time check is not enough.
-      const fresh = (await loadInvitationAsGuest(invitation.$jazz.id)) as any;
+      // Bounded by REQUEST_ACK_TIMEOUT_MS (15 s) — same constant as delivery
+      // — to prevent an unbounded await stalling the handshake flow (#54).
+      const fresh = (await withTimeout(
+        loadInvitationAsGuest(invitation.$jazz.id),
+        REQUEST_ACK_TIMEOUT_MS,
+      )) as any;
       if (fresh.revokedAt) {
         setPhase("expired");
         setErr("invite revoked");
@@ -215,7 +220,12 @@ export function InviteRoute() {
       setPhase("sent");
     } catch (e) {
       setPhase("error");
-      setErr(String(e));
+      const msg = String(e);
+      setErr(
+        msg.includes("timed out")
+          ? "couldn't verify the invite — check your connection and try again"
+          : msg,
+      );
     } finally {
       connectBusyRef.current = false;
     }
