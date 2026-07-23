@@ -51,3 +51,4 @@ design
 # Parity harness — generated artifacts (screenshots, diff images, esbuild output)
 tests/parity/report/
 tests/parity/out/
+.superpowers/
