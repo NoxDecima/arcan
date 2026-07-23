@@ -563,6 +563,10 @@ export function ProfileView({ accountID }: ProfileViewProps) {
           // decision, 2026-07-08 walkthrough). Initials tiles stay inert.
           onAvatar={avatarSrc ? () => setAvatarLightbox(true) : undefined}
           onMessage={() => void handleMessage()}
+          // #59: handleMessage is find-or-create, so when a live 1:1 already
+          // exists the CTA opens it — say so instead of "create conversation".
+          // convo1to1 is the same scan that drives the danger zone below.
+          messageLabel={convo1to1 ? "open conversation" : "create conversation"}
           onOpenConversation={(id) => navigate(`/conversations/${id}`)}
           safetyOpen={showSafety}
           onToggleSafety={() => setShowSafety((s) => !s)}

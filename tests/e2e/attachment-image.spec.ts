@@ -57,6 +57,17 @@ test("image attachment: Alice sends a PNG, Bob sees it + lightbox opens", async 
 
     await pageB.getByTestId("image-lightbox-close").click();
     await expect(pageB.getByTestId("image-lightbox")).not.toBeVisible();
+
+    // #59: a live 1:1 with Bob now exists — revisiting his profile flips the
+    // CTA from "create conversation" to "open conversation".
+    await pageA.goto("/?tab=contacts");
+    const contactsA = pageA.getByTestId("sidebar-contacts-list");
+    await expect(contactsA).toContainText("Bob", { timeout: 15_000 });
+    await contactsA.getByText("Bob", { exact: false }).first().click();
+    await expect(pageA.getByTestId("profile-message")).toContainText(
+      "open conversation",
+      { timeout: 10_000 },
+    );
   } finally {
     await ctxA.close();
     await ctxB.close();

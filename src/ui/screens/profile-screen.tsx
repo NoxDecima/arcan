@@ -22,6 +22,7 @@ export function ProfileScreen({
   onMenu,
   onAvatar,
   onMessage,
+  messageLabel,
   onOpenConversation,
   safetyOpen,
   onToggleSafety,
@@ -42,6 +43,11 @@ export function ProfileScreen({
       lightbox. Optional — when absent the avatar renders exactly as proto. */
   onAvatar?: () => void;
   onMessage: () => void;                // primary "create conversation" PButton
+  /** intent-fix (#59, 2026-07-23): container-driven CTA label — the container
+      passes "open conversation" when a live 1:1 already exists (onMessage has
+      always been find-or-create; the proto's hardcoded "create conversation"
+      lied in that case). Defaults to the proto label. */
+  messageLabel?: string;
   onOpenConversation?: (id: string) => void; // Rung-4 real shared list
   safetyOpen: boolean;                  // expandable "verify safety number"
   onToggleSafety: () => void;
@@ -124,7 +130,7 @@ export function ProfileScreen({
               primary
               full
               icon="chat"
-              label="create conversation"
+              label={messageLabel ?? "create conversation"}
               onClick={onMessage}
               data-testid={messageTestId}
             />
