@@ -58,7 +58,7 @@ table; ambiguous cases default to raised (`bg-panel`).
 
 `hover:bg-panel-2 active:bg-hairline` washes continue to work by token
 indirection (both remap). On `bg-chrome` surfaces the wash steps to
-`--color-panel` visually — acceptable (one rung up); no class changes to the
+`--color-panel-2` visually (three rungs in dark, a subtle lighten in light) — accepted; no class changes to the
 hover vocabulary.
 
 ### Parity
