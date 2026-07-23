@@ -59,9 +59,12 @@ export function PHeader({
     </div>
   );
 
+  // intent-fix (2026-07-23 surface ladder): proto paints headers c.bg; the
+  // ladder splits structural chrome from canvas — headers are chrome.
+  // Mirrored in tests/parity/proto-cells.jsx (patched PHeader copy).
   return (
     <div
-      className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-bg"
+      className="min-h-[52px] shrink-0 flex items-center gap-[11px] px-3 border-b border-hairline bg-chrome"
       {...(rootTestId ? { "data-testid": rootTestId } : {})}
     >
       {onBack && (

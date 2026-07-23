@@ -6,6 +6,13 @@ import type { Account } from "jazz-tools";
 import { ArcanAccount } from "@/jazz/schema/ArcanAccount";
 import { useTheme } from "@/styles/use-theme";
 import { useAccent, ACCENT_KEYS, type Accent } from "@/styles/use-accent";
+import {
+  UI_SCALE_STEPS,
+  type UiScaleStep,
+  readStoredUiScale,
+  setUiScale,
+} from "@/styles/ui-scale";
+import { isTauriAndroid } from "@/platform/is-tauri";
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { useAccountAvatars } from "@/components/use-account-avatars";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -65,6 +72,17 @@ function SettingsBody() {
       },
     },
   });
+
+  // Per-device UI scale (spec 2026-07-23) — localStorage, NOT synced settings.
+  const [uiScale, setUiScaleState] = useState<UiScaleStep>(() =>
+    readStoredUiScale(isTauriAndroid()),
+  );
+  function handleUiScale(n: number) {
+    if (!(UI_SCALE_STEPS as readonly number[]).includes(n)) return;
+    const step = n as UiScaleStep;
+    setUiScale(step); // persist + apply zoom immediately
+    setUiScaleState(step);
+  }
 
   // ── notifications local state ────────────────────────────────────────────
   // Seeded to "default" then async-populated via getNotificationPermission()
@@ -246,6 +264,9 @@ function SettingsBody() {
       accentKeys={[...ACCENT_KEYS]}
       onAccent={handleAccent}
       accentSolid={ACCENT_SWATCH}
+      uiScale={uiScale}
+      uiScaleSteps={UI_SCALE_STEPS}
+      onUiScale={handleUiScale}
       notifications={notifications}
       notifErrorSlot={
         notifError ? (
@@ -276,6 +297,7 @@ function SettingsBody() {
       themeLightTestId="theme-light"
       themeDarkTestId="theme-dark"
       accentPickerTestId="appearance-accent-picker"
+      uiScaleRowTestId="ui-scale-row"
       devicesCardTestId="devices-card"
       linkDeviceRowTestId="link-device-row"
       inviteLinksTestId="settings-invite-links"

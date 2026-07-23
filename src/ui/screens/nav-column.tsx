@@ -52,7 +52,7 @@ export function NavColumn(props: {
   } = props;
 
   return (
-    <div className="w-[320px] shrink-0 relative border-r border-hairline bg-bg flex flex-col h-full">
+    <div className="w-[320px] shrink-0 relative border-r border-hairline bg-chrome flex flex-col h-full">
       {/* Nav header */}
       <div className="flex items-center gap-2.5 pt-[13px] px-3.5 pb-2.5">
         <button

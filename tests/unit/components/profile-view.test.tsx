@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
@@ -39,9 +39,14 @@ vi.mock("@/auth/pubkey", () => ({
   getAccountPubkeyHex: () => "a".repeat(64),
 }));
 
+// Controllable per-test (#59): null → no live 1:1; an object → live 1:1.
+const { find1to1Mock } = vi.hoisted(() => ({
+  find1to1Mock: vi.fn<() => unknown>(() => null),
+}));
+
 vi.mock("@/jazz/conversation", () => ({
   findOrCreate1to1Conversation: vi.fn(),
-  find1to1Conversation: () => null,
+  find1to1Conversation: find1to1Mock,
   leaveConversation: vi.fn(),
 }));
 
@@ -61,6 +66,11 @@ function Wrap({ children }: { children: ReactNode }) {
 }
 
 describe("ProfileView", () => {
+  beforeEach(() => {
+    find1to1Mock.mockReset();
+    find1to1Mock.mockReturnValue(null);
+  });
+
   test("renders the 'add a contact' CTA when viewing your own profile", () => {
     const { getByTestId, queryByTestId } = render(
       <Wrap>
@@ -85,5 +95,31 @@ describe("ProfileView", () => {
     );
     expect(getByTestId("profile-message")).toBeInTheDocument();
     expect(queryByTestId("profile-add-contact")).toBeNull();
+  });
+
+  // #59: the CTA is find-or-create — the label must reflect which one it is.
+  test("message CTA reads 'create conversation' when no 1:1 exists", () => {
+    const { getByTestId } = render(
+      <Wrap>
+        <ProfileView accountID={OTHER_ID} />
+      </Wrap>,
+    );
+    expect(getByTestId("profile-message").textContent).toContain(
+      "create conversation",
+    );
+  });
+
+  test("message CTA reads 'open conversation' when a live 1:1 exists", () => {
+    find1to1Mock.mockReturnValue({ $jazz: { id: "co_zConv" } });
+    const { getByTestId } = render(
+      <Wrap>
+        <ProfileView accountID={OTHER_ID} />
+      </Wrap>,
+    );
+    expect(getByTestId("profile-message").textContent).toContain(
+      "open conversation",
+    );
+    // The same scan also unlocks the danger-zone delete button.
+    expect(getByTestId("convo-delete-btn")).toBeInTheDocument();
   });
 });

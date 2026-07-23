@@ -76,7 +76,7 @@ export function AppShell() {
               testid carried from legacy Sidebar loading state). */}
           {shell.loading ? (
             <div
-              className="w-[320px] shrink-0 border-r border-hairline bg-bg flex flex-col"
+              className="w-[320px] shrink-0 border-r border-hairline bg-chrome flex flex-col"
               data-testid="sidebar-loading"
             >
               <NavListSkeleton rows={6} />

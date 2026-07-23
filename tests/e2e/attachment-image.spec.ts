@@ -44,8 +44,30 @@ test("image attachment: Alice sends a PNG, Bob sees it + lightbox opens", async 
     // Open lightbox in Bob's view
     await pageB.getByTestId("attachment-tile-sent-image").first().click();
     await expect(pageB.getByTestId("image-lightbox")).toBeVisible();
+
+    // Download button triggers a real browser download with the original
+    // filename (#58: routed through the platform capability — web path is the
+    // programmatic anchor; the shell path is device-checklist territory).
+    const downloadPromise = pageB.waitForEvent("download");
+    await pageB.getByTestId("image-lightbox-download").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("tiny.png");
+    // The download click must not close the lightbox.
+    await expect(pageB.getByTestId("image-lightbox")).toBeVisible();
+
     await pageB.getByTestId("image-lightbox-close").click();
     await expect(pageB.getByTestId("image-lightbox")).not.toBeVisible();
+
+    // #59: a live 1:1 with Bob now exists — revisiting his profile flips the
+    // CTA from "create conversation" to "open conversation".
+    await pageA.goto("/?tab=contacts");
+    const contactsA = pageA.getByTestId("sidebar-contacts-list");
+    await expect(contactsA).toContainText("Bob", { timeout: 15_000 });
+    await contactsA.getByText("Bob", { exact: false }).first().click();
+    await expect(pageA.getByTestId("profile-message")).toContainText(
+      "open conversation",
+      { timeout: 10_000 },
+    );
   } finally {
     await ctxA.close();
     await ctxB.close();

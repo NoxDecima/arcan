@@ -1,7 +1,7 @@
 // src/components/attachment-tile.tsx
 import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
-import { saveBlobNative } from "@/platform/files";
+import { downloadBlob } from "@/platform/files";
 
 interface AttachmentTileProps {
   attachment: any;          // FileBlob (loaded)
@@ -160,21 +160,14 @@ export function AttachmentTile({
     );
   }
 
-  // sent file → download via native dialog (shell) or hidden <a> (web)
+  // sent file → download via native dialog (shell) or hidden <a> (web);
+  // dispatch lives in the platform capability (#58).
   async function handleDownload() {
     if (!streamID || !loadAs) return;
     try {
       const blob = await co.fileStream().loadAsBlob(streamID, { loadAs });
       if (!blob) return;
-      if (await saveBlobNative(blob, filename)) return;
-      const dlUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = dlUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(dlUrl);
+      await downloadBlob(blob, filename);
     } catch (err) {
       console.warn("[attachment-tile] download failed:", err);
     }

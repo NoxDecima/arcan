@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useModalA11y } from "@/components/modal-shell";
 import { useAttachmentImageUrl } from "@/components/attachment-tile";
+import { downloadBlob } from "@/platform/files";
 import { Icon, tapClass } from "@/ui/kit";
 
 interface ImageLightboxProps {
@@ -79,6 +80,22 @@ export function ImageLightbox({
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
 
+  // Download via the platform capability (#58): an `<a download>` on a blob:
+  // URL silently does nothing in the Tauri shell (wry/Android WebView
+  // limitation), so route through downloadBlob — native save dialog in the
+  // shell, programmatic anchor on the web. The displayed object URL is
+  // fetched back into a Blob, which works identically in single-src and nav
+  // mode.
+  async function handleDownload() {
+    if (!displaySrc) return;
+    try {
+      const blob = await (await fetch(displaySrc)).blob();
+      await downloadBlob(blob, displayName || "image");
+    } catch (err) {
+      console.warn("[image-lightbox] download failed:", err);
+    }
+  }
+
   return createPortal(
     <div
       ref={containerRef}
@@ -118,10 +135,12 @@ export function ImageLightbox({
       className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 touch-none animate-arcan-fade-in"
     >
       {displaySrc && (
-        <a
-          href={displaySrc}
-          download={displayName || "image"}
-          onClick={(e) => e.stopPropagation()}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            void handleDownload();
+          }}
           aria-label="download image"
           data-testid="image-lightbox-download"
           className={`${tapClass} absolute top-4 left-4 text-text-2 bg-black/40 rounded-r-3 w-10 h-10 justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-soft`}
@@ -129,7 +148,7 @@ export function ImageLightbox({
           {/* intent-fix (feedback round 2): "share" is the closest available
               glyph — a dedicated download icon is out of scope. */}
           <Icon d="share" size={18} />
-        </a>
+        </button>
       )}
       <button
         type="button"

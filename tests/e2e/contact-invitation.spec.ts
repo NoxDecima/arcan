@@ -42,6 +42,19 @@ test("contact invitation flow", async ({ browser }) => {
     await expect(pageB.getByTestId("sidebar-contacts-list")).toContainText("Alice", {
       timeout: 10_000,
     });
+
+    // #59: no 1:1 conversation exists yet, so Bob's profile CTA offers to
+    // create one. (The flipped "open conversation" label is asserted in
+    // attachment-image.spec.ts, where a 1:1 exists.)
+    await pageA
+      .getByTestId("sidebar-contacts-list")
+      .getByText("Bob", { exact: false })
+      .first()
+      .click();
+    await expect(pageA.getByTestId("profile-message")).toContainText(
+      "create conversation",
+      { timeout: 10_000 },
+    );
   } finally {
     await ctxA.close();
     await ctxB.close();

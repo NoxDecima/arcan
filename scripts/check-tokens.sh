@@ -20,6 +20,7 @@ if [ -n "$hits" ]; then
   echo "  bg-white → bg-panel        text-gray-800 → text-text"
   echo "  bg-gray-100 → bg-panel-2   text-gray-500 → text-dim"
   echo "  border-gray-200 → border-hairline"
+  echo "  structural chrome (headers/tab bar/composer/nav column) → bg-chrome"
   exit 1
 fi
 

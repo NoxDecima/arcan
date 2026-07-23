@@ -168,7 +168,7 @@ export function NewConvoScreen({
         </Body>
 
         {/* Footer — proto:391–393 */}
-        <div className="shrink-0 p-3 border-t border-hairline bg-bg">
+        <div className="shrink-0 p-3 border-t border-hairline bg-chrome">
           {errorSlot && (
             <div
               className="mb-2"
@@ -182,7 +182,6 @@ export function NewConvoScreen({
             full
             label={submitLabel}
             onClick={onSubmit}
-            className={submitDisabled ? "opacity-50" : undefined}
             disabled={submitDisabled}
             data-testid={submitTestId}
           />

@@ -76,6 +76,10 @@ export function SettingsScreen({
   themeLightTestId,
   themeDarkTestId,
   accentPickerTestId,
+  uiScale,
+  uiScaleSteps,
+  onUiScale,
+  uiScaleRowTestId,
   devicesCardTestId,
   linkDeviceRowTestId,
   inviteLinksTestId,
@@ -116,6 +120,12 @@ export function SettingsScreen({
   themeLightTestId?: string;            // "theme-light"
   themeDarkTestId?: string;             // "theme-dark"
   accentPickerTestId?: string;          // "appearance-accent-picker"
+  // ui scale (appearance iteration 2026-07-23) — per-device pill; the row
+  // renders only when onUiScale is wired (parity settings cell omits it).
+  uiScale?: number;
+  uiScaleSteps?: readonly number[];
+  onUiScale?: (n: number) => void;
+  uiScaleRowTestId?: string;            // "ui-scale-row"
   devicesCardTestId?: string;           // "devices-card"
   linkDeviceRowTestId?: string;         // "link-device-row"
   inviteLinksTestId?: string;           // "settings-invite-links"
@@ -237,6 +247,41 @@ export function SettingsScreen({
                   ))}
                 </div>
               </div>
+
+              {/* ui-scale row — intent-fix (2026-07-23 appearance iteration):
+                  no proto reference (the feature postdates the frozen design);
+                  mirrors the theme-row cluster node-for-node (icon + label +
+                  segmented pill). Gated on onUiScale so the parity
+                  settings-screen cell renders unchanged. */}
+              {onUiScale && (
+                <div
+                  className="flex items-center gap-3 px-[14px] py-[12px] border-b border-hairline"
+                  data-testid={uiScaleRowTestId}
+                >
+                  <Icon d="device" size={17} className="text-text-2" />
+                  <span className="flex-1 font-body font-medium text-ui-row leading-none text-text">
+                    ui scale
+                  </span>
+                  <div className="flex gap-0.5 p-0.5 rounded-pill bg-panel-2 border border-hairline">
+                    {(uiScaleSteps ?? []).map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => onUiScale(n)}
+                        data-testid={`ui-scale-${n}`}
+                        className={[
+                          tapClass,
+                          "rounded-pill px-2 py-[5px] font-mono font-semibold text-ui-sub leading-none",
+                          uiScale === n
+                            ? "bg-arcan-accent-fill text-on-accent hover:opacity-90 active:opacity-80"
+                            : "text-text-2 bg-transparent hover:bg-panel-2 active:bg-hairline",
+                        ].join(" ")}
+                      >
+                        {n}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* accent row — proto:287–297 */}
               {/* py-[13px] px-[14px] matches proto padding:'13px 14px' */}

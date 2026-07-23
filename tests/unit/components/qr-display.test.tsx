@@ -29,6 +29,6 @@ describe("QRDisplay theme-aware colors", () => {
     // jsdom has no real CSS loaded, so the component falls back to its
     // dark-theme token hexes (text on panel).
     expect(fgFill).toBe("#c8d1f0");
-    expect(bgFill).toBe("#12141f");
+    expect(bgFill).toBe("#292e42");
   });
 });

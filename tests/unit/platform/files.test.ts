@@ -1,9 +1,16 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { pickFilesNative, saveBlobNative, sniffImageMime, inferMime } from "@/platform/files";
+import {
+  pickFilesNative,
+  saveBlobNative,
+  downloadBlob,
+  sniffImageMime,
+  inferMime,
+} from "@/platform/files";
 
 afterEach(() => {
   delete (window as any).__TAURI_INTERNALS__;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("files adapter on web", () => {
@@ -13,6 +20,83 @@ describe("files adapter on web", () => {
 
   it("saveBlobNative returns false (caller falls back to anchor download)", async () => {
     expect(await saveBlobNative(new Blob(["x"]), "x.txt")).toBe(false);
+  });
+
+  it("downloadBlob falls back to a programmatic anchor download (#58)", async () => {
+    // jsdom has no createObjectURL — stub the pair on the real URL global.
+    const createObjectURL = vi.fn(() => "blob:test-url");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL }));
+
+    let clicked: HTMLAnchorElement | null = null;
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clicked = this;
+      });
+
+    await downloadBlob(new Blob(["x"], { type: "image/png" }), "pic.png");
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(clicked!.getAttribute("download")).toBe("pic.png");
+    expect(clicked!.getAttribute("href")).toBe("blob:test-url");
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:test-url");
+    // Anchor is removed again after the click.
+    expect(clicked!.isConnected).toBe(false);
+  });
+});
+
+describe("downloadBlob in the shell (#58)", () => {
+  it("routes through the native save dialog + fs write, never the anchor", async () => {
+    (window as any).__TAURI_INTERNALS__ = {};
+
+    const save = vi.fn().mockResolvedValue("/downloads/pic.png");
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("@tauri-apps/plugin-dialog", () => ({ save }));
+    vi.doMock("@tauri-apps/plugin-fs", () => ({ writeFile }));
+
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    vi.resetModules();
+    const { downloadBlob: dl } = await import("@/platform/files");
+    await dl(new Blob(["png-bytes"], { type: "image/png" }), "pic.png");
+
+    expect(save).toHaveBeenCalledWith({ defaultPath: "pic.png" });
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    const [path, bytes] = writeFile.mock.calls[0];
+    expect(path).toBe("/downloads/pic.png");
+    expect(new TextDecoder().decode(bytes)).toBe("png-bytes");
+    expect(clickSpy).not.toHaveBeenCalled();
+
+    vi.doUnmock("@tauri-apps/plugin-dialog");
+    vi.doUnmock("@tauri-apps/plugin-fs");
+  });
+
+  it("treats a cancelled save dialog as handled (no anchor fallback)", async () => {
+    (window as any).__TAURI_INTERNALS__ = {};
+
+    const save = vi.fn().mockResolvedValue(null);
+    const writeFile = vi.fn();
+    vi.doMock("@tauri-apps/plugin-dialog", () => ({ save }));
+    vi.doMock("@tauri-apps/plugin-fs", () => ({ writeFile }));
+
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    vi.resetModules();
+    const { downloadBlob: dl } = await import("@/platform/files");
+    await dl(new Blob(["x"]), "pic.png");
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(writeFile).not.toHaveBeenCalled();
+    expect(clickSpy).not.toHaveBeenCalled();
+
+    vi.doUnmock("@tauri-apps/plugin-dialog");
+    vi.doUnmock("@tauri-apps/plugin-fs");
   });
 });
 

@@ -142,18 +142,16 @@ export function FeedbackScreen({
           {/* email field removed (user decision, 2026-07-05 walkthrough):
               email is inferred server-side from the authenticated account. */}
 
-          {/* submit button — proto:529 */}
-          <div style={{ opacity: canSubmit ? 1 : 0.5 }}>
-            <PButton
-              primary
-              full
-              icon="send"
-              disabled={!canSubmit}
-              label={submitting ? "sending…" : "submit feedback"}
-              onClick={onSubmit}
-              data-testid={submitTestId}
-            />
-          </div>
+          {/* submit button — proto:529; opacity comes from disabled:opacity-50 on PButton */}
+          <PButton
+            primary
+            full
+            icon="send"
+            disabled={!canSubmit}
+            label={submitting ? "sending…" : "submit feedback"}
+            onClick={onSubmit}
+            data-testid={submitTestId}
+          />
 
         </div>
       </Body>

@@ -45,6 +45,15 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  // DEV: pre-bundle the jazz WASM crypto dep so Vite never re-discovers and
+  // rebundles it mid-run (the optimizer restart that causes the intermittent
+  // WASM 404 → JazzReactProvider "Loading…" stall in dev/test environments).
+  // `include` locks these into the initial optimized bundle; `needsInterop`
+  // is not required because cojson-core-wasm is a plain ESM package.
+  // Production is unaffected: optimizeDeps applies only to the dev server.
+  optimizeDeps: {
+    include: ["cojson-core-wasm", "cojson > cojson/crypto/WasmCrypto"],
+  },
   server: {
     // Tauri mobile dev: `tauri android dev --host <ip>` sets TAURI_DEV_HOST so
     // the phone's webview can reach this dev server over the network.
