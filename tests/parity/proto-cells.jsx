@@ -3,7 +3,18 @@
 // Verbatim copies of proto.jsx-local primitives accumulate here (each marked
 // with its design/proto.jsx line range).
 const { skin, alpha } = window;
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, PHeader, PTabBar, tapBtn, ArcanMark, Body } = window;
+/* intent-fix (2026-07-23 appearance iteration): Tokyo Night surface ladder.
+   The shipped tokens remap the surface rungs (spec 2026-07-23) and add a
+   `chrome` rung; the frozen design skin (design/hf-kit.jsx FAM.noir) still
+   carries the pre-ladder values. ladderSkin() overrides the surface channels
+   on the constructed skin so both gallery sides render the approved ladder.
+   Text + accent channels intentionally untouched (surfaces-only adoption). */
+const LADDER = {
+  dark:  { stage: '#16161e', rail: '#16161e', bg: '#1f2335', panel: '#292e42', panel2: '#414868', border: '#3b4261', chrome: '#1a1b26' },
+  light: { stage: '#d0d3e0', rail: '#d0d3e0', bg: '#e1e2e7', panel: '#eceef4', panel2: '#dfe2ec', border: '#c9cdda', chrome: '#d9dce7' },
+};
+const ladderSkin = (s) => ({ ...s, c: { ...s.c, ...LADDER[s.theme] } });
+const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, tapBtn, ArcanMark, Body } = window;
 const { HF_CONVOS, HF_CONTACTS, HF_MSGS } = window;
 // hf-flows.jsx window exports (available after hf-flows.js loads)
 const { AuthTitle: HfTitle, AuthSub: HfSub, AuthField: HfField, Wordmark } = window;
@@ -31,6 +42,56 @@ function AuthSurface({ s, w = 320, tall, children }) {
   );
 }
 
+/* patched copy: design/proto-ui.jsx:17–41 (PHeader) — one intent-fix:
+   background c.bg → c.chrome (2026-07-23 surface ladder; headers are
+   structural chrome). Mirrors src/ui/kit/pheader.tsx. */
+function PHeader({ s, title, sub, onBack, avatar, onAvatar, onTitle, right }) {
+  const c = s.c;
+  const titleBlock = (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ font: `700 16px/1.2 ${s.headMono ? s.font : s.body}`, color: c.text, letterSpacing: s.headMono ? '-.01em' : 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+      {sub && <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>{sub}</div>}
+    </div>
+  );
+  return (
+    <div style={{ flexShrink: 0, minHeight: 52, display: 'flex', alignItems: 'center', gap: 11, padding: '0 12px', borderBottom: `1px solid ${c.border}`, background: c.chrome }}>
+      {onBack && <button onClick={onBack} style={tapBtn}><Icon d="back" c={c.text2} size={20} /></button>}
+      {onTitle ? (
+        <button onClick={onTitle} style={{ ...tapBtn, flex: 1, minWidth: 0, gap: 11, textAlign: 'left' }}>
+          {avatar}{titleBlock}
+        </button>
+      ) : (
+        <React.Fragment>
+          {avatar && <button onClick={onAvatar} style={tapBtn}>{avatar}</button>}
+          {titleBlock}
+        </React.Fragment>
+      )}
+      {right}
+    </div>
+  );
+}
+
+/* patched copy: design/proto-ui.jsx:45–62 (PTabBar) — one intent-fix:
+   background c.bg → c.chrome (2026-07-23 surface ladder; the tab bar is
+   structural chrome). Mirrors src/ui/kit/ptabbar.tsx. */
+function PTabBar({ s, active, onTab }) {
+  const c = s.c;
+  const tab = (key, icon, label) => {
+    const on = active === key;
+    return (
+      <button key={key} onClick={() => onTab(key)} style={{ ...tapBtn, flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 3, padding: '7px 0' }}>
+        <Icon d={icon} c={on ? c.accent : c.dim} size={20} fill={false} />
+        <span style={{ font: `${on ? 600 : 500} 9.5px/1 ${s.headMono ? s.font : s.body}`, color: on ? c.accent : c.dim, letterSpacing: s.headMono ? '.04em' : 0 }}>{label}</span>
+      </button>
+    );
+  };
+  return (
+    <div style={{ flexShrink: 0, height: 54, display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${c.border}`, background: c.chrome }}>
+      {tab('chats', 'chat', 'chats')}{tab('contacts', 'people', 'contacts')}
+    </div>
+  );
+}
+
 const ICON_NAMES = ["search","plus","gear","back","chev","send","plusc","image","paperclip","chat","people","pencil","copy","share","camera","check","dots","bell","at","device","key","shield","logout","sun","moon","sparkle","alert","refresh","close","message"];
 
 /* patched copy: design/proto.jsx:33–71 — one intent-fix, see Bubble:att inline note;
@@ -47,8 +108,10 @@ function Bubble({ s, m, w }) {
   const p = mine ? ownPaintP(s) : { bg: c.panel, fg: c.text, bd: s.fam === 'soft' ? 'transparent' : c.border, time: c.dim };
   return (
     <div style={{ maxWidth: w, background: p.bg, border: p.bd !== 'transparent' ? `1px solid ${p.bd}` : 'none', color: p.fg, padding: m.att ? 6 : '8px 11px', borderRadius: s.bubbleRadius, borderBottomRightRadius: mine ? Math.max(2, s.bubbleRadius - 12) : s.bubbleRadius, borderBottomLeftRadius: mine ? s.bubbleRadius : Math.max(2, s.bubbleRadius - 12), boxShadow: s.soft && !mine && s.theme === 'light' ? '0 1px 2px rgba(20,20,40,.05)' : 'none' }}>
-      {/* intent-fix: '#fff' → '#ffffff' — _hx('#fff') → [255,15,NaN] (3-digit shorthand: first two chars pair up, third slice empty → NaN); invalid rgba drops the veil in the raw proto. hf-chat.jsx:126 already uses #ffffff (designer's corrected version). */}
-      {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#0e1019' : '#eef0f5'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
+      {/* intent-fix: '#fff' → '#ffffff' — _hx('#fff') → [255,15,NaN] (3-digit shorthand: first two chars pair up, third slice empty → NaN); invalid rgba drops the veil in the raw proto. hf-chat.jsx:126 already uses #ffffff (designer's corrected version).
+          intent-fix (2026-07-23 ladder): rail literals #0e1019/#eef0f5 →
+          #16161e/#d0d3e0 (the rail token remapped; app side uses bg-rail). */}
+      {m.att && <div style={{ width: w - 12, height: 84, borderRadius: Math.max(3, s.bubbleRadius - 6), background: mine ? alpha('#ffffff', .18) : (s.theme === 'dark' ? '#16161e' : '#d0d3e0'), display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}><Icon d="image" c={mine ? alpha('#ffffff', .8) : c.dim} size={20} /></div>}
       <span style={{ display: 'block', font: `400 12.5px/1.45 ${s.body}` }}>{m.text}</span>
     </div>
   );
@@ -132,7 +195,7 @@ function DesktopWindow({ s, children, narrow }) {
   const c = s.c;
   return (
     <div style={{ width: narrow ? 'min(520px, 92vw)' : 'min(1200px, 95vw)', height: narrow ? 'min(620px, 88vh)' : 'min(88vh, 820px)', borderRadius: 14, overflow: 'hidden', border: `1px solid ${c.border}`, background: c.bg, boxShadow: s.theme === 'dark' ? '0 34px 90px rgba(0,0,0,.62)' : '0 34px 90px rgba(40,40,60,.24)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', borderBottom: `1px solid ${c.border}`, background: c.panel }}>
+      <div style={{ height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', borderBottom: `1px solid ${c.border}`, background: c.chrome /* intent-fix: chrome (2026-07-23 ladder) */ }}>
         <div style={{ display: 'flex', gap: 7 }}>{['#e2696e', '#e6b450', '#5fb87f'].map(col => <span key={col} style={{ width: 11, height: 11, borderRadius: 999, background: col, opacity: .9 }} />)}</div>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 14px', borderRadius: 999, background: c.bg, border: `1px solid ${c.border}` }}>
@@ -170,7 +233,7 @@ function PChatScreen({ s, msgs, desktop, name, ini, isGroup }) {
         {msgs.map((m, i) => <Row key={i} s={s} m={m} w={desktop ? 460 : 190} />)}
       </div>
       {/* composer bar (proto:189): v5 soft=true → plusc 22, rounded-pill; prompt=true → › */}
-      <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
+      <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.chrome /* intent-fix: chrome (2026-07-23 ladder) */ }}>
         <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
         <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
           <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
@@ -192,7 +255,7 @@ function PComposerBar({ s, text }) {
   const c = s.c;
   const armed = Boolean(text && text.trim());
   return (
-    <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.bg }}>
+    <div style={{ flexShrink: 0, borderTop: `1px solid ${c.border}`, padding: 10, display: 'flex', alignItems: 'center', gap: 9, background: c.chrome /* intent-fix: chrome (2026-07-23 ladder) */ }}>
       <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
       <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
         <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
@@ -302,7 +365,7 @@ function PNavColumn({ s, tab }) {
   };
 
   return (
-    <div style={{ width: 320, flexShrink: 0, position: 'relative', borderRight: `1px solid ${c.border}`, background: c.bg, display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ width: 320, flexShrink: 0, position: 'relative', borderRight: `1px solid ${c.border}`, background: c.chrome /* intent-fix: chrome (2026-07-23 ladder) */, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px 10px' }}>
         <button style={{ ...tapBtn, gap: 10, flex: 1, minWidth: 0 }}>
           <HAv s={s} txt="me" size={32} />
@@ -660,7 +723,7 @@ function PNewConvoScreen({ s }) {
           ); })}
         </div>
       </Body>
-      <div style={{ flexShrink: 0, padding: 12, borderTop: `1px solid ${c.border}`, background: c.bg }}>
+      <div style={{ flexShrink: 0, padding: 12, borderTop: `1px solid ${c.border}`, background: c.chrome /* intent-fix: chrome (2026-07-23 ladder) */ }}>
         <PButton s={s} primary full label={`create group · ${sel.length} members`} onClick={() => {}} style={{ opacity: 1 }} />
       </div>
     </React.Fragment>
@@ -764,7 +827,11 @@ function PScCredentials({ s }) {
       <HfField s={s} label="confirm password" ph="••••••••" />
       <div style={{ height: 2 }} />
       <PButton s={s} primary full label="continue →" onClick={() => {}} />
-      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>step 1 of 4</MuteLinkHf></div>
+      {/* intent-fix (2026-07-23): caption strut pinned to the app's base 15px/1.5 line box
+          (22.5px) — the raw reference page strut is 16px/normal (18px). On non-tall
+          (auto-centered) AuthSurface the 4.5px column delta shifts every row ~2.25px and
+          ghosts the whole cell. Visual no-op: an empty strut around a 10.5px span. */}
+      <div style={{ textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}><MuteLinkHf s={s}>step 1 of 4</MuteLinkHf></div>
     </AuthSurface>
   );
 }
@@ -830,7 +897,9 @@ function PScProfile({ s }) {
       <HfField s={s} label="display name" ph="how others see you" />
       <div style={{ height: 2 }} />
       <PButton s={s} primary full label="enter arcan →" onClick={() => {}} />
-      <div style={{ textAlign: 'center' }}><MuteLinkHf s={s}>step 4 of 4</MuteLinkHf></div>
+      {/* intent-fix (2026-07-23): caption strut pinned to the app's base 15px/1.5 line box —
+          same environmental strut reconciliation as PScCredentials (see note there). */}
+      <div style={{ textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}><MuteLinkHf s={s}>step 4 of 4</MuteLinkHf></div>
     </AuthSurface>
   );
 }
@@ -1384,7 +1453,7 @@ const PROTO_CELLS = {
   const params = new URLSearchParams(location.search);
   const theme = params.get("theme") || "dark";
   const accent = params.get("accent") || "tokyo";
-  const s = skin("v5", theme, accent);
+  const s = ladderSkin(skin("v5", theme, accent)); // intent-fix: surface ladder (see top of file)
   const spec = await (await fetch("/tests/parity/cells.json")).json();
   const bgOf = (name) => ({ bg: s.c.bg, panel: s.c.panel, stage: s.c.stage })[name || "bg"];
 
