@@ -182,7 +182,6 @@ export function NewConvoScreen({
             full
             label={submitLabel}
             onClick={onSubmit}
-            className={submitDisabled ? "opacity-50" : undefined}
             disabled={submitDisabled}
             data-testid={submitTestId}
           />

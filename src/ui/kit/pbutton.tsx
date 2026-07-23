@@ -60,6 +60,9 @@ export function PButton({
         // PButton structure (mapping table)
         "h-11 rounded-pill font-mono font-semibold text-ui-btn",
         "justify-center gap-2",
+        // Disabled affordance: consistent with shadcn Button convention.
+        // pointer-events suppression comes from tapClass (disabled:pointer-events-none).
+        "disabled:opacity-50",
         full ? "w-full" : "px-[18px]",
         variantClass,
         className,
