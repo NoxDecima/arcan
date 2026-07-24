@@ -1210,19 +1210,37 @@ export function ConversationDetailRoute() {
       const bodyOverride = isEditing ? (
         <div className="flex flex-col gap-1">
           <div
-            className="flex items-center rounded-pill border border-hairline bg-bg px-3 h-[38px]"
+            className="rounded-r-4 border border-hairline bg-bg px-3 py-2"
             style={{ width: editBoxWidth(bubbleWidth) }}
           >
-            <input
+            <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleSaveEdit(message);
-                if (e.key === "Escape") setEditingMessageId(null);
+              onInput={(e) => {
+                const ta = e.currentTarget;
+                ta.style.height = "auto";
+                ta.style.height = `${ta.scrollHeight}px`;
               }}
-              className="flex-1 border-none outline-none bg-transparent font-body text-ui-row leading-none text-text"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleSaveEdit(message);
+                } else if (e.key === "Escape") {
+                  setEditingMessageId(null);
+                }
+              }}
+              rows={1}
+              className="block w-full resize-none border-none outline-none bg-transparent font-body text-ui-row leading-normal text-text max-h-[8.5rem] overflow-y-auto"
               data-testid="message-edit-input"
-              autoFocus
+              ref={(ta) => {
+                if (ta) {
+                  ta.style.height = "auto";
+                  ta.style.height = `${ta.scrollHeight}px`;
+                  ta.focus();
+                  const len = ta.value.length;
+                  ta.setSelectionRange(len, len);
+                }
+              }}
             />
           </div>
           <div className="flex gap-1 justify-end">
