@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { AttachmentTile } from "@/components/attachment-tile";
+import { ToastProvider } from "@/components/toast";
 
 vi.mock("jazz-tools", () => ({
   co: {
@@ -21,17 +22,19 @@ describe("sent image tile sizing (feedback round 4)", () => {
       revokeObjectURL: vi.fn(),
     }));
     render(
-      <AttachmentTile
-        attachment={{
-          mimeType: "image/png",
-          filename: "photo.png",
-          size: 1234,
-          data: { $jazz: { id: "co_zstream" } },
-        }}
-        mode="sent"
-        loadAs={{}}
-        onImageClick={() => {}}
-      />,
+      <ToastProvider>
+        <AttachmentTile
+          attachment={{
+            mimeType: "image/png",
+            filename: "photo.png",
+            size: 1234,
+            data: { $jazz: { id: "co_zstream" } },
+          }}
+          mode="sent"
+          loadAs={{}}
+          onImageClick={() => {}}
+        />
+      </ToastProvider>,
     );
     await waitFor(() => {
       expect(

@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ImageLightbox } from "@/components/image-lightbox";
+import { ToastProvider } from "@/components/toast";
 
 /**
  * #58: the lightbox download button must route through the platform
@@ -36,7 +37,9 @@ describe("ImageLightbox download (#58)", () => {
 
     const onClose = vi.fn();
     render(
-      <ImageLightbox src="blob:shown-url" filename="pic.png" onClose={onClose} />,
+      <ToastProvider>
+        <ImageLightbox src="blob:shown-url" filename="pic.png" onClose={onClose} />
+      </ToastProvider>,
     );
 
     screen.getByTestId("image-lightbox-download").click();
@@ -55,7 +58,11 @@ describe("ImageLightbox download (#58)", () => {
     const fetchMock = vi.fn(async () => ({ blob: async () => new Blob(["x"]) }));
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ImageLightbox src="blob:shown-url" onClose={() => {}} />);
+    render(
+      <ToastProvider>
+        <ImageLightbox src="blob:shown-url" onClose={() => {}} />
+      </ToastProvider>,
+    );
     screen.getByTestId("image-lightbox-download").click();
 
     await waitFor(() => {
