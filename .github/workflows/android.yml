@@ -6,7 +6,9 @@ on:
     branches: [main]
     # v* is the general release convention (APK + VPS deploy via deploy.yml);
     # android-v* kept as a forgiving alias that builds the APK only.
-    tags: ["v*", "android-v*"]
+    # nightly-* publishes a PRE-release APK for testing — never "Latest",
+    # never deployed (deploy.yml is v*-only by design).
+    tags: ["v*", "android-v*", "nightly-*"]
   pull_request:
     paths:
       - "src/**"
@@ -142,3 +144,7 @@ jobs:
           files: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # nightly-* → pre-release: never shown as "Latest"; body warns testers.
+          prerelease: ${{ startsWith(github.ref, 'refs/tags/nightly-') }}
+          name: ${{ startsWith(github.ref, 'refs/tags/nightly-') && format('Nightly {0}', github.ref_name) || github.ref_name }}
+          body: ${{ startsWith(github.ref, 'refs/tags/nightly-') && format('⚠️ Nightly testing build from `{0}` — not a stable release. Install the latest stable unless you are testing.', github.sha) || '' }}

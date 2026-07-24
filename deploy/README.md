@@ -66,6 +66,19 @@ On failure the workflow dumps `docker compose ps` + recent logs into the CI
 log. **`.env` is never touched by CI** — it stays on this VPS, manually
 managed. Rollback = re-run the workflow from the previous good tag.
 
+### Nightly channel
+
+`nightly-*` tags publish a signed pre-release APK for phone testing without
+touching prod:
+
+```bash
+git tag nightly-YYYY-MM-DD && git push origin nightly-YYYY-MM-DD
+```
+
+`android.yml` builds + publishes a GitHub **Pre-release** (never "Latest").
+`deploy.yml` does **not** trigger — its filter is `v*` only by design.
+The stable release flow (`v*` → APK + VPS deploy) is unchanged.
+
 One-time setup:
 
 1. Generate a dedicated deploy keypair (on your machine, NOT your personal
