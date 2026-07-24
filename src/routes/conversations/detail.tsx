@@ -516,6 +516,15 @@ export function ConversationDetailRoute() {
   //  - on NEW messages while open: smooth-scroll to bottom as before.
   const messageCount = (conversation as any)?.messages?.length ?? 0;
   const positionedForRef = useRef<string | null>(null);
+  // Scroll-state foundation (feedback round 5). userScrolledRef latches true on
+  // the first user-initiated scroll of this conversation visit — after that we
+  // stop auto-re-anchoring and defer to the user. programmaticScrollRef marks
+  // scrolls WE trigger so the scroll listener doesn't mistake them for user
+  // intent. isNearBottom drives auto-scroll-on-new + the jump button (Task 7).
+  const userScrolledRef = useRef(false);
+  const programmaticScrollRef = useRef(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [unseenCount, setUnseenCount] = useState(0);
   useEffect(() => {
     const convKey = (conversation as any)?.$jazz?.id as string | undefined;
     if (!convKey || messageCount === 0) return;
@@ -523,10 +532,21 @@ export function ConversationDetailRoute() {
     // the bottom and then have the divider pop in above the fold.
     if (anchorReadyFor !== convKey) return;
     if (positionedForRef.current === convKey) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (isNearBottom) {
+        programmaticScrollRef.current = true;
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        requestAnimationFrame(() => {
+          programmaticScrollRef.current = false;
+        });
+      } else {
+        setUnseenCount((n) => n + 1);
+      }
       return;
     }
     positionedForRef.current = convKey;
+    userScrolledRef.current = false;
+    setIsNearBottom(true);
+    setUnseenCount(0);
     // Direct scrollTop on the timeline element — scrollIntoView could pick
     // the wrong scroll ancestor / fire pre-layout and leave the view at the
     // top (walkthrough round 4). Divider goes to the viewport top (short
@@ -534,6 +554,7 @@ export function ConversationDetailRoute() {
     const position = () => {
       const el = timelineRef.current;
       if (!el) return;
+      programmaticScrollRef.current = true;
       const divider = el.querySelector(
         '[data-testid="new-messages-divider"]',
       ) as HTMLElement | null;
@@ -548,6 +569,9 @@ export function ConversationDetailRoute() {
       } else {
         el.scrollTop = el.scrollHeight;
       }
+      requestAnimationFrame(() => {
+        programmaticScrollRef.current = false;
+      });
     };
     // position after this commit's layout, then re-assert on the next frame
     // (late layout: fonts/avatars can shift heights under the first pass)
@@ -557,7 +581,64 @@ export function ConversationDetailRoute() {
     }, 0);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageCount, (conversation as any)?.$jazz?.id, anchorReadyFor]);
+  }, [messageCount, (conversation as any)?.$jazz?.id, anchorReadyFor, isNearBottom]);
+
+  // Re-anchor on late content growth (images/fonts/avatars) until the user
+  // takes over, and keep isNearBottom current (feedback round 5).
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const NEAR_PX = 120;
+
+    const computeNearBottom = () =>
+      el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_PX;
+
+    const onScroll = () => {
+      if (!programmaticScrollRef.current) userScrolledRef.current = true;
+      const near = computeNearBottom();
+      setIsNearBottom(near);
+      if (near) setUnseenCount(0);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    const ro = new ResizeObserver(() => {
+      if (userScrolledRef.current) return;
+      programmaticScrollRef.current = true;
+      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(() => {
+        programmaticScrollRef.current = false;
+      });
+      setIsNearBottom(true);
+      setUnseenCount(0);
+    });
+    for (const child of Array.from(el.children)) ro.observe(child);
+    const mo = new MutationObserver(() => {
+      for (const child of Array.from(el.children)) ro.observe(child);
+    });
+    mo.observe(el, { childList: true });
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(conversation as any)?.$jazz?.id]);
+
+  // Jump-to-latest (feedback round 5): user tapped the floating button →
+  // smooth-scroll to the bottom, clear the "scrolled away" latch and count.
+  const handleJumpToLatest = () => {
+    const el = timelineRef.current;
+    if (!el) return;
+    programmaticScrollRef.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
+    userScrolledRef.current = false;
+    setIsNearBottom(true);
+    setUnseenCount(0);
+  };
 
   // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
   // anchorRef captures lastReadAt at mount for the "new messages" divider.
@@ -1508,6 +1589,11 @@ export function ConversationDetailRoute() {
         }
         composer={composerElement}
         overlay={<SyncStatusPill />}
+        jumpToLatest={{
+          visible: !isNearBottom,
+          count: unseenCount,
+          onClick: handleJumpToLatest,
+        }}
         emptyText="No messages yet. Say hello!"
         bottomRef={bottomRef}
         timelineRef={timelineRef}

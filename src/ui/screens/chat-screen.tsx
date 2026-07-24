@@ -9,6 +9,7 @@ import { Fragment } from "react";
 import { HAv } from "../kit/hav";
 import { PHeader } from "../kit/pheader";
 import { MessageRow } from "../kit/bubble";
+import { Icon } from "../kit/icon";
 import type { ChatTimelineItem, ChatHeaderVM } from "./chat-types";
 import type { JSX } from "react";
 
@@ -20,6 +21,7 @@ export function ChatScreen({
   onOpenInfo,
   composer,
   overlay,
+  jumpToLatest,
   emptyText,
   bottomRef,
   timelineRef,
@@ -43,6 +45,14 @@ export function ChatScreen({
    * container passes a zero-height overlay (SyncStatusPill) whose content
    * floats over the timeline top; it costs no layout space. */
   overlay?: ReactNode;
+  /** Floating "jump to latest" control (feedback round 5). Rendered in a
+   * zero-height positioning context just above the composer; visible only
+   * when the user has scrolled away from the bottom. */
+  jumpToLatest?: {
+    visible: boolean;
+    count: number;
+    onClick: () => void;
+  };
   /** Rung 4: empty-state text */
   emptyText?: string;
   /** container's autoscroll anchor */
@@ -217,6 +227,31 @@ export function ChatScreen({
         {/* Autoscroll anchor — container attaches bottomRef here */}
         <div ref={bottomRef} />
       </div>
+
+      {/* Jump-to-latest — zero-height context; button floats above composer */}
+      {jumpToLatest?.visible && (
+        <div className="relative z-10 h-0">
+          <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+            <button
+              type="button"
+              data-testid="jump-to-latest"
+              onClick={jumpToLatest.onClick}
+              aria-label="Jump to latest messages"
+              className="pointer-events-auto flex items-center gap-1.5 rounded-pill border border-hairline bg-panel px-3 py-[6px] shadow-level-1 transition-tint duration-fast ease-out hover:bg-panel-2 active:bg-hairline animate-arcan-rise"
+            >
+              <Icon d="chev" size={16} className="text-text-2 rotate-90" />
+              {jumpToLatest.count > 0 && (
+                <span
+                  data-testid="jump-to-latest-count"
+                  className="font-mono font-semibold text-ui-caps tracking-caps-sm text-arcan-accent animate-arcan-pop"
+                >
+                  {jumpToLatest.count}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Composer slot — container renders ChatComposer */}
       {composer}
