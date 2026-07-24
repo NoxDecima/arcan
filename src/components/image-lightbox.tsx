@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useModalA11y } from "@/components/modal-shell";
 import { useAttachmentImageUrl } from "@/components/attachment-tile";
+import { useToast } from "@/components/toast";
 import { downloadBlob } from "@/platform/files";
 import { Icon, tapClass } from "@/ui/kit";
 
@@ -38,6 +39,7 @@ export function ImageLightbox({
 }: ImageLightboxProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const toast = useToast();
 
   const navMode = Boolean(images && images.length > 0 && loadAs);
   const count = navMode ? images!.length : 0;
@@ -90,7 +92,9 @@ export function ImageLightbox({
     if (!displaySrc) return;
     try {
       const blob = await (await fetch(displaySrc)).blob();
-      await downloadBlob(blob, displayName || "image");
+      const outcome = await downloadBlob(blob, displayName || "image");
+      if (outcome === "downloads")
+        toast({ icon: "check", text: "Saved to Downloads", tone: "success" });
     } catch (err) {
       console.warn("[image-lightbox] download failed:", err);
     }

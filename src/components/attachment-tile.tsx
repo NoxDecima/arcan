@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
 import { imageAspect } from "@/components/attachment-grid";
+import { useToast } from "@/components/toast";
 import { downloadBlob } from "@/platform/files";
 
 interface AttachmentTileProps {
@@ -78,6 +79,7 @@ export function AttachmentTile({
   const streamID = attachment?.data?.$jazz?.id ?? null;
 
   const url = useAttachmentImageUrl(attachment, loadAs);
+  const toast = useToast();
 
   // Image tile
   if (isImage(mimeType)) {
@@ -176,7 +178,9 @@ export function AttachmentTile({
     try {
       const blob = await co.fileStream().loadAsBlob(streamID, { loadAs });
       if (!blob) return;
-      await downloadBlob(blob, filename);
+      const outcome = await downloadBlob(blob, filename);
+      if (outcome === "downloads")
+        toast({ icon: "check", text: "Saved to Downloads", tone: "success" });
     } catch (err) {
       console.warn("[attachment-tile] download failed:", err);
     }
