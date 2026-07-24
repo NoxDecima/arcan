@@ -8,6 +8,8 @@ name: deploy
 
 on:
   push:
+    # v* ONLY — nightly-* tags must NEVER deploy prod (nightly-channel spec
+    # 2026-07-24). Do not widen this filter.
     tags: ["v*"]
   workflow_dispatch:
 

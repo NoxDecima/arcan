@@ -11,6 +11,9 @@ Record date + device + result per line.
 - [x] /diag: IndexedDB write PASS *(2026-07-13, Fairphone 5 5G)*
 - [x] /diag: sync WebSocket PASS *(2026-07-13, Fairphone 5 5G — wss via Tailscale Serve → Vite proxy → local sync; real deployment still to be tested)*
 
+## Nightly channel
+- [ ] Nightly channel: sideload a nightly APK over the installed stable (same versionCode replace) and back to the next stable — both transitions succeed without uninstall.
+
 ## Core flows
 - [ ] Install signed APK (adb install or Obtainium)
 - [ ] Create account → bearer login → relaunch app → still signed in
