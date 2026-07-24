@@ -70,6 +70,25 @@ original feature slices above, a separate track).
   115%), applied pre-paint in main.tsx; fixed-portal coords (message menu, divider
   scroll) divide by `getUiZoom()`. Android device checklist scale+ladder section is a
   post-merge pass. Spec: `docs/superpowers/specs/2026-07-23-appearance-iteration-design.md`.
+- Feedback round 5 (2026-07-24) — implemented + merged (`--no-ff`). Dark ladder
+  darkened one rung to "Night" (canvas `#1a1b26`; stage/rail `#101014`, chrome
+  `#16161e`, raised `#24283b`, raised-2 `#343a55`, border `#2f3549` — light mode +
+  text + accents untouched) with parity `ladderSkin` + PWA manifest + `theme-color`
+  follow-through (142/142). Viewport zoom lock (`maximum-scale=1,user-scalable=no`)
+  kills pinch/double-tap. Optional `FileBlob.width/height` captured at upload
+  (`readImageDimensions` via `createImageBitmap`) feed a dimension-aware image grid
+  (pure `attachment-grid.ts`: cells clamped 3:4–4:3, hero ~2× clamped 1.5–2.5; any
+  member lacking dims → legacy fixed squares) and exact single-image placeholder
+  reservation. Timeline `ResizeObserver` re-anchoring (fixes open-mid-history) with a
+  first-user-scroll latch + programmatic-scroll guard; auto-scroll-on-new demoted to
+  near-bottom-only + a jump-to-latest presenter slot (count badge). Multi-line message
+  edit (auto-grow textarea, Enter saves / Shift+Enter newline). Android download
+  writes straight to public `$HOME/Download/**` (no dialog, `mobile.json` capability;
+  `DownloadOutcome` return → "Saved to Downloads" toast; dialog demoted to fallback).
+  Composer tray first-photo race fixed (synchronous preview URL via lazy `useState`).
+  Note: the re-anchor effect needs a `ResizeObserver` stub in `tests/setup.ts` (jsdom
+  gap); `AttachmentTile`/`ImageLightbox` now require a `ToastProvider` in their tests.
+  Spec: `docs/superpowers/specs/2026-07-24-feedback-round-5-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

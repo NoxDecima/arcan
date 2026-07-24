@@ -77,6 +77,34 @@ Record date + device + result per line.
       as a valid image (previously the tap silently did nothing — blob-URL
       anchor downloads are broken in the Android WebView; now routed through
       the dialog+fs plugins). Verify from the multi-image lightbox too.
+      NOTE: superseded by the round-5 direct-to-Downloads behavior below —
+      the save dialog is now only a fallback (Android 10 / write failure).
+
+## Feedback round 5 (2026-07-24)
+- [ ] Night ladder: dark theme reads noticeably deeper than the previous
+      nightly; chrome (headers, sidebar, composer bar) sits DARKER than the
+      chat canvas; bubbles/cards read as raised above the canvas. Light theme
+      looks unchanged.
+- [ ] Pinch-zoom and double-tap zoom do NOTHING anywhere in the app (viewport
+      is locked). Confirm on the timeline, an image, and the settings screen.
+- [ ] Settings → tap the UI-scale pill through 90/100/115/130 — size changes
+      without the page visibly zooming/jumping around the tap point.
+- [ ] Lightbox download AND the file-attachment download button land the file
+      directly in the device Downloads folder (visible in Files → Downloads)
+      with a "Saved to Downloads" toast — NO save-location dialog.
+- [ ] Add a single photo to the composer → it appears in the tray immediately
+      (no need to add a second attachment to make the first show).
+- [ ] Open a conversation that has image history → the view lands at the
+      bottom (newest), not stranded mid-history, even as images finish loading
+      and change heights.
+- [ ] Scroll up while new messages arrive (send from another device) → the
+      view stays put and a jump-to-latest chevron with a count appears above
+      the composer; tap it → smooth-scrolls to newest and the button hides.
+- [ ] Multi-portrait image message: the bubble is taller (not squashed square);
+      a single portrait/landscape image hugs its true shape without a dead
+      strip. Legacy pre-round-5 image messages still render (fixed squares).
+- [ ] Edit a long (multi-line) message → the edit box grows to multiple lines;
+      Shift+Enter inserts a newline, Enter saves, Escape cancels.
 
 ## Feedback round 4 (2026-07-17)
 - [ ] Timestamps render below bubbles (right-aligned own, left-aligned theirs);
