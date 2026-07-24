@@ -1,6 +1,7 @@
 // src/components/attachment-tile.tsx
 import { useEffect, useState } from "react";
 import { co } from "jazz-tools";
+import { imageAspect } from "@/components/attachment-grid";
 import { downloadBlob } from "@/platform/files";
 
 interface AttachmentTileProps {
@@ -108,6 +109,7 @@ export function AttachmentTile({
       );
     }
     // sent
+    const aspect = imageAspect(attachment);
     return (
       <button
         type="button"
@@ -121,10 +123,17 @@ export function AttachmentTile({
             src={url}
             alt={filename}
             className="rounded max-w-full object-contain border border-hairline"
-            // Inline style overrides the max-w-full class, so cap against the
-            // container too — a 280px image must not escape a ~190px mobile
-            // bubble (feedback round 4).
             style={{ maxWidth: "min(280px, 100%)", maxHeight: 280 }}
+          />
+        ) : aspect != null ? (
+          <div
+            className="bg-panel-2 rounded border border-hairline"
+            style={{
+              width: "min(280px, 100%)",
+              aspectRatio: aspect,
+              maxHeight: 280,
+            }}
+            data-testid="attachment-tile-loading"
           />
         ) : (
           <div className="w-48 h-32 flex items-center justify-center bg-panel-2 text-xs text-dim rounded">
