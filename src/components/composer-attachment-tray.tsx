@@ -18,18 +18,21 @@ function formatSize(bytes: number): string {
 }
 
 function PendingPreview({ file }: { file: File }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const isImage = file.type.startsWith("image/");
+  // Create the object URL during the FIRST render (lazy useState initializer)
+  // so the <img> is present on the first commit — no dependence on a later
+  // render. A post-mount effect left the image hidden until an unrelated
+  // re-render (e.g. adding a second attachment) flushed the pending URL.
+  const [url] = useState<string | null>(() =>
+    isImage ? URL.createObjectURL(file) : null,
+  );
   useEffect(() => {
-    if (!file.type.startsWith("image/")) {
-      setUrl(null);
-      return;
-    }
-    const u = URL.createObjectURL(file);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [file]);
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [url]);
 
-  if (file.type.startsWith("image/") && url) {
+  if (isImage && url) {
     return <img src={url} alt={file.name} className="w-full h-full object-cover" />;
   }
   return (
