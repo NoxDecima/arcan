@@ -23,6 +23,7 @@ import {
   isImageAttachment,
   useAttachmentImageUrl,
 } from "@/components/attachment-tile";
+import { imageAspect, gridUnitAspect, heroAspect } from "@/components/attachment-grid";
 import { ImageLightbox } from "@/components/image-lightbox";
 
 interface MessageAttachmentsProps {
@@ -47,14 +48,20 @@ function gridCellClass(visibleCount: number, index: number): string {
 function GridCell({
   attachment,
   loadAs,
-  cellClass,
+  spanFull,
+  aspectRatio,
+  fallbackAspectClass,
   overlayCount,
   onOpen,
 }: {
   attachment: any;
   loadAs: any;
-  cellClass: string;
-  /** When set, renders the "+N" scrim; clicking expands (does NOT open lightbox). */
+  /** true → col-span-2 (hero / odd remainder cell) */
+  spanFull: boolean;
+  /** computed clamped aspect, or null to use fallbackAspectClass */
+  aspectRatio: number | null;
+  /** Tailwind aspect class used when aspectRatio is null (legacy, no dims) */
+  fallbackAspectClass: string;
   overlayCount?: number;
   onOpen: () => void;
 }) {
@@ -64,7 +71,8 @@ function GridCell({
     <button
       type="button"
       onClick={onOpen}
-      className={`relative block overflow-hidden bg-panel-2 ${cellClass}`}
+      className={`relative block overflow-hidden bg-panel-2 ${spanFull ? "col-span-2" : ""} ${aspectRatio == null ? fallbackAspectClass : ""}`}
+      style={aspectRatio == null ? undefined : { aspectRatio }}
       data-testid="attachment-grid-cell"
       aria-label={
         overlayCount != null
@@ -84,7 +92,6 @@ function GridCell({
         </span>
       )}
       {overlayCount != null && (
-        // bg-black/N scrim — theme-agnostic overlay, sanctioned by check-tokens.
         <span
           data-testid="attachment-grid-more"
           className="absolute inset-0 bg-black/50 flex items-center justify-center font-mono font-semibold text-ui-heading text-white"
@@ -142,6 +149,13 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
     const visible = expanded ? images : images.slice(0, 4);
     const hidden = images.length - 4; // always the total hidden count for the scrim
 
+    // Dimension-aware sizing: one clamped aspect shared by square-ish cells
+    // (rows stay aligned); the full-width hero/odd cell gets ~2× that. If any
+    // visible image lacks stored dims, unit is null → fall back to the fixed
+    // aspect classes (legacy behavior, unchanged).
+    const unit = gridUnitAspect(visible.map((att: any) => imageAspect(att)));
+    const hero = unit == null ? null : heroAspect(unit);
+
     return (
       <>
         <div
@@ -159,27 +173,28 @@ export function MessageAttachments({ message, isMine, me, gridWidth }: MessageAt
             className="grid grid-cols-2 gap-[2px] rounded-[8px] overflow-hidden"
           >
             {visible.map((att: any, i: number) => {
-              // Collapsed mode: last cell of 4 gets the "+N" scrim when there
-              // are hidden images. Clicking expands — does NOT open lightbox.
               const isScrimCell =
                 !expanded && hasHidden && i === visible.length - 1;
+              const legacyClass = expanded
+                ? expandedCellClass(images.length, i)
+                : gridCellClass(visible.length, i);
+              const spanFull = legacyClass.startsWith("col-span-2");
+              const fallbackAspectClass = spanFull
+                ? "aspect-[2/1]"
+                : "aspect-square";
+              const aspectRatio =
+                unit == null ? null : spanFull ? hero : unit;
               return (
                 <GridCell
                   key={(att as any)?.$jazz?.id ?? i}
                   attachment={att}
                   loadAs={me}
-                  cellClass={
-                    expanded
-                      ? expandedCellClass(images.length, i)
-                      : gridCellClass(visible.length, i)
-                  }
+                  spanFull={spanFull}
+                  aspectRatio={aspectRatio}
+                  fallbackAspectClass={fallbackAspectClass}
                   overlayCount={isScrimCell ? hidden : undefined}
                   onOpen={
-                    isScrimCell
-                      ? () => setExpanded(true)
-                      : // i indexes `images` directly in both modes (collapsed
-                        // shows images.slice(0, 4), expanded shows all).
-                        () => setLightboxIndex(i)
+                    isScrimCell ? () => setExpanded(true) : () => setLightboxIndex(i)
                   }
                 />
               );

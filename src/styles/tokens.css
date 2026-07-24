@@ -11,13 +11,13 @@
      chrome (darkest structural) → bg (content canvas) → panel (raised) →
      panel-2 (raised-2). Dark rungs are Tokyo Night/Storm canon; text +
      accents intentionally untouched (surfaces-only adoption). */
-  --color-bg: #1f2335;
-  --color-bg-stage: #16161e;
-  --color-panel: #292e42;
-  --color-panel-2: #414868;
-  --color-rail: #16161e;
-  --color-chrome: #1a1b26;
-  --color-border: #3b4261;
+  --color-bg: #1a1b26;
+  --color-bg-stage: #101014;
+  --color-panel: #24283b;
+  --color-panel-2: #343a55;
+  --color-rail: #101014;
+  --color-chrome: #16161e;
+  --color-border: #2f3549;
   --color-text: #c8d1f0;
   --color-text-2: #8a93b2;
   --color-dim: #5a6380;

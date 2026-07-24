@@ -13,4 +13,11 @@ export const FileBlob = co.map({
   size: z.number(),
   filename: z.string().optional(),
   data: co.fileStream(),
+  // Intrinsic pixel dimensions of image attachments, captured at upload
+  // (feedback round 5). Optional FOREVER: required-field validation runs
+  // before migration backfill visibility, and legacy attachments have none.
+  // Consumers (grid aspect, placeholder reservation) treat absence as
+  // "unknown" and fall back to fixed layout.
+  width: z.number().optional(),
+  height: z.number().optional(),
 });

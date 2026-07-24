@@ -10,7 +10,7 @@ const { skin, alpha } = window;
    on the constructed skin so both gallery sides render the approved ladder.
    Text + accent channels intentionally untouched (surfaces-only adoption). */
 const LADDER = {
-  dark:  { stage: '#16161e', rail: '#16161e', bg: '#1f2335', panel: '#292e42', panel2: '#414868', border: '#3b4261', chrome: '#1a1b26' },
+  dark:  { stage: '#101014', rail: '#101014', bg: '#1a1b26', panel: '#24283b', panel2: '#343a55', border: '#2f3549', chrome: '#16161e' },
   light: { stage: '#d0d3e0', rail: '#d0d3e0', bg: '#e1e2e7', panel: '#eceef4', panel2: '#dfe2ec', border: '#c9cdda', chrome: '#d9dce7' },
 };
 const ladderSkin = (s) => ({ ...s, c: { ...s.c, ...LADDER[s.theme] } });

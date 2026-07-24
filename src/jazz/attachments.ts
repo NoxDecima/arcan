@@ -1,6 +1,7 @@
 import { co } from "jazz-tools";
 import type { Group } from "jazz-tools";
 import { FileBlob } from "@/jazz/schema/FileBlob";
+import { readImageDimensions } from "@/jazz/image-dimensions";
 
 export const MAX_ATTACHMENT_BYTES = 5_000_000;
 
@@ -34,6 +35,7 @@ export async function uploadAttachment(
   if (file.size > MAX_ATTACHMENT_BYTES) {
     throw new AttachmentTooLargeError(file.name, file.size);
   }
+  const dims = await readImageDimensions(file);
   const stream = await co.fileStream().createFromBlob(file, { owner });
   const blob = FileBlob.create(
     {
@@ -41,6 +43,7 @@ export async function uploadAttachment(
       size: file.size,
       filename: file.name,
       data: stream,
+      ...(dims ? { width: dims.width, height: dims.height } : {}),
     },
     { owner },
   );

@@ -1,4 +1,4 @@
-import { isTauri } from "./is-tauri";
+import { isTauri, isTauriAndroid } from "./is-tauri";
 
 /**
  * File pick/save adapters.
@@ -152,7 +152,46 @@ export async function pickFilesNative(
   return files;
 }
 
-/** Returns true if the shell handled the save; false → caller uses anchor. */
+/**
+ * Insert a numeric suffix before the extension so a same-named file in the
+ * public Downloads folder (possibly owned by another app and invisible to us)
+ * doesn't block the write. Do NOT use exists() — cross-app files are invisible
+ * but still collide.
+ */
+export function downloadCollisionSafeName(filename: string, stamp: number): string {
+  const dot = filename.lastIndexOf(".");
+  if (dot <= 0) return `${filename}-${stamp}`;
+  return `${filename.slice(0, dot)}-${stamp}${filename.slice(dot)}`;
+}
+
+export type DownloadOutcome = "downloads" | "dialog" | "web";
+
+/**
+ * Android: write the blob directly into the PUBLIC Downloads collection via
+ * plugin-fs against BaseDirectory.Home ("/storage/emulated/0" → "Download/").
+ * No dialog, no permissions on Android 11+. Returns true when it wrote the
+ * file; false to let the caller fall back to the save dialog (e.g. Android 10
+ * path restrictions).
+ */
+async function saveToDownloadsAndroid(
+  blob: Blob,
+  filename: string,
+): Promise<boolean> {
+  if (!isTauriAndroid()) return false;
+  try {
+    const { writeFile, BaseDirectory } = await import("@tauri-apps/plugin-fs");
+    const stamp = Date.now();
+    const name = downloadCollisionSafeName(filename, stamp);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    await writeFile(`Download/${name}`, bytes, { baseDir: BaseDirectory.Home });
+    return true;
+  } catch (err) {
+    console.warn("[files] direct Downloads write failed, falling back:", err);
+    return false;
+  }
+}
+
+/** Returns true if the shell handled the save via the dialog. */
 export async function saveBlobNative(
   blob: Blob,
   filename: string,
@@ -160,7 +199,6 @@ export async function saveBlobNative(
   if (!isTauri()) return false;
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeFile } = await import("@tauri-apps/plugin-fs");
-
   const path = await save({ defaultPath: filename });
   if (!path) return true; // user cancelled — handled, don't anchor-download
   const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -169,16 +207,17 @@ export async function saveBlobNative(
 }
 
 /**
- * Download/save a blob with full platform dispatch (#58): native save dialog
- * in the shell — where `<a download>` on blob: URLs silently does nothing
- * (wry limitation) — programmatic anchor download on the web. Every download
- * call site should route through this rather than building its own anchor.
- *
- * Errors from the native path propagate (see module contract above): callers
- * wrap in try/catch and surface via their existing error affordance.
+ * Download/save a blob with platform dispatch. Android → straight to the
+ * public Downloads folder (no dialog); other shells → save dialog; web →
+ * anchor download. Returns which path handled it so call sites can toast
+ * ("Saved to Downloads" only for the direct Android path).
  */
-export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
-  if (await saveBlobNative(blob, filename)) return;
+export async function downloadBlob(
+  blob: Blob,
+  filename: string,
+): Promise<DownloadOutcome> {
+  if (await saveToDownloadsAndroid(blob, filename)) return "downloads";
+  if (await saveBlobNative(blob, filename)) return "dialog";
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -187,4 +226,5 @@ export async function downloadBlob(blob: Blob, filename: string): Promise<void> 
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  return "web";
 }
