@@ -14,7 +14,24 @@ const LADDER = {
   light: { stage: '#d0d3e0', rail: '#d0d3e0', bg: '#e1e2e7', panel: '#eceef4', panel2: '#dfe2ec', border: '#c9cdda', chrome: '#d9dce7' },
 };
 const ladderSkin = (s) => ({ ...s, c: { ...s.c, ...LADDER[s.theme] } });
-const { Icon, HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, tapBtn, ArcanMark, Body } = window;
+const { HAv, PButton, PCard, PSectionLabel, PRow, PToggle, PField, PQR, tapBtn, ArcanMark, Body } = window;
+/* intent-fix (feedback round 6): crisper settings gear. The app kit
+   (src/ui/kit/icon.tsx) swapped the muddy ArcanUI gear for a cleaner cog. The
+   frozen design kit (design/hf-kit.jsx, gitignored) keeps the old glyph, so
+   override the gear HERE in the tracked parity source — both galleries then
+   render the new gear without depending on a re-extractable design edit. The
+   SVG mirrors the ported Icon exactly (viewBox 24, stroke=c, sw, round caps);
+   all other icons delegate to the frozen kit's Icon unchanged. */
+const RawIcon = window.Icon;
+const GEAR_D_R6 = 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 12a7.4 7.4 0 0 0-.07-1l1.86-1.45-1.9-3.3-2.2.88a7.3 7.3 0 0 0-1.73-1l-.33-2.33h-3.8l-.33 2.33a7.3 7.3 0 0 0-1.73 1l-2.2-.88-1.9 3.3L6.67 11a7.4 7.4 0 0 0 0 2l-1.86 1.45 1.9 3.3 2.2-.88a7.3 7.3 0 0 0 1.73 1l.33 2.33h3.8l.33-2.33a7.3 7.3 0 0 0 1.73-1l2.2.88 1.9-3.3L19.33 13a7.4 7.4 0 0 0 .07-1z';
+function Icon({ d, c, size = 18, sw = 1.6, fill }) {
+  if (d !== 'gear') return React.createElement(RawIcon, { d, c, size, sw, fill });
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? c : 'none'} stroke={fill ? 'none' : c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={GEAR_D_R6} />
+    </svg>
+  );
+}
 const { HF_CONVOS, HF_CONTACTS, HF_MSGS } = window;
 // hf-flows.jsx window exports (available after hf-flows.js loads)
 const { AuthTitle: HfTitle, AuthSub: HfSub, AuthField: HfField, Wordmark } = window;
