@@ -15,7 +15,10 @@ export type IconName =
 export const IPATHS: Record<IconName, string> = {
   search:    'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   plus:      'M12 5v14M5 12h14',
-  gear:      'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 13a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V19a2 2 0 1 1-4 0 1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13a2 2 0 1 1 0-4 1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4a2 2 0 1 1 4 0 1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 20 11a2 2 0 1 1 0 4z',
+  // intent-fix (feedback round 6): the ported ArcanUI gear read muddy at
+  // 19–20px; swapped for a crisper cog. Mirrored in tests/parity/out/hf-kit.js
+  // so the parity mapping-table law holds (both galleries render identically).
+  gear:      'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 12a7.4 7.4 0 0 0-.07-1l1.86-1.45-1.9-3.3-2.2.88a7.3 7.3 0 0 0-1.73-1l-.33-2.33h-3.8l-.33 2.33a7.3 7.3 0 0 0-1.73 1l-2.2-.88-1.9 3.3L6.67 11a7.4 7.4 0 0 0 0 2l-1.86 1.45 1.9 3.3 2.2-.88a7.3 7.3 0 0 0 1.73 1l.33 2.33h3.8l.33-2.33a7.3 7.3 0 0 0 1.73-1l2.2.88 1.9-3.3L19.33 13a7.4 7.4 0 0 0 .07-1z',
   back:      'M15 18l-6-6 6-6',
   chev:      'M9 6l6 6-6 6',
   send:      'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z',
