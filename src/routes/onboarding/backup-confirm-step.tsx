@@ -57,7 +57,7 @@ export function BackupConfirmStep({
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <BackupConfirmScreen
         sub="type the words shown to prove you saved it"
         fields={fields}

@@ -89,6 +89,22 @@ original feature slices above, a separate track).
   Note: the re-anchor effect needs a `ResizeObserver` stub in `tests/setup.ts` (jsdom
   gap); `AttachmentTile`/`ImageLightbox` now require a `ToastProvider` in their tests.
   Spec: `docs/superpowers/specs/2026-07-24-feedback-round-5-design.md`.
+- Feedback round 6 (2026-07-25) — implemented + merged (`--no-ff`). Android
+  attachment-source tray (`ComposerAttachmentSheet` on `MobileBottomSheet`;
+  Photos + File reuse `pickFilesNative`; Android-only via `isTauriAndroid()`;
+  camera deferred — follow-up); UI-scale zoom refit (new `--ui-zoom` var +
+  `h-app`/`w-app` = `calc(100vh / var(--ui-zoom))` on the 12 full-viewport
+  shells — fixes 90% underfill / 130% overflow from CSS `zoom` on `h-screen`);
+  jump-to-latest relabelled to a "jump to latest" text (count plumbing removed);
+  crisper settings gear (kit swap + a TRACKED patched-`Icon` override in
+  `tests/parity/proto-cells.jsx` — the frozen design kit is gitignored, so the
+  override keeps parity design-independent, verified 142/142 with design/
+  reverted); composer first-photo preview hardened (`loading=eager
+  decoding=sync`) + on-device `console.debug` trace for the reopened Android bug
+  (#79 — web path proven on chromium, Android confirmation pending nightly).
+  Push notifications brainstormed then deferred — analysis in
+  `docs/superpowers/notes/2026-07-25-push-notifications-deliberation.md`. Spec:
+  `docs/superpowers/specs/2026-07-25-attachment-source-tray-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

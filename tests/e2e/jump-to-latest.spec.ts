@@ -7,14 +7,14 @@ import { createAccount, establishContact, openDirectChat } from "./helpers";
  *
  * Auto-scroll on incoming messages is now gated on "near bottom". When the
  * user has scrolled away, incoming messages no longer yank the view down;
- * instead a floating "jump to latest" button appears with a count badge of
- * the messages that arrived while scrolled away. Clicking it returns to the
+ * instead a floating "jump to latest" button appears with a fixed text label
+ * (round 6 relabel — was a numeric count badge). Clicking it returns to the
  * bottom and hides the button.
  *
  *   1. Alice + Bob become mutual contacts; both open the 1:1.
  *   2. Alice floods the timeline so it overflows and becomes scrollable.
  *   3. Alice scrolls her timeline to the top (scrolls away from bottom).
- *   4. Bob sends a message → Alice sees `jump-to-latest` with a numeric count.
+ *   4. Bob sends a message → Alice sees `jump-to-latest` with its text label.
  *   5. Alice clicks it → the button hides (she's back at the bottom).
  *
  * Cross-context Jazz sync can take several seconds, so cross-context
@@ -29,7 +29,7 @@ async function messageRowCount(page: Page): Promise<number> {
     .count();
 }
 
-test("jump-to-latest — scrolled-away user sees count, click returns to bottom", async ({
+test("jump-to-latest — scrolled-away user sees label, click returns to bottom", async ({
   browser,
 }) => {
   test.setTimeout(180_000); // generous for cross-context Jazz sync + flooding
@@ -101,7 +101,7 @@ test("jump-to-latest — scrolled-away user sees count, click returns to bottom"
 
     const rowsBeforeBobMsg = await messageRowCount(pageA);
 
-    // ── 4. Bob sends a message → Alice's count increments ───────────────────
+    // ── 4. Bob sends a message → Alice's jump button stays visible ──────────
     await pageB.getByTestId("composer-input").fill("Bob pokes from below");
     await pageB.getByTestId("composer-send-btn").click();
     await expect(pageB.getByTestId("message-timeline")).toContainText(
@@ -114,15 +114,11 @@ test("jump-to-latest — scrolled-away user sees count, click returns to bottom"
       .poll(() => messageRowCount(pageA), { timeout: 30_000 })
       .toBeGreaterThan(rowsBeforeBobMsg);
 
-    // The count badge shows and reads a positive integer.
-    const countBadge = pageA.getByTestId("jump-to-latest-count");
-    await expect(countBadge).toBeVisible({ timeout: 10_000 });
-    await expect
-      .poll(async () => {
-        const txt = (await countBadge.textContent())?.trim() ?? "";
-        return /^\d+$/.test(txt) ? parseInt(txt, 10) : 0;
-      }, { timeout: 10_000 })
-      .toBeGreaterThanOrEqual(1);
+    // The button shows its fixed "jump to latest" label (round 6 relabel).
+    await expect(pageA.getByTestId("jump-to-latest")).toBeVisible();
+    await expect(pageA.getByTestId("jump-to-latest")).toContainText(
+      "jump to latest",
+    );
 
     // Alice stayed near the top — the incoming message did not yank her down.
     await expect

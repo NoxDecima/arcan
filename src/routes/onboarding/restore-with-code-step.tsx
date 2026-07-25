@@ -101,7 +101,7 @@ export function RestoreWithCodeStep({ onBack }: RestoreWithCodeStepProps) {
   ) : undefined;
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <RestoreScreen
         code={phrase}
         onCode={setPhrase}

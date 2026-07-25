@@ -129,7 +129,7 @@ export function DiagRoute() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-panel p-6 font-mono text-sm text-text">
+    <div className="min-h-app bg-panel p-6 font-mono text-sm text-text">
       <h1 className="mb-4 text-base">arcan device diagnostics</h1>
       <ul className="space-y-2">
         {checks.length === 0 && <li className="text-dim">running checks…</li>}

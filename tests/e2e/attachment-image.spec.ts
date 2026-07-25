@@ -73,3 +73,43 @@ test("image attachment: Alice sends a PNG, Bob sees it + lightbox opens", async 
     await ctxB.close();
   }
 });
+
+// feedback round 6 (#79): the FIRST added photo must show its composer-tray
+// preview immediately (before sending), not only after a second attachment is
+// added. Round-5 (b1f235c) made the PendingPreview object URL synchronous; this
+// asserts the resulting <img> is actually VISIBLE on the first add, not merely
+// present in the DOM. (The on-device Android-WebView repro is separate — this
+// pins the web path.)
+test("a single added image shows its preview immediately", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const ctxA = await browser.newContext();
+  const pageA = await ctxA.newPage();
+  const ctxB = await browser.newContext();
+  const pageB = await ctxB.newPage();
+
+  try {
+    await pageA.goto("/");
+    await createAccount(pageA, "Alice");
+    await pageB.goto("/");
+    await createAccount(pageB, "Bob");
+
+    await establishContact(pageB, pageA, "Bob");
+    await openDirectChat(pageA, "Bob");
+
+    const input = pageA.locator('input[type="file"]');
+    await input.setInputFiles({
+      name: "one.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+    });
+    const item = pageA.getByTestId("composer-attachment-tray-item");
+    await expect(item).toHaveCount(1);
+    await expect(item.locator("img")).toBeVisible();
+  } finally {
+    await ctxA.close();
+    await ctxB.close();
+  }
+});

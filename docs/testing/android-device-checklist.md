@@ -116,3 +116,16 @@ Record date + device + result per line.
 - [ ] Tap-away closes the popover; edit and delete both work from it
 - [ ] Desktop web: right-click on an own message opens the same popover;
       right-click elsewhere keeps the browser's native context menu
+
+## Feedback round 6 (2026-07-25)
+- [ ] UI scale: at 90% the app still fills the screen edge-to-edge (no empty
+      margin); at 130% it fills without horizontal/vertical page scrolling.
+      Every step (90/100/115/130) refits.
+- [ ] Jump-to-latest button reads "jump to latest" (text), not a number.
+- [ ] Settings gear icon looks like a clean, well-defined gear at nav sizes.
+- [ ] Attach → a bottom sheet appears with "Photos" and "File"; "Photos" opens
+      the image picker, "File" opens the all-files picker; both attach + send;
+      the sheet dismisses on backdrop tap / back.
+- [ ] (#79) Adding a single photo shows it in the tray immediately — no need to
+      add a second. If still broken, check whether the console shows
+      "[composer] ingested 1 pending now grows".

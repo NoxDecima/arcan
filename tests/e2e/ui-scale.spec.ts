@@ -127,4 +127,24 @@ test.describe("UI scale", () => {
       await ctxB.close();
     }
   });
+
+  test("at 130% the app refits the viewport (no page overflow)", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("arcan-ui-scale", "130"));
+    await page.reload();
+    // Wait for the counter-scaled full-viewport shell to actually mount — a
+    // bare `body` selector matches during the pre-mount window where <html> is
+    // zoomed but the `h-app` shell (calc(100vh / var(--ui-zoom))) hasn't
+    // rendered yet, momentarily reporting scrollH = viewport × 1.3.
+    await page.waitForSelector(
+      '[data-testid="message-timeline"], [data-testid="home-main"], .h-app',
+      { timeout: 20_000 },
+    );
+    const overflow = await page.evaluate(() => {
+      const de = document.documentElement;
+      return { scrollW: de.scrollWidth, clientW: de.clientWidth, scrollH: de.scrollHeight, clientH: de.clientHeight };
+    });
+    expect(overflow.scrollW).toBeLessThanOrEqual(overflow.clientW + 2);
+    expect(overflow.scrollH).toBeLessThanOrEqual(overflow.clientH + 2);
+  });
 });

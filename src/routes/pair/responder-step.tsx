@@ -365,7 +365,7 @@ export function ResponderStep() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       {renderPhase()}
     </div>
   );

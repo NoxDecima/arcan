@@ -53,7 +53,7 @@ export function CredentialsStep({ onBack, onContinue }: CredentialsStepProps) {
   ) : undefined;
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <CredentialsScreen
         email={email}
         onEmail={setEmail}

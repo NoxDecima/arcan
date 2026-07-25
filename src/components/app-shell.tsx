@@ -71,7 +71,7 @@ export function AppShell() {
 
   if (isDesktop) {
     return (
-      <div className="h-screen w-screen flex bg-bg overflow-hidden">
+      <div className="h-app w-app flex bg-bg overflow-hidden">
           {/* NavColumn — or loading skeleton while Jazz resolves (sidebar-loading
               testid carried from legacy Sidebar loading state). */}
           {shell.loading ? (
@@ -117,7 +117,7 @@ export function AppShell() {
 
   // Mobile branch — PTabBar is the kit replacement for the legacy MobileTabBar.
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <MobileShell
         tabBar={
           isRoot ? (

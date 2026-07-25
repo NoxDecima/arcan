@@ -47,6 +47,8 @@ import {
 import { createPortal } from "react-dom";
 import { getUiZoom } from "@/styles/ui-scale";
 import { pickFilesNative } from "@/platform/files";
+import { ComposerAttachmentSheet, type AttachSource } from "@/components/composer-attachment-sheet";
+import { isTauriAndroid } from "@/platform/is-tauri";
 import { useParams, useNavigate } from "react-router-dom";
 import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useCoState } from "jazz-tools/react";
@@ -381,6 +383,7 @@ export function ConversationDetailRoute() {
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [attachSheetOpen, setAttachSheetOpen] = useState(false);
 
   // Edit/delete per-message state (moved from MessageBubble to this container)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -524,7 +527,6 @@ export function ConversationDetailRoute() {
   const userScrolledRef = useRef(false);
   const programmaticScrollRef = useRef(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
-  const [unseenCount, setUnseenCount] = useState(0);
   useEffect(() => {
     const convKey = (conversation as any)?.$jazz?.id as string | undefined;
     if (!convKey || messageCount === 0) return;
@@ -538,15 +540,12 @@ export function ConversationDetailRoute() {
         requestAnimationFrame(() => {
           programmaticScrollRef.current = false;
         });
-      } else {
-        setUnseenCount((n) => n + 1);
       }
       return;
     }
     positionedForRef.current = convKey;
     userScrolledRef.current = false;
     setIsNearBottom(true);
-    setUnseenCount(0);
     // Direct scrollTop on the timeline element — scrollIntoView could pick
     // the wrong scroll ancestor / fire pre-layout and leave the view at the
     // top (walkthrough round 4). Divider goes to the viewport top (short
@@ -597,7 +596,6 @@ export function ConversationDetailRoute() {
       if (!programmaticScrollRef.current) userScrolledRef.current = true;
       const near = computeNearBottom();
       setIsNearBottom(near);
-      if (near) setUnseenCount(0);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
 
@@ -609,7 +607,6 @@ export function ConversationDetailRoute() {
         programmaticScrollRef.current = false;
       });
       setIsNearBottom(true);
-      setUnseenCount(0);
     });
     for (const child of Array.from(el.children)) ro.observe(child);
     const mo = new MutationObserver(() => {
@@ -626,7 +623,7 @@ export function ConversationDetailRoute() {
   }, [(conversation as any)?.$jazz?.id]);
 
   // Jump-to-latest (feedback round 5): user tapped the floating button →
-  // smooth-scroll to the bottom, clear the "scrolled away" latch and count.
+  // smooth-scroll to the bottom, clear the "scrolled away" latch.
   const handleJumpToLatest = () => {
     const el = timelineRef.current;
     if (!el) return;
@@ -637,7 +634,6 @@ export function ConversationDetailRoute() {
     });
     userScrolledRef.current = false;
     setIsNearBottom(true);
-    setUnseenCount(0);
   };
 
   // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
@@ -871,7 +867,12 @@ export function ConversationDetailRoute() {
         rejections.push(verdict.reason);
       }
     }
-    if (accepted.length > 0) setPending((prev) => [...prev, ...accepted]);
+    if (accepted.length > 0) {
+      setPending((prev) => [...prev, ...accepted]);
+      // feedback round 6 (#79): on-device trace — if the first preview is
+      // still missing on Android, this confirms ingest fired with N files.
+      console.debug("[composer] ingested", accepted.length, "pending now grows");
+    }
     if (rejections.length > 0) {
       // Inline error line keeps its testid (e2e); the toast makes the
       // rejection impossible to miss (walkthrough 2026-07-05: silent-looking
@@ -895,6 +896,30 @@ export function ConversationDetailRoute() {
       return;
     }
     fileInputRef.current?.click();
+  }
+
+  function handleAttachClick() {
+    if (isTauriAndroid()) {
+      setAttachSheetOpen(true);
+      return;
+    }
+    void handlePickClick();
+  }
+
+  async function handlePickSource(source: AttachSource) {
+    setAttachSheetOpen(false);
+    try {
+      const native = await pickFilesNative({
+        imagesOnly: source === "photos",
+        multiple: true,
+        maxBytes: MAX_ATTACHMENT_BYTES,
+      });
+      if (native !== null && native.length > 0) ingestFiles(native);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "pick failed — try again.";
+      showComposerError(msg);
+      toast({ tone: "error", icon: "alert", text: msg });
+    }
   }
 
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
@@ -1551,7 +1576,7 @@ export function ConversationDetailRoute() {
         disabled={composerDisabled}
         sending={isSending}
         hasAttachments={pending.length > 0}
-        onAttach={handlePickClick}
+        onAttach={handleAttachClick}
         onPaste={handleComposerPaste}
         attachSlot={
           pending.length > 0 ? (
@@ -1609,7 +1634,6 @@ export function ConversationDetailRoute() {
         overlay={<SyncStatusPill />}
         jumpToLatest={{
           visible: !isNearBottom,
-          count: unseenCount,
           onClick: handleJumpToLatest,
         }}
         emptyText="No messages yet. Say hello!"
@@ -1620,6 +1644,11 @@ export function ConversationDetailRoute() {
         titleTestId="conversation-title"
         avatarTestId="conversation-header-avatar"
         headerRight={headerMenu}
+      />
+      <ComposerAttachmentSheet
+        open={attachSheetOpen}
+        onClose={() => setAttachSheetOpen(false)}
+        onPick={handlePickSource}
       />
     </main>
   );
