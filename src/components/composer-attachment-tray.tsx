@@ -33,7 +33,19 @@ function PendingPreview({ file }: { file: File }) {
   }, [url]);
 
   if (isImage && url) {
-    return <img src={url} alt={file.name} className="w-full h-full object-cover" />;
+    // feedback round 6 (#79): the object URL is already synchronous (round 5),
+    // but the Android WebView could still defer decoding the first blob until a
+    // later relayout (e.g. adding a second attachment), leaving the first
+    // preview blank. eager+sync forces the decode on the first paint.
+    return (
+      <img
+        src={url}
+        alt={file.name}
+        loading="eager"
+        decoding="sync"
+        className="w-full h-full object-cover"
+      />
+    );
   }
   return (
     <div className="w-full h-full flex flex-col items-center justify-center text-xs">

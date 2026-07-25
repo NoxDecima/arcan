@@ -867,7 +867,12 @@ export function ConversationDetailRoute() {
         rejections.push(verdict.reason);
       }
     }
-    if (accepted.length > 0) setPending((prev) => [...prev, ...accepted]);
+    if (accepted.length > 0) {
+      setPending((prev) => [...prev, ...accepted]);
+      // feedback round 6 (#79): on-device trace — if the first preview is
+      // still missing on Android, this confirms ingest fired with N files.
+      console.debug("[composer] ingested", accepted.length, "pending now grows");
+    }
     if (rejections.length > 0) {
       // Inline error line keeps its testid (e2e); the toast makes the
       // rejection impossible to miss (walkthrough 2026-07-05: silent-looking
