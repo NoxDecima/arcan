@@ -869,9 +869,19 @@ export function ConversationDetailRoute() {
     }
     if (accepted.length > 0) {
       setPending((prev) => [...prev, ...accepted]);
-      // feedback round 6 (#79): on-device trace — if the first preview is
-      // still missing on Android, this confirms ingest fired with N files.
-      console.debug("[composer] ingested", accepted.length, "pending now grows");
+      // feedback round 6/7 (#79): logcat-visible ingest trace (console.log,
+      // not debug — Android logcat drops debug level). Confirms ingest fired,
+      // how many were accepted vs picked, and each accepted file's MIME type
+      // (an unrecognized/empty type would render the file fallback, not an
+      // image preview — one candidate for the intermittent miss).
+      console.log(
+        "[composer] ingested " +
+          accepted.length +
+          " of " +
+          Array.from(files).length +
+          " types=" +
+          accepted.map((a) => a.file.type || "(none)").join(","),
+      );
     }
     if (rejections.length > 0) {
       // Inline error line keeps its testid (e2e); the toast makes the

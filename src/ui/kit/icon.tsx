@@ -15,12 +15,13 @@ export type IconName =
 export const IPATHS: Record<IconName, string> = {
   search:    'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   plus:      'M12 5v14M5 12h14',
-  // intent-fix (feedback round 6): the ported ArcanUI gear read muddy at
-  // 19–20px; swapped for a crisper cog. The frozen design kit keeps the old
-  // glyph, so the proto side overrides gear via a tracked patched Icon in
+  // intent-fix (feedback round 6/7): the ported ArcanUI gear read muddy at
+  // 19–20px; user-picked the standard lucide "settings" gear (outline, matches
+  // the rest of the icon family). The frozen design kit keeps the old glyph, so
+  // the proto side overrides gear via a tracked patched Icon in
   // tests/parity/proto-cells.jsx (NOT the gitignored design source) — both
   // galleries render this path and parity stays 142/142.
-  gear:      'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 12a7.4 7.4 0 0 0-.07-1l1.86-1.45-1.9-3.3-2.2.88a7.3 7.3 0 0 0-1.73-1l-.33-2.33h-3.8l-.33 2.33a7.3 7.3 0 0 0-1.73 1l-2.2-.88-1.9 3.3L6.67 11a7.4 7.4 0 0 0 0 2l-1.86 1.45 1.9 3.3 2.2-.88a7.3 7.3 0 0 0 1.73 1l.33 2.33h3.8l.33-2.33a7.3 7.3 0 0 0 1.73-1l2.2.88 1.9-3.3L19.33 13a7.4 7.4 0 0 0 .07-1z',
+  gear:      'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
   back:      'M15 18l-6-6 6-6',
   chev:      'M9 6l6 6-6 6',
   send:      'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z',
