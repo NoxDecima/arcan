@@ -42,7 +42,7 @@ export function BackupDisplayStep({
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <BackupDisplayScreen
         gridSlot={gridSlot}
         ackSlot={ackSlot}

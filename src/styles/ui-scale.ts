@@ -48,7 +48,13 @@ export function readStoredUiScale(androidShell: boolean): UiScaleStep {
 export function applyUiScale(scale: UiScaleStep): void {
   // 100% clears the property entirely — a held `zoom: 1` is inert but would
   // make "is scaling active" checks ambiguous.
-  document.documentElement.style.zoom = scale === 100 ? "" : String(scale / 100);
+  const root = document.documentElement;
+  root.style.zoom = scale === 100 ? "" : String(scale / 100);
+  // Counter-scale token consumed by the full-viewport shells (`h-app`/`w-app`):
+  // under CSS `zoom: Z`, `100vh` renders at viewport×Z, so shells sized
+  // `calc(100vh / var(--ui-zoom))` render at exactly the physical viewport at
+  // any scale (fixes the round-5 over/underflow — feedback round 6).
+  root.style.setProperty("--ui-zoom", String(scale / 100));
 }
 
 /** Boot path: read (or default) and apply. Called before createRoot in main.tsx. */

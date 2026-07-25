@@ -79,7 +79,7 @@ export function RecoveryRoute() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       {stage.kind === "enter-code" ? (
         <StageCode error={error} onSubmit={handleEnterCode} />
       ) : (

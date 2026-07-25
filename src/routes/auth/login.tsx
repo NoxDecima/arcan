@@ -58,7 +58,7 @@ export function LoginRoute() {
   ) : undefined;
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-app w-app flex flex-col">
       <SignInScreen
         email={email}
         onEmail={setEmail}

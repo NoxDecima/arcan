@@ -77,6 +77,18 @@ export default {
         'neutral-wash': 'var(--color-neutral-wash)',
         'accent-wash': 'var(--color-accent-wash)',
       },
+      height: {
+        // Full physical viewport under CSS zoom (feedback round 6): counter-
+        // scales 100vh by --ui-zoom (default 1) so the app shell refits the
+        // screen at every UI-scale step instead of over/underflowing.
+        app: "calc(100vh / var(--ui-zoom, 1))",
+      },
+      width: {
+        app: "calc(100vw / var(--ui-zoom, 1))",
+      },
+      minHeight: {
+        app: "calc(100vh / var(--ui-zoom, 1))",
+      },
       fontFamily: {
         body: ['var(--font-body)'],
         mono: ['var(--font-mono)'],
