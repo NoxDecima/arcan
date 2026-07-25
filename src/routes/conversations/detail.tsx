@@ -47,6 +47,8 @@ import {
 import { createPortal } from "react-dom";
 import { getUiZoom } from "@/styles/ui-scale";
 import { pickFilesNative } from "@/platform/files";
+import { ComposerAttachmentSheet, type AttachSource } from "@/components/composer-attachment-sheet";
+import { isTauriAndroid } from "@/platform/is-tauri";
 import { useParams, useNavigate } from "react-router-dom";
 import { useUpNavigation } from "@/nav/use-up-navigation";
 import { useAccount, useCoState } from "jazz-tools/react";
@@ -381,6 +383,7 @@ export function ConversationDetailRoute() {
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [attachSheetOpen, setAttachSheetOpen] = useState(false);
 
   // Edit/delete per-message state (moved from MessageBubble to this container)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -888,6 +891,30 @@ export function ConversationDetailRoute() {
       return;
     }
     fileInputRef.current?.click();
+  }
+
+  function handleAttachClick() {
+    if (isTauriAndroid()) {
+      setAttachSheetOpen(true);
+      return;
+    }
+    void handlePickClick();
+  }
+
+  async function handlePickSource(source: AttachSource) {
+    setAttachSheetOpen(false);
+    try {
+      const native = await pickFilesNative({
+        imagesOnly: source === "photos",
+        multiple: true,
+        maxBytes: MAX_ATTACHMENT_BYTES,
+      });
+      if (native !== null && native.length > 0) ingestFiles(native);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "pick failed — try again.";
+      showComposerError(msg);
+      toast({ tone: "error", icon: "alert", text: msg });
+    }
   }
 
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
@@ -1544,7 +1571,7 @@ export function ConversationDetailRoute() {
         disabled={composerDisabled}
         sending={isSending}
         hasAttachments={pending.length > 0}
-        onAttach={handlePickClick}
+        onAttach={handleAttachClick}
         onPaste={handleComposerPaste}
         attachSlot={
           pending.length > 0 ? (
@@ -1612,6 +1639,11 @@ export function ConversationDetailRoute() {
         titleTestId="conversation-title"
         avatarTestId="conversation-header-avatar"
         headerRight={headerMenu}
+      />
+      <ComposerAttachmentSheet
+        open={attachSheetOpen}
+        onClose={() => setAttachSheetOpen(false)}
+        onPick={handlePickSource}
       />
     </main>
   );
