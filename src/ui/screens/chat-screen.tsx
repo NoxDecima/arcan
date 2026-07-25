@@ -45,12 +45,11 @@ export function ChatScreen({
    * container passes a zero-height overlay (SyncStatusPill) whose content
    * floats over the timeline top; it costs no layout space. */
   overlay?: ReactNode;
-  /** Floating "jump to latest" control (feedback round 5). Rendered in a
-   * zero-height positioning context just above the composer; visible only
-   * when the user has scrolled away from the bottom. */
+  /** Floating "jump to latest" control (feedback round 5, relabelled round 6).
+   * Rendered in a zero-height context above the composer; visible only when
+   * the user has scrolled away from the bottom. */
   jumpToLatest?: {
     visible: boolean;
-    count: number;
     onClick: () => void;
   };
   /** Rung 4: empty-state text */
@@ -240,14 +239,9 @@ export function ChatScreen({
               className="pointer-events-auto flex items-center gap-1.5 rounded-pill border border-hairline bg-panel px-3 py-[6px] shadow-level-1 transition-tint duration-fast ease-out hover:bg-panel-2 active:bg-hairline animate-arcan-rise"
             >
               <Icon d="chev" size={16} className="text-text-2 rotate-90" />
-              {jumpToLatest.count > 0 && (
-                <span
-                  data-testid="jump-to-latest-count"
-                  className="font-mono font-semibold text-ui-caps tracking-caps-sm text-arcan-accent animate-arcan-pop"
-                >
-                  {jumpToLatest.count}
-                </span>
-              )}
+              <span className="font-mono font-medium text-ui-caps tracking-caps-sm uppercase text-text-2">
+                jump to latest
+              </span>
             </button>
           </div>
         </div>

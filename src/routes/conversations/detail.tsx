@@ -524,7 +524,6 @@ export function ConversationDetailRoute() {
   const userScrolledRef = useRef(false);
   const programmaticScrollRef = useRef(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
-  const [unseenCount, setUnseenCount] = useState(0);
   useEffect(() => {
     const convKey = (conversation as any)?.$jazz?.id as string | undefined;
     if (!convKey || messageCount === 0) return;
@@ -538,15 +537,12 @@ export function ConversationDetailRoute() {
         requestAnimationFrame(() => {
           programmaticScrollRef.current = false;
         });
-      } else {
-        setUnseenCount((n) => n + 1);
       }
       return;
     }
     positionedForRef.current = convKey;
     userScrolledRef.current = false;
     setIsNearBottom(true);
-    setUnseenCount(0);
     // Direct scrollTop on the timeline element — scrollIntoView could pick
     // the wrong scroll ancestor / fire pre-layout and leave the view at the
     // top (walkthrough round 4). Divider goes to the viewport top (short
@@ -597,7 +593,6 @@ export function ConversationDetailRoute() {
       if (!programmaticScrollRef.current) userScrolledRef.current = true;
       const near = computeNearBottom();
       setIsNearBottom(near);
-      if (near) setUnseenCount(0);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
 
@@ -609,7 +604,6 @@ export function ConversationDetailRoute() {
         programmaticScrollRef.current = false;
       });
       setIsNearBottom(true);
-      setUnseenCount(0);
     });
     for (const child of Array.from(el.children)) ro.observe(child);
     const mo = new MutationObserver(() => {
@@ -626,7 +620,7 @@ export function ConversationDetailRoute() {
   }, [(conversation as any)?.$jazz?.id]);
 
   // Jump-to-latest (feedback round 5): user tapped the floating button →
-  // smooth-scroll to the bottom, clear the "scrolled away" latch and count.
+  // smooth-scroll to the bottom, clear the "scrolled away" latch.
   const handleJumpToLatest = () => {
     const el = timelineRef.current;
     if (!el) return;
@@ -637,7 +631,6 @@ export function ConversationDetailRoute() {
     });
     userScrolledRef.current = false;
     setIsNearBottom(true);
-    setUnseenCount(0);
   };
 
   // Unit 4 Phase 3: mark-on-send + mark-on-leave semantics.
@@ -1609,7 +1602,6 @@ export function ConversationDetailRoute() {
         overlay={<SyncStatusPill />}
         jumpToLatest={{
           visible: !isNearBottom,
-          count: unseenCount,
           onClick: handleJumpToLatest,
         }}
         emptyText="No messages yet. Say hello!"
