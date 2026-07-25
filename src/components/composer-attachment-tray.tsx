@@ -27,6 +27,20 @@ function PendingPreview({ file }: { file: File }) {
     isImage ? URL.createObjectURL(file) : null,
   );
   useEffect(() => {
+    // feedback round 6/7 (#79): logcat-visible trace of the intermittent
+    // first-preview bug — confirms this preview mounted, whether the file is
+    // treated as an image, and whether a blob URL was created. Pair with the
+    // img onLoad/onError below to localize state-vs-paint on-device.
+    console.log(
+      "[composer] preview mount name=" +
+        file.name +
+        " type=" +
+        (file.type || "(none)") +
+        " isImage=" +
+        isImage +
+        " url=" +
+        (url ? "yes" : "no"),
+    );
     return () => {
       if (url) URL.revokeObjectURL(url);
     };
@@ -44,6 +58,8 @@ function PendingPreview({ file }: { file: File }) {
         loading="eager"
         decoding="sync"
         className="w-full h-full object-cover"
+        onLoad={() => console.log("[composer] img LOADED " + file.name)}
+        onError={() => console.warn("[composer] img ERROR " + file.name)}
       />
     );
   }
