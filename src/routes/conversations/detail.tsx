@@ -877,33 +877,11 @@ export function ConversationDetailRoute() {
     }
   }
 
-  // #79: Android's native file picker opens a separate Activity that pauses the
-  // WebView; on resume the WebView can skip flushing the pending paint until the
-  // next touch, so a freshly-added attachment tray stays INVISIBLE until another
-  // interaction ("doesn't show until a second attachment is added"). The React
-  // state is already correct (both items appear once repainted) — only the paint
-  // is stalled. Force a compositor repaint after the picker returns: a 1-frame
-  // body-opacity flip + forced reflow re-composites the surface. Cheap, no
-  // side effects, imperceptible; only invoked on the native (Tauri) pick paths.
-  function nudgeRepaint() {
-    if (typeof document === "undefined") return;
-    requestAnimationFrame(() => {
-      const b = document.body;
-      const prev = b.style.opacity;
-      b.style.opacity = "0.999";
-      void b.offsetHeight; // force reflow
-      requestAnimationFrame(() => {
-        b.style.opacity = prev;
-      });
-    });
-  }
-
   async function handlePickClick() {
     try {
       const native = await pickFilesNative({ multiple: true, maxBytes: MAX_ATTACHMENT_BYTES });
       if (native !== null) {
         if (native.length > 0) ingestFiles(native);
-        nudgeRepaint();
         return;
       }
     } catch (err) {
@@ -932,7 +910,6 @@ export function ConversationDetailRoute() {
         maxBytes: MAX_ATTACHMENT_BYTES,
       });
       if (native !== null && native.length > 0) ingestFiles(native);
-      nudgeRepaint();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "pick failed — try again.";
       showComposerError(msg);
