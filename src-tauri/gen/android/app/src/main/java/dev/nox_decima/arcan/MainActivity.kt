@@ -1,7 +1,11 @@
 package dev.nox_decima.arcan
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,5 +28,38 @@ class MainActivity : TauriActivity() {
       v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
       insets
     }
+  }
+
+  // #79: returning from a native picker Activity (file/gallery/camera) can
+  // leave the WebView surface un-repainted until the next touch, so a freshly
+  // added attachment tray stays invisible ("doesn't show until a second
+  // attachment is added"). A JS requestAnimationFrame nudge can't fix it — rAF
+  // isn't serviced while the surface is stalled. Force redraws at the Android
+  // view layer: invalidate the WebView repeatedly for ~2s after resume, so it
+  // re-composites once the picker's JS continuation (pick -> ingest -> setState)
+  // has updated the DOM. Cheap (a handful of invalidates), only on resume.
+  override fun onResume() {
+    super.onResume()
+    val webView = findWebView(findViewById(android.R.id.content)) ?: return
+    val handler = Handler(Looper.getMainLooper())
+    var frames = 0
+    handler.post(object : Runnable {
+      override fun run() {
+        webView.invalidate()
+        frames += 1
+        if (frames < 60) handler.postDelayed(this, 33L)
+      }
+    })
+  }
+
+  private fun findWebView(view: View?): WebView? {
+    if (view is WebView) return view
+    if (view is ViewGroup) {
+      for (i in 0 until view.childCount) {
+        val found = findWebView(view.getChildAt(i))
+        if (found != null) return found
+      }
+    }
+    return null
   }
 }
