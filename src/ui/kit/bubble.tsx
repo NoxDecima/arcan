@@ -97,14 +97,21 @@ export function Bubble({
         </div>
       )}
       {bodyOverride ??
-        richBody ?? (
+        (richBody != null ? (
+          // Markdown body: carry bodyTestId (e.g. "bubble-body") on the wrapper
+          // so consumers/tests that read the body still find it — richBody
+          // replaced the plain text span that used to hold the testid.
+          <div {...(bodyTestId ? { "data-testid": bodyTestId } : {})}>
+            {richBody}
+          </div>
+        ) : (
           <span
             className="block font-body text-ui-bubble"
             {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
           >
             {m.text}
           </span>
-        )}
+        ))}
     </div>
   );
 }
