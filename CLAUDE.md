@@ -118,9 +118,27 @@ original feature slices above, a separate track).
   newline — block markdown needs newlines; proto `PComposerBar` matched to a
   textarea, intent-fix). Follow-up: lazy-load the markdown bundle if initial
   size matters. Spec: `docs/superpowers/specs/2026-07-30-markdown-messages-design.md`.
-- Camera capture (attachment tray) — spec written
-  (`docs/superpowers/specs/2026-07-30-camera-capture-design.md`), native
-  ACTION_IMAGE_CAPTURE + downscale; scheduled as its own round after markdown.
+- Camera capture (attachment tray, 2026-07-30) — implemented + merged
+  (`--no-ff`). A **Camera** row on the Android attachment sheet
+  (`ComposerAttachmentSheet`). Research revised the mechanism away from a
+  hand-rolled Kotlin/Rust plugin: **wry 0.55.1 already fires
+  `MediaStore.ACTION_IMAGE_CAPTURE`** when a `<input accept="image/*"
+  capture="environment">` is clicked (wry PR #685), and CAMERA permission is
+  already merged via the barcode-scanner AAR — so this is native capture with
+  **zero Kotlin/Rust/deps/manifest edits**. `detail.tsx` gets a dedicated
+  hidden `<input capture>` (`cameraInputRef`); `handlePickSource("camera")`
+  clicks it and the photo arrives on its own `onChange` (NOT `pickFilesNative`,
+  which the Android attach path otherwise uses and which bypasses the input).
+  `handleCameraCapture` runs each shot through `downscaleToFit`
+  (`src/jazz/image-downscale.ts`: canvas → JPEG re-encode, lowering
+  quality then scale until under the 5 MB cap; passthrough for under-cap /
+  non-image; never throws) BEFORE ingest — a raw camera photo routinely
+  exceeds the cap and the user can't "pick a smaller one". FileProvider
+  hardened proactively with `<external-files-path name="my_capture"
+  path="Pictures" />` (wry writes the temp capture under
+  `getExternalFilesDir(DIRECTORY_PICTURES)`). Web/desktop unaffected (sheet is
+  Android-only). Native path isn't web-e2e drivable → on-device via nightly.
+  Spec: `docs/superpowers/specs/2026-07-30-camera-capture-design.md`.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

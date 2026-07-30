@@ -9,54 +9,70 @@ The Android attachment sheet (`ComposerAttachmentSheet`, feedback round 6) offer
 **Photos** and **File**. The reserved third row — **Take a photo** with the
 camera — was deferred (NOX-83 / local follow-up). This adds it.
 
-## Decisions (brainstorm)
+## Decisions (brainstorm + research revision)
 
-- **Native capture** (chosen over a `<input capture>` web spike): launch the
-  system camera via `ACTION_IMAGE_CAPTURE` and route the result through the
-  existing ingest. Reliable, no dependence on wry's file-chooser honoring the
-  `capture` attribute.
+- **Native capture via the WebView's `<input capture>`** — research (2026-07-30)
+  revised the mechanism. The original plan was a Kotlin/Rust
+  `ACTION_IMAGE_CAPTURE` bridge; research found that **wry itself already fires
+  `MediaStore.ACTION_IMAGE_CAPTURE`** from `onShowFileChooser` when a
+  `<input accept="image/*" capture="environment">` is clicked (wry PR #685,
+  present in this repo's exact `wry 0.55.1` / `tauri 2.11.5` per `Cargo.lock`),
+  and `CAMERA` permission is already merged into the app manifest via the
+  `tauri-plugin-barcode-scanner` AAR. So this IS native capture — with **zero
+  Kotlin, zero Rust, zero new deps, zero manifest edits** — dramatically lower
+  risk than a hand-rolled plugin (which can't be built/verified locally).
+  Rejected: the Kotlin `@TauriPlugin` bridge and the raw-JNI command (both
+  high blind-build risk); a community camera plugin (immature).
 - **Downscale** camera photos before ingest so they fit the 5 MB attachment cap
-  (`MAX_ATTACHMENT_BYTES`) — phone photos are routinely 3–12 MB.
-- Android app only (the sheet is Android-only). No web/desktop camera.
+  (`MAX_ATTACHMENT_BYTES`) — phone photos are routinely 3–12 MB, and the ingest
+  size check would otherwise reject them.
+- Android app only (the sheet is Android-only). No web/desktop camera row.
 
 ## Mechanism
 
-### Native capture (Kotlin + a Tauri command bridge)
+### WebView `<input capture>` (the wry-native camera path)
 
-1. **Permission / manifest.** Use `ACTION_IMAGE_CAPTURE` which delegates to the
-   installed camera app, so the app itself needs **no** `CAMERA` runtime
-   permission (declaring it would, paradoxically, *require* it to be granted —
-   so we deliberately do NOT declare `android.permission.CAMERA`). The existing
-   `FileProvider` (already configured for downloads, `file_paths.xml`) supplies
-   the `EXTRA_OUTPUT` content URI the camera writes to. Add a
-   `<queries>`/`ACTION_IMAGE_CAPTURE` entry if targetSdk visibility requires it.
-2. **Kotlin (MainActivity).** Register an `ActivityResultLauncher` for
-   `ACTION_IMAGE_CAPTURE` (writing to a temp file under the app cache via the
-   FileProvider). Expose a suspend/callback entry the Rust command can invoke;
-   on result, hand back the temp file path (or a "cancelled" signal).
-3. **Rust command.** A `#[tauri::command] capture_photo()` that triggers the
-   Kotlin launcher and resolves with the temp file path (or null on cancel).
-   Registered in `src-tauri/src/lib.rs` (mobile-only).
-4. **JS platform seam.** `src/platform/camera.ts` → `capturePhotoNative():
-   Promise<File | null>` — invokes the command, reads the temp file bytes via
-   `@tauri-apps/plugin-fs` (same pattern as `pickFilesNative`), sniffs the MIME
-   (`sniffImageMime`), builds a `File`, and best-effort deletes the temp file.
-   `@tauri-apps/*` imports stay confined to `src/platform/` (purity guard).
-5. **Downscale.** `src/jazz/image-downscale.ts` → `downscaleToFit(file, maxBytes)`:
-   if `file.size <= maxBytes`, return as-is; else decode via `createImageBitmap`,
-   draw to a `<canvas>` at progressively lower scale/JPEG quality until under the
-   cap, return a new `File` (`image/jpeg`). Pure-ish (browser canvas APIs);
-   unit-testable with a stubbed canvas.
-6. **Wire-up.** `ComposerAttachmentSheet` gains a **Camera** row (`camera`
-   icon). `detail.tsx` `handlePickSource("camera")` calls `capturePhotoNative()`
-   → `downscaleToFit` → existing `ingestFiles` → `nudgeRepaint`-equivalent is
-   already handled natively by the round-10 `onResume` invalidate.
+The captured photo arrives via the input's **DOM `onChange`** (`e.target.files`),
+NOT via `pickFilesNative` — the current Android attach path routes to
+`pickFilesNative` (dialog+fs), which bypasses the input; wry's camera fires only
+from the WebView `<input>`'s own click. So the Camera source must click a
+dedicated `<input capture>` and let its `onChange` deliver the `File`.
+
+1. **Dedicated hidden input.** In `detail.tsx`, add alongside the existing
+   file input a second: `<input ref={cameraInputRef} type="file"
+   accept="image/*" capture="environment" className="hidden"
+   onChange={handleCameraCapture} />`.
+2. **Camera source branch.** `ComposerAttachmentSheet` gains a **Camera** row
+   (`camera` icon, Android-only sheet). `detail.tsx` `handlePickSource("camera")`
+   calls `cameraInputRef.current?.click()` and returns — it does NOT call
+   `pickFilesNative` for the camera source.
+3. **Capture handler + downscale.** `handleCameraCapture(e)` reads
+   `e.target.files`, runs each image through `downscaleToFit` (below), then
+   `ingestFiles`, and resets `e.target.value`. Downscaling BEFORE `ingestFiles`
+   matters — a raw camera photo often exceeds the 5 MB cap and would be rejected
+   by `isAcceptablePick`; the user can't "pick a smaller photo" from a camera.
+4. **Downscale util.** `src/jazz/image-downscale.ts` → `downscaleToFit(file, maxBytes)`:
+   if `file.size <= maxBytes` or non-image → return as-is; else decode via
+   `createImageBitmap`, draw to a `<canvas>` at progressively lower scale/JPEG
+   quality until under the cap, return a new `image/jpeg` `File`. Uses browser
+   canvas APIs; unit-tested with stubs.
+5. **FileProvider hardening (proactive).** Add
+   `<external-files-path name="my_capture" path="Pictures" />` to
+   `src-tauri/gen/android/app/src/main/res/xml/file_paths.xml` — wry writes the
+   temp capture under `getExternalFilesDir(DIRECTORY_PICTURES)`, and the current
+   `file_paths.xml` lacks that root; harmless if unused, prevents a possible
+   on-device `Failed to find configured root`.
+
+No Rust, no Kotlin, no capability/permission edits (CAMERA already merged via
+barcode-scanner; FileProvider already declared). Round-10 `onResume` WebView
+invalidate already covers the post-capture repaint.
 
 ### Fallback
 
-If `capturePhotoNative` throws or the plugin is unavailable, surface the
-existing composer error toast (no silent failure). Camera row is shown only on
-`isTauriAndroid()`.
+If the capture yields no file (user cancels) it's a no-op. If `downscaleToFit`
+throws (decode failure), fall back to ingesting the original file (the ingest
+size check then applies its normal reject-with-toast). Camera row is shown only
+on `isTauriAndroid()`.
 
 ## Testing
 

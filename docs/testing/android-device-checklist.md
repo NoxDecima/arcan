@@ -123,9 +123,9 @@ Record date + device + result per line.
       Every step (90/100/115/130) refits.
 - [ ] Jump-to-latest button reads "jump to latest" (text), not a number.
 - [ ] Settings gear icon looks like a clean, well-defined gear at nav sizes.
-- [ ] Attach → a bottom sheet appears with "Photos" and "File"; "Photos" opens
-      the image picker, "File" opens the all-files picker; both attach + send;
-      the sheet dismisses on backdrop tap / back.
+- [ ] Attach → a bottom sheet appears with "Photos", "File", and "Camera";
+      "Photos" opens the image picker, "File" opens the all-files picker; both
+      attach + send; the sheet dismisses on backdrop tap / back.
 - [ ] (#79) Adding a single photo shows it in the tray immediately — no need to
       add a second. If still broken, check whether the console shows
       "[composer] ingested 1 pending now grows".
@@ -142,3 +142,14 @@ Record date + device + result per line.
 - [ ] Long-press on your own markdown message still opens the edit/delete menu;
       choosing Edit shows the RAW markdown (not the rendered version).
 - [ ] A plain-text message (no markdown) still looks normal.
+
+## Camera capture (#83, 2026-07-30)
+- [ ] Attach → bottom sheet → "Camera" opens the system camera app.
+- [ ] Take a photo → confirm → the photo lands in the composer tray (as a
+      pending attachment) → send → it appears in the conversation.
+- [ ] Cancelling the camera (back out without a shot) returns to the chat
+      cleanly with no pending attachment and no error toast.
+- [ ] A large capture (multi-MB) still sends — it's downscaled to fit the 5 MB
+      cap rather than being rejected with "too large".
+- [ ] After returning from the camera, the WebView repaints (no blank/frozen
+      screen — the round-10 onResume invalidate covers this).

@@ -82,6 +82,7 @@ import {
   AttachmentTooLargeError,
   MAX_ATTACHMENT_BYTES,
 } from "@/jazz/attachments";
+import { downscaleToFit } from "@/jazz/image-downscale";
 import { formatSystemEventMessage } from "@/components/system-event";
 import { useToast } from "@/components/toast";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -380,6 +381,7 @@ export function ConversationDetailRoute() {
 
   // Composer state (moved from Composer component to this container)
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [composerText, setComposerText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [composerError, setComposerError] = useState<string | null>(null);
@@ -904,6 +906,14 @@ export function ConversationDetailRoute() {
 
   async function handlePickSource(source: AttachSource) {
     setAttachSheetOpen(false);
+    // Camera: the wry WebView fires ACTION_IMAGE_CAPTURE from a native
+    // <input capture> click (NOT via pickFilesNative, which the Android path
+    // otherwise uses); the photo arrives on that input's onChange
+    // (handleCameraCapture). See the camera-capture spec (2026-07-30).
+    if (source === "camera") {
+      cameraInputRef.current?.click();
+      return;
+    }
     try {
       const native = await pickFilesNative({
         imagesOnly: source === "photos",
@@ -921,6 +931,25 @@ export function ConversationDetailRoute() {
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) ingestFiles(e.target.files);
     e.target.value = ""; // reset so re-picking the same file fires onChange
+  }
+
+  // Camera capture (2026-07-30): downscale large photos to fit the 5 MB cap
+  // BEFORE ingest — a raw camera shot often exceeds it and the user can't pick
+  // a smaller one. Falls back to the original on any decode failure (ingest's
+  // size check then rejects with the normal toast).
+  async function handleCameraCapture(e: ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    e.target.value = "";
+    if (!files || files.length === 0) return;
+    const out: File[] = [];
+    for (const f of Array.from(files)) {
+      try {
+        out.push(await downscaleToFit(f, MAX_ATTACHMENT_BYTES));
+      } catch {
+        out.push(f);
+      }
+    }
+    ingestFiles(out);
   }
 
   function handleRemovePending(tempId: string) {
@@ -1539,6 +1568,18 @@ export function ConversationDetailRoute() {
         className="hidden"
         onChange={handleFileInputChange}
         data-testid="composer-file-input"
+      />
+      {/* Camera capture (2026-07-30): a dedicated input whose `capture` attr
+          makes the wry WebView open the system camera (ACTION_IMAGE_CAPTURE);
+          the photo arrives on its onChange, downscaled then ingested. */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleCameraCapture}
+        data-testid="composer-camera-input"
       />
       {composerDisabled && (
         <div

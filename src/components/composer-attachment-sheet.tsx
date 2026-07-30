@@ -1,12 +1,14 @@
 // src/components/composer-attachment-sheet.tsx
-// Android attachment-source tray (feedback round 6). Tapping the composer
-// attach button on the Android shell opens this sheet; picking a source closes
-// it and opens the matching native picker. Camera is deferred (see the marker).
+// Android attachment-source tray (feedback round 6; Camera added 2026-07-30).
+// Tapping the composer attach button on the Android shell opens this sheet;
+// picking a source closes it and opens the matching native picker. Camera
+// clicks a dedicated `<input capture>` in detail.tsx (wry-native
+// ACTION_IMAGE_CAPTURE), not pickFilesNative — see the camera-capture spec.
 import { MobileBottomSheet } from "@/components/modal-shell";
 import { Icon } from "@/ui/kit/icon";
 import { tapClass } from "@/ui/kit/tap";
 
-export type AttachSource = "photos" | "file";
+export type AttachSource = "photos" | "file" | "camera";
 
 interface ComposerAttachmentSheetProps {
   open: boolean;
@@ -16,7 +18,7 @@ interface ComposerAttachmentSheetProps {
 
 function SourceRow({ testId, icon, label, onClick }: {
   testId: string;
-  icon: "image" | "paperclip";
+  icon: "image" | "paperclip" | "camera";
   label: string;
   onClick: () => void;
 }) {
@@ -41,7 +43,7 @@ export function ComposerAttachmentSheet({ open, onClose, onPick }: ComposerAttac
       <div className="flex flex-col gap-1 pb-2">
         <SourceRow testId="attach-source-photos" icon="image" label="Photos" onClick={() => onPick("photos")} />
         <SourceRow testId="attach-source-file" icon="paperclip" label="File" onClick={() => onPick("file")} />
-        {/* Camera row — future (needs CAMERA permission + native capture). */}
+        <SourceRow testId="attach-source-camera" icon="camera" label="Camera" onClick={() => onPick("camera")} />
       </div>
     </MobileBottomSheet>
   );
