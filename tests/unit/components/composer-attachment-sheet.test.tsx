@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ComposerAttachmentSheet } from "@/components/composer-attachment-sheet";
 
 describe("ComposerAttachmentSheet", () => {
-  it("renders Photos, File, and Camera rows when open", () => {
+  it("renders Camera, Photos, and File items when open", () => {
     render(<ComposerAttachmentSheet open onClose={() => {}} onPick={() => {}} />);
     expect(screen.getByTestId("attach-source-photos")).toBeInTheDocument();
     expect(screen.getByTestId("attach-source-file")).toBeInTheDocument();

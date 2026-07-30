@@ -16,7 +16,9 @@ interface ComposerAttachmentSheetProps {
   onPick: (source: AttachSource) => void;
 }
 
-function SourceRow({ testId, icon, label, onClick }: {
+// Horizontal source item (2026-07-30, user direction): icon-in-circle on top,
+// label below — laid out as a row of equal columns, share-sheet style.
+function SourceItem({ testId, icon, label, onClick }: {
   testId: string;
   icon: "image" | "paperclip" | "camera";
   label: string;
@@ -27,12 +29,12 @@ function SourceRow({ testId, icon, label, onClick }: {
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className={`${tapClass} flex w-full items-center gap-3 rounded-r-4 px-3 py-3 text-left hover:bg-panel-2`}
+      className={`${tapClass} flex flex-1 flex-col items-center gap-2 rounded-r-4 px-2 py-3 hover:bg-panel-2`}
     >
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-panel-2">
-        <Icon d={icon} size={20} className="text-text-2" />
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-panel-2">
+        <Icon d={icon} size={24} className="text-text-2" />
       </span>
-      <span className="font-body text-ui-row text-text">{label}</span>
+      <span className="font-body text-ui-tab text-text">{label}</span>
     </button>
   );
 }
@@ -40,10 +42,10 @@ function SourceRow({ testId, icon, label, onClick }: {
 export function ComposerAttachmentSheet({ open, onClose, onPick }: ComposerAttachmentSheetProps) {
   return (
     <MobileBottomSheet open={open} onClose={onClose} title="Add attachment">
-      <div className="flex flex-col gap-1 pb-2">
-        <SourceRow testId="attach-source-photos" icon="image" label="Photos" onClick={() => onPick("photos")} />
-        <SourceRow testId="attach-source-file" icon="paperclip" label="File" onClick={() => onPick("file")} />
-        <SourceRow testId="attach-source-camera" icon="camera" label="Camera" onClick={() => onPick("camera")} />
+      <div className="flex flex-row gap-2 pb-2">
+        <SourceItem testId="attach-source-camera" icon="camera" label="Camera" onClick={() => onPick("camera")} />
+        <SourceItem testId="attach-source-photos" icon="image" label="Photos" onClick={() => onPick("photos")} />
+        <SourceItem testId="attach-source-file" icon="paperclip" label="File" onClick={() => onPick("file")} />
       </div>
     </MobileBottomSheet>
   );

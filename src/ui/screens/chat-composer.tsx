@@ -20,6 +20,7 @@ export function ChatComposer({
   errorSlot,
   hasAttachments,
   onPaste,
+  softEnterNewline,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -43,6 +44,13 @@ export function ChatComposer({
   hasAttachments?: boolean;
   /** Rung 4: paste handler for clipboard-image ingestion. */
   onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  /** Mobile newline mode (2026-07-30): on a soft keyboard there is no
+   * Shift+Enter, so an "Enter sends" binding makes multi-line markdown
+   * (lists/headings) impossible to type. When true, Enter inserts a newline
+   * and the user sends with the send button; the keyboard is hinted to show a
+   * return key. Set from isTauriAndroid() by the container. Default false
+   * (desktop: Enter sends, Shift+Enter newline — parity/behaviour unchanged). */
+  softEnterNewline?: boolean;
 }): JSX.Element {
   const armed =
     (Boolean(value.trim()) || (hasAttachments ?? false)) &&
@@ -50,9 +58,11 @@ export function ChatComposer({
     !sending;
 
   // Multi-line composer (round 11 — markdown authoring needs newlines for
-  // headings/lists/task-lists). Enter sends; Shift+Enter inserts a newline.
+  // headings/lists/task-lists). Desktop: Enter sends, Shift+Enter newline.
+  // softEnterNewline (mobile): don't intercept Enter — let it insert a newline;
+  // sending is via the send button only.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (!softEnterNewline && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSend();
     }
@@ -104,6 +114,9 @@ export function ChatComposer({
             onPaste={onPaste}
             placeholder={placeholder}
             disabled={disabled}
+            // Mobile: hint the soft keyboard to show a return key (newline),
+            // not a send key — send is the button. Desktop is unaffected.
+            enterKeyHint={softEnterNewline ? "enter" : "send"}
             rows={1}
             // NOTE: deliberately NOT disabled while `sending` — see prop doc.
             data-testid="composer-input"

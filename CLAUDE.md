@@ -139,6 +139,24 @@ original feature slices above, a separate track).
   `getExternalFilesDir(DIRECTORY_PICTURES)`). Web/desktop unaffected (sheet is
   Android-only). Native path isn't web-e2e drivable → on-device via nightly.
   Spec: `docs/superpowers/specs/2026-07-30-camera-capture-design.md`.
+- Camera/tray/newline on-device round 2 (2026-07-30) — implemented + merged
+  (`--no-ff`). Three on-device fixes: (1) **Camera opened the gallery, not the
+  camera** — root cause was a MISSING `<queries>` element, not the FileProvider:
+  wry's `showImageCapturePicker` does `Intent(ACTION_IMAGE_CAPTURE)
+  .resolveActivity(pm)` and silently falls back to the gallery when it's null,
+  and Android 11+ package-visibility makes that null unless the app declares
+  `<queries><intent><action .../></intent></queries>` for IMAGE_CAPTURE (added
+  to `AndroidManifest.xml`; VIDEO_CAPTURE too). The CAMERA prompt appearing
+  on-device proved the capture branch WAS entered — the failure was downstream.
+  (2) Attachment sheet **horizontalized** (`ComposerAttachmentSheet`: row of
+  icon-over-label items, Camera/Photos/File — it's in `src/components`, not
+  parity-locked). (3) **Mobile newlines**: soft keyboards have no Shift+Enter,
+  so "Enter sends" made multi-line markdown impossible on the phone. Added a
+  `softEnterNewline` prop to the pure `ChatComposer` (it can't call
+  `isTauriAndroid()` itself — purity), set from `isTauriAndroid()` in
+  `detail.tsx`; when on, Enter inserts a newline (send is the button only) and
+  `enterKeyHint="enter"` hints a return key. Desktop unchanged. Camera fix is
+  confirmable only on-device (nightly).
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

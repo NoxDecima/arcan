@@ -387,6 +387,11 @@ export function ConversationDetailRoute() {
   const [composerError, setComposerError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [attachSheetOpen, setAttachSheetOpen] = useState(false);
+  // Mobile soft keyboards have no Shift+Enter, so an "Enter sends/saves"
+  // binding makes multi-line markdown impossible to type (2026-07-30). On
+  // Android, Enter inserts a newline instead — both the composer and the inline
+  // message-edit box send/save via their buttons.
+  const softEnterNewline = isTauriAndroid();
 
   // Edit/delete per-message state (moved from MessageBubble to this container)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -1283,13 +1288,16 @@ export function ConversationDetailRoute() {
                 ta.style.height = `${ta.scrollHeight}px`;
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                // Mobile: don't intercept Enter — let it insert a newline; the
+                // user saves with the Save button (softEnterNewline).
+                if (!softEnterNewline && e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   void handleSaveEdit(message);
                 } else if (e.key === "Escape") {
                   setEditingMessageId(null);
                 }
               }}
+              enterKeyHint={softEnterNewline ? "enter" : "done"}
               rows={1}
               className="block w-full resize-none border-none outline-none bg-transparent font-body text-ui-row leading-normal text-text max-h-[8.5rem] overflow-y-auto"
               data-testid="message-edit-input"
@@ -1627,6 +1635,9 @@ export function ConversationDetailRoute() {
         hasAttachments={pending.length > 0}
         onAttach={handleAttachClick}
         onPaste={handleComposerPaste}
+        // Mobile soft keyboards have no Shift+Enter — on Android, Enter inserts
+        // a newline (markdown authoring) and the send button sends (2026-07-30).
+        softEnterNewline={softEnterNewline}
         attachSlot={
           pending.length > 0 ? (
             <ComposerAttachmentTray

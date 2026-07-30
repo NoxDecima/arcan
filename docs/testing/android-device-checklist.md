@@ -144,7 +144,10 @@ Record date + device + result per line.
 - [ ] A plain-text message (no markdown) still looks normal.
 
 ## Camera capture (#83, 2026-07-30)
-- [ ] Attach → bottom sheet → "Camera" opens the system camera app.
+- [ ] Attach → bottom sheet → "Camera" opens the **live system camera** (NOT
+      the gallery picker). This was the reported bug: the fix adds a `<queries>`
+      for `ACTION_IMAGE_CAPTURE` so wry's `resolveActivity` finds the camera app
+      on Android 11+ instead of silently falling back to the gallery.
 - [ ] Take a photo → confirm → the photo lands in the composer tray (as a
       pending attachment) → send → it appears in the conversation.
 - [ ] Cancelling the camera (back out without a shot) returns to the chat
@@ -153,3 +156,14 @@ Record date + device + result per line.
       cap rather than being rejected with "too large".
 - [ ] After returning from the camera, the WebView repaints (no blank/frozen
       screen — the round-10 onResume invalidate covers this).
+
+## Camera/tray/newline follow-ups (2026-07-30, on-device round 2)
+- [ ] **Camera opens the camera** (see the fixed item above) — this is the
+      headline check for this round.
+- [ ] Attachment sheet lays the three sources out **horizontally** (Camera /
+      Photos / File as a row of icon-over-label buttons), not a vertical list.
+- [ ] In the composer, the phone keyboard's **Enter inserts a newline** (return
+      key), it does NOT auto-send. You send with the send button. This lets you
+      type multi-line markdown (lists/headings) on the phone.
+- [ ] The keyboard's bottom-right action key shows a **return/newline** glyph,
+      not a "send"/"go" glyph.
