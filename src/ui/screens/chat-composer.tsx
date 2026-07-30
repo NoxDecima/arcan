@@ -42,15 +42,20 @@ export function ChatComposer({
   /** Rung 4: true when pending attachments are present — enables send even with empty text. */
   hasAttachments?: boolean;
   /** Rung 4: paste handler for clipboard-image ingestion. */
-  onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
 }): JSX.Element {
   const armed =
     (Boolean(value.trim()) || (hasAttachments ?? false)) &&
     !disabled &&
     !sending;
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") onSend();
+  // Multi-line composer (round 11 — markdown authoring needs newlines for
+  // headings/lists/task-lists). Enter sends; Shift+Enter inserts a newline.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend();
+    }
   };
 
   return (
@@ -76,23 +81,33 @@ export function ChatComposer({
           />
         </button>
 
-        {/* Input pill — proto:191; min-w-0 + overflow-hidden allow flex-1 to resolve to exactly 202px */}
-        <div className="min-w-0 overflow-hidden flex-1 h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3">
+        {/* Input pill — proto:191; min-w-0 + overflow-hidden allow flex-1 to
+            resolve to exactly 202px. Round 11: a growable textarea (markdown
+            multi-line authoring) — 38px tall at one line (items-center keeps
+            the single-line state visually identical to the prior <input>),
+            grows to ~6 lines then scrolls. */}
+        <div className="min-w-0 overflow-hidden flex-1 min-h-[38px] rounded-pill border border-hairline bg-bg flex items-center gap-2 px-3">
           {/* Prompt › — v5 s.prompt=true; proto:192 */}
           <span className="font-mono font-semibold text-ui-btn text-arcan-accent">
             ›
           </span>
-          {/* Input — proto:193–195 */}
-          <input
+          {/* Textarea — proto:193–195, upgraded to multi-line (round 11) */}
+          <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onInput={(e) => {
+              const ta = e.currentTarget;
+              ta.style.height = "auto";
+              ta.style.height = `${ta.scrollHeight}px`;
+            }}
             onKeyDown={handleKeyDown}
             onPaste={onPaste}
             placeholder={placeholder}
             disabled={disabled}
+            rows={1}
             // NOTE: deliberately NOT disabled while `sending` — see prop doc.
             data-testid="composer-input"
-            className="flex-1 border-none outline-none bg-transparent font-body text-ui-row leading-none text-text"
+            className="flex-1 resize-none border-none outline-none bg-transparent font-body text-ui-row leading-none text-text max-h-[8.5rem] overflow-y-auto py-0"
             style={{ caretColor: "var(--color-accent-fill)" }}
           />
         </div>

@@ -276,8 +276,13 @@ function PComposerBar({ s, text }) {
       <button style={tapBtn}><Icon d="plusc" c={c.text2} size={22} /></button>
       <div style={{ flex: 1, /* intent-fix: minWidth:0+overflow:hidden — flex min-w-auto in fixed-w cells */ minWidth: 0, overflow: 'hidden', height: 38, borderRadius: 999, border: `1px solid ${c.border}`, background: c.bg, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
         <span style={{ font: `600 13px/1 ${s.font}`, color: c.accent }}>›</span>
-        <input value={text || ''} readOnly placeholder="message ada"
-          style={{ flex: 1, /* intent-fix: margin:0/padding:0 — Chrome UA padding absent under preflight */ margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+        {/* intent-fix (round 11): the app composer is a growable <textarea>
+           (multi-line markdown authoring); match it here so the single-line
+           state renders identically (textarea-vs-input has a sub-pixel diff
+           that exceeds this cell's tight tolerance). margin:0/padding:0 —
+           Chrome UA padding absent under preflight. */}
+        <textarea value={text || ''} readOnly placeholder="message ada" rows={1}
+          style={{ flex: 1, resize: 'none', overflow: 'hidden', margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
       </div>
       <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: armed ? c.accentFill : c.panel2, justifyContent: 'center' }}>
         <span style={{ display: "flex", transform: "translate(-1px, 1px)" }}>{/* user-decision patch: optical centering nudge, mirrors kit */}<Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill /></span>

@@ -105,6 +105,22 @@ original feature slices above, a separate track).
   Push notifications brainstormed then deferred — analysis in
   `docs/superpowers/notes/2026-07-25-push-notifications-deliberation.md`. Spec:
   `docs/superpowers/specs/2026-07-25-attachment-source-tray-design.md`.
+- Markdown messages (2026-07-30) — implemented + merged (`--no-ff`). Sent
+  message bodies render GitHub-flavored markdown (headings, bold/italic/strike,
+  bullet+numbered lists, display-only task checkboxes, links, inline+fenced
+  code, blockquotes) via `MessageMarkdown` (`src/components/message-markdown.tsx`:
+  react-markdown 10 + remark-gfm + remark-breaks + `rehype-sanitize` strict
+  schema — NO dangerouslySetInnerHTML, `javascript:`/`data:` links dropped,
+  raw HTML inert; security unit-tested). Reaches the pure kit bubble through a
+  new `richBody` slot (replaces the text span, keeps the timestamp; parity
+  142/142). Editing still shows raw markdown (`bodyOverride` textarea). Composer
+  upgraded to a multi-line auto-grow `<textarea>` (Enter sends, Shift+Enter
+  newline — block markdown needs newlines; proto `PComposerBar` matched to a
+  textarea, intent-fix). Follow-up: lazy-load the markdown bundle if initial
+  size matters. Spec: `docs/superpowers/specs/2026-07-30-markdown-messages-design.md`.
+- Camera capture (attachment tray) — spec written
+  (`docs/superpowers/specs/2026-07-30-camera-capture-design.md`), native
+  ACTION_IMAGE_CAPTURE + downscale; scheduled as its own round after markdown.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

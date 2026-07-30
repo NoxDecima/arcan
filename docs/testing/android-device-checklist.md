@@ -129,3 +129,16 @@ Record date + device + result per line.
 - [ ] (#79) Adding a single photo shows it in the tray immediately — no need to
       add a second. If still broken, check whether the console shows
       "[composer] ingested 1 pending now grows".
+
+## Markdown messages (2026-07-30)
+- [ ] Composer is multi-line: Shift+Enter inserts a newline, Enter sends; the
+      box grows with the text then scrolls.
+- [ ] Send `# Heading`, `- bullet`, `- [ ] todo`, `**bold**`, `` `code` ``, a
+      link, and a `> quote` (each on its own line) → the sent bubble renders
+      them formatted (heading, bulleted list, a checkbox, bold, code, a link,
+      a quote bar).
+- [ ] The task checkbox is NOT tappable (display-only).
+- [ ] Tapping a link opens it in the browser.
+- [ ] Long-press on your own markdown message still opens the edit/delete menu;
+      choosing Edit shows the RAW markdown (not the rendered version).
+- [ ] A plain-text message (no markdown) still looks normal.

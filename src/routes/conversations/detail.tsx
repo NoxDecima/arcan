@@ -72,6 +72,7 @@ import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/components/skeleton"
 import { useIsDesktop } from "@/components/use-is-desktop";
 import { initialsFromTitle } from "@/components/conversation-avatar";
 import { MessageAttachments } from "@/components/message-attachments";
+import { MessageMarkdown } from "@/components/message-markdown";
 import {
   ComposerAttachmentTray,
   type PendingAttachment,
@@ -926,7 +927,7 @@ export function ConversationDetailRoute() {
     setPending((prev) => prev.filter((p) => p.tempId !== tempId));
   }
 
-  function handleComposerPaste(e: ClipboardEvent<HTMLInputElement>) {
+  function handleComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
       const realFiles = Array.from(files).filter((f) => f.size > 0);
@@ -1227,6 +1228,17 @@ export function ConversationDetailRoute() {
 
       // Inline edit bodyOverride — Rung 4
       const isEditing = editingMessageId === msgId;
+
+      // Rich markdown body for normal (not deleted/malformed/editing, non-empty)
+      // messages. When editing, bodyOverride takes priority in the bubble so the
+      // raw markdown is still shown; deleted/malformed leave richBody undefined so
+      // the existing shells render. `text` below stays set as the accessible
+      // fallback + edit/parity path.
+      const bodyText = message?.body ?? "";
+      const richBody =
+        !isDeleted && !malformed && !isEditing && bodyText ? (
+          <MessageMarkdown source={bodyText} mine={isMine} />
+        ) : undefined;
       const bodyOverride = isEditing ? (
         <div className="flex flex-col gap-1">
           <div
@@ -1384,7 +1396,8 @@ export function ConversationDetailRoute() {
         kind: "msg",
         key: item.key,
         mine: isMine,
-        text: message?.body ?? "",
+        text: bodyText, // keep — accessible fallback + edit/parity paths
+        richBody,
         time: formattedTime,
         authorName,
         authorInitials,

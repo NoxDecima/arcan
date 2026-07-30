@@ -206,6 +206,7 @@ export function ChatScreen({
                       bodyTestId="bubble-body"
                       timeTestId="bubble-time"
                       bodyOverride={item.bodyOverride}
+                      richBody={item.richBody}
                       onContext={item.onContext}
                       entering={item.entering}
                       // Rung 4: edit/delete menu — beside the bubble in the
