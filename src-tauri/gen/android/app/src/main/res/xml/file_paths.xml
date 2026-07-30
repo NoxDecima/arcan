@@ -2,4 +2,8 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
   <external-path name="my_images" path="." />
   <cache-path name="my_cache_images" path="." />
+  <!-- Camera capture (2026-07-30): wry writes the ACTION_IMAGE_CAPTURE temp
+       file under getExternalFilesDir(DIRECTORY_PICTURES); expose that root so
+       the FileProvider can grant the camera app write access. -->
+  <external-files-path name="my_capture" path="Pictures" />
 </paths>
