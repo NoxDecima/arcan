@@ -31,6 +31,7 @@ export function Bubble({
   attSlot,
   bodyTestId,
   bodyOverride,
+  richBody,
   interactive,
 }: {
   m: BubbleMsg;
@@ -41,6 +42,10 @@ export function Bubble({
   bodyTestId?: string;
   /** Rung 4: replaces the body text+time row (e.g. inline edit input). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
+  /** Markdown-rendered body (feedback round 11). Replaces the plain text span
+   * when no bodyOverride (edit) is active; the timestamp caption lives in
+   * MessageRow, so it's preserved. Parity unaffected (default undefined). */
+  richBody?: ReactNode;
   /** UI motion spec (2026-07-18): hover/press color feedback. Only OWN
    * bubbles are interactive today (menu / long-press) — an affordance on
    * non-interactive bubbles would lie. Parity unaffected (default undefined). */
@@ -91,14 +96,15 @@ export function Bubble({
           )}
         </div>
       )}
-      {bodyOverride ?? (
-        <span
-          className="block font-body text-ui-bubble"
-          {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
-        >
-          {m.text}
-        </span>
-      )}
+      {bodyOverride ??
+        richBody ?? (
+          <span
+            className="block font-body text-ui-bubble"
+            {...(bodyTestId ? { "data-testid": bodyTestId } : {})}
+          >
+            {m.text}
+          </span>
+        )}
     </div>
   );
 }
@@ -112,6 +118,7 @@ export function MessageRow({
   bodyTestId,
   timeTestId,
   bodyOverride,
+  richBody,
   endSlot,
   onAvatar,
   onContext,
@@ -128,6 +135,10 @@ export function MessageRow({
   timeTestId?: string;
   /** Rung 4: forwarded to Bubble — replaces body text+time (e.g. inline edit). Parity unaffected (default undefined). */
   bodyOverride?: ReactNode;
+  /** Markdown-rendered body (feedback round 11). Replaces the plain text span
+   * when no bodyOverride (edit) is active; the timestamp caption lives in
+   * MessageRow, so it's preserved. Parity unaffected (default undefined). */
+  richBody?: ReactNode;
   /** Rung 4: rendered as the row's last flex child, self-centered — with
    * row-reverse (own messages) it sits visually beside the bubble in the
    * empty gutter (e.g. the edit/delete ⋮ menu). Parity unaffected. */
@@ -246,7 +257,7 @@ export function MessageRow({
             {m.name}
           </span>
         )}
-        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} bodyOverride={bodyOverride} interactive={Boolean(onContext)} />
+        <Bubble m={m} w={w} attSlot={attSlot} bodyTestId={bodyTestId} bodyOverride={bodyOverride} richBody={richBody} interactive={Boolean(onContext)} />
         {/* intent-fix (feedback round 4): timestamp moved OUT of the bubble
             to a caption below it — user direction, 2026-07-16 walkthrough.
             The in-bubble "(edited)" line merges into the caption too. */}

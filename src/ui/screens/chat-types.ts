@@ -29,6 +29,10 @@ export type ChatTimelineItem =
       menuSlot?: ReactNode;
       /** Rung 4: replaces bubble body+time (e.g. inline edit input). Parity unaffected (default undefined). */
       bodyOverride?: ReactNode;
+      /** Markdown-rendered body (feedback round 11). Replaces the plain text
+       * span when no bodyOverride (edit) is active. Parity unaffected (default
+       * undefined). */
+      richBody?: ReactNode;
       /** Intent-fix (2026-07-08 walkthrough): tap on the author avatar —
           container navigates to the author's profile. Non-visual. */
       onAvatar?: () => void;
