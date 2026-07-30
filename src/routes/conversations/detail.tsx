@@ -927,7 +927,7 @@ export function ConversationDetailRoute() {
     setPending((prev) => prev.filter((p) => p.tempId !== tempId));
   }
 
-  function handleComposerPaste(e: ClipboardEvent<HTMLInputElement>) {
+  function handleComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
       const realFiles = Array.from(files).filter((f) => f.size > 0);
