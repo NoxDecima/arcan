@@ -157,6 +157,16 @@ Record date + device + result per line.
 - [ ] After returning from the camera, the WebView repaints (no blank/frozen
       screen — the round-10 onResume invalidate covers this).
 
+## Camera/composer follow-ups (2026-07-31, on-device round 3)
+- [ ] Camera → take a photo → confirm → the photo **appears in the composer
+      tray** as a pending attachment (round 2 fixed opening the camera; this
+      fixes the captured photo not attaching). If it still fails, check logcat
+      for `[camera] capture onChange — N file(s)` to see if the handler ran.
+- [ ] Type a multi-line message, send it → the composer **shrinks back to one
+      line** (previously stayed tall).
+- [ ] While typing multiple lines, the text has **readable line spacing** (not
+      crushed together).
+
 ## Camera/tray/newline follow-ups (2026-07-30, on-device round 2)
 - [ ] **Camera opens the camera** (see the fixed item above) — this is the
       headline check for this round.

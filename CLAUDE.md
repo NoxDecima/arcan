@@ -157,6 +157,18 @@ original feature slices above, a separate track).
   `detail.tsx`; when on, Enter inserts a newline (send is the button only) and
   `enterKeyHint="enter"` hints a return key. Desktop unchanged. Camera fix is
   confirmable only on-device (nightly).
+- Camera/composer on-device round 3 (2026-07-31) — implemented + merged
+  (`--no-ff`). (1) Captured camera photo never attached: `handleCameraCapture`
+  read `e.target.files` then set `e.target.value = ""` — but `.files` is a LIVE
+  FileList, so the reset emptied it before the length check. Fixed with
+  `Array.from` snapshot before reset (+ a logcat `[camera]` onChange trace,
+  #79-style, since the native path isn't web-e2e drivable — strip before stable
+  v0.1.8 with the other debug traces). (2) Composer textarea grew for multi-line
+  but never shrank after send (height set only in `onInput`, which doesn't fire
+  on the programmatic clear) → replaced with a `useLayoutEffect` keyed on
+  `value`. (3) `leading-none` crushed multi-line text → `leading-normal` (proto
+  `PComposerBar` textarea → line-height 1.5 to hold parity, chat-composer-states
+  0.199%). Camera fix confirmable only on-device.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 

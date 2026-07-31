@@ -4,6 +4,7 @@
 // Pure: no Jazz, no router — enforced by scripts/check-ui-purity.sh.
 
 import type { ReactNode } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Icon } from "../kit/icon";
 import { tapClass } from "../kit/tap";
 import type { JSX } from "react";
@@ -57,6 +58,18 @@ export function ChatComposer({
     !disabled &&
     !sending;
 
+  // Auto-size the textarea to its content on every `value` change. Keying on
+  // value (not just onInput) means it also SHRINKS back to one line after send
+  // clears the field — onInput never fires on a programmatic clear, which left
+  // the box stuck at its grown height (the reported bug).
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [value]);
+
   // Multi-line composer (round 11 — markdown authoring needs newlines for
   // headings/lists/task-lists). Desktop: Enter sends, Shift+Enter newline.
   // softEnterNewline (mobile): don't intercept Enter — let it insert a newline;
@@ -103,13 +116,9 @@ export function ChatComposer({
           </span>
           {/* Textarea — proto:193–195, upgraded to multi-line (round 11) */}
           <textarea
+            ref={taRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onInput={(e) => {
-              const ta = e.currentTarget;
-              ta.style.height = "auto";
-              ta.style.height = `${ta.scrollHeight}px`;
-            }}
             onKeyDown={handleKeyDown}
             onPaste={onPaste}
             placeholder={placeholder}
@@ -120,7 +129,10 @@ export function ChatComposer({
             rows={1}
             // NOTE: deliberately NOT disabled while `sending` — see prop doc.
             data-testid="composer-input"
-            className="flex-1 resize-none border-none outline-none bg-transparent font-body text-ui-row leading-none text-text max-h-[8.5rem] overflow-y-auto py-0"
+            // leading-normal (not leading-none): keeps single-line centred in
+            // the pill but gives multi-line markdown readable line spacing
+            // (leading-none crushed the lines together — reported "weird" look).
+            className="flex-1 resize-none border-none outline-none bg-transparent font-body text-ui-row leading-normal text-text max-h-[8.5rem] overflow-y-auto py-0"
             style={{ caretColor: "var(--color-accent-fill)" }}
           />
         </div>
