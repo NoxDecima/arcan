@@ -280,9 +280,10 @@ function PComposerBar({ s, text }) {
            (multi-line markdown authoring); match it here so the single-line
            state renders identically (textarea-vs-input has a sub-pixel diff
            that exceeds this cell's tight tolerance). margin:0/padding:0 —
-           Chrome UA padding absent under preflight. */}
+           Chrome UA padding absent under preflight. line-height 1.5 mirrors the
+           kit's leading-normal (2026-07-31: leading-none crushed multi-line). */}
         <textarea value={text || ''} readOnly placeholder="message ada" rows={1}
-          style={{ flex: 1, resize: 'none', overflow: 'hidden', margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
+          style={{ flex: 1, resize: 'none', overflow: 'hidden', margin: 0, padding: 0, border: 'none', outline: 'none', background: 'transparent', font: `400 12.5px/1.5 ${s.body}`, color: c.text, caretColor: c.accentFill }} />
       </div>
       <button style={{ ...tapBtn, width: 38, height: 38, borderRadius: 999, background: armed ? c.accentFill : c.panel2, justifyContent: 'center' }}>
         <span style={{ display: "flex", transform: "translate(-1px, 1px)" }}>{/* user-decision patch: optical centering nudge, mirrors kit */}<Icon d="send" c={armed ? c.onAccent : c.dim} size={16} fill /></span>
