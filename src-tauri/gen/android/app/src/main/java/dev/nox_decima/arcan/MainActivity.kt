@@ -1,8 +1,14 @@
 package dev.nox_decima.arcan
 
+import android.content.ClipData
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -61,5 +67,49 @@ class MainActivity : TauriActivity() {
       }
     }
     return null
+  }
+
+  // Camera capture (#83): wry's showImageCapturePicker hands the camera app a
+  // FileProvider content:// URI via EXTRA_OUTPUT but never grants write access
+  // to it. On Android the grant flags apply ONLY to intent.getData() and
+  // intent.getClipData() — never to extras — so the camera app hits a
+  // SecurityException writing the file, aborts, and returns RESULT_CANCELED.
+  // wry then calls onReceiveValue(null): the <input capture> gets no file, its
+  // onChange never fires, and the capture vanishes with no error at all
+  // (exactly the reported symptom). wry's handler lives in a gitignored,
+  // regenerated source file, so it can't be patched in place — but every
+  // ActivityResultLauncher.launch() funnels through startActivityForResult,
+  // so we repair the intent here on its way out.
+  override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
+    grantCaptureOutputPermission(intent)
+    super.startActivityForResult(intent, requestCode, options)
+  }
+
+  private fun grantCaptureOutputPermission(intent: Intent) {
+    val action = intent.action
+    if (action != MediaStore.ACTION_IMAGE_CAPTURE && action != MediaStore.ACTION_VIDEO_CAPTURE) {
+      return
+    }
+    @Suppress("DEPRECATION")
+    val output = intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT) ?: return
+    if (output.scheme != "content") return
+
+    // 1. Mirror the output URI into clipData so the grant flags actually apply
+    //    to it (flags are ignored on plain extras).
+    if (intent.clipData == null) {
+      intent.clipData = ClipData.newRawUri(MediaStore.EXTRA_OUTPUT, output)
+    }
+    intent.addFlags(
+      Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION,
+    )
+
+    // 2. Belt-and-braces: some camera apps ignore clipData grants, so grant the
+    //    single temp URI explicitly to every app that can service the intent.
+    //    Scope is one app-private capture file, revoked when the task finishes.
+    val flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
+    for (info in packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)) {
+      grantUriPermission(info.activityInfo.packageName, output, flags)
+    }
+    Log.d("arcan", "[camera] granted capture output permission for $output")
   }
 }
