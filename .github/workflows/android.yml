@@ -16,6 +16,12 @@ on:
       - "src-tauri/gen/android/**"
       - "package.json"
       - ".github/workflows/android.yml"
+  # Manual re-trigger. GitHub's runner allocator can wedge a run ("The job was
+  # not acquired by Runner of type hosted", failing after a fixed ~15 min
+  # timeout); re-running that run just retries the same poisoned job, so a
+  # FRESH run is the only recovery. Without this trigger the only way to get
+  # one was to push another commit (2026-08-06 incident).
+  workflow_dispatch:
 
 # release step uploads assets; everything else needs only read
 permissions:
