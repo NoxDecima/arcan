@@ -157,6 +157,20 @@ Record date + device + result per line.
 - [ ] After returning from the camera, the WebView repaints (no blank/frozen
       screen — the round-10 onResume invalidate covers this).
 
+## Camera capture URI grant (2026-08-06, on-device round 4)
+- [ ] Camera → take a photo → confirm → the photo **attaches** to the composer
+      tray. This is the third attempt at this symptom; the fix grants the camera
+      app write permission on the capture URI (wry passes it via EXTRA_OUTPUT,
+      where Android ignores grant flags, so the camera aborted with
+      RESULT_CANCELED and the photo vanished silently).
+- [ ] If it STILL fails, grab logcat and look for these two lines — together
+      they pinpoint the stage:
+      - `arcan  [camera] granted capture output permission for content://…`
+        (our Kotlin ran and granted the URI)
+      - `[camera] capture onChange — N file(s): …` (the web handler received N
+        files, with byte sizes). No onChange line at all ⇒ the camera still
+        returned nothing; a line with `0B` ⇒ it returned an empty file.
+
 ## Camera/composer follow-ups (2026-07-31, on-device round 3)
 - [ ] Camera → take a photo → confirm → the photo **appears in the composer
       tray** as a pending attachment (round 2 fixed opening the camera; this

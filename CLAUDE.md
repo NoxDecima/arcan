@@ -169,6 +169,26 @@ original feature slices above, a separate track).
   `value`. (3) `leading-none` crushed multi-line text → `leading-normal` (proto
   `PComposerBar` textarea → line-height 1.5 to hold parity, chat-composer-states
   0.199%). Camera fix confirmable only on-device.
+- Camera capture URI grant (2026-08-06, on-device round 4) — implemented +
+  merged (`--no-ff`). The captured photo silently never attached. Root cause is
+  an **upstream wry defect**: `showImageCapturePicker` passes the FileProvider
+  `content://` URI to the camera app via `EXTRA_OUTPUT`, but Android applies
+  `FLAG_GRANT_*_URI_PERMISSION` only to `intent.getData()`/`getClipData()` —
+  **never to extras**. The camera app hits a SecurityException, aborts with
+  `RESULT_CANCELED`, wry calls `onReceiveValue(null)`, the `<input capture>`
+  gets no file and never fires `onChange` — hence NO error toast (which is what
+  ruled out the earlier 0-byte theory: `isAcceptablePick` would have toasted
+  "is empty"). wry's handler is in a **gitignored, regenerated** file so it
+  can't be patched; instead `MainActivity.kt` (tracked) overrides
+  `startActivityForResult` — every `ActivityResultLauncher.launch()` funnels
+  through it — and repairs IMAGE_CAPTURE/VIDEO_CAPTURE intents by mirroring the
+  output URI into `clipData` + adding the grant flags, plus an explicit
+  `grantUriPermission` to each resolving camera package (visible thanks to the
+  round-2 `<queries>`). **Verified by compiling locally** (`nix-shell
+  shell.android.nix` → `./gradlew :app:compileUniversalDebugKotlin`, BUILD
+  SUCCESSFUL) — note a worktree needs the gitignored generated gradle
+  scaffolding (`tauri.settings.gradle`, `app/tauri.{build.gradle.kts,properties}`,
+  `…/generated/`) copied from a previously-built checkout first.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
