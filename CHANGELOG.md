@@ -1,5 +1,40 @@
 # Changelog
 
+<!-- Note: entries below 0.1.8 are organised by slice/topic rather than release
+     version, and stop at Slice 8. The UI-rework Units and feedback rounds that
+     followed are recorded in CLAUDE.md § Status instead of here. -->
+
+## [0.1.8] — 2026-08-08
+
+### Added
+- **Markdown-formatted messages.** Sent messages render GitHub-flavored
+  markdown — headings, bold/italic/strikethrough, bullet and numbered lists,
+  task checkboxes (display-only), links, inline and fenced code, blockquotes.
+  Rendering is sanitized (`rehype-sanitize` strict schema, no raw HTML, no
+  `javascript:`/`data:` links). Editing a message still shows raw markdown.
+- **Camera capture in the Android attachment tray.** The composer's attach
+  sheet gains a **Camera** source that opens the system camera; the photo is
+  downscaled to fit the 5 MB attachment cap and attached to the message.
+
+### Changed
+- The composer is a multi-line auto-growing textarea. On desktop Enter sends and
+  Shift+Enter inserts a newline; on Android Enter inserts a newline and the send
+  button sends, because soft keyboards have no Shift+Enter and block markdown
+  needs newlines. Same behaviour in the inline message-edit box.
+- The Android attachment sheet lays its sources out horizontally
+  (Camera / Photos / File) instead of as a vertical list.
+
+### Fixed
+- Camera capture opened the gallery instead of the camera: Android 11+ package
+  visibility made `ACTION_IMAGE_CAPTURE` unresolvable without a `<queries>`
+  declaration, so the WebView silently fell back to the file picker.
+- A captured photo never attached: the camera app was handed a FileProvider
+  `content://` URI via `EXTRA_OUTPUT` without a write grant (Android applies
+  those grant flags only to `getData()`/`getClipData()`, never to extras), so it
+  aborted with `RESULT_CANCELED` and the capture vanished with no error.
+- The composer no longer stays tall after sending a multi-line message, and
+  multi-line text uses readable line spacing.
+
 ## [Unreleased] — Post-Slice-8 fixes
 
 ### Fixed
