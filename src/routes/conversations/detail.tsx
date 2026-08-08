@@ -949,14 +949,6 @@ export function ConversationDetailRoute() {
     // copies the File refs, which survive the reset.
     const picked = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = ""; // reset so re-capturing fires onChange again
-    // On-device trace (native camera path isn't web-e2e drivable): if a photo
-    // still doesn't attach, logcat shows whether onChange fired and how many
-    // files arrived — disambiguates "handler never ran" from "downscale/ingest
-    // dropped it". Mirrors the #79 diagnostics pattern.
-    console.debug(
-      `[camera] capture onChange — ${picked.length} file(s):`,
-      picked.map((f) => `${f.name} ${f.type} ${f.size}B`).join(", "),
-    );
     if (picked.length === 0) return;
     const out: File[] = [];
     for (const f of picked) {
@@ -966,7 +958,6 @@ export function ConversationDetailRoute() {
         out.push(f);
       }
     }
-    console.debug(`[camera] ingesting ${out.length} file(s)`);
     ingestFiles(out);
   }
 

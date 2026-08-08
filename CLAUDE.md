@@ -161,9 +161,9 @@ original feature slices above, a separate track).
   (`--no-ff`). (1) Captured camera photo never attached: `handleCameraCapture`
   read `e.target.files` then set `e.target.value = ""` — but `.files` is a LIVE
   FileList, so the reset emptied it before the length check. Fixed with
-  `Array.from` snapshot before reset (+ a logcat `[camera]` onChange trace,
-  #79-style, since the native path isn't web-e2e drivable — strip before stable
-  v0.1.8 with the other debug traces). (2) Composer textarea grew for multi-line
+  `Array.from` snapshot before reset (a temporary logcat `[camera]` onChange
+  trace rode along and was stripped once capture was confirmed working on
+  2026-08-08). (2) Composer textarea grew for multi-line
   but never shrank after send (height set only in `onInput`, which doesn't fire
   on the programmatic clear) → replaced with a `useLayoutEffect` keyed on
   `value`. (3) `leading-none` crushed multi-line text → `leading-normal` (proto
@@ -189,6 +189,8 @@ original feature slices above, a separate track).
   SUCCESSFUL) — note a worktree needs the gitignored generated gradle
   scaffolding (`tauri.settings.gradle`, `app/tauri.{build.gradle.kts,properties}`,
   `…/generated/`) copied from a previously-built checkout first.
+  **Camera capture CONFIRMED WORKING on-device 2026-08-08**, closing the
+  four-round arc (open camera → attach photo). Debug traces stripped.
 - Unit 6 (hard revocation / NOX-10, Shape 3) — scheduled after the UI rework.
 - `design/` holds the extracted `ArcanUI.zip` reference assets (gitignored).
 
